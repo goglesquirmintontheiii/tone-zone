@@ -1,37 +1,66 @@
 name: Build & release AppImage
 
+# A GitHub release is created automatically for every new version: bump "version" in app/package.json,
+# push to main, and this workflow builds the AppImage and publishes release v<version>
+# (notes from docs/releases/v<version>.md when present).
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   appimage:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Read version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(node -p "require('./app/package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" >/dev/null 2>&1 && [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"; echo "Release v$V already exists - nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.exists == 'false'
         with:
           node-version: 22
       - name: Toolchain
+        if: steps.ver.outputs.exists == 'false'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake
       - name: Build DSP engine (x86-64-v2 + v3)
+        if: steps.ver.outputs.exists == 'false'
         run: ./scripts/build-engine.sh
       - name: Engine self-test
+        if: steps.ver.outputs.exists == 'false'
         run: ./engine/dist/tonezone-engine-v2 --list > /dev/null
       - name: Build AppImage
+        if: steps.ver.outputs.exists == 'false'
         working-directory: app
         run: |
           npm ci
           npx electron-builder --linux AppImage --publish never
-      - name: Publish to the release for this tag
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish release
+        if: steps.ver.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Tone Zone ${TAG}" --notes "Automated build of ${TAG}."
-          gh release upload "$TAG" app/dist/*.AppImage --clobber
+          V="${{ steps.ver.outputs.version }}"
+          NOTES="docs/releases/v$V.md"
+          [ -f "$NOTES" ] || echo "Tone Zone v$V" > "$NOTES"
+          if ! gh release view "v$V" >/dev/null 2>&1; then
+            gh release create "v$V" --target "$GITHUB_SHA" --title "Tone Zone v$V" --notes-file "$NOTES"
+          fi
+          gh release upload "v$V" app/dist/*.AppImage --clobber
