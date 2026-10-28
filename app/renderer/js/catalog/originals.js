@@ -74,7 +74,7 @@ export const originals = [
   // pitch
   TZ({ id: 'tz.whammy', name: 'Wham Bar', cat: 'Pitch', form: 'treadle', color: '#b5121b', logo: 'WHAM BAR', logoFont: "'Oswald', sans-serif", logoColor: '#fff', treadleColor: '#1a1a1a', noStd: true, ref: 'DigiTech Whammy style',
     algo: 'pitch', fixed: { level1: 1, dry: 0, quality: 1 },
-    controls: [{ t: 'treadle', p: 'expr', def: 0, min: 0, max: 1 }, SEL('semis1', 'MODE', ['-24', '-12', '-7', '-5', '+5', '+7', '+12', '+24'], { values: [-24, -12, -7, -5, 5, 7, 12, 24], def: 6, x: 152, y: 252, r: 9, sweep: 220, optSize: 4, labelPos: 'none' }), LED({ r: 2.4 })],
+    controls: [{ t: 'treadle', p: 'expr', def: 0, min: 0, max: 1 }, SEL('semis1', 'MODE', ['-24', '-12', '-7', '-5', '+5', '+7', '+12', '+24'], { values: [-24, -12, -7, -5, 5, 7, 12, 24], def: 6, x: 122, y: 283, r: 7, sweep: 220, optSize: 3.4, labelRadius: 6, labelPos: 'none' }), LED({ r: 2.4 })],
     toeSwitch: true, desc: 'Treadle sweeps the pitch from dry to the selected interval.' }),
   TZ({ id: 'tz.harmony', name: 'TZ Pitch Lab', cat: 'Pitch', color: '#2a1c3f', text: '#efe6ff', logo: 'PITCH LAB', typeName: 'Dual-voice pitch shifter',
     algo: 'pitch', controls: [K('semis1', 'VOICE 1', { min: -24, max: 24, def: -12, step: 1, display: (v) => (v > 0 ? '+' : '') + Math.round(v) + ' st' }), K('level1', 'LEVEL 1', { def: 0.7 }),

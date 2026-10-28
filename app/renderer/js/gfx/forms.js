@@ -428,7 +428,7 @@ forms.treadle = (ctx, def) => {
     if (c.t === 'led' && c.x === undefined) Object.assign(c, { x: w / 2, y: h - 21, r: 2.6 });
   });
   label(g, 26, h - 21, def.code, { size: 6, fill: theme.text, weight: 800, ls: 1, anchor: 'start' });
-  tzBadge(g, w - 26, h - 21, theme.text, 4.2).setAttribute('text-anchor', 'end');
+  if (!def.controls.some((c) => c.t === 'sel')) tzBadge(g, w - 26, h - 21, theme.text, 4.2).setAttribute('text-anchor', 'end');
   placeControls(ctx, def.controls, theme);
   return { w, h, theme, jacks: jacksSide(def, w, { y0: h - 92, gap: 24, flip: ctx.flip }) };
 };
