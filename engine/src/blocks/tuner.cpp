@@ -75,7 +75,8 @@ public:
         ring[w] = f;
         w = (w + 1) & (RING - 1);
       }
-      for (int c = 0; c < nOut; ++c) out[c][i] = mute ? 0.f : in[std::min(c, nIn - 1)][i];
+      // output 0 follows the tuner (muted while tuning); output 1 is an always-on BYPASS / thru jack
+      for (int c = 0; c < nOut; ++c) out[c][i] = (mute && c == 0) ? 0.f : in[std::min(c, nIn - 1)][i];
     }
     wpos.store(w, std::memory_order_release);
     if (rmsN > 2048)

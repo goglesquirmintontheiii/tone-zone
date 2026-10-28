@@ -43,8 +43,8 @@ const boss = [
     algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 14, preHp: 120, gainMinDb: 18, gainMaxDb: 56, tone: 'mt2', eqRangeDb: 15, bassF: 100, trebleF: 3500, midMin: 200, midMax: 5000, postLp: 7000, levelMaxDb: 6 },
     controls: [
       lvl(),
-      K('treble', 'HIGH / LOW', { display: (v) => db((v - 0.5) * 30) }), K('bass', 'LOW', { inner: 'treble' }),
-      K('mid', 'MID / FREQ', { display: (v) => db((v - 0.5) * 30) }), K('midfreq', 'MID FREQ', { inner: 'mid', display: (v) => Math.round(200 * Math.pow(25, v)) + ' Hz' }),
+      K('treble', 'HI / LO', { display: (v) => db((v - 0.5) * 30) }), K('bass', 'LOW', { inner: 'treble' }),
+      K('mid', 'MID/FRQ', { display: (v) => db((v - 0.5) * 30) }), K('midfreq', 'MID FREQ', { inner: 'mid', display: (v) => Math.round(200 * Math.pow(25, v)) + ' Hz' }),
       gain('DIST'),
     ],
     desc: 'Concentric EQ knobs: outer ring HIGH / MIDDLE, inner cap LOW / MID FREQ.',
@@ -75,7 +75,7 @@ const boss = [
   }),
   BOSS({
     id: 'bx.dc2w', name: 'DM-2W Dimension', ref: 'BOSS DC-2W', code: 'DM-2W', typeName: 'Dimension', cat: 'Modulation', color: '#d9d9d6', text: '#111',
-    algo: 'chorus', opts: { style: 'clean', invertR: false }, ports: STEREO, stereo: 'fixed', fixed: { mode: 3, mix: 0.6, rate: 0.35 },
+    algo: 'chorus', opts: { style: 'clean', invertR: false }, ports: STEREO, stereo: 'fixed', fixed: { mode: 3, mix: 0.6 },
     controls: [SEL('depth', 'MODE', ['1', '2', '3', '4'], { values: [0.25, 0.45, 0.65, 0.9], sweep: 120, def: 1 }), TOG('rate', '', ['S', 'M'], { x: 112, y: 52, values: [0.3, 0.45], orient: 'h' })],
   }),
   BOSS({
