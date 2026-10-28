@@ -3,43 +3,87 @@ import { el, svg, esc, bus, toast } from '../util.js';
 import { state, loadPreset, newPreset, markDirty, serialize } from '../state.js';
 import { getDef, portsFor, defaultVariant } from '../catalog/index.js';
 import { renderForm } from '../gfx/forms.js';
+import { thumbURL, cacheGet, cacheSet } from '../gfx/raster.js';
 import { openPreset, savePreset, refreshPresetList, updateTitle } from '../presets.js';
 import { prompt, confirmDlg, showMenu, modal } from '../menus.js';
 
 const V = { q: '', sort: 'name', filter: 'All', tags: new Set(), tagMode: 'any' };
 export const GENRE_TAGS = ['rhythm', 'lead', 'clean', 'crunch', 'high-gain', 'ambient', 'simple', 'complex', 'jazz', 'worship', 'contemporary-worship', 'gospel', 'rock', 'classic-rock', 'alt-rock', 'metal', 'heavy-metal', 'classic-metal', 'deathcore', 'metalcore', 'punk', 'pop-punk', 'pop', 'experimental', 'jazz-fusion', 'edm', 'acoustic', 'country', 'country-rock', 'blues', 'funk', 'bass'];
 
-function thumb(layout) {
-  const s = svg('svg', { class: 'pc-thumb', xmlns: 'http://www.w3.org/2000/svg', preserveAspectRatio: 'xMidYMid meet' });
+// Preset thumbnails: the board's real pedals (cached raster images) composited into one PNG per preset.
+// One <img> per card keeps the tab cheap to scroll and repaint.
+const thumbCache = new Map(); // file|mtime -> dataURL
+const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+async function thumbPNG(layout) {
+  const W = 300, H = 150, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const c = document.createElement('canvas');
+  c.width = W * dpr;
+  c.height = H * dpr;
+  const cx = c.getContext('2d');
+  cx.scale(dpr, dpr);
   const bl = layout?.b || [];
   if (!bl.length) {
-    s.setAttribute('viewBox', '0 0 100 60');
-    svg('text', { x: 50, y: 32, 'text-anchor': 'middle', fill: '#5b6372', 'font-size': 7 }, s, 'empty board');
-    return s;
+    cx.fillStyle = '#5b6372';
+    cx.font = '12px Inter, sans-serif';
+    cx.textAlign = 'center';
+    cx.fillText('empty board', W / 2, H / 2);
+    return c.toDataURL('image/png');
   }
   const boxes = bl.map(([type, x, y, byp]) => {
     const d = getDef(type);
     const sz = d ? sizeOf(d) : [120, 200];
-    return { x, y, w: sz[0], h: sz[1], color: d ? (d.baseForm === 'cab' || d.baseForm === 'amp' ? d.tolex || '#1b1b1d' : d.color) : '#444', byp, missing: !d, form: d?.baseForm, panel: d && d.baseForm === 'amp' ? d.panel || d.color : d && d.baseForm === 'cab' ? '#b9a27a' : null };
+    return { d, x, y, w: sz[0], h: sz[1], byp };
   });
-  const minX = Math.min(...boxes.map((b) => b.x)) - 40, minY = Math.min(...boxes.map((b) => b.y)) - 40;
-  const maxX = Math.max(...boxes.map((b) => b.x + b.w)) + 40, maxY = Math.max(...boxes.map((b) => b.y + b.h)) + 40;
-  s.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
-  const sw = Math.max(4, (maxX - minX) / 120);
+  const minX = Math.min(...boxes.map((b) => b.x)) - 30, minY = Math.min(...boxes.map((b) => b.y)) - 30;
+  const maxX = Math.max(...boxes.map((b) => b.x + b.w)) + 30, maxY = Math.max(...boxes.map((b) => b.y + b.h)) + 30;
+  const sc = Math.min(W / (maxX - minX), H / (maxY - minY));
+  const ox = (W - (maxX - minX) * sc) / 2 - minX * sc, oy = (H - (maxY - minY) * sc) / 2 - minY * sc;
+  const X = (v) => ox + v * sc, Y = (v) => oy + v * sc;
+  // cables under the pedals
+  cx.lineCap = 'round';
+  cx.strokeStyle = 'rgba(232, 71, 61, 0.75)';
+  cx.lineWidth = Math.max(1, 6 * sc);
   for (const [a, b] of layout.c || []) {
     const A = boxes[a], B = boxes[b];
     if (!A || !B) continue;
-    const ax = A.x, ay = A.y + A.h * 0.25, bx = B.x + B.w, by = B.y + B.h * 0.25;
-    svg('path', { d: `M${ax} ${ay} C ${ax - 80} ${ay + 60} ${bx + 80} ${by + 60} ${bx} ${by}`, stroke: '#e8473d', 'stroke-width': sw, fill: 'none', opacity: 0.7, 'stroke-linecap': 'round' }, s);
+    const ax = X(A.x), ay = Y(A.y + A.h * 0.3), bx = X(B.x + B.w), by = Y(B.y + B.h * 0.3);
+    cx.beginPath();
+    cx.moveTo(ax, ay);
+    cx.bezierCurveTo(ax - 40 * sc, ay + 50 * sc, bx + 40 * sc, by + 50 * sc, bx, by);
+    cx.stroke();
   }
+  const raw = Math.max(...boxes.map((b) => Math.max(b.w, b.h))) * sc * dpr;
+  const px = raw < 80 ? 64 : raw < 112 ? 96 : 128; // a few fixed sizes so pedals are shared between presets
   for (const b of boxes) {
-    svg('rect', { x: b.x, y: b.y + sw * 1.5, width: b.w, height: b.h, rx: 10, fill: '#000', opacity: 0.4 }, s);
-    svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 10, fill: b.missing ? '#3a2020' : b.color, opacity: b.byp ? 0.55 : 1, stroke: b.missing ? '#ff4d5e' : '#000', 'stroke-width': sw * 0.4, 'stroke-dasharray': b.missing ? `${sw * 2} ${sw}` : null }, s);
-    if (b.form === 'cab') svg('rect', { x: b.x + b.w * 0.06, y: b.y + b.h * 0.06, width: b.w * 0.88, height: b.h * 0.88, rx: 6, fill: '#3a352c', opacity: 0.9 }, s);
-    if (b.form === 'amp') svg('rect', { x: b.x + b.w * 0.05, y: b.y + b.h * 0.58, width: b.w * 0.9, height: b.h * 0.28, rx: 4, fill: b.panel && b.panel !== '#555' ? b.panel : '#c9a24a', opacity: 0.9 }, s);
-    svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h * 0.45, rx: 10, fill: '#fff', opacity: 0.08 }, s);
+    cx.globalAlpha = b.byp ? 0.5 : 1;
+    if (!b.d || b.d.missing) {
+      cx.setLineDash([4, 3]);
+      cx.strokeStyle = '#8a93a6';
+      cx.strokeRect(X(b.x), Y(b.y), b.w * sc, b.h * sc);
+      cx.setLineDash([]);
+      continue;
+    }
+    const url = await thumbURL(b.d, px);
+    const im = url && (await loadImg(url));
+    if (im) cx.drawImage(im, X(b.x - 10), Y(b.y - 10), (b.w + 20) * sc, (b.h + 20) * sc);
+    else { cx.fillStyle = b.d.color || '#444'; cx.fillRect(X(b.x), Y(b.y), b.w * sc, b.h * sc); }
   }
-  return s;
+  cx.globalAlpha = 1;
+  return c.toDataURL('image/png');
+}
+function thumb(p) {
+  const im = document.createElement('img');
+  im.className = 'pc-thumb';
+  im.alt = '';
+  im.draggable = false;
+  const key = p.file + '|' + (p.mtime || 0) + '|' + (p.layout?.b || []).length;
+  if (thumbCache.has(key)) im.src = thumbCache.get(key);
+  else
+    cacheGet('preset|' + key)
+      .then((hit) => hit || thumbPNG(p.layout).then((u) => (cacheSet('preset|' + key, u), u)))
+      .then((u) => { thumbCache.set(key, u); im.src = u; })
+      .catch(() => {});
+  return im;
 }
 const sizeCache = new Map();
 // real rendered size of a block (measured once by drawing its enclosure off-screen), table fallback
@@ -148,7 +192,7 @@ export async function renderPresets() {
     const cur = p.file === state.file;
     const c = el('div', { class: 'preset-card' + (cur ? ' cur' : '') }, grid);
     const art = el('div', { class: 'pc-art' }, c);
-    art.appendChild(thumb(p.layout));
+    art.appendChild(thumb(p));
     if (cur) el('span', { class: 'pc-cur' }, art, state.dirty ? 'LOADED · EDITED' : 'LOADED');
     const star = el('button', { class: 'fav-star pc-star' + (p.favorite ? ' on' : ''), title: 'Favourite' }, art, p.favorite ? '★' : '☆');
     star.onclick = async (e) => { e.stopPropagation(); p.favorite = !p.favorite; await window.tz.presets.meta(p.file, { favorite: p.favorite }); draw(); };

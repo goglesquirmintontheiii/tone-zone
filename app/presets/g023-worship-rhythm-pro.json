@@ -4,8 +4,7 @@
  "tags": [
   "worship",
   "gospel",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Full worship rhythm board: compressor, stacked low-gain drives (off), dual-mic cab, optional chorus, delay and room.",
  "factory": true,
@@ -45,7 +44,7 @@
    "id": "b3",
    "type": "tz.klone",
    "x": -580,
-   "y": 40,
+   "y": 43,
    "params": {
     "gain": 0.25,
     "tone": 0.5,

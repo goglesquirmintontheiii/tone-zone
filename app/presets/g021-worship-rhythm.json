@@ -4,8 +4,7 @@
  "tags": [
   "worship",
   "gospel",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Chimey top-boost clean with gentle compression and a warm hall – sits under a choir.",
  "factory": true,
@@ -65,8 +64,8 @@
   {
    "id": "b4",
    "type": "tz.reverb",
-   "x": -1376,
-   "y": 40,
+   "x": -1382,
+   "y": 15,
    "params": {
     "decay": 0.45,
     "mix": 0.25,
@@ -79,7 +78,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1616,
+   "x": -1622,
    "y": 55,
    "params": {}
   }

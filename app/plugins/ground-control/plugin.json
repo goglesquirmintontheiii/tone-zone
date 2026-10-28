@@ -1,0 +1,12 @@
+{
+  "id": "ground-control",
+  "name": "Ground Control Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Ground Control Audio's UwU Virtual Pet Buffer: a unity op-amp buffer with a pixel pet on an OLED that dances, levels up and gets hungry depending on how much you play.",
+  "kind": "brand",
+  "brand": "Ground Control Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#f39ac0"
+}

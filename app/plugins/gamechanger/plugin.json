@@ -1,0 +1,12 @@
+{
+  "id": "gamechanger",
+  "name": "Gamechanger Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Gamechanger Audio's 'impossible' effects: a piano-style sustain pedal (the chrome pedal is the switch) and a high-voltage gas-discharge tube distortion. Heavy black steel chassis with crisp white industrial type.",
+  "kind": "brand",
+  "brand": "Gamechanger Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#ff4a2a"
+}

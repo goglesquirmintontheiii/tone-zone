@@ -34,7 +34,7 @@ export function preampOf(a) {
     id: a.id.replace(/^amp\./, 'pre.').replace(/^([^.]+)\.amp-/, '$1.pre-'), name: a.name + ' Pre', ref: a.ref + ' (preamp)', brand: a.brand, cat: 'Preamp', form: 'rack', algo: 'amp', cost: 1.6,
     opts: Object.assign({}, a.opts, { preamp: true }), color: a.panel === '#151515' || a.panel === '#141414' ? '#1a1b1e' : '#26282c',
     logo: (a.logo || a.name).toUpperCase().slice(0, 14), typeName: a.bass || a.cat === 'Bass Amp' ? 'Bass tube preamp' : 'Tube preamp', ports: { ins: ['INPUT'], outs: ['PREAMP OUT'] },
-    controls: [...a.controls.filter((c) => (c.t === 'knob' && c.p !== 'master' && c.p !== 'presence' && c.p !== 'depth') || ((c.t === 'sel' || c.t === 'toggle') && /^(channel|ch|mode|bright|boost|voice)$/.test(c.p))).map((c) => Object.assign({}, c, { style: undefined, scale: undefined, x: undefined, y: undefined })), K('level', 'OUTPUT', { min: -30, max: 12, def: 0 }), LED({ color: '#3ddc84' }), FOOT()],
+    controls: [...a.controls.filter((c) => c.t === 'knob' && c.p !== 'master' && c.p !== 'presence' && c.p !== 'depth').map((c) => Object.assign({}, c, { style: undefined, scale: undefined, x: undefined, y: undefined })), K('level', 'OUTPUT', { min: -30, max: 12, def: 0 }), LED({ color: '#3ddc84' }), FOOT()],
   });
 }
 export const preampPair = (a) => [a, preampOf(a)];

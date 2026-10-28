@@ -1,0 +1,12 @@
+{
+  "id": "fairfield-circuitry",
+  "name": "Fairfield Circuitry",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Fairfield Circuitry (Montreal): bare brushed-steel boxes with only the barest information stamped into the metal. A compressed, self-oscillating analog delay, a random-pitch modulator with low-pass gate, a ring modulator and a sag-able germanium overdrive.",
+  "kind": "brand",
+  "brand": "Fairfield Circuitry",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2fd6c8"
+}

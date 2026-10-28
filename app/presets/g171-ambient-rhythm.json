@@ -5,8 +5,7 @@
   "ambient",
   "experimental",
   "clean",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Auto-swells into a clean twin and a vast ambient reverb.",
  "factory": true,

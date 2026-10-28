@@ -6,8 +6,7 @@
   "metal",
   "high-gain",
   "drop-tuning",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Drop pedal, gate, TS tightener, dual-mic V30, graphic EQ and a second gate after the amp.",
  "factory": true,
@@ -24,7 +23,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 105,
+   "y": 104,
    "params": {},
    "bypass": true,
    "variant": "mono"

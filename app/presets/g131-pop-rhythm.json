@@ -4,8 +4,7 @@
  "tags": [
   "pop",
   "clean",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Squeaky-clean compressed blackface with lush chorus – for funky pop strums.",
  "factory": true,
@@ -64,8 +63,8 @@
   {
    "id": "b4",
    "type": "tz.chorus",
-   "x": -1204,
-   "y": 40,
+   "x": -1206,
+   "y": 37,
    "params": {
     "rate": 0.35,
     "depth": 0.25,
@@ -77,8 +76,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1470,
-   "y": 40,
+   "x": -1478,
+   "y": 15,
    "params": {
     "decay": 0.35,
     "mix": 0.2
@@ -89,7 +88,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1710,
+   "x": -1718,
    "y": 55,
    "params": {}
   }

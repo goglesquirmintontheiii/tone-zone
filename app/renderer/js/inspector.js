@@ -291,7 +291,7 @@ export function addMic(b) {
 
 // ------------------------------------------------------------------ AUDIO IN / AUDIO OUT configuration
 let ioPortsHandler = null;
-function renderIO(dir) {
+function renderIO(dir, fromPorts = false) {
   current = dir === 'in' ? '__in' : '__out';
   root.classList.remove('collapsed');
   body.innerHTML = '';
@@ -350,8 +350,13 @@ function renderIO(dir) {
   });
   el('p', { class: 'hint', style: { padding: '0 16px' } }, body).textContent = 'Labels, trims and connections are saved for this computer, not per preset.';
   if (!ioPortsHandler) {
-    ioPortsHandler = () => { if (current === '__in' || current === '__out') renderIO(current === '__in' ? 'in' : 'out'); };
+    // re-render on port updates, but never request ports from here (that was a request → render → request loop)
+    ioPortsHandler = () => {
+      if (current !== '__in' && current !== '__out') return;
+      if (document.querySelector('.port-picker')) return; // don't rebuild under an open picker
+      renderIO(current === '__in' ? 'in' : 'out', true);
+    };
     bus.on('ports', ioPortsHandler);
   }
-  requestPorts();
+  if (!fromPorts) requestPorts();
 }

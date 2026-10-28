@@ -5,8 +5,7 @@
   "ambient",
   "experimental",
   "clean",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Stereo volume, soft drive, chorus, long delay, MercuryX and shimmer.",
  "factory": true,
@@ -125,8 +124,8 @@
   {
    "id": "b9",
    "type": "tz.shimmer",
-   "x": -2860,
-   "y": 40,
+   "x": -2874,
+   "y": 36,
    "params": {
     "decay": 0.85,
     "mix": 0.3
@@ -137,7 +136,7 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -3060,
+   "x": -3074,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -146,7 +145,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -3300,
+   "x": -3314,
    "y": 55,
    "params": {}
   }

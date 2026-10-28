@@ -4,8 +4,7 @@
  "tags": [
   "alt-rock",
   "rock",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Mid-heavy British crunch with a Muff on standby for the chorus.",
  "factory": true,
@@ -21,8 +20,8 @@
   {
    "id": "b1",
    "type": "tz.muff",
-   "x": -150,
-   "y": 105,
+   "x": -178,
+   "y": 108,
    "params": {
     "level": 0.55,
     "tone": 0.5,
@@ -34,7 +33,7 @@
   {
    "id": "b2",
    "type": "amp.orange",
-   "x": -650,
+   "x": -678,
    "y": 0,
    "params": {
     "gain": 0.5,
@@ -49,7 +48,7 @@
   {
    "id": "b3",
    "type": "cab.4x12orange",
-   "x": -660,
+   "x": -688,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -65,8 +64,8 @@
   {
    "id": "b4",
    "type": "tz.spring",
-   "x": -880,
-   "y": 105,
+   "x": -916,
+   "y": 103,
    "params": {
     "mix": 0.15
    },
@@ -76,7 +75,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1120,
+   "x": -1156,
    "y": 100,
    "params": {}
   }

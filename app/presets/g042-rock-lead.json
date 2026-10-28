@@ -4,8 +4,7 @@
  "tags": [
   "rock",
   "crunch",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Oxblood-style drive pushing the amp harder, analog echo and spring.",
  "factory": true,
@@ -80,8 +79,8 @@
   {
    "id": "b5",
    "type": "tz.spring",
-   "x": -1070,
-   "y": 105,
+   "x": -1078,
+   "y": 103,
    "params": {
     "mix": 0.15,
     "decay": 0.35,
@@ -93,7 +92,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1310,
+   "x": -1318,
    "y": 100,
    "params": {}
   }

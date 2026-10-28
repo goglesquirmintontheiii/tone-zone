@@ -496,7 +496,7 @@ export default function register(tz) {
     const theme = { text: txt, labelFont: d.labelFont || "'Barlow Condensed', sans-serif", labelSize: d.labelSize || 7, labelLs: 0.7, knob: 'mxr', jackText: txt };
     formKit.placeControls(ctx, d.controls, theme);
     restyleKnobs(ctx, d);
-    const jacks = d.jacksTop || box === 'nine' ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: box === 'big' ? 130 : 112, gap: 30 });
+    const jacks = d.jacksTop || box === 'nine' ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jackY ?? (box === 'big' ? 130 : 112), gap: 30 });
     return { w, h, theme, jacks };
   });
 
@@ -553,7 +553,7 @@ export default function register(tz) {
       id: 'ehx.opamp', name: 'Op-Amp Murk π', ref: 'Electro-Harmonix Op-Amp Big Muff Pi', cat: 'Fuzz', typeName: 'Op-amp fuzz',
       box: 'big', color: '#181818', text: '#e8302a', kstyle: 'ehx',
       art: { kind: 'opamp', accent: '#e8302a' },
-      logo: 'OP-AMP\nMURK π', logoSize: 31, logoColor: '#e8302a', logoFont: "'Oswald', sans-serif", logoLs: 2, logoSkew: -8,
+      logo: 'OP-AMP\nMURK π', logoSize: 31, logoLh: 1, logoColor: '#e8302a', logoFont: "'Oswald', sans-serif", logoLs: 2, logoSkew: -8,
       sub: 'DISTORTION / SUSTAINER', subSize: 7.6, subLs: 2.2, subY: 218,
       algo: 'drive', opts: muffV({ clip: 'diode', slew: 0.3, stages: 2, stage2Db: 14, gainMinDb: 18, gainMaxDb: 50, blendLp: 620, blendHp: 1350, postLp: 8000, modes: [{}, { tone: 'none', postLp: 6500, levelMaxDb: 2 }] }),
       controls: [...muffKnobs(), TOG('mode', '', ['TONE', 'BYPASS'], { x: 118, y: 100, orient: 'h' })],
@@ -572,7 +572,7 @@ export default function register(tz) {
       id: 'ehx.littlemuff', name: 'Little Murk π', ref: 'Electro-Harmonix Little Big Muff Pi', cat: 'Fuzz', typeName: 'Distortion / sustainer',
       box: 'nano', color: '#2c2c2e', text: '#ececec',
       art: { kind: 'muff', noPi: true, accent: '#c8161d', ink: '#ececec' },
-      logo: 'LITTLE MURK', logoSize: 17, logoColor: '#f4f4f4', logoLs: 1, sub: 'π · SUSTAINER', subSize: 6.4,
+      logo: 'LITTLE MURK', logoSize: 17, logoColor: '#f4f4f4', logoLs: 1, sub: 'π · SUSTAINER', subSize: 6.4, jackY: 150,
       algo: 'drive', opts: muffV({ stages: 1, gainMinDb: 18, gainMaxDb: 46, blendLp: 500, blendHp: 1200, levelMaxDb: 1 }),
       controls: muffKnobs(),
     }),
@@ -588,7 +588,7 @@ export default function register(tz) {
       id: 'ehx.nanomuff', name: 'Nano Murk π', ref: 'Electro-Harmonix Nano Big Muff Pi', cat: 'Fuzz', typeName: 'Distortion / sustainer',
       box: 'nano', color: '#efede6', text: '#141414', kstyle: 'muff',
       art: { kind: 'muff', accent: '#d21f26', ink: '#141414', pi: '#efede6' },
-      logo: 'BIG MURK', logoSize: 22, logoColor: '#f7f5ef', logoStroke: '#141414', logoStrokeW: 2.6, logoLs: 1,
+      logo: 'BIG MURK', logoSize: 22, logoColor: '#f7f5ef', logoStroke: '#141414', logoStrokeW: 2.6, logoLs: 1, jackY: 150,
       algo: 'drive', opts: muffV(),
       controls: muffKnobs(),
     }),

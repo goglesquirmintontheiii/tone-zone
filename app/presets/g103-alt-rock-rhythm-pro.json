@@ -4,8 +4,7 @@
  "tags": [
   "alt-rock",
   "rock",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Drop (off), Plumes-style OD, Muff, phaser (off) and reverb – 90s/00s alternative.",
  "factory": true,
@@ -22,7 +21,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 105,
+   "y": 104,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -117,8 +116,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1816,
-   "y": 105,
+   "x": -1822,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.18
@@ -129,7 +128,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2016,
+   "x": -2022,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -138,7 +137,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2256,
+   "x": -2262,
    "y": 100,
    "params": {}
   }

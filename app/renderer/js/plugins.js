@@ -45,7 +45,7 @@ function makeApi(info) {
       emit: (ev, data) => bus.emit(ev, data),
     },
     addDefs(defs) {
-      const n = registerPluginDefs(m.id, Array.isArray(defs) ? defs : [defs], { brand: m.brand });
+      const n = registerPluginDefs(m.id, Array.isArray(defs) ? defs : [defs], { brand: m.brand, version: m.version });
       rememberPluginBlocks(m.name || m.id, pluginDefIds(m.id));
       return n;
     },
@@ -99,6 +99,11 @@ function makeApi(info) {
       setParam: (id, p, v) => setParam(id, p, v),
       syncGraph: () => syncGraph(),
       getDef: (id) => getDef(id),
+      blocks: () => state.preset.blocks.filter((b) => !b.id.startsWith('__')),
+      // drive another block's footswitch (down/up) or continuous control (0..1) like the user would
+      pressFoot: (blockId, cid, down) => !!(window.__tz && window.__tz.editor.remoteFoot(blockId, cid, down)),
+      setControl: (blockId, cid, pos) => !!(window.__tz && window.__tz.editor.remoteControl(blockId, cid, pos)),
+      markDirty: () => import('./state.js').then((m) => m.markDirty(true)),
     },
     presets: {
       list: () => window.tz.presets.list(),

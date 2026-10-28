@@ -4,8 +4,7 @@
  "tags": [
   "country",
   "clean",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressor, clean boost, dual-mic Twin, tremolo (off) and reverb.",
  "factory": true,
@@ -44,7 +43,7 @@
    "id": "b3",
    "type": "tz.boost",
    "x": -576,
-   "y": 40,
+   "y": 41,
    "params": {
     "gain": 0.2
    },
@@ -92,8 +91,8 @@
   {
    "id": "b6",
    "type": "tz.trem",
-   "x": -1756,
-   "y": 40,
+   "x": -1768,
+   "y": 37,
    "params": {
     "rate": 0.5,
     "depth": 0.45
@@ -104,7 +103,7 @@
   {
    "id": "b7",
    "type": "fender.marinelayer",
-   "x": -1966,
+   "x": -1978,
    "y": 23,
    "params": {
     "decay": 0.35,
@@ -116,7 +115,7 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -2166,
+   "x": -2178,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -125,7 +124,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2406,
+   "x": -2418,
    "y": 55,
    "params": {}
   }

@@ -5,8 +5,7 @@
   "edm",
   "pop",
   "synth",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Compressed clean chopped by a tempo gate – sidechain-pump guitar for drops.",
  "factory": true,
@@ -22,8 +21,8 @@
   {
    "id": "b1",
    "type": "tz.comp",
-   "x": -196,
-   "y": 40,
+   "x": -200,
+   "y": 30,
    "params": {
     "sustain": 0.5,
     "level": 0.55,
@@ -35,7 +34,7 @@
   {
    "id": "b2",
    "type": "tz.pulsegrid",
-   "x": -440,
+   "x": -444,
    "y": 42.5,
    "params": {
     "time": 121.9755,
@@ -48,7 +47,7 @@
   {
    "id": "b3",
    "type": "amp.jc120",
-   "x": -930,
+   "x": -934,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -60,7 +59,7 @@
   {
    "id": "b4",
    "type": "cab.2x12jc",
-   "x": -1400,
+   "x": -1404,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -76,8 +75,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1666,
-   "y": 40,
+   "x": -1676,
+   "y": 15,
    "params": {
     "decay": 0.45,
     "mix": 0.25
@@ -88,7 +87,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1906,
+   "x": -1916,
    "y": 55,
    "params": {}
   }

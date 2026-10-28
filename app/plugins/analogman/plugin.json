@@ -1,0 +1,12 @@
+{
+  "id": "analogman",
+  "name": "Analogman",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Analogman: a two-sided transparent overdrive (yellow side into red side), each with its own footswitch and clean / overdrive / distortion mode.",
+  "kind": "brand",
+  "brand": "Analogman",
+  "main": "index.js",
+  "api": 1,
+  "color": "#a7a3cc"
+}

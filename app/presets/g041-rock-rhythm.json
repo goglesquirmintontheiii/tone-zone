@@ -4,8 +4,7 @@
  "tags": [
   "rock",
   "crunch",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Screamer-boosted 800 into greenbacks – the classic tight rock rhythm.",
  "factory": true,
@@ -66,8 +65,8 @@
   {
    "id": "b4",
    "type": "tz.spring",
-   "x": -880,
-   "y": 105,
+   "x": -888,
+   "y": 103,
    "params": {
     "mix": 0.12,
     "decay": 0.3,
@@ -79,7 +78,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1120,
+   "x": -1128,
    "y": 100,
    "params": {}
   }

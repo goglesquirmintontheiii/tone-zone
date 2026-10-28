@@ -2,7 +2,7 @@
 import { el, esc, bus, toast } from '../util.js';
 import { modal, confirmDlg } from '../menus.js';
 import { setPacks, getPackDefs } from '../catalog/index.js';
-import { thumbnail } from '../browser.js';
+import { thumbImg } from '../gfx/raster.js';
 
 const PACK_COLORS = ['#8a5cf6', '#ff7a2f', '#e8473d', '#2ecc71', '#3498db', '#1abc9c', '#f1c40f', '#e84393', '#c9a64e', '#7f8c8d', '#2d3436', '#d35400'];
 const CATS = [
@@ -131,7 +131,7 @@ export function renderLibrary() {
       const p = d.pack;
       const card = el('div', { class: 'card' }, cards);
       const art = el('div', { class: 'card-art' }, card);
-      art.appendChild(thumbnail(d, 200));
+      art.appendChild(thumbImg(d, 200));
       el('h3', {}, card).textContent = p.name;
       el('div', { class: 'sub' }, card).textContent = `${p.models.length} ${p.models.length === 1 ? 'model' : 'configurations'} · ${kind === 'nam' ? p.category : 'cab IR'} · ${p.origin === 'tone3000' ? 'TONE3000' : 'imported'}`;
       const tags = el('div', { class: 'row' }, card);

@@ -4,8 +4,7 @@
  "tags": [
   "jazz",
   "clean",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "A transparent push for single-note lines, a short analog-style slap and spring.",
  "factory": true,
@@ -22,7 +21,7 @@
    "id": "b1",
    "type": "tz.klone",
    "x": -150,
-   "y": 40,
+   "y": 43,
    "params": {
     "gain": 0.15,
     "tone": 0.4,
@@ -79,8 +78,8 @@
   {
    "id": "b5",
    "type": "tz.spring",
-   "x": -1528,
-   "y": 40,
+   "x": -1536,
+   "y": 38,
    "params": {
     "mix": 0.2,
     "decay": 0.4,
@@ -92,7 +91,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1768,
+   "x": -1776,
    "y": 55,
    "params": {}
   }

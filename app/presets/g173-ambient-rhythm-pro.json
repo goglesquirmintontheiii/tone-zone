@@ -5,8 +5,7 @@
   "ambient",
   "experimental",
   "clean",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Swells, BBD chorus, granular delay, NightSky-style pads and freeze.",
  "factory": true,
@@ -69,7 +68,7 @@
     "_m2x": 0.645,
     "_m2y": 0.5,
     "m2lvl": -3,
-    "level": 5
+    "level": 5.5
    },
    "bypass": false,
    "variant": "mono"

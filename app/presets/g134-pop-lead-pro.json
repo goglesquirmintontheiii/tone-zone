@@ -4,8 +4,7 @@
  "tags": [
   "pop",
   "clean",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Opto comp, BD-2, chorus (off), delay and hall.",
  "factory": true,
@@ -31,7 +30,7 @@
    "id": "b2",
    "type": "tz.opto",
    "x": -366,
-   "y": 40,
+   "y": 38,
    "params": {
     "sustain": 0.45,
     "level": 0.55,
@@ -93,8 +92,8 @@
   {
    "id": "b6",
    "type": "tz.chorus",
-   "x": -1658,
-   "y": 40,
+   "x": -1660,
+   "y": 37,
    "params": {
     "rate": 0.3,
     "depth": 0.2,
@@ -106,8 +105,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -1924,
-   "y": 40,
+   "x": -1946,
+   "y": 30,
    "params": {
     "time": 87.3587,
     "feedback": 0.33,
@@ -119,8 +118,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -2190,
-   "y": 40,
+   "x": -2218,
+   "y": 15,
    "params": {
     "decay": 0.45,
     "mix": 0.22
@@ -131,7 +130,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2390,
+   "x": -2418,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -140,7 +139,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2630,
+   "x": -2658,
    "y": 55,
    "params": {}
   }

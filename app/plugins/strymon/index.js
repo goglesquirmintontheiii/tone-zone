@@ -80,7 +80,7 @@ export default function register(tz) {
       rows: [2],
       controls: [
         K('gain', 'DRIVE', { x: 70, y: 42 }), K('level', 'LEVEL', { x: 134, y: 42 }),
-        K('bass', 'BASS', { x: 46, y: 106 }), K('mid', 'MIDDLE', { x: 102, y: 106 }), K('treble', 'TREBLE', { x: 158, y: 106 }),
+        K('bass', 'BASS', { x: 46, y: 100 }), K('mid', 'MIDDLE', { x: 102, y: 100 }), K('treble', 'TREBLE', { x: 158, y: 100 }),
         TOG('gainsw', 'GAIN', ['low', 'high'], { x: 28, y: 44, orient: 'h' }), TOG('push', 'PUSH', ['flat', 'enh.'], { x: 176, y: 44, orient: 'h' }),
         FOOT({ action: 'favorite', label: 'FAVORITE' }), onFoot(), LED({ bind: 'fav' }), onLed(),
       ],

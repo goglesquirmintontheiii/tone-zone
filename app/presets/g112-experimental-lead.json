@@ -5,8 +5,7 @@
   "experimental",
   "ambient",
   "noise",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Fuzz into bit crusher, chiming amp and granular delay.",
  "factory": true,

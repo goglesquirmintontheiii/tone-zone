@@ -1,7 +1,7 @@
 {
   "name": "tone-zone",
   "productName": "Tone Zone",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tone Zone - guitar & bass DSP workstation",
   "main": "main/main.js",
   "author": "goglesquirmintontheiii <goglesquirmintontheiii@gmail.com>",

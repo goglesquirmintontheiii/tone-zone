@@ -4,8 +4,7 @@
  "tags": [
   "jazz",
   "clean",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressed, mid-scooped clean with optional stereo chorus and a soft stereo room. Two mics on the cab (dynamic + ribbon).",
  "factory": true,
@@ -22,7 +21,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 40,
+   "y": 39,
    "params": {},
    "bypass": true,
    "variant": "mono"

@@ -248,7 +248,7 @@ function drawHome(main) {
     }
   };
   go.onclick = fetchIt;
-  inp.onkeydown = (e) => e.key === 'Enter' && fetchIt();
+  inp.onkeydown = (e) => { if (e.key === 'Enter') fetchIt(); }; // (an arrow returning false would cancel every keystroke)
   // how it works
   const how = el('div', { class: 'tm-how' }, main);
   [

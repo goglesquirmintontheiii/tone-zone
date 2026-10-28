@@ -5,8 +5,7 @@
   "pop-punk",
   "punk",
   "rock",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "SD-1 plus boost, flanger (off), delay and reverb.",
  "factory": true,
@@ -16,7 +15,7 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 25,
+   "y": 40,
    "params": {}
   },
   {
@@ -45,7 +44,7 @@
    "id": "b3",
    "type": "tz.boost",
    "x": -582,
-   "y": 105,
+   "y": 106,
    "params": {
     "gain": 0.3
    },
@@ -119,8 +118,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1800,
-   "y": 105,
+   "x": -1806,
+   "y": 80,
    "params": {
     "decay": 0.35,
     "mix": 0.12
@@ -131,7 +130,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2000,
+   "x": -2006,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -140,8 +139,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2240,
-   "y": 25,
+   "x": -2246,
+   "y": 40,
    "params": {}
   }
  ],

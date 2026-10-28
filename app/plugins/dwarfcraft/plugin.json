@@ -1,0 +1,12 @@
+{
+  "id": "dwarfcraft",
+  "name": "Dwarfcraft Devices",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Dwarfcraft Devices: cream boxes with hand-inked cartoon monsters. A two-stage starved distortion from crunch to total obliteration.",
+  "kind": "brand",
+  "brand": "Dwarfcraft Devices",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d8372b"
+}

@@ -19,10 +19,10 @@ function genre(g) {
     chain,
   });
   return [
-    mk('rhythm', 'Rhythm', g.rs, ['rhythm', 'simple'], g.desc.rs, 1),
-    mk('lead', 'Lead', g.ls, ['lead', 'simple'], g.desc.ls, 2),
-    mk('rhythm-pro', 'Rhythm Pro', g.rc, ['rhythm', 'complex'], g.desc.rc, 3),
-    mk('lead-pro', 'Lead Pro', g.lc, ['lead', 'complex'], g.desc.lc, 4),
+    mk('rhythm', 'Rhythm', g.rs, ['rhythm'], g.desc.rs, 1),
+    mk('lead', 'Lead', g.ls, ['lead'], g.desc.ls, 2),
+    mk('rhythm-pro', 'Rhythm Pro', g.rc, ['rhythm'], g.desc.rc, 3),
+    mk('lead-pro', 'Lead Pro', g.lc, ['lead'], g.desc.lc, 4),
   ];
 }
 
@@ -418,7 +418,7 @@ const SPECIAL = [];
 SPECIAL.push({
   file: 's01-worship-multi-rig',
   name: 'Worship · Multi-Layer Rig',
-  tags: ['worship', 'contemporary-worship', 'gospel', 'complex', 'rhythm', 'lead', 'ambient'],
+  tags: ['worship', 'contemporary-worship', 'gospel', 'rhythm', 'lead', 'ambient'],
   desc: 'Four complete rigs behind one selector (A gospel clean, B contemporary ambient, C overdrive, D heavy). Each has its own drives, amp and cab; all of them share the delays and reverbs at the end. Use the selector\'s footswitches to change chains; MULTI mode stacks them.',
   order: 10,
   nodes: {
@@ -467,7 +467,7 @@ SPECIAL.push({
 // "Crazy Train"-style tone: Distortion+ into a modded 800 with the 10-band EQ, chorus and echo for the solo
 SPECIAL.push({
   file: 's02-crazy-train', name: 'Crazy Train', order: 11,
-  tags: ['classic-metal', 'metal', 'rhythm', 'lead', 'complex'],
+  tags: ['classic-metal', 'metal', 'rhythm', 'lead'],
   desc: 'Inspired by the early-80s Randy Rhoads sound: a Distortion+ and a 10-band EQ (mid hump) into a hot modded 800 and G12-65s. Kick in the chorus and echo for the solo; the wah is there for the fills.',
   chain: [tuner(), ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['mx.m104', { level: 0.75, gain: 0.3 }], ['mx.m108', { level: 0.55, gain: 0.55, b0: 0.38, b1: 0.45, b2: 0.55, b3: 0.62, b4: 0.6, b5: 0.55, b6: 0.5, b7: 0.48, b8: 0.45, b9: 0.4 }], ['amp.jcm800', { gain: 0.78, master: 0.5, presence: 0.6, bass: 0.5, mid: 0.7, treble: 0.6 }], ['celestion.cab-g12-65', { mic1: 0, mic2: 2 }], ['mx.m134', { rate: 0.3, depth: 0.3, feedback: 0.1, tone: 0.5 }, { bypass: true }], ['mx.m169', { feedback: 0.25, mix: 0.22, time: 0.4, mod: 0.2 }, { bypass: true }], ['tz.reverb', { decay: 0.35, mix: 0.12, mode: 0 }], meter],
 });
@@ -475,9 +475,52 @@ SPECIAL.push({
 // "For The Love Of God"-style lead (Steve Vai) for an Ibanez with active pickups
 SPECIAL.push({
   file: 's03-love-of-god', name: 'For The Love Of God (Ibanez)', order: 12,
-  tags: ['lead', 'rock', 'instrumental', 'complex', 'ibanez'],
+  tags: ['lead', 'rock', 'instrumental', 'ibanez'],
   desc: 'Inspired by Steve Vai\'s singing lead tone: Bad Horsie-style wah, a light compressor, a TS used as a clean boost into a Bogner-style red channel, a mid-forward EQ, wide stereo delay and a big hall. Made for an Ibanez with hot/active pickups – the input gain stays modest so the notes bloom instead of fizz.',
   chain: [tuner(), ['mo.badhorsie', { 'w.pos': 0.5, 'w.range': 0.5, 'w.level': 0.55 }], ['kly.compplus', { sustain: 0.3, level: 0.55, blend: 0.4, tone: 0.5 }], ['ib.ts9', { gain: 0.08, tone: 0.55, level: 0.72 }], ['bogner.amp-ecstasy', { gain: 0.62, master: 0.55, treble: 0.52, mid: 0.65, bass: 0.45, presence: 0.5, channel: 2 }], ['cab.4x12uber', { mic1: 0, mic2: 2 }], ['tz.paraeq', { b3on: 1 }], ['tz.harmony', { level1: 0.12, semis1: 0.5, dry: 1 }, { bypass: true }], ['tz.lumen', { time: 0.42, feedback: 0.38, mix: 0.25, spread: 0.7 }], ['sy.bigsky', { decay: 0.75, mix: 0.3 }], meter],
 });
+
+
+// ---------------------------------------------------------------- synth presets
+const SYN = (file, name, tags, desc, chain, order) => ({ file, name, tags: ['synth', ...tags], desc, chain, order });
+SPECIAL.push(
+  SYN('x01-synth-meow-lead', 'Synth · Meow Lead', ['lead', 'experimental'], 'The Meowsynth singing your lead lines as a cat, through a clean amp, tempo delay and a big room. Play single notes; slide for meows.',
+    [tuner(), ['tz.meowsynth', { shift: 0.55, octave: 0.5, glide: 0.35, vibrato: 0.4, blend: 0.85, '=level': 10 }], ['amp.jc120', { gain: 0.3, treble: 0.5 }], ['cab.2x12jc'], ['tz.delay', { time: 0.4, feedback: 0.3, mix: 0.22 }], ['tz.reverb', { decay: 0.5, mix: 0.25 }], meter], 30),
+  SYN('x02-synth-arcade', 'Synth · Arcade Lead', ['lead', 'edm'], 'Square-wave arcade synth with stacked fifth and octave, stepped gate and bit crush, into a clean amp, stereo delay and shimmer.',
+    [tuner(), ['tz.insertcoin', { 's.filter': 0.6, chord: 0.5, blend: 0.85, 'sl.time': 0.4, 'cr.bits': 0.6, '=s.level': 6 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['tz.delay', { time: 0.38, feedback: 0.35, mix: 0.25 }], ['tz.shimmer', { decay: 0.6, mix: 0.25 }], meter], 31),
+  SYN('x03-synth-string-pad', 'Synth · String Machine Pad', ['ambient', 'rhythm'], 'Swelled 70s string machine with ensemble chorus into a huge hall – hold chords and let them bloom.',
+    [tuner(), ['tz.tidalswell', { sens: 0.5, attack: 0.55, level: 0.6 }], ['tz.polyester', { 's.attack': 0.5, ens: 0.6, 'rv.mix': 0.25, 's.wet': 0.8, 's.dry': 0.1, '=s.level': 4 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['sy.bigsky', { decay: 0.75, mix: 0.35 }], meter], 32),
+  SYN('x04-synth-wobble-bass', 'Synth · Wobble Bass', ['bass', 'edm'], 'Sub / saw bass synth with an LFO wobble, into a bass amp and fridge cab. Works on bass or the low strings of a guitar.',
+    [tuner(), ['tz.wobbler', { 's.octave': 0.5, 'wb.rate': 0.45, 'wb.range': 0.6, 'wb.q': 0.5, 's.wet': 0.85, 's.dry': 0.2 }], ['amp.svt', { gain: 0.35 }], ['cab.8x10svt'], meter], 33),
+  SYN('x05-synth-vespers', 'Synth · Cathedral Choir', ['ambient', 'worship'], 'A choir that sings every note you play, a new vowel each time, into shimmer and a cathedral reverb.',
+    [tuner(), ['tz.vespers', { 'v.attack': 0.4, 'v.vibrato': 0.3, 'rv.mix': 0.3, blend: 0.85, '=v.level': 9 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['mrs.mercury7', { decay: 0.8, mix: 0.35, shimmer: 0.2 }], meter], 34),
+  SYN('x06-synth-mothership', 'Synth · Mothership', ['experimental', 'lead'], 'Robot voice with ring mod and echo, then a sci-fi delay and reverb. We come in peace.',
+    [tuner(), ['tz.mothership', { 'v.shift': 0.5, blend: 0.8, 'rm.mix': 0.4, 'dl.mix': 0.3, '=v.level': 9 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['tz.lumen', { time: 0.45, feedback: 0.4, mix: 0.25 }], ['tz.reverb', { decay: 0.6, mix: 0.3 }], meter], 35),
+  SYN('x07-synth-organ-pad', 'Synth · Gospel Organ', ['rhythm', 'worship', 'gospel'], 'Gospel organ voice from your guitar with its rotary speaker spinning, a clean boost into a Twin and a warm room.',
+    [tuner(), ['ehx.b9', { 's.dry': 0.1, 's.wet': 1, omod: 0.6, voice: 2 }], ['tz.boost', { gain: 0.25 }], ['amp.twin', { gain: 0.3 }], ['cab.2x12twin'], ['tz.reverb', { decay: 0.45, mix: 0.25 }], meter], 36),
+);
+
+// ---------------------------------------------------------------- meme presets
+const MEME = (file, name, tags, desc, chain, order) => ({ file, name, tags: ['meme', ...tags], desc, chain, order });
+SPECIAL.push(
+  MEME('m01-meme-lofi-study', 'Meme · Lo-Fi Beats to Study To', ['ambient', 'experimental'], 'Slowed + reverb, a worn cassette ghost and a dusty radio. Jazz chords recommended, rain sounds optional.',
+    [['tz.slowedreverb', { 'p.semis1': 0.45, 'rv.mix': 0.3, 'lf.mix': 0.5 }], ['tz.cassetteghost', { 'lf.wow': 0.4, 'lf.flutter': 0.3, 'lf.age': 0.5, 'lf.noise': 0.25 }], ['amp.deluxe', { gain: 0.3 }], ['cab.1x12us']], 40),
+  MEME('m02-meme-bad-connection', 'Meme · Bad Connection', ['experimental'], '"Can you hear me now?" – streaming damage, lag spikes and a 56k modem handshake on an otherwise lovely clean tone.',
+    [['tz.dialup', { 'cr.bits': 0.7, 'cr.mix': 0.4, 'rm.mix': 0.15 }], ['tz.lagspike', { 'net.loss': 0.4, 'net.packets': 0.3, 'net.mix': 0.8 }], ['amp.ac30', { gain: 0.35 }], ['cab.2x12blue'], ['tz.badwifi', { loss: 0.5, packets: 0.3, mix: 0.8 }]], 41),
+  MEME('m03-meme-microwave', 'Meme · Microwave Fuzz', ['rock', 'high-gain'], 'Reheated leftovers on HIGH: the microwave fuzz into a cranked British head. Ding!',
+    [['tz.reheat', { 'fz.mode': 2, 'fz.gain': 0.7, 'fz.tone': 0.5, 'fz.level': 0.55 }], ['amp.orange', { gain: 0.5 }], ['cab.4x12orange']], 42),
+  MEME('m04-meme-npc-dialogue', 'Meme · NPC Dialogue', ['experimental', 'lead'], 'Your guitar babbles like an RPG villager. Every note is a new line of dialogue.',
+    [['tz.npc', { blend: 0.85, chatter: 0.6, lyric: 0, '=level': 4 }], ['amp.deluxe', { gain: 0.3 }], ['cab.1x12us'], ['tz.delay', { time: 0.3, feedback: 0.2, mix: 0.15 }], ['tz.reverb', { decay: 0.35, mix: 0.2 }]], 43),
+  MEME('m05-meme-rubber-duck', 'Meme · Rubber Duck Debugging', ['clean', 'pop'], 'Explain your problem to the duck: a quacky chorus on a sparkly blackface clean.',
+    [['tz.rubberduck', { rate: 0.4, depth: 0.5, mix: 0.5 }], ['amp.deluxe', { gain: 0.3, bright: 1 }], ['cab.1x12us'], ['tz.spring', { mix: 0.18 }]], 44),
+  MEME('m06-meme-haunted-house', 'Meme · Haunted House', ['experimental', 'metal'], 'Goblin octave fuzz into a reversed, haunted reverb. Best played at 3 a.m.',
+    [['tz.goblin', { 'p.level1': 0.6, 'fz.gain': 0.65, 'p.level2': 0.2, 'fz.level': 0.5 }], ['amp.recto', { gain: 0.45 }], ['cab.4x12v30'], ['tz.haunted', { 'rd.mix': 0.35, 'rv.mix': 0.35 }]], 45),
+  MEME('m07-meme-speedrun', 'Meme · Speedrun Any%', ['edm', 'lead'], 'Arcade synth into a delay whose repeats keep climbing octaves – frame-perfect.',
+    [['tz.insertcoin', { blend: 0.7, '=s.level': 5 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['tz.speedrun', { time: 0.35, feedback: 0.45, mix: 0.35 }], ['tz.reverb', { decay: 0.4, mix: 0.2 }]], 46),
+  MEME('m08-meme-whoopee', 'Meme · Whoopee Cushion', ['experimental'], 'Exactly what it sounds like. Low notes are funnier.',
+    [['tz.whoopee', { blend: 0.85, '=level': 9 }], ['amp.svt', { gain: 0.3 }], ['cab.1x15bass'], ['tz.reverb', { decay: 0.4, mix: 0.18 }]], 47),
+  MEME('m09-meme-deja-vu', 'Meme · Déjà Vu', ['experimental', 'ambient'], 'Press REMEMBER and your last phrase comes back, slower and stretched – haven\'t we been here before?',
+    [['tz.dejavu', { length: 0.4, speed: 0.4, stretch: 0.3, mix: 0.6, mode: 0 }], ['amp.twin', { gain: 0.3 }], ['cab.2x12twin'], ['tz.shimmer', { decay: 0.6, mix: 0.25 }]], 48),
+);
 
 module.exports = [...G.flat(), ...SPECIAL];

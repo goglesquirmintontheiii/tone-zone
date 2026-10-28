@@ -5,6 +5,8 @@ import { svg, shade, luminance } from '../util.js';
 import { softShadow } from './fx.js';
 import { drawJack } from './jacks.js';
 import { installTzForms } from './forms-tz.js';
+import { installTz4Forms } from './forms-tz4.js';
+import { installTz3Forms } from './forms-tz3.js';
 import { cabGeom, MIC_SHORT, MIC_COLORS } from './cabgeom.js';
 import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, label, hex, textColorFor } from './controls.js';
 
@@ -869,3 +871,5 @@ forms.paraeq = (ctx, def) => {
 };
 
 installTzForms(registerForm);
+installTz3Forms(registerForm);
+installTz4Forms(registerForm);

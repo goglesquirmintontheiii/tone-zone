@@ -4,8 +4,7 @@
  "tags": [
   "punk",
   "crunch",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "DS-1 plus a clean boost for solos, analog echo and spring.",
  "factory": true,
@@ -44,7 +43,7 @@
    "id": "b3",
    "type": "tz.boost",
    "x": -576,
-   "y": 105,
+   "y": 106,
    "params": {
     "gain": 0.35
    },
@@ -107,8 +106,8 @@
   {
    "id": "b7",
    "type": "tz.spring",
-   "x": -1588,
-   "y": 105,
+   "x": -1596,
+   "y": 103,
    "params": {
     "mix": 0.12,
     "decay": 0.3
@@ -119,7 +118,7 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -1788,
+   "x": -1796,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -128,7 +127,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2028,
+   "x": -2036,
    "y": 100,
    "params": {}
   }

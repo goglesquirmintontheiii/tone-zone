@@ -5,8 +5,7 @@
   "edm",
   "pop",
   "synth",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressor, slicer patterns, auto-pan, delay and reverb in stereo.",
  "factory": true,
@@ -23,7 +22,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 40,
+   "y": 39,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +30,8 @@
   {
    "id": "b2",
    "type": "tz.comp",
-   "x": -416,
-   "y": 40,
+   "x": -420,
+   "y": 30,
    "params": {
     "sustain": 0.5,
     "level": 0.55,
@@ -44,7 +43,7 @@
   {
    "id": "b3",
    "type": "bx.sl2",
-   "x": -632,
+   "x": -636,
    "y": 36,
    "params": {
     "level": -1.2,
@@ -58,7 +57,7 @@
   {
    "id": "b4",
    "type": "amp.jc120",
-   "x": -1122,
+   "x": -1126,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -70,7 +69,7 @@
   {
    "id": "b5",
    "type": "cab.2x12jc",
-   "x": -1592,
+   "x": -1596,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -92,7 +91,7 @@
   {
    "id": "b6",
    "type": "tz.panorama",
-   "x": -1872,
+   "x": -1876,
    "y": 71.5,
    "params": {
     "rate": 0.5,
@@ -105,8 +104,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -2138,
-   "y": 40,
+   "x": -2162,
+   "y": 30,
    "params": {
     "time": 87.3587,
     "feedback": 0.385,
@@ -118,7 +117,7 @@
   {
    "id": "b8",
    "type": "tz.vaulted",
-   "x": -2418,
+   "x": -2442,
    "y": 43.5,
    "params": {
     "decay": 0.55,
@@ -130,7 +129,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2618,
+   "x": -2642,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -139,7 +138,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2858,
+   "x": -2882,
    "y": 55,
    "params": {}
   }

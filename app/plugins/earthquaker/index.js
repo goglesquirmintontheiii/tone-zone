@@ -569,7 +569,7 @@ export default function register(tz) {
       algo: 'flanger',
       controls: [
         K('manual', 'MANUAL', { def: 0.5 }), K('width', 'WIDTH', { def: 0.6 }), K('speed', 'RATE', { def: 0.3 }),
-        K('regen', 'FEEDBACK', { def: 0.55 }), K('mix', 'MIX', { def: 0.5 }), SEL('mode', 'MODE', ['CLAS', 'ULTRA', 'GATE', 'TZF'], { def: 0 }),
+        K('regen', 'FEEDBACK', { def: 0.55 }), K('mix', 'MIX', { def: 0.5 }), SEL('mode', 'MODE', ['CLAS', 'ULTRA', 'GATE', 'TZF'], { def: 0, labelRadius: 12, optSize: 5 }),
         FOOT({ action: 'favorite', label: 'PRESET' }), bypassFoot(), LED({ bind: 'fav', color: '#ff2a1a' }), LED({ bind: 'on', color: '#ff2a1a' }),
       ],
       desc: 'Classic, ultra (extra regeneration), gated and through-zero flanging. The left switch recalls / saves (hold) a preset.',

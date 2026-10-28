@@ -1,0 +1,12 @@
+{
+  "id": "cusack-music",
+  "name": "Cusack Music",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by the Meowdulator (Cusack Music x B's Music Shop): a monophonic guitar cat synth with eight cat voicings, three knobs all labelled MEOW and a purr on footswitch hold.",
+  "kind": "brand",
+  "brand": "Cusack Music",
+  "main": "index.js",
+  "api": 1,
+  "color": "#f2a33a"
+}

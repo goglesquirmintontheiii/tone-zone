@@ -5,8 +5,7 @@
   "experimental",
   "ambient",
   "noise",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Slicer, sequenced bit crusher, modulation workstation, reverse delay and freeze.",
  "factory": true,

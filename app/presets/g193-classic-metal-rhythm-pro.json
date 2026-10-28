@@ -5,8 +5,7 @@
   "classic-metal",
   "metal",
   "rock",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Distortion+, 10-band EQ boost, dual-mic G12-65 cab, CE-2 (off).",
  "factory": true,
@@ -23,7 +22,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 105,
+   "y": 104,
    "params": {},
    "bypass": true,
    "variant": "mono"

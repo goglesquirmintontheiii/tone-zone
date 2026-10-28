@@ -1,0 +1,12 @@
+{
+  "id": "catalinbread",
+  "name": "Catalinbread",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Catalinbread (Portland): vintage-poster enclosures with double ornamental frames, period emblems and script lettering. An EP-3 style tape echo with its preamp colour and a Super Lead preamp in a box.",
+  "kind": "brand",
+  "brand": "Catalinbread",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c9a24a"
+}

@@ -275,7 +275,7 @@ export default function register(tz) {
     },
     // Trio Series: a big outlined "3" and a stripe
     three(g, b, a) {
-      const t = label(g, b.x + b.w - 20, b.y + b.h * 0.34, '3', { size: 76, fill: 'none', font: "'Inter', sans-serif", weight: 900 });
+      const t = label(g, b.x + b.w - 13, b.y - 8, '3', { size: 44, fill: 'none', font: "'Inter', sans-serif", weight: 900 });
       t.setAttribute('stroke', a.ink); t.setAttribute('stroke-width', 1.1); t.setAttribute('opacity', 0.3);
       svg('rect', { x: b.x - 6, y: b.y + b.h - 6, width: b.w + 12, height: 4, fill: a.ink, opacity: 0.85 }, g);
       return { logoY: b.y + b.h - 22 };
@@ -677,5 +677,20 @@ export default function register(tz) {
       algo: 'comp', opts: { type: 'vca' }, fixed: { ratio: 0.55 }, controls: [vk('level', 'VOLUME', { def: 0.4 }), vk('sustain', 'SUSTAIN', { def: 0.5 }), vk('attack', 'ATTACK', { def: 0.35 }), TOG('tone', 'EQ', ['FLAT', 'BRIGHT'], { values: [0.5, 0.75] })] }),
     T3({ id: 'jhs.3phaser', name: 'Trio Phaser', ref: 'JHS 3 Series Phaser', cat: 'Modulation', typeName: 'Phaser', color: '#c42b3a', text: '#fff0f0', logo: 'phaser', logoSize: 22,
       algo: 'phaser', fixed: { mix: 0.5 }, controls: [vk('rate', 'RATE', { def: 0.35 }), vk('depth', 'DEPTH', { def: 0.8 }), vk('feedback', 'COLOR', { def: 0.35 }), TOG('stages', 'STAGES', ['4', '8'], { values: [4, 8] })] }),
+    // PHERB: reverb -> 4-stage phaser, recombined with the dry; BREAK = asymmetric bitcrusher + clipping in front
+    T3({ id: 'jhs.3pherb', name: 'Trio Phaze-Verb', ref: 'JHS 3 Series PHERB', cat: 'Reverb', typeName: 'Phaser / reverb', color: '#8e78c4', text: '#17112a', logo: 'phazeverb', logoSize: 16, cost: 1.5,
+      algo: 'chain',
+      opts: { mix: true, mixDef: 0.4, chain: [
+        { prefix: 'k', algo: 'crusher', on: false, params: { bits: 0.35, rate: 0.35, mix: 1 } },
+        { prefix: 'b', algo: 'drive', on: false, opts: { clip: 'asym', bias: 0.35, gainMinDb: 10, gainMaxDb: 24, tone: 'none', postLp: 6500, levelMinDb: -20, levelMaxDb: -6 }, params: { gain: 0.5, level: 1 } },
+        { prefix: 'r', algo: 'reverb', opts: { mode: 1 }, params: { mix: 1, mode: 1, tone: 0.6, mod: 0.3 } },
+        { prefix: 'p', algo: 'phaser', opts: { stages: 4 }, params: { stages: 4, depth: 0.8, feedback: 0.35, mix: 0.5 } },
+      ] },
+      controls: [vk('mix', 'MIX', { def: 0.4 }), vk('speed', 'SPEED', { def: 0.35, virtual: true }), vk('length', 'LENGTH', { def: 0.45, virtual: true }), TOG('brk', 'BREAK', ['OFF', 'ON'], { virtual: true })],
+      derive: (p) => {
+        const sp = p.speed ?? 0.35, len = p.length ?? 0.45, brk = p.brk ? 1 : 0;
+        return { 'p.on': sp > 0.02 ? 1 : 0, 'p.rate': sp, 'r.decay': 0.1 + len * 0.9, 'r.size': 0.25 + len * 0.75, 'r.predelay': 5 + len * 120, 'k.on': brk, 'b.on': brk };
+      },
+      desc: 'Reverb into a vintage 4-stage phaser, blended with your dry signal by MIX. SPEED sets the phaser rate (fully down = reverb only), LENGTH sets the decay and pre-delay together. BREAK puts an asymmetric bitcrusher with analog-style clipping in front for broken, fuzzy washes.' }),
   ]);
 }

@@ -34,6 +34,7 @@ export function setIo(dir, index, patch) {
   window.tz.settings.set({ io: state.settings.io });
   if ('label' in patch) bus.emit('rebuildBoard');
 }
+let renderAfterPicker = false;
 export function portsSnapshot() {
   return portsData;
 }
@@ -166,6 +167,7 @@ export function renderSettings() {
 function renderPorts() {
   const box = document.getElementById('portsBox');
   if (!box) return;
+  if (document.querySelector('.port-picker')) return (renderAfterPicker = true); // rebuilt when the picker closes
   box.innerHTML = '';
   if (!portsData || !portsData.self) {
     el('p', { class: 'ports-wait' }, box).textContent = 'Waiting for the audio engine…';
@@ -222,13 +224,19 @@ export function openPortPicker(anchor, list, onPick) {
       el('div', { class: 'pp-client' }, ul).textContent = client;
       for (const o of ports) {
         const it = el('div', { class: 'pp-item' }, ul, `${o.physical ? '<i class="hw"></i>' : ''}${esc(o.name.slice(client.length + 1))}`);
-        it.onclick = () => { onPick(o); pop.remove(); };
+        it.onclick = () => { onPick(o); closePicker(); };
       }
     }
   };
   q.oninput = draw;
   draw();
   setTimeout(() => q.focus(), 0);
-  const close = (e) => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('pointerdown', close, true); } };
+  const closePicker = () => {
+    pop.remove();
+    document.removeEventListener('pointerdown', close, true);
+    if (renderAfterPicker) { renderAfterPicker = false; renderPorts(); }
+    if (portsData) bus.emit('ports', portsData);
+  };
+  const close = (e) => { if (!pop.contains(e.target)) closePicker(); };
   document.addEventListener('pointerdown', close, true);
 }

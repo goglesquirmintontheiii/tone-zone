@@ -5,8 +5,7 @@
   "contemporary-worship",
   "worship",
   "ambient",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Modern worship rhythm board: swell, comp, Klon-style and multistage drives (off), chorus, dotted delay, hall and a freeze for pads.",
  "factory": true,
@@ -60,7 +59,7 @@
    "id": "b4",
    "type": "tz.klone",
    "x": -810,
-   "y": 40,
+   "y": 43,
    "params": {
     "gain": 0.3,
     "tone": 0.55,

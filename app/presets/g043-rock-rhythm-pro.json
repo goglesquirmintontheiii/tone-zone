@@ -4,8 +4,7 @@
  "tags": [
   "rock",
   "crunch",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Gate, TS boost, optional Phase 90, dual-mic cab, delay (off) and room.",
  "factory": true,
@@ -22,7 +21,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 105,
+   "y": 104,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -117,8 +116,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1780,
-   "y": 105,
+   "x": -1786,
+   "y": 80,
    "params": {
     "decay": 0.35,
     "mix": 0.15,
@@ -130,7 +129,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -1980,
+   "x": -1986,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -139,7 +138,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2220,
+   "x": -2226,
    "y": 100,
    "params": {}
   }

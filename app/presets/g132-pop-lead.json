@@ -4,8 +4,7 @@
  "tags": [
   "pop",
   "clean",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Blues Driver edge, tempo delay and hall.",
  "factory": true,
@@ -65,8 +64,8 @@
   {
    "id": "b4",
    "type": "tz.delay",
-   "x": -1222,
-   "y": 40,
+   "x": -1242,
+   "y": 30,
    "params": {
     "time": 87.3587,
     "feedback": 0.33,
@@ -78,8 +77,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1488,
-   "y": 40,
+   "x": -1514,
+   "y": 15,
    "params": {
     "decay": 0.45,
     "mix": 0.22
@@ -90,7 +89,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1728,
+   "x": -1754,
    "y": 55,
    "params": {}
   }

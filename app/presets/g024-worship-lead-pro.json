@@ -4,8 +4,7 @@
  "tags": [
   "worship",
   "gospel",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Volume swells into stacked drives, delay and shimmer for soaring leads and intros.",
  "factory": true,
@@ -56,7 +55,7 @@
    "id": "b4",
    "type": "tz.klone",
    "x": -806,
-   "y": 40,
+   "y": 43,
    "params": {
     "gain": 0.35,
     "tone": 0.55,
@@ -144,8 +143,8 @@
   {
    "id": "b10",
    "type": "tz.shimmer",
-   "x": -2596,
-   "y": 40,
+   "x": -2610,
+   "y": 36,
    "params": {
     "decay": 0.7,
     "mix": 0.35,
@@ -158,7 +157,7 @@
   {
    "id": "b11",
    "type": "tz.meter",
-   "x": -2796,
+   "x": -2810,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -167,7 +166,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -3036,
+   "x": -3050,
    "y": 55,
    "params": {}
   }

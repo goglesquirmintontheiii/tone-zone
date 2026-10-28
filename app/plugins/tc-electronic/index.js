@@ -237,7 +237,10 @@ export default function register(tz) {
     formKit.tzBadge(g, w / 2, h - 9, txt, 4.2);
     formKit.placeControls(ctx, d.controls, theme);
     const top = size === 'mini' || size === 'budget' || d.topJacks;
-    return { w, h, theme, jacks: top ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: 150, gap: 22 }) };
+    // a wide printed name would run into the side-jack labels: drop the jacks below the name + tagline
+    const nameW = Math.max(logo.length * fs * 0.54, sub.length * 4.6);
+    const jy = nameW > w - 50 ? Math.max(150, Math.ceil(nameY + fs * 0.5 + 25)) : 150;
+    return { w, h, theme, jacks: top ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: jy, gap: 22 }) };
   });
 
   // five-slot multi pedal: per slot a little display (slot name), a knob, an LED and a footswitch

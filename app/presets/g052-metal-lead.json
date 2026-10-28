@@ -4,8 +4,7 @@
  "tags": [
   "metal",
   "high-gain",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Same rig hotter, with a stereo delay and a little room for solos.",
  "factory": true,
@@ -80,8 +79,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1206,
-   "y": 105,
+   "x": -1212,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.15
@@ -92,7 +91,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1446,
+   "x": -1452,
    "y": 100,
    "params": {}
   }

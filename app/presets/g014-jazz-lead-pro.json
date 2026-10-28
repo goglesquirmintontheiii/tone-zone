@@ -4,8 +4,7 @@
  "tags": [
   "jazz",
   "clean",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Light compression and a touch of drive for singing lines, subtle chorus, bucket-brigade echo and room.",
  "factory": true,
@@ -44,7 +43,7 @@
    "id": "b3",
    "type": "tz.klone",
    "x": -586,
-   "y": 40,
+   "y": 43,
    "params": {
     "gain": 0.2,
     "tone": 0.42,

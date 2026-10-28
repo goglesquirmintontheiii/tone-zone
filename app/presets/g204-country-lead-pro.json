@@ -4,8 +4,7 @@
  "tags": [
   "country",
   "clean",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Comp, drive and boost (off), slapback and reverb for Tele leads.",
  "factory": true,
@@ -56,7 +55,7 @@
    "id": "b4",
    "type": "tz.boost",
    "x": -838,
-   "y": 40,
+   "y": 41,
    "params": {
     "gain": 0.35
    },

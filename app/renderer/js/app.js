@@ -21,7 +21,10 @@ let editor;
 
 async function boot() {
   state.settings = await window.tz.settings.get();
-  state.appVersion = (await window.tz.app.info()).version;
+  const info = await window.tz.app.info();
+  state.appVersion = info.version;
+  // thumbnail cache key: the app version (packaged) or the session start (development, art changes often)
+  window.__tzAppVersion = info.packaged ? info.version : 'dev-' + Date.now();
   await loadPlugins();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
   editor = new Editor();
@@ -129,25 +132,54 @@ function mset(key, fn, v) {
   meterCache[key] = v;
   fn(v);
 }
+// Top-bar meters are drawn on canvases: canvas updates don't invalidate the page's paint, whereas changing a DOM
+// element every frame made Chromium re-layerize the whole page (board included) ~20× a second.
+function meterCanvas(host, key) {
+  let m = meterEls[key];
+  if (!m || !m.c.isConnected) {
+    host.querySelectorAll(':scope > *').forEach((x) => (x.style.display = 'none'));
+    const c = document.createElement('canvas');
+    c.className = 'meter-canvas';
+    host.appendChild(c);
+    m = meterEls[key] = { c, cx: c.getContext('2d'), w: 0, h: 0, grad: null };
+  }
+  const r = host.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+  if (W !== m.w || H !== m.h) {
+    m.c.width = m.w = W;
+    m.c.height = m.h = H;
+    const g = m.cx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#2bd4b0'); g.addColorStop(0.55, '#93e05a'); g.addColorStop(0.8, '#ffc24b'); g.addColorStop(1, '#ff4d5e');
+    m.grad = g;
+  }
+  return m;
+}
+function drawBar(m, v, mark, over) {
+  const { cx, w, h } = m;
+  cx.clearRect(0, 0, w, h);
+  cx.fillStyle = over ? '#ff5a52' : m.grad;
+  cx.fillRect(0, 0, Math.round(w * clamp(v, 0, 1)), h);
+  if (mark != null) { cx.fillStyle = 'rgba(255,255,255,0.75)'; cx.fillRect(Math.round(w * mark) - 1, 0, Math.max(1, Math.round(h / 6)), h); }
+}
 function updateMeters(st) {
   const $ = (k, sel) => meterEls[k] || (meterEls[k] = document.querySelector(sel));
   const budget = state.settings.budget ?? 0.75;
   const load = st.load || 0;
-  // transforms only: no layout, composited (width transitions forced a relayout every frame)
-  mset('dsp', (v) => ($('fill', '.dsp-meter .fill').style.transform = `scaleX(${v})`), (Math.round(clamp(load, 0, 1) * 100) / 100).toFixed(2));
-  mset('budget', (v) => ($('budget', '.dsp-meter .budget').style.left = v + '%'), budget * 100);
-  mset('over', (v) => $('meter', '.dsp-meter').classList.toggle('over', v), load > budget);
+  const dsp = (Math.round(clamp(load, 0, 1) * 100) / 100).toFixed(2) + '|' + budget;
+  mset('dsp', () => drawBar(meterCanvas($('dspHost', '.dsp-meter'), 'dspC'), clamp(load, 0, 1), budget, load > budget), dsp);
   if (Date.now() - (meterCache.txtT || 0) > 250) {
     meterCache.txtT = Date.now();
     mset('dspVal', (v) => ($('dspVal', '#dspVal').textContent = v), Math.round(load * 100) + '%');
+    mset('lat', (v) => ($('lat', '#latVal').textContent = v), st.running ? st.latencyMs.toFixed(1) + ' ms' : '–');
   }
-  mset('lat', (v) => ($('lat', '#latVal').textContent = v), st.running ? st.latencyMs.toFixed(1) + ' ms' : '–');
   const toW = (p) => clamp((20 * Math.log10(Math.max(p, 1e-6)) + 60) / 60, 0, 1);
   const inP = Math.max(...(st.inPeak || [0]).slice(0, 2)), outP = Math.max(...(st.outPeak || [0]).slice(0, 2));
   peakHoldIn = Math.max(inP, peakHoldIn * 0.85);
   peakHoldOut = Math.max(outP, peakHoldOut * 0.85);
-  mset('vin', (v) => ($('vin', '#vuIn i').style.transform = `scaleX(${v})`), (Math.round(toW(peakHoldIn) * 60) / 60).toFixed(3));
-  mset('vout', (v) => ($('vout', '#vuOut i').style.transform = `scaleX(${v})`), (Math.round(toW(peakHoldOut) * 60) / 60).toFixed(3));
+  const vi = Math.round(toW(peakHoldIn) * 60) / 60, vo = Math.round(toW(peakHoldOut) * 60) / 60;
+  mset('vin', () => drawBar(meterCanvas($('vinHost', '#vuIn'), 'vinC'), vi, null, false), vi);
+  mset('vout', () => drawBar(meterCanvas($('voutHost', '#vuOut'), 'voutC'), vo, null, false), vo);
   const dot = $('dot', '#engineDot');
   mset('dotc', (v) => (dot.className = v), 'engine-dot ' + (st.running ? 'ok' : 'err'));
   if (Date.now() - (meterCache.dotT || 0) > 1000) {

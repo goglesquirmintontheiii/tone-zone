@@ -372,6 +372,24 @@ Multi-track looper with rhythm patterns (RC-500 / RC-600 style).
 | `input` | 1 | 0 … 1 |
 | `current` | 0 | 0 … 7 |
 
+## `lossy`
+
+Spectral codec damage: low-bitrate streaming artefacts, band limiting, packet loss, warble, frame freeze.
+
+**opts:** `mode` 0 standard, 1 inverse (only what the codec throws away), 2 warble (phase jitter, packets repeat). `loss` = weak-bin removal + magnitude quantisation, `filter` = bandwidth, `packets` = dropped frames, `verb` = smeared frame averaging, `freeze` holds the current frame. ~21 ms latency (dry is delayed to match).
+
+| param | default | range |
+|---|---|---|
+| `loss` | 0.5 | 0 … 1 |
+| `filter` | 0.7 | 0 … 1 |
+| `packets` | 0 | 0 … 1 |
+| `mode` | 0 | 0 … 2 |
+| `mix` | 1 | 0 … 1 |
+| `level` | 0 | -24 … 12 |
+| `freeze` | 0 | 0 … 1 |
+| `gate` | 0 | 0 … 1 |
+| `verb` | 0 | 0 … 1 |
+
 ## `merge`
 
 N → 1/2 mixer (per-input gain, mute, polarity, pan).
@@ -419,6 +437,25 @@ Pass-through stereo level meter (status `meter`: [[peak, rms, clip], …]).
 | param | default | range |
 |---|---|---|
 | `release` | 0.5 | 0 … 1 |
+
+## `microloop`
+
+Short-term memory looper: always records, captures the last `length` seconds and loops them with speed / reverse / stretch.
+
+**opts:** `mode` 0 latch (event 1 toggles), 1 momentary (event 1 down / 2 up), 2 auto (each new note), 3 stutter (re-captures continuously). `speed` −2…2 (negative = reverse), `stretch` repeats 60 ms grains, `decay` < 1 lets loops fade. Status: `looping`, `pos`.
+
+| param | default | range |
+|---|---|---|
+| `length` | 0.6 | 0.03 … 4 |
+| `speed` | 1 | -2 … 2 |
+| `mix` | 0.7 | 0 … 1 |
+| `level` | 0 | -24 … 12 |
+| `mode` | 0 | 0 … 3 |
+| `fade` | 0.2 | 0 … 1 |
+| `stretch` | 0 | 0 … 1 |
+| `tone` | 1 | 0 … 1 |
+| `decay` | 1 | 0 … 1 |
+| `dry` | 1 | 0 … 1 |
 
 ## `nam`
 
@@ -774,6 +811,31 @@ Uni-vibe style photocell phaser (chorus / vibrato).
 | `level` | 0.5 | 0 … 1 |
 | `tone` | 0.6 | 0 … 1 |
 | `drive` | 0.2 | 0 … 1 |
+
+## `vocal`
+
+Formant voice that follows your playing: pitch-tracked oscillator (or your own signal) through a 3-formant vowel filter with per-note syllables.
+
+**opts:** `mode` 0 talk box (formants on the input), 1 sing, 2 meow (m-i-a-u + pitch bend), 3 fart (low, flappy, sagging pitch), 4 robot (monotone), 5 choir (3 detuned voices). `vowel` 0 a, 1 e, 2 i, 3 o, 4 u, 5 m, 6 schwa, 7 brr. `lyric` (per-note syllable rotation): 0 the vowel knob, 1 "mi-ku", 2 a-e-i-o-u, 3 meow, 4 la-la gibberish. `shift` moves the formants (deep … cartoon), `octave` the sung pitch. Status: `vowel`, `gate`, `hz`.
+
+| param | default | range |
+|---|---|---|
+| `mode` | 1 | 0 … 5 |
+| `vowel` | 0 | 0 … 7 |
+| `lyric` | 0 | 0 … 4 |
+| `shift` | 0.5 | 0 … 1 |
+| `octave` | 0 | -2 … 2 |
+| `glide` | 0.2 | 0 … 1 |
+| `vibrato` | 0.3 | 0 … 1 |
+| `sens` | 0.5 | 0 … 1 |
+| `attack` | 0.15 | 0 … 1 |
+| `release` | 0.4 | 0 … 1 |
+| `tone` | 0.6 | 0 … 1 |
+| `mix` | 1 | 0 … 1 |
+| `dry` | 0 | 0 … 1 |
+| `level` | 0 | -24 … 12 |
+| `drive` | 0.3 | 0 … 1 |
+| `breath` | 0.15 | 0 … 1 |
 
 ## `volume`
 

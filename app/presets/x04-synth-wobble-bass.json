@@ -1,0 +1,176 @@
+{
+ "version": 1,
+ "name": "Synth · Wobble Bass",
+ "tags": [
+  "synth",
+  "bass",
+  "edm"
+ ],
+ "desc": "Sub / saw bass synth with an LFO wobble, into a bass amp and fridge cab. Works on bass or the low strings of a guitar.",
+ "factory": true,
+ "order": 33,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 130,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bh.tm300",
+   "x": -140,
+   "y": 104,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.wobbler",
+   "x": -430,
+   "y": 59,
+   "params": {
+    "s.octave": -1,
+    "wb.rate": 0.45,
+    "wb.range": 0.6,
+    "wb.q": 0.5,
+    "s.wet": 0.85,
+    "s.dry": 0.2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "amp.svt",
+   "x": -924,
+   "y": 0,
+   "params": {
+    "gain": 0.35
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "cab.8x10svt",
+   "x": -847,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3097692307692308,
+    "_m1y": 0.125,
+    "level": 7
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "tz.meter",
+   "x": -1124,
+   "y": 95,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1364,
+   "y": 130,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null
+}

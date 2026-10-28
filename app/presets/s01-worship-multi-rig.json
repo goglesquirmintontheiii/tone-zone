@@ -5,7 +5,6 @@
   "worship",
   "contemporary-worship",
   "gospel",
-  "complex",
   "rhythm",
   "lead",
   "ambient"
@@ -18,7 +17,7 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 15,
+   "y": 16,
    "params": {}
   },
   {
@@ -34,7 +33,7 @@
    "id": "b2",
    "type": "tz.tidalswell",
    "x": -370,
-   "y": 13.5,
+   "y": 14.5,
    "params": {
     "sens": 0.5,
     "attack": 0.5,
@@ -47,7 +46,7 @@
    "id": "b3",
    "type": "sy.compadre",
    "x": -644,
-   "y": 10,
+   "y": 11,
    "params": {
     "c.on": 1,
     "b.on": 0,
@@ -62,7 +61,7 @@
    "id": "b4",
    "type": "tz.select4",
    "x": -1018,
-   "y": 20,
+   "y": 21,
    "params": {
     "fade": 40.8,
     "sel": 0,
@@ -75,7 +74,7 @@
    "id": "b5",
    "type": "mx.m134",
    "x": -1254,
-   "y": 394,
+   "y": 396,
    "params": {
     "rate": 0.25,
     "depth": 0.3,
@@ -89,7 +88,7 @@
    "id": "b6",
    "type": "amp.twin",
    "x": -1744,
-   "y": 340,
+   "y": 342,
    "params": {
     "gain": 0.32,
     "treble": 0.55,
@@ -105,7 +104,7 @@
    "id": "b7",
    "type": "cab.2x12twin",
    "x": -2214,
-   "y": 374,
+   "y": 376,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -126,8 +125,8 @@
   {
    "id": "b8",
    "type": "tz.rotary",
-   "x": -2434,
-   "y": 380,
+   "x": -2462,
+   "y": 374,
    "params": {
     "mix": 0.35
    },
@@ -138,7 +137,7 @@
    "id": "b9",
    "type": "tz.klone",
    "x": -1208,
-   "y": 800,
+   "y": 805,
    "params": {
     "gain": 0.3,
     "tone": 0.55,
@@ -151,7 +150,7 @@
    "id": "b10",
    "type": "amp.dc30",
    "x": -1698,
-   "y": 760,
+   "y": 762,
    "params": {
     "gain": 0.4,
     "bass": 0.48,
@@ -166,7 +165,7 @@
    "id": "b11",
    "type": "tworock.cab-1x12",
    "x": -2018,
-   "y": 807,
+   "y": 809,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -188,7 +187,7 @@
    "id": "b12",
    "type": "bx.dd8",
    "x": -2234,
-   "y": 796,
+   "y": 798,
    "params": {
     "mix": 0.3,
     "feedback": 0.392,
@@ -201,7 +200,7 @@
    "id": "b13",
    "type": "jhs.morningglory",
    "x": -1190,
-   "y": 1221,
+   "y": 1223,
    "params": {
     "level": 0.55,
     "gain": 0.5,
@@ -214,7 +213,7 @@
    "id": "b14",
    "type": "bx.bd2",
    "x": -1406,
-   "y": 1216,
+   "y": 1218,
    "params": {
     "level": 0.55,
     "tone": 0.5,
@@ -227,7 +226,7 @@
    "id": "b15",
    "type": "amp.ac30",
    "x": -1896,
-   "y": 1180,
+   "y": 1182,
    "params": {
     "gain": 0.45,
     "treble": 0.55,
@@ -242,7 +241,7 @@
    "id": "b16",
    "type": "cab.2x12blue",
    "x": -2366,
-   "y": 1214,
+   "y": 1216,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -264,7 +263,7 @@
    "id": "b17",
    "type": "tz.hush",
    "x": -1208,
-   "y": 1718.5,
+   "y": 1720.5,
    "params": {
     "threshold": 0.35,
     "decay": 0.4
@@ -276,7 +275,7 @@
    "id": "b18",
    "type": "friedman.amp-dirtyshirley",
    "x": -1790,
-   "y": 1600,
+   "y": 1602,
    "params": {
     "presence": 0.55,
     "bass": 0.5,
@@ -292,7 +291,7 @@
    "id": "b19",
    "type": "cab.4x12gb",
    "x": -1754,
-   "y": 1814,
+   "y": 1816,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -314,7 +313,7 @@
    "id": "b20",
    "type": "box.merge4",
    "x": -2502,
-   "y": 2371,
+   "y": 2373,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -323,7 +322,7 @@
    "id": "b21",
    "type": "sy.timeline",
    "x": -2872,
-   "y": 2340,
+   "y": 2342,
    "params": {
     "d.time": 175.6465,
     "d.feedback": 0.3675,
@@ -336,7 +335,7 @@
    "id": "b22",
    "type": "sy.bigsky",
    "x": -3242,
-   "y": 2340,
+   "y": 2342,
    "params": {
     "inf": 0,
     "decay": 0.7,
@@ -348,8 +347,8 @@
   {
    "id": "b23",
    "type": "tz.shimmer",
-   "x": -3462,
-   "y": 2334,
+   "x": -3476,
+   "y": 2332,
    "params": {
     "decay": 0.8,
     "mix": 0.25,
@@ -361,8 +360,8 @@
   {
    "id": "b24",
    "type": "tz.glacier",
-   "x": -3742,
-   "y": 2333.5,
+   "x": -3756,
+   "y": 2335.5,
    "params": {
     "mix": 0.5
    },
@@ -372,8 +371,8 @@
   {
    "id": "b25",
    "type": "tz.meter",
-   "x": -3942,
-   "y": 2324,
+   "x": -3956,
+   "y": 2326,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -381,8 +380,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -4182,
-   "y": 15,
+   "x": -4196,
+   "y": 16,
    "params": {}
   }
  ],

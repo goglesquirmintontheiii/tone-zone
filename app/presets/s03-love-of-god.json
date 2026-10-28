@@ -5,7 +5,6 @@
   "lead",
   "rock",
   "instrumental",
-  "complex",
   "ibanez"
  ],
  "desc": "Inspired by Steve Vai's singing lead tone: Bad Horsie-style wah, a light compressor, a TS used as a clean boost into a Bogner-style red channel, a mid-forward EQ, wide stereo delay and a big hall. Made for an Ibanez with hot/active pickups – the input gain stays modest so the notes bloom instead of fizz.",
@@ -122,7 +121,7 @@
     "listen": 0,
     "listenf": 1000,
     "listenq": 2,
-    "spectrum": 1,
+    "spectrum": 0,
     "specpost": 1,
     "b1on": 1,
     "b1type": 1,
@@ -161,8 +160,8 @@
   {
    "id": "b8",
    "type": "tz.harmony",
-   "x": -2310,
-   "y": 105,
+   "x": -2316,
+   "y": 99,
    "params": {
     "level1": 0.12,
     "semis1": 0,
@@ -174,7 +173,7 @@
   {
    "id": "b9",
    "type": "tz.lumen",
-   "x": -2590,
+   "x": -2596,
    "y": 104.5,
    "params": {
     "time": 151.961,
@@ -188,7 +187,7 @@
   {
    "id": "b10",
    "type": "sy.bigsky",
-   "x": -2960,
+   "x": -2966,
    "y": 111,
    "params": {
     "inf": 0,
@@ -201,7 +200,7 @@
   {
    "id": "b11",
    "type": "tz.meter",
-   "x": -3160,
+   "x": -3166,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -210,7 +209,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -3400,
+   "x": -3406,
    "y": 100,
    "params": {}
   }

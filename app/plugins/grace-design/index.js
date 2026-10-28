@@ -21,7 +21,8 @@ export default function register(tz) {
       svg('rect', { x: f.x, y: f.y, width: f.w, height: f.h, rx: 3, fill: 'none', stroke: '#1b1d20', 'stroke-opacity': 0.55, 'stroke-width': 0.7 }, g);
       if (f.label) label(g, f.x + f.w / 2, f.y + 7, f.label, { size: 5.6, fill: '#1b1d20', weight: 800, ls: 1.6 });
     }
-    formKit.tzBadge(g, w / 2, h - 8, '#2a2d31', 4.2);
+    const bdg = formKit.tzBadge(g, d.badgeX ?? w / 2, h - 8, '#2a2d31', 4.2);
+    if (d.badgeAnchor) bdg.setAttribute('text-anchor', d.badgeAnchor);
     const theme = { text: '#16181b', knob: 'chrome', labelSize: 5.8, labelLs: 0.6 };
     formKit.placeControls(ctx, d.controls, theme);
     return { w, h, theme, jacks: formKit.jacksTop(d, w, { flip: ctx.flip }) };
@@ -65,7 +66,7 @@ export default function register(tz) {
     }),
     G({
       id: 'gd.alix', name: 'Ali-X Acoustic Pre', ref: 'Grace Design ALiX', logo: 'Ali-X', tagline: 'ACOUSTIC PREAMP · DI', typeName: 'Acoustic preamp / DI',
-      fw: 160, fh: 248, alwaysOn: true, cost: 1.0,
+      fw: 160, fh: 248, alwaysOn: true, cost: 1.0, badgeX: 150, badgeAnchor: 'end',
       ports: { ins: ['INPUT'], outs: ['XLR DI OUT', '1/4" OUT'] }, jackKinds: { o0: 'xlr' },
       algo: 'chain', opts: { chain: [
         { prefix: 'a', algo: 'acoustic', opts: { mode: 2 }, params: { mode: 2, body: 0.15 } },

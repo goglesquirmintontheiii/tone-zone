@@ -4,8 +4,7 @@
  "tags": [
   "country",
   "clean",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Squashed, sparkling Twin with spring – chicken pickin' rhythm.",
  "factory": true,
@@ -65,8 +64,8 @@
   {
    "id": "b4",
    "type": "tz.spring",
-   "x": -1308,
-   "y": 40,
+   "x": -1316,
+   "y": 38,
    "params": {
     "mix": 0.2,
     "decay": 0.35
@@ -77,7 +76,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1548,
+   "x": -1556,
    "y": 55,
    "params": {}
   }

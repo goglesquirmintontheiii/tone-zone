@@ -1,0 +1,249 @@
+{
+ "version": 1,
+ "name": "Synth · Arcade Lead",
+ "tags": [
+  "synth",
+  "lead",
+  "edm"
+ ],
+ "desc": "Square-wave arcade synth with stacked fifth and octave, stepped gate and bit crush, into a clean amp, stereo delay and shimmer.",
+ "factory": true,
+ "order": 31,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 58,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3w",
+   "x": -146,
+   "y": 39,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.insertcoin",
+   "x": -430,
+   "y": 0,
+   "params": {
+    "s.filter": 0.6,
+    "chord": 0.5,
+    "blend": 0.85,
+    "sl.time": 100.4755,
+    "cr.bits": 0.6,
+    "s.level": 6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "amp.jc120",
+   "x": -920,
+   "y": 0,
+   "params": {
+    "gain": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "cab.2x12jc",
+   "x": -1390,
+   "y": 37,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": 9
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "tz.delay",
+   "x": -1676,
+   "y": 33,
+   "params": {
+    "time": 87.3587,
+    "feedback": 0.385,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b6",
+   "type": "tz.shimmer",
+   "x": -1910,
+   "y": 39,
+   "params": {
+    "decay": 0.6,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b7",
+   "type": "tz.meter",
+   "x": -2110,
+   "y": 33,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2350,
+   "y": 58,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c8",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "b6",
+    "port": 1
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b6",
+    "port": 1
+   },
+   "to": {
+    "node": "b7",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

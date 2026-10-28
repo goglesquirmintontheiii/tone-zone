@@ -5,8 +5,7 @@
   "experimental",
   "ambient",
   "noise",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Whammy, octave fuzz, polyphonic pitch, Superego hold, Polymoon and shimmer.",
  "factory": true,

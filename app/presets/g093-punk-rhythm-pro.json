@@ -4,8 +4,7 @@
  "tags": [
   "punk",
   "crunch",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "DS-1 for the chorus parts (off), the dirty channel and a splash of spring.",
  "factory": true,
@@ -83,8 +82,8 @@
   {
    "id": "b5",
    "type": "tz.spring",
-   "x": -1114,
-   "y": 105,
+   "x": -1122,
+   "y": 103,
    "params": {
     "mix": 0.1,
     "decay": 0.25
@@ -95,7 +94,7 @@
   {
    "id": "b6",
    "type": "tz.meter",
-   "x": -1314,
+   "x": -1322,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -104,7 +103,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1554,
+   "x": -1562,
    "y": 100,
    "params": {}
   }

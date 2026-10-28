@@ -46,27 +46,49 @@ export class Editor {
   }
 
   // ------------------------------------------------------------ view
-  applyView() {
+  // fast = during a pan / zoom gesture: move the already-painted board with a compositor transform (no repaint of
+  // the SVG) and redraw it crisply once the gesture pauses
+  applyView(fast = false) {
     const { x, y, z } = this.view;
-    this.viewport.setAttribute('transform', `translate(${x},${y}) scale(${z})`);
+    const now = performance.now();
+    // during a gesture the full redraw happens at most ~10×/s; in between the painted board just moves
+    if (fast && this.committed && now - (this._lastCommit || 0) < 100) {
+      const c = this.committed;
+      const sc = z / c.z;
+      this.svg.style.transform = `translate(${x - sc * c.x}px, ${y - sc * c.y}px) scale(${sc})`;
+      this.board.classList.add('vfast');
+      clearTimeout(this._commitT);
+      this._commitT = setTimeout(() => this.applyView(false), 120);
+    } else {
+      this._lastCommit = now;
+      clearTimeout(this._commitT);
+      this.viewport.setAttribute('transform', `translate(${x},${y}) scale(${z})`);
+      this.svg.style.transform = '';
+      this.board.classList.remove('vfast');
+      this.committed = { x, y, z };
+    }
     document.getElementById('zoomVal').textContent = Math.round(z * 100) + '%';
-    const grid = 40 * z;
-    this.board.style.backgroundSize = `auto, ${grid}px ${grid}px, ${grid}px ${grid}px, auto`;
-    this.board.style.backgroundPosition = `0 0, ${x}px ${y}px, ${x}px ${y}px, 0 0`;
+    const grid = Math.max(4, 40 * z);
+    const gEl = this.gridEl || (this.gridEl = document.getElementById('boardGrid'));
+    if (gEl) {
+      if (this._gridSize !== grid) { this._gridSize = grid; gEl.style.backgroundSize = `${grid}px ${grid}px, ${grid}px ${grid}px`; }
+      const mx = (((x + 200) % grid) + grid) % grid, my = (((y + 200) % grid) + grid) % grid;
+      gEl.style.transform = `translate(${mx.toFixed(1)}px, ${my.toFixed(1)}px)`;
+    }
     if (state.preset) state.preset.view = { ...this.view };
   }
   toWorld(cx, cy) {
-    const r = this.svg.getBoundingClientRect();
+    const r = this.board.getBoundingClientRect();
     return { x: (cx - r.left - this.view.x) / this.view.z, y: (cy - r.top - this.view.y) / this.view.z };
   }
   zoomAt(cx, cy, factor) {
-    const r = this.svg.getBoundingClientRect();
+    const r = this.board.getBoundingClientRect();
     const px = cx - r.left, py = cy - r.top;
     const nz = clamp(this.view.z * factor, 0.2, 2.5);
     this.view.x = px - ((px - this.view.x) * nz) / this.view.z;
     this.view.y = py - ((py - this.view.y) * nz) / this.view.z;
     this.view.z = nz;
-    this.applyView();
+    this.applyView(true);
   }
   fit(animate = true) {
     if (!this.views.size) return;
@@ -77,7 +99,7 @@ export class Editor {
       x1 = Math.max(x1, v.block.x + v.w + 40);
       y1 = Math.max(y1, v.block.y + v.h + 60);
     }
-    const r = this.svg.getBoundingClientRect();
+    const r = this.board.getBoundingClientRect();
     const z = clamp(Math.min(r.width / (x1 - x0), (r.height - 70) / (y1 - y0)), 0.2, 1.3);
     const target = { z, x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: (r.height - 70 - (y1 - y0) * z) / 2 - y0 * z };
     if (!animate) {
@@ -90,7 +112,7 @@ export class Editor {
       const t = Math.min(1, (now - t0) / 380);
       const e = 1 - Math.pow(1 - t, 3);
       this.view = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, z: from.z + (target.z - from.z) * e };
-      this.applyView();
+      this.applyView(t < 1);
       if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -232,7 +254,7 @@ export class Editor {
     document.getElementById('zoomFit').onclick = () => this.fit();
   }
   zoomAtCenter(f) {
-    const r = this.svg.getBoundingClientRect();
+    const r = this.board.getBoundingClientRect();
     this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, f);
   }
   addAt(type, x, y, centered) {
@@ -254,7 +276,7 @@ export class Editor {
   }
   addNear(type) {
     // find a free spot near the centre of the view so the new block doesn't land on top of another
-    const r = this.svg.getBoundingClientRect();
+    const r = this.board.getBoundingClientRect();
     const c = this.toWorld(r.left + r.width / 2, r.top + r.height / 2);
     const b = this.addAt(type, c.x, c.y, true);
     if (!b) return b;
@@ -620,6 +642,36 @@ export class Editor {
   }
 
   // --- footswitches
+  // press / release a footswitch from code (MIDI controllers, Helix bindings): same behaviour as clicking it
+  remoteFoot(blockId, cid, down) {
+    const v = this.views.get(blockId);
+    const entry = v && v.views.get(cid);
+    if (!entry || entry.ctl.t !== 'foot') return false;
+    this._remote = this._remote || new Map();
+    const key = blockId + '|' + cid;
+    const saved = this.drag;
+    let dr = this._remote.get(key);
+    if (down) { dr = { kind: 'ctl', node: blockId, c: entry.ctl, view: entry.view, remote: true }; this._remote.set(key, dr); }
+    else if (!dr) return false;
+    this.drag = dr;
+    try {
+      if (down) this.footDown(v, entry.ctl, entry.view);
+      else { this.footUp(v, entry.ctl, entry.view); this._remote.delete(key); }
+    } finally {
+      this.drag = saved;
+    }
+    v.updateControls();
+    return true;
+  }
+  // set a continuous control (knob / slider / treadle) from a 0..1 position
+  remoteControl(blockId, cid, pos) {
+    const v = this.views.get(blockId);
+    const entry = v && v.views.get(cid);
+    if (!entry || !entry.ctl.p) return false;
+    const c = entry.ctl;
+    this.setCtl(v, c, c.p, knobValue(c, clamp(pos, 0, 1)));
+    return true;
+  }
   footDown(v, c, view) {
     view.press(true);
     const hk = hooksFor(v.block.type);
@@ -800,7 +852,7 @@ export class Editor {
     if (d.kind === 'pan') {
       this.view.x = d.vx + (e.clientX - d.sx);
       this.view.y = d.vy + (e.clientY - d.sy);
-      this.applyView();
+      this.applyView(true);
     } else if (d.kind === 'node') {
       const w = this.toWorld(e.clientX, e.clientY);
       const dx = w.x - d.sx, dy = w.y - d.sy;
@@ -991,7 +1043,7 @@ export class Editor {
     const { x, y, z } = this.view;
     if (!this._vr || now - this._vrT > 250) {
       this._vrT = now;
-      this._vr = this.svg.getBoundingClientRect();
+      this._vr = this.board.getBoundingClientRect();
     }
     const r = this._vr;
     const wx0 = -x / z, wy0 = -y / z, wx1 = (r.width - x) / z, wy1 = (r.height - y) / z;

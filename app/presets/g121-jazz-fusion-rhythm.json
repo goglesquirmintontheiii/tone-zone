@@ -5,8 +5,7 @@
   "jazz-fusion",
   "jazz",
   "lead",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Compressed Dumble-style clean with chorus for comping chords.",
  "factory": true,
@@ -16,14 +15,14 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 21,
+   "y": 40,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.comp",
-   "x": -196,
-   "y": 105,
+   "x": -200,
+   "y": 95,
    "params": {
     "sustain": 0.35,
     "ratio": 0.4,
@@ -36,7 +35,7 @@
   {
    "id": "b2",
    "type": "amp.dumble",
-   "x": -690,
+   "x": -694,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -52,7 +51,7 @@
   {
    "id": "b3",
    "type": "cab.2x12cream",
-   "x": -678,
+   "x": -682,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -68,8 +67,8 @@
   {
    "id": "b4",
    "type": "tz.chorus",
-   "x": -956,
-   "y": 105,
+   "x": -962,
+   "y": 102,
    "params": {
     "rate": 0.3,
     "depth": 0.3,
@@ -81,8 +80,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1222,
-   "y": 105,
+   "x": -1234,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.2
@@ -93,8 +92,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1462,
-   "y": 21,
+   "x": -1474,
+   "y": 40,
    "params": {}
   }
  ],

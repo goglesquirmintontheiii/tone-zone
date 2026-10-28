@@ -5,8 +5,7 @@
   "jazz-fusion",
   "jazz",
   "lead",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressor, envelope filter (off), dimension chorus, delay and reverb.",
  "factory": true,
@@ -16,7 +15,7 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 25,
+   "y": 40,
    "params": {}
   },
   {
@@ -31,8 +30,8 @@
   {
    "id": "b2",
    "type": "tz.comp",
-   "x": -362,
-   "y": 105,
+   "x": -366,
+   "y": 95,
    "params": {
     "sustain": 0.35,
     "level": 0.55,
@@ -44,8 +43,8 @@
   {
    "id": "b3",
    "type": "tz.envfilter",
-   "x": -582,
-   "y": 105,
+   "x": -608,
+   "y": 103,
    "params": {
     "sens": 0.5,
     "q": 0.5,
@@ -57,7 +56,7 @@
   {
    "id": "b4",
    "type": "amp.dumble",
-   "x": -1076,
+   "x": -1102,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -73,7 +72,7 @@
   {
    "id": "b5",
    "type": "cab.2x12cream",
-   "x": -1064,
+   "x": -1090,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -95,7 +94,7 @@
   {
    "id": "b6",
    "type": "bx.dc2w",
-   "x": -1292,
+   "x": -1318,
    "y": 101,
    "params": {},
    "bypass": false,
@@ -104,8 +103,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -1558,
-   "y": 105,
+   "x": -1604,
+   "y": 95,
    "params": {
     "time": 97.9148,
     "feedback": 0.275,
@@ -117,8 +116,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1824,
-   "y": 105,
+   "x": -1876,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.2
@@ -129,7 +128,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2024,
+   "x": -2076,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -138,8 +137,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2264,
-   "y": 25,
+   "x": -2316,
+   "y": 40,
    "params": {}
   }
  ],

@@ -4,8 +4,7 @@
  "tags": [
   "jazz",
   "clean",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Warm solid-state clean with the treble rolled back and a touch of spring – comping on the neck pickup.",
  "factory": true,
@@ -52,8 +51,8 @@
   {
    "id": "b3",
    "type": "tz.spring",
-   "x": -1110,
-   "y": 40,
+   "x": -1118,
+   "y": 38,
    "params": {
     "mix": 0.18,
     "decay": 0.35,
@@ -65,7 +64,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1350,
+   "x": -1358,
    "y": 55,
    "params": {}
   }

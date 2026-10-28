@@ -1,0 +1,250 @@
+{
+ "version": 1,
+ "name": "Synth · Meow Lead",
+ "tags": [
+  "synth",
+  "lead",
+  "experimental"
+ ],
+ "desc": "The Meowsynth singing your lead lines as a cat, through a clean amp, tempo delay and a big room. Play single notes; slide for meows.",
+ "factory": true,
+ "order": 30,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3",
+   "x": -144,
+   "y": 43,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.meowsynth",
+   "x": -424,
+   "y": 4,
+   "params": {
+    "shift": 0.55,
+    "octave": 0,
+    "glide": 0.35,
+    "vibrato": 0.4,
+    "blend": 0.85,
+    "level": 10
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "amp.jc120",
+   "x": -914,
+   "y": 0,
+   "params": {
+    "gain": 0.3,
+    "treble": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "cab.2x12jc",
+   "x": -1384,
+   "y": 34,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": 12
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "tz.delay",
+   "x": -1670,
+   "y": 30,
+   "params": {
+    "time": 97.9148,
+    "feedback": 0.33,
+    "mix": 0.22
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b6",
+   "type": "tz.reverb",
+   "x": -1942,
+   "y": 15,
+   "params": {
+    "decay": 0.5,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b7",
+   "type": "tz.meter",
+   "x": -2142,
+   "y": 30,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2382,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c8",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "b6",
+    "port": 1
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b6",
+    "port": 1
+   },
+   "to": {
+    "node": "b7",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

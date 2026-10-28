@@ -19,18 +19,19 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
 - **Board editor** – drag blocks from the browser, move them around, and patch them by dragging between the
   1/4" jacks. Cables sag like real ones, have plugs at both ends and can be recoloured (right-click). Inputs take one
   cable; drag a plugged input to move or unplug it, Shift-drag an output to pick up its cable.
-- **815 built-in blocks** – 413 pedals, 78 guitar &amp; bass amps, 106 preamps, 43 cabinets with up to four
+- **921 built-in blocks** – 497 pedals, 77 guitar &amp; bass amps, 104 preamps, 43 cabinets with up to four
   draggable microphones each, multi-FX, wahs, wham and volume pedals, loopers, synths, acoustic preamps and DIs,
-  splitters / mergers / selectors and other utilities – plus 151 Tone Zone originals. Pedals that can be stereo come
+  splitters / mergers / selectors and other utilities – plus 171 Tone Zone originals. Pedals that can be stereo come
   in **mono and stereo variants**.
 - **Real-pedal layouts, as plugins** – blocks inspired by the units you know (BOSS, Ibanez, MXR, Dunlop, EHX, JHS,
-  EarthQuaker, Walrus, Strymon, Meris, TC Electronic, Fender, Marshall, Mesa/Boogie and 46 more brands), with the
+  EarthQuaker, Walrus, Strymon, Meris, Chase Bliss, Big Ear, TC Electronic, Fender, Marshall, Mesa/Boogie and 70 more brands), with the
   same knob / switch / footswitch / screen layout and similar colours. Each brand is a built-in **plugin** you can
   turn off; write your own with [docs/plugins.md](docs/plugins.md).
 - **Tone Match** – give it a song (file or YouTube link), optionally isolate the guitar / bass / other parts with an
   AI model, and let it build a rig from your gear that sounds like the recording.
 - **Line 6 Helix** – connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
-  expression, external switches, USB audio).
+  expression, external switches, USB audio), and bind its footswitches and expression pedal to the footswitches
+  and treadles of other pedals on the board.
 - **Low latency** – a native C++ realtime engine that runs as a PipeWire (JACK API) client. The board itself adds no
   latency (except pitch blocks); the round trip is whatever your PipeWire quantum gives you (64 frames @ 48 kHz ≈ 2.7 ms).
 - **DSP budget** – set a budget (share of each audio cycle), see per-block cost, optionally refuse blocks that would
@@ -47,8 +48,8 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
   10–21 ms latency options and no warble on chords.
 - **Precise tuners** – YIN + phase-regression refinement: sub-cent accuracy down to low B on 5/6-string bass and
   F# on 8-string guitar; polyphonic strum mode on the PolyTune-style tuner.
-- **Presets** – a Presets tab with board thumbnails, tags and favourites; ~100 factory presets (rhythm and lead,
-  simple and complex, for 21 genres), undo / redo, import / export.
+- **Presets** – a Presets tab with board thumbnails, tags and favourites; 110+ factory presets (rhythm and lead
+  for 21 genres, plus synth and meme rigs), undo / redo, import / export.
 
 ## Using it
 

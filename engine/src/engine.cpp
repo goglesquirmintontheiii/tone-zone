@@ -107,6 +107,11 @@ bool Engine::startJack(std::string& err)
   }
   jack->set_process_callback(client, jackProcess, this);
   jack->set_xrun_callback(client, [](void* a) -> int { static_cast<Engine*>(a)->xruns.fetch_add(1); return 0; }, this);
+  // keep the UI's patchbay in sync with connections made anywhere (qpwgraph, Helvum, our own connect commands)
+  if (jack->set_port_connect_callback)
+    jack->set_port_connect_callback(client, [](uint32_t, uint32_t, int, void* a) { static_cast<Engine*>(a)->portsDirty.store(true); }, this);
+  if (jack->set_port_registration_callback)
+    jack->set_port_registration_callback(client, [](uint32_t, int, void* a) { static_cast<Engine*>(a)->portsDirty.store(true); }, this);
   jack->set_buffer_size_callback(client, [](jack_nframes_t n, void* a) -> int {
     auto* e = static_cast<Engine*>(a);
     if (int(n) != e->bufSize) { e->bufSize = int(n); e->needRebuild.store(true); }
@@ -706,7 +711,8 @@ void Engine::handleCommand(const json& cmd)
       const std::string s = cmd.value("src", ""), d = cmd.value("dst", "");
       if (cmd.value("on", true)) jack->connect(client, s.c_str(), d.c_str());
       else jack->disconnect(client, s.c_str(), d.c_str());
-      listPorts();
+      portsDirty.store(true); // PipeWire applies links asynchronously: list once they have settled
+      portsDirtyAt = std::chrono::steady_clock::now();
     }
   }
   else if (c == "autoConnect")
@@ -827,6 +833,17 @@ void Engine::runControlLoop()
       }
     }
     if (needRebuild.exchange(false)) rebuild();
+    if (portsDirty.load())
+    {
+      const auto now = std::chrono::steady_clock::now();
+      if (portsDirtyAt == std::chrono::steady_clock::time_point{}) portsDirtyAt = now;
+      if (now - portsDirtyAt > std::chrono::milliseconds(120))
+      {
+        portsDirty.store(false);
+        portsDirtyAt = {};
+        listPorts();
+      }
+    }
     if (std::chrono::steady_clock::now() >= nextStatus)
     {
       statusTick();

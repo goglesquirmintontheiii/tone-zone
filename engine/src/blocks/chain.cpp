@@ -47,6 +47,7 @@ public:
         s.map.push_back({mine, int(i)});
       }
       s.onParam = addParam(s.prefix + ".on", sj.value("on", true) ? 1.f : 0.f, 0, 1);
+      s.onMix = sj.value("on", true) ? 1.f : 0.f; // start silent if the sub starts off
       s.group = sj.value("group", 0);
       s.ch = sj.value("ch", -1);
       if (s.ch >= C) s.ch = -1;

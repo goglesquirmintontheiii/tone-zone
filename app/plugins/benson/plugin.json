@@ -1,0 +1,12 @@
+{
+  "id": "benson",
+  "name": "Benson Amps",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Benson Amps: their boutique amp's preamp in a pedal, in a grey hammertone box with a wheat grille-cloth window and chicken-head knobs.",
+  "kind": "brand",
+  "brand": "Benson Amps",
+  "main": "index.js",
+  "api": 1,
+  "color": "#cdb98a"
+}

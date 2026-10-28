@@ -1,0 +1,12 @@
+{
+  "id": "old-blood-noise",
+  "name": "Old Blood Noise Endeavors",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Old Blood Noise Endeavors: matte two-tone boxes with bold, flat geometric artwork and chunky lower-case wordmarks. A phase repeater, a dual-footswitch distorting modulator, an oil-can style delay and a deeply tweakable fuzz with slider EQ.",
+  "kind": "brand",
+  "brand": "Old Blood Noise Endeavors",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d9653b"
+}

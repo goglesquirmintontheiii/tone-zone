@@ -5,8 +5,7 @@
   "metalcore",
   "metal",
   "high-gain",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Whammy (off), boost, gate, chorus (off), stereo delay and ambient reverb.",
  "factory": true,

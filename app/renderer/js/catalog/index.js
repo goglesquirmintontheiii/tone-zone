@@ -1,6 +1,7 @@
 // Block catalog registry: core Tone Zone blocks + blocks registered by plugins + user NAM / IR packs.
 import { originals, ioDefs, coreGear, boxes, converters } from './originals.js';
 import { originals2 } from './originals2.js';
+import { originals3 } from './originals3.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
 export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
@@ -17,7 +18,7 @@ function finalize(d) {
   return d;
 }
 
-[...originals, ...originals2, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...originals2, ...originals3, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
 // ---- plugin registration
 export function registerPluginDefs(pluginId, defs, defaults = {}) {
@@ -33,6 +34,7 @@ export function registerPluginDefs(pluginId, defs, defaults = {}) {
     }
     d.plugin = pluginId;
     if (!d.brand && defaults.brand) d.brand = defaults.brand;
+    if (defaults.version) d.pluginVersion = defaults.version;
     registry.set(d.id, finalize(d));
     set.add(d.id);
   }

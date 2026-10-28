@@ -1,0 +1,12 @@
+{
+  "id": "wampler",
+  "name": "Wampler Pedals",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Wampler Pedals: a mini clean-blend transparent overdrive in a pale metallic box with a fine-line lamp-post illustration.",
+  "kind": "brand",
+  "brand": "Wampler",
+  "main": "index.js",
+  "api": 1,
+  "color": "#bcd3e2"
+}

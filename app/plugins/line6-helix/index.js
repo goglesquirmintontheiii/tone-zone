@@ -102,9 +102,45 @@ export default function register(tz) {
     access.onstatechange = scan;
     scan();
   }
+  // ------------------------------------------------------------------ bindings: Helix controls → other pedals
+  // Each Helix block keeps `bindings` (saved with the preset): [{ src, msg: {t:'cc'|'note', n, ch}, target: {block, cid},
+  // mode: 'momentary' | 'press' }]. Messages are learned from the unit (set the Helix footswitch / EXP pedal to send a
+  // MIDI CC or note in Command Center), then drive the target pedal's footswitch or knob / treadle.
+  let learning = null; // { blk, binding, onDone }
+  const msgText = (m) => (m ? `${m.t === 'note' ? 'Note' : 'CC'} ${m.n} · ch ${m.ch + 1}` : 'not learned');
+  function dispatchBinding(t, n, chn, val) {
+    if (learning) {
+      learning.binding.msg = { t, n, ch: chn };
+      const done = learning.onDone;
+      learning = null;
+      tz.app.markDirty();
+      done && done();
+      return true;
+    }
+    let hit = false;
+    for (const blk of helixBlocks()) {
+      for (const bd of blk.bindings || []) {
+        const m = bd.msg;
+        if (!m || m.t !== t || m.n !== n || m.ch !== chn || !bd.target) continue;
+        hit = true;
+        const tgt = tz.app.blocks().find((x) => x.id === bd.target.block);
+        const d = tgt && tz.app.getDef(tgt.type);
+        const c = d && d.controls.find((x) => x.cid === bd.target.cid);
+        if (!c) continue;
+        if (c.t === 'foot') {
+          if (bd.mode === 'press') {
+            if (val > 0 || t === 'cc') { tz.app.pressFoot(tgt.id, c.cid, true); setTimeout(() => tz.app.pressFoot(tgt.id, c.cid, false), 40); }
+          } else tz.app.pressFoot(tgt.id, c.cid, val > 63);
+        } else tz.app.setControl(tgt.id, c.cid, val / 127);
+      }
+    }
+    return hit;
+  }
   function onMidi(ev) {
     const [st, a, b] = ev.data;
     const type = st & 0xf0;
+    if (type === 0xb0 && a !== 0 && a !== 32) { if (dispatchBinding('cc', a, st & 15, b)) return; }
+    else if (type === 0x90 || type === 0x80) { if (dispatchBinding('note', a, st & 15, type === 0x80 ? 0 : b ? 127 : 0)) return; }
     if (st === 0xf8) {
       // MIDI clock → tempo
       const t = performance.now();
@@ -382,6 +418,7 @@ export default function register(tz) {
         const b = el('button', { class: 'btn small' }, lp, t);
         b.onclick = () => cc(blk, map.looper[k], v);
       }
+      bindingsUI(sec, blk);
       el('h5', { style: { marginTop: '12px' } }, sec).textContent = 'Footswitch labels';
       const mk = effModel(blk);
       const labels = tz.storage.get('labels_' + mk, {});
@@ -395,6 +432,60 @@ export default function register(tz) {
     },
   });
   const def0 = () => tz.app.getDef('l6x.helix');
+
+  function bindingsUI(sec, blk) {
+    const { el, toast } = tz.ui;
+    el('h5', { style: { marginTop: '12px' } }, sec).textContent = 'Control other pedals';
+    el('p', { class: 'hint' }, sec).textContent = 'Use the Helix footswitches and expression pedal to switch / sweep pedals on this board. On the Helix, set each footswitch (and EXP pedal) to send a MIDI CC in Command Center, then press Learn here and move it.';
+    const list = el('div', { class: 'hx-binds' }, sec);
+    const mk = effModel(blk);
+    const sources = [...FS_LAYOUT[mk].filter((f) => typeof f === 'number').map((f) => 'FS ' + f), 'EXP 1', 'EXP 2', 'EXP 3'];
+    const draw = () => {
+      list.innerHTML = '';
+      const others = tz.app.blocks().filter((b) => b.id !== blk.id);
+      (blk.bindings || []).forEach((bd, i) => {
+        const row = el('div', { class: 'hx-bind' }, list);
+        const src = el('select', {}, row, sources.map((x) => `<option${x === bd.src ? ' selected' : ''}>${x}</option>`).join(''));
+        src.onchange = () => { bd.src = src.value; tz.app.markDirty(); };
+        const tb = el('select', {}, row, '<option value="">– pedal –</option>' + others.map((b) => `<option value="${b.id}"${bd.target && bd.target.block === b.id ? ' selected' : ''}>${tz.ui.esc((tz.app.getDef(b.type) || {}).name || b.type)}</option>`).join(''));
+        const tc = el('select', {}, row);
+        const fillCtl = () => {
+          const b = others.find((x) => x.id === tb.value);
+          const d = b && tz.app.getDef(b.type);
+          const ctls = d ? d.controls.filter((c) => c.t === 'foot' || ((c.t === 'knob' || c.t === 'slider' || c.t === 'treadle') && c.p)) : [];
+          tc.innerHTML = ctls.map((c, k) => `<option value="${c.cid}"${bd.target && bd.target.cid === c.cid ? ' selected' : ''}>${c.t === 'foot' ? 'Footswitch' + (c.label ? ' ' + tz.ui.esc(c.label) : ' ' + (k + 1)) : (c.t === 'treadle' ? 'Treadle' : tz.ui.esc(c.label || c.p))}</option>`).join('');
+          if (b && ctls.length) bd.target = { block: b.id, cid: tc.value };
+        };
+        tb.onchange = () => { fillCtl(); tz.app.markDirty(); };
+        tc.onchange = () => { bd.target = { block: tb.value, cid: tc.value }; tz.app.markDirty(); };
+        fillCtl();
+        const mode = el('select', { title: 'Momentary: pressed while the Helix switch is held. Press: every message is one click (for latching switches).' }, row, `<option value="press"${bd.mode !== 'momentary' ? ' selected' : ''}>Press</option><option value="momentary"${bd.mode === 'momentary' ? ' selected' : ''}>Momentary</option>`);
+        mode.onchange = () => { bd.mode = mode.value; tz.app.markDirty(); };
+        const lr = el('div', { class: 'hx-learn' }, row);
+        const lab = el('span', {}, lr);
+        lab.textContent = msgText(bd.msg);
+        const lb = el('button', { class: 'btn small' }, lr, 'Learn');
+        lb.onclick = () => {
+          if (!dev.midiIn) return toast('No Helix MIDI input found – plug the unit in over USB', 'warn', 2400);
+          learning = { blk, binding: bd, onDone: () => { lab.textContent = msgText(bd.msg); lb.textContent = 'Learn'; } };
+          lb.textContent = 'Move it…';
+        };
+        const x = el('button', { class: 'btn small btn-ghost', title: 'Remove' }, lr, '×');
+        x.onclick = () => { blk.bindings.splice(i, 1); tz.app.markDirty(); draw(); };
+      });
+      const add = el('button', { class: 'btn small' }, list, '+ Add binding');
+      add.onclick = () => {
+        blk.bindings = blk.bindings || [];
+        const used = new Set(blk.bindings.map((b) => b.src));
+        blk.bindings.push({ src: sources.find((x) => !used.has(x)) || sources[0], msg: null, target: null, mode: 'press' });
+        tz.app.markDirty();
+        draw();
+      };
+    };
+    draw();
+  }
+  // tests / debugging: inject a MIDI message as if it came from the Helix
+  window.__hxInject = (bytes) => onMidi({ data: bytes });
 
   // treadle → EXP 1 (toe switch selects EXP 2 like the real pedal)
   tz.bus.on('param', ({ id, p, v }) => {
@@ -412,5 +503,6 @@ export default function register(tz) {
   initMidi();
   detect();
   const poll = setInterval(detect, 4000);
-  tz.onUnload(() => { clearInterval(poll); if (dev.midiIn) dev.midiIn.onmidimessage = null; });
+  tz.addStyles('.hx-bind{display:grid;grid-template-columns:70px 1fr;gap:5px 6px;padding:8px;margin:6px 0;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.15)}.hx-bind select{font-size:11.5px;padding:4px 6px;min-width:0}.hx-learn{grid-column:1/-1;display:flex;gap:6px;align-items:center}.hx-learn span{flex:1;font-size:11px;color:var(--muted)}');
+  tz.onUnload(() => { clearInterval(poll); if (dev.midiIn) dev.midiIn.onmidimessage = null; delete window.__hxInject; });
 }

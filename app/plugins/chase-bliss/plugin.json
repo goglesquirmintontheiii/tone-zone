@@ -1,0 +1,12 @@
+{
+  "id": "chase-bliss",
+  "name": "Chase Bliss",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Experimental boutique pedals inspired by Chase Bliss: micro-loopers (temper / bad temper), the bottomless looper, glitch and freeze, spectral codec damage, tape degradation, pitch-stepping delay, the echo collector, multidirectional delay, analog tremolo / phaser / flanger / vibrato, EQ preamps, dual gainstages, a creative compressor and the motorised-fader desktop reverb and echo. Colourful printed art, rows of small knobs and 3-way toggles, tiny DIP switch banks and two footswitches.",
+  "kind": "brand",
+  "brand": "Chase Bliss",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e8a23c"
+}

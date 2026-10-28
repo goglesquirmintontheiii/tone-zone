@@ -66,7 +66,7 @@ export default function register(tz) {
       }
       svg('path', { d: `M14 ${cy + 13} H${w / 2 - 34} l6 -8 h14 l5 8 H${w / 2 + 18} l7 -11 h12 l6 11 H${w - 14}`, fill: 'none', stroke: acc, 'stroke-width': 1.1, opacity: 0.9 }, g);
       label(g, w / 2, logoY, d.logo, { size: d.logoSize || 22, fill: txt, weight: 700, font: "'Dancing Script', cursive" });
-      label(g, w / 2, logoY + 14, d.tagline || '', { size: 5.2, fill: acc, weight: 800, ls: 1.6 });
+      label(g, w / 2, logoY + (d.tagDy ?? 14), d.tagline || '', { size: 5.2, fill: acc, weight: 800, ls: 1.6 });
     } else if (st === 'reissue') {
       const split = d.split ?? 124;
       svg('path', { d: `M0 ${split} H${w} V${h - rx} Q${w} ${h} ${w - rx} ${h} H${rx} Q0 ${h} 0 ${h - rx} Z`, fill: d.lower || '#e9e1cc' }, g);
@@ -219,7 +219,7 @@ export default function register(tz) {
     }),
     N({
       id: 'nux.atlantic', name: 'Pacific Echo & Verb', ref: 'NUX Atlantic Delay & Reverb', style: 'verdugo', cat: 'Delay', logo: 'Pacific', tagline: 'DELAY & REVERB', typeName: 'Delay + reverb',
-      color: '#1d3f5e', accent: '#6fc3e8', fw: 190, fh: 236, knob: 'chrome', stereo: 'both', cost: 1.6, alwaysOn: true, logoY: 156,
+      color: '#1d3f5e', accent: '#6fc3e8', fw: 190, fh: 236, knob: 'chrome', stereo: 'both', cost: 1.6, alwaysOn: true, logoY: 154, tagDy: 18,
       algo: 'chain', opts: { chain: [{ prefix: 'd', algo: 'delay', opts: { maxMs: 1500 }, params: { mode: 1, tone: 0.55 } }, { prefix: 'r', algo: 'reverb', params: { mode: 3, size: 0.5 } }] },
       frames: [{ x: 8, y: 14, w: 84, h: 98, label: 'DELAY' }, { x: 98, y: 14, w: 84, h: 98, label: 'REVERB' }],
       controls: [
@@ -270,7 +270,7 @@ export default function register(tz) {
     // ================================================================ drives (Verdugo / Reissue)
     N({
       id: 'nux.queenoftone', name: 'Royal Tone Dual OD', ref: 'NUX Queen of Tone', style: 'verdugo', cat: 'Overdrive', logo: 'Royal Tone', tagline: 'DUAL OVERDRIVE', typeName: 'Dual overdrive',
-      color: '#5a1f3a', accent: '#f0c0d8', fw: 190, fh: 236, knob: 'chrome', cost: 1.0, alwaysOn: true, logoY: 156,
+      color: '#5a1f3a', accent: '#f0c0d8', fw: 190, fh: 236, knob: 'chrome', cost: 1.0, alwaysOn: true, logoY: 154, tagDy: 18,
       algo: 'chain', opts: { chain: [{ prefix: 'h', algo: 'drive', opts: V.horseman, on: false }, { prefix: 'm', algo: 'drive', opts: V.morning }] },
       frames: [{ x: 8, y: 14, w: 84, h: 98, label: 'RIDER' }, { x: 98, y: 14, w: 84, h: 98, label: 'DAWN STAR' }],
       controls: [

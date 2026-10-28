@@ -1,0 +1,12 @@
+{
+  "id": "jam-pedals",
+  "name": "JAM Pedals",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by JAM Pedals' hand-painted Greek boutique boxes: the Eureka! fuzz (Fuzz Face meets Big Muff, 3-way bass boost) and its 3D-printed rubber-duck bathtub edition, the EureQuack.",
+  "kind": "brand",
+  "brand": "JAM Pedals",
+  "main": "index.js",
+  "api": 1,
+  "color": "#3c86c4"
+}

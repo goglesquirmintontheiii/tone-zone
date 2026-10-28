@@ -5,8 +5,7 @@
   "classic-metal",
   "metal",
   "rock",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "More push with analog delay and reverb.",
  "factory": true,
@@ -79,8 +78,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1102,
-   "y": 105,
+   "x": -1108,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.18
@@ -91,7 +90,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1342,
+   "x": -1348,
    "y": 100,
    "params": {}
   }

@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -94,6 +95,8 @@ private:
   int bufSize = 64;
   std::atomic<int> xruns{0};
   std::atomic<bool> needRebuild{false};
+  std::atomic<bool> portsDirty{false}; // set from JACK port / connection callbacks; the control loop re-sends the port list
+  std::chrono::steady_clock::time_point portsDirtyAt{};
 
   // graph handoff
   std::shared_ptr<CompiledGraph> current;            // control-thread owned

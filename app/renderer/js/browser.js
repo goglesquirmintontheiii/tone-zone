@@ -3,6 +3,7 @@
 import { el, svg, esc, bus, toast } from './util.js';
 import { allDefs, getPackDefs, CATEGORIES, portsFor, defaultVariant, kindOf, KINDS, isOriginal, brandOf } from './catalog/index.js';
 import { renderForm } from './gfx/forms.js';
+import { thumbImg } from './gfx/raster.js';
 import { state } from './state.js';
 
 let editorRef = null;
@@ -207,36 +208,92 @@ export function initBrowser(editor) {
   changed();
 }
 
-let pending = [];
-let lazyQueued = false;
-function fillThumbs() {
-  lazyQueued = false;
+// ------------------------------------------------------------------ virtualised list
+// Only the rows in view exist in the DOM (plus a margin); thumbnails are cached PNGs (gfx/raster.js). With ~1000
+// blocks a fully built list of live SVG pedals made every frame of the app expensive.
+const ROW_H = 58, HEAD_H = 36, COUNT_H = 24, OVERSCAN = 6;
+let rows = []; // { type: 'count' | 'head' | 'item', y, h, d?, k? }
+let totalH = 0;
+let spacer = null, layer = null;
+const live = new Map(); // row index -> element
+let vQueued = false;
+
+function makeItem(d, favs) {
+  const fav = favs.has(d.id);
+  const item = el('div', { class: 'bl-item' + (fav ? ' is-fav' : ''), title: d.desc || d.ref || '' });
+  item._def = d;
+  const th = el('div', { class: 'thumb' }, item);
+  th.appendChild(thumbImg(d, 42));
+  const meta = el('div', { class: 'meta' }, item);
+  el('div', { class: 'name' }, meta).textContent = d.name;
+  const src = sourceOf(d);
+  el('div', { class: 'sub' }, meta).textContent = d.pack ? d.ref : src === 'Inspired by' && d.ref ? 'Inspired by ' + d.ref : d.typeName || d.cat;
+  const st = stereoOf(d);
+  if (st !== 'mono') el('span', { class: 'badge st', title: st === 'both' ? 'Mono or stereo' : 'Stereo' }, item).textContent = st === 'both' ? 'M/S' : 'ST';
+  else if (d.pack) el('span', { class: 'badge' }, item).textContent = d.algo === 'nam' ? 'NAM' : 'IR';
+  const star = el('button', { class: 'fav-star' + (fav ? ' on' : ''), title: fav ? 'Remove from favourites' : 'Add to favourites' }, item, fav ? '★' : '☆');
+  star.addEventListener('pointerdown', (e) => e.stopPropagation());
+  star.onclick = (e) => {
+    e.stopPropagation();
+    toggleFavorite(d.id);
+  };
+  // docked: pointer drag (instant); popped out into another window: native drag-and-drop across windows
+  item.addEventListener('pointerdown', (e) => item.ownerDocument === document && startDrag(e, d, item));
+  item.draggable = true;
+  item.addEventListener('dragstart', (e) => {
+    if (item.ownerDocument === document) return e.preventDefault();
+    e.dataTransfer.setData('application/x-tz-block', d.id);
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  item.addEventListener('dblclick', () => editorRef.addNear(d.id));
+  return item;
+}
+
+function drawWindow() {
+  vQueued = false;
   const list = listEl;
-  if (!list || !pending.length || !list.isConnected) return;
-  const top = list.scrollTop - 300, bot = list.scrollTop + list.clientHeight + 300;
-  const rest = [];
-  for (const item of pending) {
-    const y = item.offsetTop;
-    if (y + item.offsetHeight < top || y > bot) { rest.push(item); continue; }
-    const th = item.querySelector('.thumb');
-    th.innerHTML = '';
-    th.appendChild(thumbnail(item._def, 42));
+  if (!list || !layer) return;
+  const top = list.scrollTop, bot = top + (list.clientHeight || 800);
+  // binary search the first visible row
+  let lo = 0, hi = rows.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (rows[mid].y + rows[mid].h < top) lo = mid + 1;
+    else hi = mid;
   }
-  pending = rest;
+  const i0 = Math.max(0, lo - OVERSCAN);
+  let i1 = lo;
+  while (i1 < rows.length && rows[i1].y < bot) i1++;
+  i1 = Math.min(rows.length, i1 + OVERSCAN);
+  for (const [i, node] of live) if (i < i0 || i >= i1) { node.remove(); live.delete(i); }
+  const favs = favorites();
+  for (let i = i0; i < i1; i++) {
+    if (live.has(i)) continue;
+    const r = rows[i];
+    let node;
+    if (r.type === 'count') node = el('div', { class: 'bl-count' }, null, r.text);
+    else if (r.type === 'head') node = el('h4', { class: 'bl-head' }, null, esc(r.k));
+    else node = makeItem(r.d, favs);
+    node.classList.add('bl-row');
+    node.style.transform = `translateY(${r.y}px)`;
+    node.style.height = r.h + 'px';
+    layer.appendChild(node);
+    live.set(i, node);
+  }
 }
-function queueThumbs() {
-  if (lazyQueued) return;
-  lazyQueued = true;
-  requestAnimationFrame(fillThumbs);
+function queueWindow() {
+  if (vQueued) return;
+  vQueued = true;
+  requestAnimationFrame(drawWindow);
 }
+
 export function renderList() {
   const list = listEl;
   if (!list) return;
   const scroll = list.scrollTop;
   list.innerHTML = '';
-  // thumbnails are drawn lazily for items scrolled into view. (An IntersectionObserver / content-visibility on
-  // hundreds of items is re-evaluated on every animation frame of the board, which costs far more.)
-  pending = [];
+  live.clear();
+  rows = [];
   const favs = favorites();
   const defs = sourceDefs().filter((d) => matches(d));
   const groups = new Map();
@@ -255,48 +312,28 @@ export function renderList() {
     el('div', { class: 'empty-state', style: { margin: '20px 6px', padding: '30px 10px' } }, list, F.favOnly && !favs.size ? '<p>No favourites yet.<br>Hover a block and click the ☆ to add it.</p>' : '<p>No blocks match these filters.</p>');
     return;
   }
-  el('div', { class: 'bl-count' }, list).textContent = `${defs.length} block${defs.length === 1 ? '' : 's'}`;
+  let y = 0;
+  rows.push({ type: 'count', y, h: COUNT_H, text: `${defs.length} block${defs.length === 1 ? '' : 's'}` });
+  y += COUNT_H;
   for (const k of keys) {
-    const grp = el('div', { class: 'bl-group' }, list);
-    el('h4', {}, grp).textContent = k;
+    rows.push({ type: 'head', y, h: HEAD_H, k });
+    y += HEAD_H;
     const items = groups.get(k).slice().sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0));
     for (const d of items) {
-      const fav = favs.has(d.id);
-      const item = el('div', { class: 'bl-item' + (fav ? ' is-fav' : ''), title: d.desc || d.ref || '' }, grp);
-      item._def = d;
-      el('div', { class: 'thumb' }, item);
-      const meta = el('div', { class: 'meta' }, item);
-      el('div', { class: 'name' }, meta).textContent = d.name;
-      const src = sourceOf(d);
-      el('div', { class: 'sub' }, meta).textContent = d.pack ? d.ref : src === 'Inspired by' && d.ref ? 'Inspired by ' + d.ref : d.typeName || d.cat;
-      const st = stereoOf(d);
-      if (st !== 'mono') el('span', { class: 'badge st', title: st === 'both' ? 'Mono or stereo' : 'Stereo' }, item).textContent = st === 'both' ? 'M/S' : 'ST';
-      else if (d.pack) el('span', { class: 'badge' }, item).textContent = d.algo === 'nam' ? 'NAM' : 'IR';
-      const star = el('button', { class: 'fav-star' + (fav ? ' on' : ''), title: fav ? 'Remove from favourites' : 'Add to favourites' }, item, fav ? '★' : '☆');
-      star.addEventListener('pointerdown', (e) => e.stopPropagation());
-      star.onclick = (e) => {
-        e.stopPropagation();
-        toggleFavorite(d.id);
-      };
-      // docked: pointer drag (instant); popped out into another window: native drag-and-drop across windows
-      item.addEventListener('pointerdown', (e) => item.ownerDocument === document && startDrag(e, d, item));
-      item.draggable = true;
-      item.addEventListener('dragstart', (e) => {
-        if (item.ownerDocument === document) return e.preventDefault();
-        e.dataTransfer.setData('application/x-tz-block', d.id);
-        e.dataTransfer.effectAllowed = 'copy';
-      });
-      item.addEventListener('dblclick', () => editorRef.addNear(d.id));
-      pending.push(item);
+      rows.push({ type: 'item', y, h: ROW_H, d });
+      y += ROW_H;
     }
   }
+  totalH = y + 12;
+  spacer = el('div', { class: 'bl-spacer', style: { height: totalH + 'px' } }, list);
+  layer = el('div', { class: 'bl-layer' }, spacer);
   list.scrollTop = scroll;
-  if (!list._lazy) {
-    list._lazy = true;
-    list.addEventListener('scroll', queueThumbs, { passive: true });
-    new ResizeObserver(queueThumbs).observe(list);
+  if (!list._virt) {
+    list._virt = true;
+    list.addEventListener('scroll', queueWindow, { passive: true });
+    new ResizeObserver(queueWindow).observe(list);
   }
-  queueThumbs();
+  drawWindow();
 }
 
 // ------------------------------------------------------------------ pointer drag (no OS drag-and-drop:
@@ -310,7 +347,7 @@ function startDrag(e, d, item) {
     if (!ghost) {
       if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
       ghost = el('div', { class: 'drag-ghost' }, document.body);
-      ghost.appendChild(thumbnail(d, 96));
+      ghost.appendChild(thumbImg(d, 96));
       document.body.classList.add('dragging-block');
     }
     ghost.style.transform = `translate(${ev.clientX - 48}px, ${ev.clientY - 48}px)`;

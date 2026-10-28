@@ -4,8 +4,7 @@
  "tags": [
   "pop",
   "clean",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressor, EQ, trem (off), chorus, delay and plate-ish hall; two mics.",
  "factory": true,
@@ -22,7 +21,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 40,
+   "y": 39,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -42,8 +41,8 @@
   {
    "id": "b3",
    "type": "tz.peq",
-   "x": -614,
-   "y": 40,
+   "x": -624,
+   "y": 24,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -51,7 +50,7 @@
   {
    "id": "b4",
    "type": "amp.deluxe",
-   "x": -1104,
+   "x": -1114,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -66,7 +65,7 @@
   {
    "id": "b5",
    "type": "cab.1x12us",
-   "x": -1424,
+   "x": -1434,
    "y": 47,
    "params": {
     "m1on": 1,
@@ -88,8 +87,8 @@
   {
    "id": "b6",
    "type": "tz.trem",
-   "x": -1644,
-   "y": 40,
+   "x": -1666,
+   "y": 37,
    "params": {
     "rate": 0.45,
     "depth": 0.4
@@ -100,8 +99,8 @@
   {
    "id": "b7",
    "type": "tz.chorus",
-   "x": -1910,
-   "y": 40,
+   "x": -1934,
+   "y": 37,
    "params": {
     "rate": 0.35,
     "depth": 0.25,
@@ -113,8 +112,8 @@
   {
    "id": "b8",
    "type": "tz.delay",
-   "x": -2176,
-   "y": 40,
+   "x": -2220,
+   "y": 30,
    "params": {
     "time": 73.6194,
     "feedback": 0.22,
@@ -126,8 +125,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -2442,
-   "y": 40,
+   "x": -2492,
+   "y": 15,
    "params": {
     "decay": 0.35,
     "mix": 0.2
@@ -138,7 +137,7 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2642,
+   "x": -2692,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -147,7 +146,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2882,
+   "x": -2932,
    "y": 55,
    "params": {}
   }

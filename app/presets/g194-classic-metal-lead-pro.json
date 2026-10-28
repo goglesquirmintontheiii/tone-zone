@@ -5,8 +5,7 @@
   "classic-metal",
   "metal",
   "rock",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Wah, Distortion+, EQ, chorus (off), analog delay and reverb.",
  "factory": true,
@@ -131,8 +130,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -2072,
-   "y": 105,
+   "x": -2078,
+   "y": 80,
    "params": {
     "decay": 0.4,
     "mix": 0.18
@@ -143,7 +142,7 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2272,
+   "x": -2278,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -152,7 +151,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2512,
+   "x": -2518,
    "y": 100,
    "params": {}
   }

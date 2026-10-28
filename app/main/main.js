@@ -249,6 +249,7 @@ function setupIpc() {
   });
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
+    packaged: app.isPackaged,
     dataDir: lib.dataRoot(),
     t3Preload: 'file://' + path.join(__dirname, 't3-preload.js'),
     partition: T3_PARTITION,

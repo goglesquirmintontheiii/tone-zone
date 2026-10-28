@@ -1,0 +1,12 @@
+{
+  "id": "mythos",
+  "name": "Mythos Pedals",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Mythos Pedals: a tweaked 'K'-style clean-blend overdrive in a dark forged-metal box with a war-hammer emblem.",
+  "kind": "brand",
+  "brand": "Mythos Pedals",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d9b45a"
+}

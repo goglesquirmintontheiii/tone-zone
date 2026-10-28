@@ -5,8 +5,7 @@
   "ambient",
   "experimental",
   "clean",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Soft drive, long delays and a huge hall.",
  "factory": true,

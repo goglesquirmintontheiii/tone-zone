@@ -181,10 +181,13 @@ input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 15p
 #board { position: absolute; inset: 0; overflow: hidden; outline: none; cursor: default;
   background:
     radial-gradient(1000px 700px at 50% 40%, rgba(255, 255, 255, 0.025), transparent 70%),
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 40px 40px,
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 40px 40px,
     linear-gradient(180deg, #12151c, #0c0e13);
 }
+/* the grid is its own composited layer: panning only moves it */
+#boardGrid { position: absolute; left: -200px; top: -200px; right: -200px; bottom: -200px; pointer-events: none; will-change: transform;
+  background: linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 40px 40px, linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 40px 40px; }
+#boardSvg { position: relative; transform-origin: 0 0; }
+#boardSvg { will-change: transform; }
 #board.panning { cursor: grabbing; }
 #boardSvg { width: 100%; height: 100%; display: block; }
 #boardToolbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px 8px; border-radius: 14px; background: rgba(20, 24, 32, 0.86); backdrop-filter: blur(12px); border: 1px solid var(--line2); box-shadow: var(--shadow); }
@@ -661,3 +664,17 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .tag-chip button:hover { opacity: 1; background: rgba(0, 0, 0, 0.25); }
 .tag-sug { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; max-height: 160px; overflow-y: auto; }
 .tm-log:empty { display: none; }
+/* virtualised block list */
+.bl-spacer { position: relative; }
+.bl-layer { position: absolute; inset: 0; }
+.bl-row { position: absolute; left: 0; right: 0; top: 0; box-sizing: border-box; }
+.bl-head { margin: 0; padding: 14px 8px 0; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.bl-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.bl-count.bl-row { margin: 0; padding: 6px 8px 0; }
+.bl-item .thumb .thumb-img { max-width: 42px; max-height: 42px; display: block; }
+.bl-row { transition: background 0.15s; }
+.pc-thumb { object-fit: contain; }
+.card .card-art img { max-height: 108px; max-width: 90%; }
+.pc-thumb:not([src]), .thumb-img:not([src]) { visibility: hidden; }
+.meter-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.vu { position: relative; }

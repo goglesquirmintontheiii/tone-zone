@@ -1,0 +1,12 @@
+{
+  "id": "fart-pedal",
+  "name": "The Fart Pedal",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by The Fart Pedal, the Kickstarter novelty stomp that replaces your guitar with a (pitch-following) whoopee cushion. Wet or dry. Output knob. That's it.",
+  "kind": "brand",
+  "brand": "The Fart Pedal",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8a5a3a"
+}

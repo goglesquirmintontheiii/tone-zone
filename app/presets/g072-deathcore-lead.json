@@ -6,8 +6,7 @@
   "metal",
   "high-gain",
   "drop-tuning",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Detuned lead with more gain, delay and reverb.",
  "factory": true,
@@ -96,8 +95,8 @@
   {
    "id": "b6",
    "type": "tz.reverb",
-   "x": -1526,
-   "y": 105,
+   "x": -1532,
+   "y": 80,
    "params": {
     "decay": 0.5,
     "mix": 0.18
@@ -108,7 +107,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1766,
+   "x": -1772,
    "y": 100,
    "params": {}
   }

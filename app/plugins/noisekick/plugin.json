@@ -1,0 +1,12 @@
+{
+  "id": "noisekick",
+  "name": "noiseKICK FX",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by noiseKICK FX: the Meme Driver dual overdrive / fuzz with its U / NO U order switch.",
+  "kind": "brand",
+  "brand": "noiseKICK FX",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e33d8f"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "danelectro",
+  "name": "Danelectro",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Danelectro's tongue-in-cheek food-named minis and the Back Talk reverse delay: candy-metallic rounded boxes with chrome trim, food doodles and retro script names. Octave fuzz, overdrive, spring-ish reverb, 7-band EQ and reverse delay.",
+  "kind": "brand",
+  "brand": "Danelectro",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c8562e"
+}

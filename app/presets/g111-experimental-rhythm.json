@@ -5,8 +5,7 @@
   "experimental",
   "ambient",
   "noise",
-  "rhythm",
-  "simple"
+  "rhythm"
  ],
  "desc": "Harmonic synth tracking into a clean amp and a cavernous reverb.",
  "factory": true,

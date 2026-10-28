@@ -4,8 +4,7 @@
  "tags": [
   "worship",
   "gospel",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Morning-style drive into a chiming amp, dotted delay and hall for melodic lines.",
  "factory": true,
@@ -80,8 +79,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1638,
-   "y": 40,
+   "x": -1644,
+   "y": 15,
    "params": {
     "decay": 0.55,
     "mix": 0.3,
@@ -94,7 +93,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1878,
+   "x": -1884,
    "y": 55,
    "params": {}
   }

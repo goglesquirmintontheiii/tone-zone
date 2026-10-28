@@ -3,7 +3,7 @@ import { el, esc, bus, toast } from '../util.js';
 import { pluginInfo, setPluginEnabled, reloadPlugins } from '../plugins.js';
 import { pluginDefIds, getDef } from '../catalog/index.js';
 import { confirmDlg } from '../menus.js';
-import { thumbnail } from '../browser.js';
+import { thumbImg } from '../gfx/raster.js';
 
 const V = { q: '', filter: 'All', open: new Set() };
 
@@ -111,7 +111,7 @@ export function renderPlugins() {
         if (!d || d.hidden) continue;
         const it = el('div', { class: 'pl-block', title: d.ref ? 'Inspired by ' + d.ref : d.name }, g);
         const th = el('div', { class: 'thumb' }, it);
-        th.appendChild(thumbnail(d, 46));
+        th.appendChild(thumbImg(d, 46));
         el('span', {}, it).textContent = d.name;
       }
     }

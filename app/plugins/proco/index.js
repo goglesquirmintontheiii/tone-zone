@@ -15,14 +15,14 @@ export default function register(tz) {
     const knobs = d.controls.filter((c) => c.t === 'knob');
     knobs.forEach((k, i) => Object.assign(k, { x: (i < 3 ? 26 : w / 2 + 18) + (i % 3) * 37, y: 34, r: 11, style: 'rat', labelPos: 'below' }));
     d.controls.filter((c) => c.t === 'toggle').forEach((t, i) => Object.assign(t, { x: i ? w / 2 + 55 : 63, y: 82, orient: 'h', optSize: 4.6 }));
-    label(g, w / 2, 108, d.logo, { size: 26, fill: d.logoColor || '#f2f2f2', font: "'Oswald', sans-serif", weight: 700, ls: 1 });
-    label(g, w / 2, 127, d.code, { size: 6.2, fill: theme.text, weight: 700, ls: 2.4 });
+    label(g, w / 2, 113, d.logo, { size: 23, fill: d.logoColor || '#f2f2f2', font: "'Oswald', sans-serif", weight: 700, ls: 1 });
+    label(g, w / 2, 131, d.code, { size: 6.2, fill: theme.text, weight: 700, ls: 2.4 });
     const foots = d.controls.filter((c) => c.t === 'foot'), leds = d.controls.filter((c) => c.t === 'led');
     foots.forEach((f, i) => Object.assign(f, { style: 'stomp', x: i ? w - 56 : 56, y: 158, r: 12 }));
     leds.forEach((l, i) => Object.assign(l, { x: i ? w - 92 : 92, y: 158, r: 3 }));
     formKit.tzBadge(g, w / 2, h - 10, theme.text, 4.2);
     formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 40, flip: ctx.flip }) };
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 100, flip: ctx.flip }) };
   });
   const ratOpts = { clip: 'opamp', slew: 0.3, preHp: 50, gainMinDb: 0, gainMaxDb: 67, clipLp: 12000, tone: 'rat', toneLo: 475, toneHi: 32000, postLp: 14000, levelMaxDb: 4 };
   const ratDesc = 'FILTER is reverse-acting like the original: clockwise = darker.';

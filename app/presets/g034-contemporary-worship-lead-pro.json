@@ -5,8 +5,7 @@
   "contemporary-worship",
   "worship",
   "ambient",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Ambient lead rig with swell, stacked drives, dotted delay into shimmer and hall.",
  "factory": true,
@@ -125,7 +124,8 @@
     "m2dist": 0.2,
     "_m2x": 0.3037383177570093,
     "_m2y": 0.5,
-    "m2lvl": -3
+    "m2lvl": -3,
+    "level": -4
    },
    "bypass": false,
    "variant": "mono"

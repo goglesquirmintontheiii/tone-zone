@@ -5,8 +5,7 @@
   "edm",
   "pop",
   "synth",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Guitar synth lead into tempo delay and big reverb.",
  "factory": true,
@@ -63,8 +62,8 @@
   {
    "id": "b4",
    "type": "tz.delay",
-   "x": -1422,
-   "y": 40,
+   "x": -1442,
+   "y": 30,
    "params": {
     "time": 87.3587,
     "feedback": 0.44,
@@ -76,8 +75,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1688,
-   "y": 40,
+   "x": -1714,
+   "y": 15,
    "params": {
     "decay": 0.6,
     "mix": 0.3
@@ -88,7 +87,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1928,
+   "x": -1954,
    "y": 55,
    "params": {}
   }

@@ -1,0 +1,12 @@
+{
+  "id": "hologram",
+  "name": "Hologram Electronics",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Hologram Electronics: an eleven-algorithm granular / glitch delay machine and a four-module texture multi-effect, approximated with chains of pitch, slicer, delay, reverb, drive, modulation and lo-fi blocks. Dark anodised or bone-white boxes with iridescent prism bands.",
+  "kind": "brand",
+  "brand": "Hologram Electronics",
+  "main": "index.js",
+  "api": 1,
+  "color": "#a78bfa"
+}

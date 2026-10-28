@@ -4,8 +4,7 @@
  "tags": [
   "country",
   "clean",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Compressor and a low-gain Fender drive, slapback and spring.",
  "factory": true,
@@ -94,8 +93,8 @@
   {
    "id": "b6",
    "type": "tz.spring",
-   "x": -1784,
-   "y": 40,
+   "x": -1792,
+   "y": 38,
    "params": {
     "mix": 0.18
    },
@@ -105,7 +104,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2024,
+   "x": -2032,
    "y": 55,
    "params": {}
   }

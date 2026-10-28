@@ -1,0 +1,12 @@
+{
+  "id": "death-by-audio",
+  "name": "Death By Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Death By Audio, the Brooklyn noise-box makers: flat powder-coat boxes with heavy screen-printed frames, bold one-colour emblems and tall block lettering. A one-knob destroyer overdrive, a filtered wall-of-fuzz, a fuzz + modulated delay and a distorted reverb.",
+  "kind": "brand",
+  "brand": "Death By Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c4c7ca"
+}

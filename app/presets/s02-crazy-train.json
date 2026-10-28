@@ -5,8 +5,7 @@
   "classic-metal",
   "metal",
   "rhythm",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Inspired by the early-80s Randy Rhoads sound: a Distortion+ and a 10-band EQ (mid hump) into a hot modded 800 and G12-65s. Kick in the chorus and echo for the solo; the wah is there for the fills.",
  "factory": true,
@@ -23,7 +22,7 @@
    "id": "b1",
    "type": "tz.tuner",
    "x": -150,
-   "y": 105,
+   "y": 104,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -142,8 +141,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -2076,
-   "y": 105,
+   "x": -2082,
+   "y": 80,
    "params": {
     "decay": 0.35,
     "mix": 0.12,
@@ -155,7 +154,7 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2276,
+   "x": -2282,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -164,7 +163,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2516,
+   "x": -2522,
    "y": 100,
    "params": {}
   }

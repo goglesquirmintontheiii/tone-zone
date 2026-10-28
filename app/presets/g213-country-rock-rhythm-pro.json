@@ -5,8 +5,7 @@
   "country-rock",
   "country",
   "rock",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Compressor, BD-2, dual-mic cab, slapback (off) and spring.",
  "factory": true,
@@ -109,8 +108,8 @@
   {
    "id": "b7",
    "type": "tz.spring",
-   "x": -1936,
-   "y": 40,
+   "x": -1944,
+   "y": 38,
    "params": {
     "mix": 0.12
    },
@@ -120,7 +119,7 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -2136,
+   "x": -2144,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -129,7 +128,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2376,
+   "x": -2384,
    "y": 55,
    "params": {}
   }

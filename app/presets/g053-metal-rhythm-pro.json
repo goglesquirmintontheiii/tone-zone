@@ -4,8 +4,7 @@
  "tags": [
   "metal",
   "high-gain",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "TS boost, gate, Recto, dual-mic V30 cab and a 7-band post EQ.",
  "factory": true,
@@ -43,8 +42,8 @@
   {
    "id": "b3",
    "type": "tz.gate",
-   "x": -584,
-   "y": 105,
+   "x": -588,
+   "y": 103,
    "params": {
     "threshold": 0.45,
     "attack": 0.2,
@@ -57,7 +56,7 @@
   {
    "id": "b4",
    "type": "amp.recto",
-   "x": -1086,
+   "x": -1090,
    "y": 0,
    "params": {
     "gain": 0.65,
@@ -74,7 +73,7 @@
   {
    "id": "b5",
    "type": "cab.4x12v30",
-   "x": -1094,
+   "x": -1098,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -95,7 +94,7 @@
   {
    "id": "b6",
    "type": "bx.ge7",
-   "x": -1310,
+   "x": -1314,
    "y": 101,
    "params": {
     "b0": 1.5,
@@ -113,7 +112,7 @@
   {
    "id": "b7",
    "type": "tz.vaulted",
-   "x": -1590,
+   "x": -1594,
    "y": 108.5,
    "params": {
     "decay": 0.3,
@@ -125,7 +124,7 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -1790,
+   "x": -1794,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -134,7 +133,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2030,
+   "x": -2034,
    "y": 100,
    "params": {}
   }

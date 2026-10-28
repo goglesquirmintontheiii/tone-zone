@@ -5,8 +5,7 @@
   "classic-rock",
   "rock",
   "crunch",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Wah, Fuzz Face (off), treble booster, Uni-Vibe (off), tape echo.",
  "factory": true,
@@ -42,8 +41,8 @@
   {
    "id": "b3",
    "type": "tz.fuzzface",
-   "x": -582,
-   "y": 105,
+   "x": -614,
+   "y": 139,
    "params": {
     "level": 0.55,
     "gain": 0.7
@@ -54,8 +53,8 @@
   {
    "id": "b4",
    "type": "tz.trebleboost",
-   "x": -802,
-   "y": 105,
+   "x": -820,
+   "y": 123,
    "params": {
     "gain": 0.6
    },
@@ -65,7 +64,7 @@
   {
    "id": "b5",
    "type": "amp.plexi",
-   "x": -1304,
+   "x": -1322,
    "y": 0,
    "params": {
     "presence": 0.55,
@@ -82,7 +81,7 @@
   {
    "id": "b6",
    "type": "cab.4x12gb",
-   "x": -1312,
+   "x": -1330,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -104,7 +103,7 @@
   {
    "id": "b7",
    "type": "mx.m68",
-   "x": -1578,
+   "x": -1596,
    "y": 119,
    "params": {
     "level": 0.55,
@@ -117,7 +116,7 @@
   {
    "id": "b8",
    "type": "tz.reelecho",
-   "x": -1864,
+   "x": -1882,
    "y": 88,
    "params": {
     "time": 171.2031,
@@ -130,8 +129,8 @@
   {
    "id": "b9",
    "type": "tz.spring",
-   "x": -2084,
-   "y": 105,
+   "x": -2110,
+   "y": 103,
    "params": {
     "mix": 0.12
    },
@@ -141,7 +140,7 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2284,
+   "x": -2310,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -150,7 +149,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2524,
+   "x": -2550,
    "y": 100,
    "params": {}
   }

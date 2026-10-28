@@ -1,0 +1,12 @@
+{
+  "id": "korg",
+  "name": "Korg",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Korg stompboxes: the vocal-synth singing stomp that turns single-note lines into a sung Vocaloid-style voice (eleven syllable patterns, peak LED).",
+  "kind": "brand",
+  "brand": "Korg",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2bbfb8"
+}

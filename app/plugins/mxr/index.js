@@ -102,7 +102,7 @@ export default function register(tz) {
       ports: { ins: ['INPUT'], outs: ['OUTPUT', 'DI OUT'] }, jackKinds: { o1: 'xlr' },
       controls: [K('c.bass', 'BASS', { def: 0.5, x: 44, y: 36, r: 11 }), K('c.treble', 'TREBLE', { def: 0.5, x: 98, y: 36, r: 11 }), K('c.level', 'VOLUME', { def: 0.55, x: 152, y: 36, r: 11 }),
         K('d.level', 'D-VOL', { def: 0.5, x: 44, y: 80, r: 11 }), K('d.blend', 'BLEND', { def: 0.5, x: 98, y: 80, r: 11 }), K('d.gain', 'DIST', { def: 0.5, x: 152, y: 80, r: 11 }),
-        BTN('COLOR', { p: 'color', toggle: true, led: true, ledColor: '#3d8bff', x: 98, y: 112, ledDy: -9 }),
+        BTN('COLOR', { p: 'color', toggle: true, led: true, ledColor: '#3d8bff', x: 98, y: 153, ledDy: -9 }),
         FOOT({ x: 58, y: 186, r: 12, label: 'BYPASS' }), LED({ x: 58, y: 160, color: '#3d8bff' }), FOOT({ action: 'param', p: 'd.on', label: 'DIST', x: 138, y: 186, r: 12 }), LED({ x: 138, y: 160, bind: 'param:d.on', color: '#ff2a1a' })],
       derive: (p) => ({ 'c.gain': p.color ? 0.62 : 0.5 }),
       desc: 'Bass preamp / DI with a switchable distortion channel (BLEND keeps the low end). COLOR adds a mid scoop and treble lift.' }),

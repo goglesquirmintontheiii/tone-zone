@@ -5,8 +5,7 @@
   "country-rock",
   "country",
   "rock",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Compressor, BD-2, Katana boost, analog delay and spring.",
  "factory": true,
@@ -120,8 +119,8 @@
   {
    "id": "b8",
    "type": "tz.spring",
-   "x": -2192,
-   "y": 40,
+   "x": -2200,
+   "y": 38,
    "params": {
     "mix": 0.15
    },
@@ -131,7 +130,7 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2392,
+   "x": -2400,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -140,7 +139,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2632,
+   "x": -2640,
    "y": 55,
    "params": {}
   }

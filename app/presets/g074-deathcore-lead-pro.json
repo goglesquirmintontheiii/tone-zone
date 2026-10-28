@@ -6,8 +6,7 @@
   "metal",
   "high-gain",
   "drop-tuning",
-  "lead",
-  "complex"
+  "lead"
  ],
  "desc": "Drop-tuned lead rig with boost, gate, EQ, stereo delay and room.",
  "factory": true,

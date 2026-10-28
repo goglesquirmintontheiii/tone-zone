@@ -5,8 +5,7 @@
   "country-rock",
   "country",
   "rock",
-  "lead",
-  "simple"
+  "lead"
  ],
  "desc": "Stacked BD-2 and boost with analog delay.",
  "factory": true,
@@ -36,7 +35,7 @@
    "id": "b2",
    "type": "tz.boost",
    "x": -366,
-   "y": 40,
+   "y": 41,
    "params": {
     "gain": 0.25
    },

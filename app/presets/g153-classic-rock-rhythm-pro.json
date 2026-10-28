@@ -5,8 +5,7 @@
   "classic-rock",
   "rock",
   "crunch",
-  "rhythm",
-  "complex"
+  "rhythm"
  ],
  "desc": "Treble boost and Phase 90 (off), dual-mic cab, rotary (off) and spring.",
  "factory": true,
@@ -31,8 +30,8 @@
   {
    "id": "b2",
    "type": "tz.trebleboost",
-   "x": -316,
-   "y": 105,
+   "x": -302,
+   "y": 123,
    "params": {
     "gain": 0.5
    },
@@ -42,7 +41,7 @@
   {
    "id": "b3",
    "type": "mx.m101",
-   "x": -514,
+   "x": -500,
    "y": 119,
    "params": {
     "rate": 0.3
@@ -53,7 +52,7 @@
   {
    "id": "b4",
    "type": "amp.plexi",
-   "x": -1016,
+   "x": -1002,
    "y": 0,
    "params": {
     "presence": 0.55,
@@ -70,7 +69,7 @@
   {
    "id": "b5",
    "type": "cab.4x12gb",
-   "x": -1024,
+   "x": -1010,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -92,8 +91,8 @@
   {
    "id": "b6",
    "type": "tz.rotary",
-   "x": -1244,
-   "y": 105,
+   "x": -1258,
+   "y": 97,
    "params": {
     "mix": 0.4
    },
@@ -103,8 +102,8 @@
   {
    "id": "b7",
    "type": "tz.reverb",
-   "x": -1510,
-   "y": 105,
+   "x": -1530,
+   "y": 80,
    "params": {
     "decay": 0.3,
     "mix": 0.12,
@@ -116,7 +115,7 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -1710,
+   "x": -1730,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -125,7 +124,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1950,
+   "x": -1970,
    "y": 100,
    "params": {}
   }

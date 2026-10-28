@@ -46,7 +46,8 @@ export default function register(tz) {
         label(g, f.x + 8 + tw / 2, f.y, f.label, { size: 5, fill: d.accent || txt, weight: 700, ls: 1 });
       }
     }
-    formKit.tzBadge(g, w / 2, h - 8, txt, 4.2);
+    const bdg = formKit.tzBadge(g, d.badgeX ?? w / 2, h - 8, txt, 4.2);
+    if (d.badgeAnchor) bdg.setAttribute('text-anchor', d.badgeAnchor);
     const theme = { text: txt, knob: d.knob || 'chrome', labelSize: d.labelSize || 6, labelLs: 0.6 };
     formKit.placeControls(ctx, d.controls, theme);
     const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jy0 ?? (d.series === 'align' ? 176 : 56), gap: d.jgap ?? 22 });
@@ -235,7 +236,7 @@ export default function register(tz) {
     // Align Active DI (utility)
     B({
       id: 'lrb.alignactivedi', name: 'Aligned Active DI', ref: 'LR Baggs Align Active DI', logo: 'ACTIVE DI', logoSize: 12, series: 'align', typeName: 'Active DI box', cat: 'Utility', kind: 'Utility',
-      color: '#2b2c30', accent: '#b8b0a0', fw: 128, fh: 214, knob: 'mxr', cost: 0.1,
+      color: '#2b2c30', accent: '#b8b0a0', fw: 128, fh: 214, knob: 'mxr', cost: 0.1, badgeX: 118, badgeAnchor: 'end',
       algo: 'di', ports: { ins: ['INPUT'], outs: ['XLR DI OUT', 'THRU'] }, jackKinds: { o0: 'xlr' }, alwaysOn: true,
       controls: [
         at(K('vol', 'VOLUME', dB(-24, 12, 6)), 64, 44, { r: 14, virtual: true }),
