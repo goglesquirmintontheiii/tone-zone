@@ -1,0 +1,11 @@
+{
+  "id": "soldano",
+  "name": "Soldano",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Soldano gear.",
+  "kind": "brand",
+  "brand": "Soldano",
+  "main": "index.js",
+  "api": 1
+}

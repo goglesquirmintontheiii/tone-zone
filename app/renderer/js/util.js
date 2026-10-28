@@ -62,6 +62,7 @@ export function luminance(hex) {
 class Bus {
   constructor() { this.m = new Map(); }
   on(ev, fn) { if (!this.m.has(ev)) this.m.set(ev, new Set()); this.m.get(ev).add(fn); return () => this.m.get(ev).delete(fn); }
+  off(ev, fn) { const s = this.m.get(ev); if (s) s.delete(fn); }
   emit(ev, ...a) { const s = this.m.get(ev); if (s) for (const fn of [...s]) fn(...a); }
 }
 export const bus = new Bus();

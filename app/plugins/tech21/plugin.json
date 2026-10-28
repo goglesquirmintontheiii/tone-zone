@@ -1,0 +1,11 @@
+{
+  "id": "tech21",
+  "name": "Tech 21",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Tech 21 gear.",
+  "kind": "brand",
+  "brand": "Tech 21",
+  "main": "index.js",
+  "api": 1
+}

@@ -100,7 +100,8 @@ export function initBrowser(editor) {
   fBtn.onclick = () => { F.open = !F.open; fBtn.classList.toggle('on', F.open); panel.classList.toggle('open', F.open); saveFilters(); };
   const kinds = el('div', { class: 'filter-row kinds' }, chips);
   for (const k of ['All', ...KINDS]) {
-    const b = el('button', { class: 'chip' + (F.kind === k ? ' on' : '') }, kinds, k === 'All' ? 'All' : k + 's');
+    const plural = { All: 'All', Utility: 'Utilities', 'Multi-FX': 'Multi-FX' };
+    const b = el('button', { class: 'chip' + (F.kind === k ? ' on' : '') }, kinds, plural[k] || k + 's');
     b.onclick = () => { F.kind = k; kinds.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b)); changed(); };
   }
   const panel = el('div', { class: 'filter-panel' + (F.open ? ' open' : '') }, chips);
@@ -157,7 +158,7 @@ export function initBrowser(editor) {
     active.innerHTML = '';
     const tags = [];
     if (F.favOnly) tags.push(['★ Favourites', () => { F.favOnly = false; favBtn.classList.remove('on'); }]);
-    if (F.kind !== 'All') tags.push([F.kind + 's', () => { F.kind = 'All'; kinds.querySelectorAll('.chip').forEach((x, i) => x.classList.toggle('on', i === 0)); }]);
+    if (F.kind !== 'All') tags.push([{ Utility: 'Utilities', 'Multi-FX': 'Multi-FX' }[F.kind] || F.kind + 's', () => { F.kind = 'All'; kinds.querySelectorAll('.chip').forEach((x, i) => x.classList.toggle('on', i === 0)); }]);
     for (const c of F.cats) tags.push([c, () => (F.cats = F.cats.filter((x) => x !== c))]);
     for (const b of F.brands) tags.push([b, () => (F.brands = F.brands.filter((x) => x !== b))]);
     if (F.channels !== 'Any') tags.push([F.channels, () => (F.channels = 'Any')]);

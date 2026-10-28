@@ -3,6 +3,7 @@ import { bus, toast, el, clamp } from './util.js';
 import { Editor } from './editor.js';
 import { initBrowser, isFavorite, toggleFavorite } from './browser.js';
 import { makeDockable } from './panels.js';
+import { loadPlugins } from './plugins.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, CABLE_COLORS } from './state.js';
@@ -19,6 +20,8 @@ let editor;
 
 async function boot() {
   state.settings = await window.tz.settings.get();
+  state.appVersion = (await window.tz.app.info()).version;
+  await loadPlugins();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
   editor = new Editor();
   window.__tz = { editor, state, removeBlocks, loadPreset, buildGraph };

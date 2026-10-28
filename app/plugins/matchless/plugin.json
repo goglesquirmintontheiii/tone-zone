@@ -1,0 +1,11 @@
+{
+  "id": "matchless",
+  "name": "Matchless",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Matchless gear.",
+  "kind": "brand",
+  "brand": "Matchless",
+  "main": "index.js",
+  "api": 1
+}

@@ -1,0 +1,11 @@
+{
+  "id": "gallien-krueger",
+  "name": "Gallien-Krueger",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Gallien-Krueger gear.",
+  "kind": "brand",
+  "brand": "Gallien-Krueger",
+  "main": "index.js",
+  "api": 1
+}

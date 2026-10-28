@@ -1,0 +1,11 @@
+{
+  "id": "ampeg",
+  "name": "Ampeg",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Ampeg gear.",
+  "kind": "brand",
+  "brand": "Ampeg",
+  "main": "index.js",
+  "api": 1
+}

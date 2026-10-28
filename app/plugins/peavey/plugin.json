@@ -1,0 +1,11 @@
+{
+  "id": "peavey",
+  "name": "Peavey",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Peavey gear.",
+  "kind": "brand",
+  "brand": "Peavey",
+  "main": "index.js",
+  "api": 1
+}

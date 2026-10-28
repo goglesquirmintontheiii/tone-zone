@@ -1,0 +1,11 @@
+{
+  "id": "line6",
+  "name": "Line 6",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Multi-effects inspired by Line 6 gear.",
+  "kind": "brand",
+  "brand": "Line 6",
+  "main": "index.js",
+  "api": 1
+}

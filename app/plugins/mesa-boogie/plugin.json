@@ -1,0 +1,11 @@
+{
+  "id": "mesa-boogie",
+  "name": "Mesa/Boogie",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Mesa/Boogie gear.",
+  "kind": "brand",
+  "brand": "Mesa/Boogie",
+  "main": "index.js",
+  "api": 1
+}

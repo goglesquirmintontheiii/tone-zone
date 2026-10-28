@@ -1,0 +1,11 @@
+{
+  "id": "celestion",
+  "name": "Celestion",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Celestion gear.",
+  "kind": "brand",
+  "brand": "Celestion",
+  "main": "index.js",
+  "api": 1
+}

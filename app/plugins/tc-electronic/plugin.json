@@ -1,0 +1,11 @@
+{
+  "id": "tc-electronic",
+  "name": "TC Electronic",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by TC Electronic gear.",
+  "kind": "brand",
+  "brand": "TC Electronic",
+  "main": "index.js",
+  "api": 1
+}

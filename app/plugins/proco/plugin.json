@@ -1,0 +1,11 @@
+{
+  "id": "proco",
+  "name": "ProCo",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by ProCo gear.",
+  "kind": "brand",
+  "brand": "ProCo",
+  "main": "index.js",
+  "api": 1
+}

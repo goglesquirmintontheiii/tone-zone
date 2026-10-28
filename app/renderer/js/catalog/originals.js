@@ -1,8 +1,6 @@
 // Tone Zone original designs: one per DSP algorithm with full access to its parameters, plus studio utilities.
 import { K, SEL, TOG, BTN, FOOT, LED, SCREEN, def, ms, db, MONO, STEREO, MONO_TO_ST, STD } from './helpers.js';
-
-const TZ = (o) => def(Object.assign({ form: 'tz', brand: 'Tone Zone', ref: 'Tone Zone original' }, o, { controls: [...(o.controls || []), ...(o.noStd ? [] : STD(o.led))] }));
-const UT = (o) => def(Object.assign({ form: 'util', brand: 'Tone Zone', ref: 'Utility', cat: 'Utility', cost: 0.05 }, o, { controls: [...(o.controls || []), ...(o.noFoot ? [] : [FOOT(), LED({ color: '#3ddc84' })])] }));
+import { TZ, UT, AMP, CAB, k } from './builders.js';
 
 export const originals = [
   // drives
@@ -100,6 +98,12 @@ export const originals = [
 ];
 
 // Audio interface endpoints (always present, cannot be deleted)
+// generic (not brand-specific) amp / cab
+export const coreGear = [
+AMP({ id: 'amp.acoustic', name: 'Acoustic DI Pre', brand: 'Tone Zone', ref: 'Tone Zone original', cat: 'Preamp', opts: { model: 'acoustic' }, tolex: '#4b3324', panel: '#d9c7a4', panelText: '#2a1d10', grille: 'brown', headGrille: false, logo: 'Acoustic', logoColor: '#f3e7cf', knob: 'cream', controls: [k('gain', 'GAIN'), k('bass', 'BASS'), k('mid', 'MIDDLE'), k('treble', 'TREBLE')] }),
+CAB({ id: 'cab.4x10bass', name: '4x10 Bass', brand: 'Tone Zone', ref: 'Tone Zone original', typeName: '4x10 bass cab with horn', opts: { model: '4x10bass' }, cabSize: '4x10', grille: 'black', logo: 'TZ 410', logoFont: "'Oswald', sans-serif", logoColor: '#ddd', bass: true }),
+];
+
 export const ioDefs = [
   def({ id: '__in', name: 'Audio In', cat: 'I/O', form: 'io', io: 'in', algo: null, ports: { ins: [], outs: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R'] }, controls: [], fixedNode: true }),
   def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R'], outs: [] }, controls: [], fixedNode: true }),

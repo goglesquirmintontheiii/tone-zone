@@ -1,0 +1,11 @@
+{
+  "id": "marshall",
+  "name": "Marshall",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Marshall gear.",
+  "kind": "brand",
+  "brand": "Marshall",
+  "main": "index.js",
+  "api": 1
+}

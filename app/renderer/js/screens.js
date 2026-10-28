@@ -297,3 +297,8 @@ const SCREENS = {
 };
 
 export const TUNING_NAMES = TUNINGS;
+
+export function registerScreen(kind, impl) {
+  if (SCREENS[kind] && !impl.override) throw new Error(`screen "${kind}" already exists`);
+  SCREENS[kind] = impl;
+}

@@ -22,13 +22,18 @@ function findEngine(appRoot, isPackaged) {
   const dirs = isPackaged
     ? [path.join(process.resourcesPath, 'engine')]
     : [path.join(appRoot, '..', 'engine', 'dist'), path.join(appRoot, '..', 'engine', 'build-v3'), path.join(appRoot, '..', 'engine', 'build')];
+  if (process.env.TZ_ENGINE && fs.existsSync(process.env.TZ_ENGINE)) return process.env.TZ_ENGINE;
+  const found = [];
   for (const d of dirs) {
     for (const n of names.concat(['tonezone-engine'])) {
       const p = path.join(d, n);
-      if (fs.existsSync(p)) return p;
+      if (fs.existsSync(p)) found.push(p);
     }
   }
-  return null;
+  if (!found.length) return null;
+  if (isPackaged) return found[0];
+  // development: use the most recently built binary
+  return found.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
 }
 
 class EngineHost extends EventEmitter {

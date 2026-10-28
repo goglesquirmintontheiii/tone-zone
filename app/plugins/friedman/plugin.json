@@ -1,0 +1,11 @@
+{
+  "id": "friedman",
+  "name": "Friedman",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Friedman gear.",
+  "kind": "brand",
+  "brand": "Friedman",
+  "main": "index.js",
+  "api": 1
+}

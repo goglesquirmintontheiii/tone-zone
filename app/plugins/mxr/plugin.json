@@ -1,0 +1,11 @@
+{
+  "id": "mxr",
+  "name": "MXR",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by MXR gear.",
+  "kind": "brand",
+  "brand": "MXR",
+  "main": "index.js",
+  "api": 1
+}

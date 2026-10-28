@@ -1,0 +1,11 @@
+{
+  "id": "bogner",
+  "name": "Bogner",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Bogner gear.",
+  "kind": "brand",
+  "brand": "Bogner",
+  "main": "index.js",
+  "api": 1
+}

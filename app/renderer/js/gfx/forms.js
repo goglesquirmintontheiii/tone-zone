@@ -694,3 +694,32 @@ export function renderForm(ctx, def) {
   }
   return res;
 }
+
+// ------------------------------------------------------------------ plugin access
+const builtinForms = new Set(Object.keys(forms));
+export function registerForm(name, fn) {
+  if (builtinForms.has(name)) throw new Error(`form "${name}" is built in`);
+  forms[name] = fn;
+}
+export function unregisterForm(name) {
+  if (!builtinForms.has(name)) delete forms[name];
+}
+export function hasForm(name) {
+  return !!forms[name];
+}
+// building blocks for custom enclosures (see docs/plugins.md)
+export const formKit = { body, screw, tzBadge, placeControls, drawScreenFrame, jacksSide, jacksTop, autoRow, callForm: (name, ctx, def) => forms[name](ctx, def) };
+
+// placeholder for blocks whose plugin is disabled or missing: dashed outline, passes audio through
+forms.missing = (ctx, def) => {
+  const w = 150, h = 190, g = ctx.g;
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 10, fill: '#15171c', stroke: '#ff4d5e', 'stroke-width': 1.6, 'stroke-dasharray': '6 5' }, g);
+  svg('path', { d: `M${w / 2} 40 l16 28 h-32 z`, fill: 'none', stroke: '#ffc24b', 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, g);
+  label(g, w / 2, 61, '!', { size: 14, fill: '#ffc24b', weight: 800 });
+  label(g, w / 2, 92, 'PLUGIN OFF', { size: 9, fill: '#ff8a95', weight: 800, ls: 1 });
+  const nm = (def.missingName || def.missingType || '').slice(0, 24);
+  label(g, w / 2, 110, nm, { size: 7, fill: '#c7ccd6', weight: 700 });
+  label(g, w / 2, 124, def.missingPlugin ? `needs “${def.missingPlugin}”` : 'unknown block', { size: 6.2, fill: '#8c94a6', weight: 600 });
+  label(g, w / 2, 160, 'audio passes through', { size: 5.8, fill: '#6b7385', weight: 600 });
+  return { w, h, theme: { text: '#ddd' }, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 40, gap: 30 }) };
+};

@@ -1,0 +1,11 @@
+{
+  "id": "roland",
+  "name": "Roland",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Roland gear.",
+  "kind": "brand",
+  "brand": "Roland",
+  "main": "index.js",
+  "api": 1
+}

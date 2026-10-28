@@ -25,6 +25,17 @@ contextBridge.exposeInMainWorld('tz', {
     openFolder: () => ipcRenderer.invoke('lib:openFolder'),
     pathForFile: (file) => (webUtils && webUtils.getPathForFile ? webUtils.getPathForFile(file) : file.path),
   },
+  plugins: {
+    list: () => ipcRenderer.invoke('plugins:list'),
+    setEnabled: (id, on) => ipcRenderer.invoke('plugins:setEnabled', id, on),
+    install: (kind) => ipcRenderer.invoke('plugins:install', kind),
+    installPath: (p) => ipcRenderer.invoke('plugins:installPath', p),
+    remove: (id) => ipcRenderer.invoke('plugins:remove', id),
+    openDir: () => ipcRenderer.invoke('plugins:openDir'),
+  },
+  sys: {
+    usbDevices: () => ipcRenderer.invoke('sys:usbDevices'),
+  },
   presets: {
     list: () => ipcRenderer.invoke('presets:list'),
     load: (f) => ipcRenderer.invoke('presets:load', f),

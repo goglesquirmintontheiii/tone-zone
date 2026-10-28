@@ -1,22 +1,48 @@
-// Block catalog registry: built-in definitions + user NAM / IR packs.
-import { realPedals } from './pedals.js';
-import { strymonPedals, podExpress } from './strymon.js';
-import { ampDefs, preampDefs, cabDefs } from './amps.js';
-import { originals, ioDefs } from './originals.js';
+// Block catalog registry: core Tone Zone blocks + blocks registered by plugins + user NAM / IR packs.
+import { originals, ioDefs, coreGear } from './originals.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
-export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Looper', 'Volume', 'Multi-FX', 'Utility', 'NAM', 'IR'];
+export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
 
 const registry = new Map();
+const byPlugin = new Map(); // plugin id -> Set(def ids)
 let packDefs = [];
 
 function finalize(d) {
   d.controls.forEach((c, i) => (c.cid = c.cid ?? 'c' + i));
-  d.search = [d.name, d.ref, d.brand, d.cat, d.code, d.typeName].filter(Boolean).join(' ').toLowerCase();
+  d.search = [d.name, d.ref, d.brand, d.cat, d.code, d.typeName, d.tags && d.tags.join(' ')].filter(Boolean).join(' ').toLowerCase();
   return d;
 }
 
-[...realPedals, ...strymonPedals, podExpress, ...ampDefs, ...preampDefs, ...cabDefs, ...originals, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...coreGear, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+
+// ---- plugin registration
+export function registerPluginDefs(pluginId, defs, defaults = {}) {
+  missingCache.clear();
+  const set = byPlugin.get(pluginId) || new Set();
+  byPlugin.set(pluginId, set);
+  const flat = defs.flat(3).filter(Boolean);
+  for (const d of flat) {
+    if (!d.id) throw new Error('block without id');
+    if (registry.has(d.id) && !set.has(d.id)) {
+      console.warn(`plugin ${pluginId}: block id ${d.id} already registered – skipped`);
+      continue;
+    }
+    d.plugin = pluginId;
+    if (!d.brand && defaults.brand) d.brand = defaults.brand;
+    registry.set(d.id, finalize(d));
+    set.add(d.id);
+  }
+  return flat.length;
+}
+export function unregisterPlugin(pluginId) {
+  missingCache.clear();
+  for (const id of byPlugin.get(pluginId) || []) registry.delete(id);
+  byPlugin.delete(pluginId);
+}
+export function pluginDefIds(pluginId) {
+  return [...(byPlugin.get(pluginId) || [])];
+}
 
 export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility'];
 export function kindOf(d) {
@@ -39,8 +65,39 @@ export function brandOf(d) {
   return d.ref ? d.ref.split(' ')[0] : null;
 }
 
+// remembered block → plugin names so a disabled plugin's blocks can say what they need
+let knownBlocks = {};
+try { knownBlocks = JSON.parse(localStorage.getItem('tz.knownBlocks') || '{}'); } catch {}
+export function rememberPluginBlocks(pluginName, ids) {
+  let changed = false;
+  for (const id of ids) {
+    const d = registry.get(id);
+    if (!d) continue;
+    const v = { plugin: pluginName, name: d.name, ports: d.ports, stereo: d.stereo };
+    if (JSON.stringify(knownBlocks[id]) !== JSON.stringify(v)) { knownBlocks[id] = v; changed = true; }
+  }
+  if (changed) try { localStorage.setItem('tz.knownBlocks', JSON.stringify(knownBlocks)); } catch {}
+}
+const missingCache = new Map();
+function missingDef(id) {
+  if (missingCache.has(id)) return missingCache.get(id);
+  const k = knownBlocks[id] || {};
+  const d = finalize(def({
+    id, name: k.name ? k.name + ' (unavailable)' : 'Unavailable block', missing: true, missingType: id, missingName: k.name, missingPlugin: k.plugin,
+    cat: 'Utility', form: 'missing', algo: 'thru', color: '#15171c', hidden: true,
+    ports: k.ports || { ins: ['IN 1', 'IN 2'], outs: ['OUT 1', 'OUT 2'] }, stereo: k.stereo || 'mono', controls: [], cost: 0,
+  }));
+  missingCache.set(id, d);
+  return d;
+}
 export function getDef(id) {
-  return registry.get(id);
+  const d = registry.get(id);
+  if (d) return d;
+  if (!id || id.startsWith('__')) return undefined;
+  return missingDef(id);
+}
+export function hasDef(id) {
+  return registry.has(id);
 }
 export function allDefs() {
   return [...registry.values()].filter((d) => !d.fixedNode && !d.hidden);

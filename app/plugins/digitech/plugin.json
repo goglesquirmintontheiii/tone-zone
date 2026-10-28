@@ -1,0 +1,11 @@
+{
+  "id": "digitech",
+  "name": "DigiTech",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by DigiTech gear.",
+  "kind": "brand",
+  "brand": "DigiTech",
+  "main": "index.js",
+  "api": 1
+}

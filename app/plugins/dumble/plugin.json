@@ -1,0 +1,11 @@
+{
+  "id": "dumble",
+  "name": "Dumble",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amps and cabs inspired by Dumble gear.",
+  "kind": "brand",
+  "brand": "Dumble",
+  "main": "index.js",
+  "api": 1
+}

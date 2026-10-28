@@ -4,6 +4,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, session, Menu, nativeTheme, 
 const path = require('path');
 const fs = require('fs');
 const lib = require('./library');
+const plugins = require('./plugins');
 const { EngineHost, findEngine } = require('./engine-host');
 
 const APP_ROOT = path.join(__dirname, '..');
@@ -179,6 +180,38 @@ function setupIpc() {
     return out;
   });
 
+  // ---- plugins
+  ipcMain.handle('plugins:list', () => plugins.list(APP_ROOT, lib.dataRoot(), settings.plugins || {}));
+  ipcMain.handle('plugins:setEnabled', (_e, id, on) => {
+    settings.plugins = Object.assign({}, settings.plugins, { [id]: !!on });
+    lib.saveSettings(settings);
+    return true;
+  });
+  ipcMain.handle('plugins:install', async (_e, kind) => {
+    const r = await dialog.showOpenDialog(win, kind === 'folder'
+      ? { title: 'Install plugin folder', properties: ['openDirectory'] }
+      : { title: 'Install plugin', properties: ['openFile'], filters: [{ name: 'Tone Zone plugin', extensions: ['zip', 'tzplugin'] }] });
+    if (r.canceled || !r.filePaths.length) return null;
+    return plugins.install(r.filePaths[0], lib.dataRoot());
+  });
+  ipcMain.handle('plugins:installPath', (_e, p) => plugins.install(p, lib.dataRoot()));
+  ipcMain.handle('plugins:remove', (_e, id) => plugins.remove(id, lib.dataRoot()));
+  ipcMain.handle('plugins:openDir', () => shell.openPath(plugins.userDir(lib.dataRoot())));
+  // ---- system info for device plugins (USB gear like a Line 6 Helix)
+  ipcMain.handle('sys:usbDevices', () => {
+    const base = '/sys/bus/usb/devices';
+    const out = [];
+    try {
+      for (const d of fs.readdirSync(base)) {
+        const p = path.join(base, d);
+        const rd = (f) => { try { return fs.readFileSync(path.join(p, f), 'utf8').trim(); } catch { return null; } };
+        const vid = rd('idVendor');
+        if (!vid) continue;
+        out.push({ bus: d, vendorId: vid, productId: rd('idProduct'), manufacturer: rd('manufacturer'), product: rd('product'), serial: rd('serial') });
+      }
+    } catch {}
+    return out;
+  });
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     dataDir: lib.dataRoot(),
