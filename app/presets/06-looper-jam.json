@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "name": "Looper Jam",
+  "blocks": [
+    {
+      "id": "b52",
+      "type": "bx.tu3",
+      "x": -146,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b53",
+      "type": "bx.bd2",
+      "x": -382,
+      "y": 120,
+      "params": {
+        "gain": 0.45
+      },
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b54",
+      "type": "amp.plexi",
+      "x": -942,
+      "y": 60,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b55",
+      "type": "cab.2x12cream",
+      "x": -1412,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b56",
+      "type": "bx.dd8",
+      "x": -1648,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "stereo"
+    },
+    {
+      "id": "b57",
+      "type": "bx.rc500",
+      "x": -2038,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "stereo"
+    },
+    {
+      "id": "__in",
+      "type": "__in",
+      "x": 120,
+      "y": 120,
+      "params": {}
+    },
+    {
+      "id": "__out",
+      "type": "__out",
+      "x": -2278,
+      "y": 120,
+      "params": {}
+    }
+  ],
+  "cables": [
+    {
+      "id": "c58",
+      "from": {
+        "node": "__in",
+        "port": 0
+      },
+      "to": {
+        "node": "b52",
+        "port": 0
+      },
+      "color": "#e8473d"
+    },
+    {
+      "id": "c59",
+      "from": {
+        "node": "b52",
+        "port": 0
+      },
+      "to": {
+        "node": "b53",
+        "port": 0
+      },
+      "color": "#f39c12"
+    },
+    {
+      "id": "c60",
+      "from": {
+        "node": "b53",
+        "port": 0
+      },
+      "to": {
+        "node": "b54",
+        "port": 0
+      },
+      "color": "#f1c40f"
+    },
+    {
+      "id": "c61",
+      "from": {
+        "node": "b54",
+        "port": 0
+      },
+      "to": {
+        "node": "b55",
+        "port": 0
+      },
+      "color": "#2ecc71"
+    },
+    {
+      "id": "c62",
+      "from": {
+        "node": "b55",
+        "port": 0
+      },
+      "to": {
+        "node": "b56",
+        "port": 0
+      },
+      "color": "#3498db"
+    },
+    {
+      "id": "c63",
+      "from": {
+        "node": "b56",
+        "port": 0
+      },
+      "to": {
+        "node": "b57",
+        "port": 0
+      },
+      "color": "#6c5ce7"
+    },
+    {
+      "id": "c64",
+      "from": {
+        "node": "b56",
+        "port": 1
+      },
+      "to": {
+        "node": "b57",
+        "port": 1
+      },
+      "color": "#6c5ce7"
+    },
+    {
+      "id": "c65",
+      "from": {
+        "node": "b57",
+        "port": 0
+      },
+      "to": {
+        "node": "__out",
+        "port": 0
+      },
+      "color": "#e84393"
+    },
+    {
+      "id": "c66",
+      "from": {
+        "node": "b57",
+        "port": 1
+      },
+      "to": {
+        "node": "__out",
+        "port": 1
+      },
+      "color": "#e84393"
+    }
+  ],
+  "view": null,
+  "factory": true
+}

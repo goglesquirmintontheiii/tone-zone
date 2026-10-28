@@ -1,0 +1,90 @@
+{
+  "name": "tone-zone",
+  "productName": "Tone Zone",
+  "version": "0.1.0",
+  "description": "Tone Zone - guitar & bass DSP workstation",
+  "main": "main/main.js",
+  "author": "goglesquirmintontheiii <goglesquirmintontheiii@gmail.com>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "presets": "node scripts/make-presets.js",
+    "dist": "electron-builder --linux AppImage --publish never"
+  },
+  "devDependencies": {
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/dancing-script": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/oswald": "^5.3.0",
+    "@fontsource/share-tech-mono": "^5.3.0",
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
+  "homepage": "https://github.com/goglesquirmintontheiii/tone-zone",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/goglesquirmintontheiii/tone-zone.git"
+  },
+  "build": {
+    "appId": "io.github.goglesquirmintontheiii.tonezone",
+    "productName": "Tone Zone",
+    "asar": true,
+    "files": [
+      "main/**",
+      "renderer/**",
+      "presets/**",
+      "build/icon.png",
+      "package.json",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "../engine/dist",
+        "to": "engine",
+        "filter": [
+          "tonezone-engine-*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "toolsets": {
+      "appimage": "1.0.3"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Audio",
+      "icon": "build/icon.png",
+      "executableName": "tone-zone",
+      "artifactName": "Tone-Zone-${version}-x86_64.${ext}",
+      "synopsis": "Guitar & bass DSP pedalboard with NAM support",
+      "description": "Tone Zone: a realtime guitar/bass DSP workstation for PipeWire with pedals, amps, cabs, NAM and IR support.",
+      "desktop": {
+        "entry": {
+          "Name": "Tone Zone",
+          "Comment": "Guitar & bass DSP pedalboard",
+          "Keywords": "guitar;bass;amp;nam;pedal;pipewire;jack;",
+          "StartupWMClass": "Tone Zone"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "appImage": {
+      "compression": "zstd"
+    }
+  },
+  "desktopName": "tone-zone.desktop"
+}

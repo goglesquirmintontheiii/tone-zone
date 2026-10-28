@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "name": "Wah into Fuzz",
+  "blocks": [
+    {
+      "id": "b92",
+      "type": "dn.gcb95",
+      "x": -152,
+      "y": 80,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b93",
+      "type": "tz.fuzzface",
+      "x": -392,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b94",
+      "type": "mx.m169",
+      "x": -610,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b95",
+      "type": "amp.twin",
+      "x": -1170,
+      "y": 0,
+      "params": {
+        "gain": 0.4
+      },
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "b96",
+      "type": "cab.2x12twin",
+      "x": -1640,
+      "y": 120,
+      "params": {},
+      "bypass": false,
+      "variant": "mono"
+    },
+    {
+      "id": "__in",
+      "type": "__in",
+      "x": 120,
+      "y": 120,
+      "params": {}
+    },
+    {
+      "id": "__out",
+      "type": "__out",
+      "x": -1880,
+      "y": 120,
+      "params": {}
+    }
+  ],
+  "cables": [
+    {
+      "id": "c97",
+      "from": {
+        "node": "__in",
+        "port": 0
+      },
+      "to": {
+        "node": "b92",
+        "port": 0
+      },
+      "color": "#e8473d"
+    },
+    {
+      "id": "c98",
+      "from": {
+        "node": "b92",
+        "port": 0
+      },
+      "to": {
+        "node": "b93",
+        "port": 0
+      },
+      "color": "#f39c12"
+    },
+    {
+      "id": "c99",
+      "from": {
+        "node": "b93",
+        "port": 0
+      },
+      "to": {
+        "node": "b94",
+        "port": 0
+      },
+      "color": "#f1c40f"
+    },
+    {
+      "id": "c100",
+      "from": {
+        "node": "b94",
+        "port": 0
+      },
+      "to": {
+        "node": "b95",
+        "port": 0
+      },
+      "color": "#2ecc71"
+    },
+    {
+      "id": "c101",
+      "from": {
+        "node": "b95",
+        "port": 0
+      },
+      "to": {
+        "node": "b96",
+        "port": 0
+      },
+      "color": "#3498db"
+    },
+    {
+      "id": "c102",
+      "from": {
+        "node": "b96",
+        "port": 0
+      },
+      "to": {
+        "node": "__out",
+        "port": 0
+      },
+      "color": "#6c5ce7"
+    },
+    {
+      "id": "c103",
+      "from": {
+        "node": "b96",
+        "port": 0
+      },
+      "to": {
+        "node": "__out",
+        "port": 1
+      },
+      "color": "#e84393"
+    }
+  ],
+  "view": null,
+  "factory": true
+}

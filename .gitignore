@@ -1,0 +1,6 @@
+node_modules/
+app/dist/
+engine/build*/
+engine/dist/
+*.log
+.DS_Store

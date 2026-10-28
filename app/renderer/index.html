@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; script-src 'self'; connect-src 'self'" />
+  <title>Tone Zone</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <defs>
+            <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset=".55" stop-color="#ff6a2b"/><stop offset="1" stop-color="#ff2d6f"/></linearGradient>
+          </defs>
+          <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#bm)"/>
+          <path d="M7 17c2.2 0 2.2-6 4.4-6s2.2 10 4.6 10 2.4-14 4.8-14 2.2 10 4.2 10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="brand-text"><span>TONE</span><b>ZONE</b></div>
+      </div>
+      <nav id="tabs">
+        <button data-tab="board" class="active"><i class="ic ic-board"></i>Board</button>
+        <button data-tab="library"><i class="ic ic-lib"></i>Library</button>
+        <button data-tab="tone3000"><i class="ic ic-cloud"></i>TONE3000</button>
+        <button data-tab="capture"><i class="ic ic-mic"></i>Capture</button>
+        <button data-tab="settings"><i class="ic ic-gear"></i>Settings</button>
+        <span class="tab-ink"></span>
+      </nav>
+      <div id="presetbar">
+        <button class="icon-btn" id="presetPrev" title="Previous preset"><i class="ic ic-left"></i></button>
+        <button id="presetName" title="Presets"><span class="pn-label">Preset</span><span class="pn-name">Untitled</span><span class="pn-dirty" title="Unsaved changes"></span><i class="ic ic-down"></i></button>
+        <button class="icon-btn" id="presetNext" title="Next preset"><i class="ic ic-right"></i></button>
+        <button class="btn btn-accent" id="presetSave" title="Save (Ctrl+S)"><i class="ic ic-save"></i>Save</button>
+      </div>
+      <div id="meters">
+        <div class="meter-group" title="DSP load (budget marker)">
+          <label>DSP</label>
+          <div class="dsp-meter"><div class="fill"></div><div class="budget"></div></div>
+          <span class="val" id="dspVal">0%</span>
+        </div>
+        <div class="meter-group" title="Round-trip latency reported by PipeWire">
+          <label>LAT</label><span class="val" id="latVal">–</span>
+        </div>
+        <div class="meter-group io" title="Input / output level">
+          <label>IN</label><div class="vu" id="vuIn"><i></i></div>
+          <label>OUT</label><div class="vu" id="vuOut"><i></i></div>
+        </div>
+        <div class="engine-dot" id="engineDot" title="Audio engine"></div>
+      </div>
+    </header>
+
+    <main id="views">
+      <!-- BOARD -->
+      <section class="view active" id="view-board">
+        <aside id="browser">
+          <div class="browser-head">
+            <div class="search"><i class="ic ic-search"></i><input id="blockSearch" placeholder="Search pedals, amps, cabs…" spellcheck="false" /></div>
+            <div id="catChips" class="chips"></div>
+          </div>
+          <div id="blockList" class="block-list"></div>
+          <div class="browser-foot">Drag a block onto the board · double-click to add</div>
+        </aside>
+        <div id="boardWrap">
+          <div id="board" tabindex="0">
+            <svg id="boardSvg" xmlns="http://www.w3.org/2000/svg">
+              <defs id="globalDefs"></defs>
+              <g id="viewport">
+                <g id="layerNodes"></g>
+                <g id="layerCableShadows"></g>
+                <g id="layerCables"></g>
+                <g id="layerPlugs"></g>
+                <g id="layerDrag"></g>
+              </g>
+            </svg>
+          </div>
+          <div id="boardToolbar">
+            <button class="icon-btn" id="zoomOut" title="Zoom out"><i class="ic ic-minus"></i></button>
+            <span id="zoomVal">100%</span>
+            <button class="icon-btn" id="zoomIn" title="Zoom in"><i class="ic ic-plus"></i></button>
+            <button class="icon-btn" id="zoomFit" title="Fit board (F)"><i class="ic ic-fit"></i></button>
+            <span class="sep"></span>
+            <button class="icon-btn" id="undoBtn" title="Undo (Ctrl+Z)"><i class="ic ic-undo"></i></button>
+            <button class="icon-btn" id="redoBtn" title="Redo (Ctrl+Shift+Z)"><i class="ic ic-redo"></i></button>
+            <span class="sep"></span>
+            <div class="cable-color-pick" id="cableColorPick" title="Colour for new cables"></div>
+            <button class="icon-btn" id="autoLayout" title="Tidy layout"><i class="ic ic-magic"></i></button>
+          </div>
+          <div id="boardHint"></div>
+        </div>
+        <aside id="inspector" class="collapsed">
+          <div class="insp-empty">
+            <i class="ic ic-pointer big"></i>
+            <p>Select a block to see all of its controls, variants and DSP cost.</p>
+          </div>
+          <div class="insp-body"></div>
+        </aside>
+      </section>
+
+      <!-- LIBRARY -->
+      <section class="view" id="view-library"></section>
+      <!-- TONE3000 -->
+      <section class="view" id="view-tone3000"></section>
+      <!-- CAPTURE -->
+      <section class="view" id="view-capture"></section>
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings"></section>
+    </main>
+  </div>
+
+  <div id="menuLayer"></div>
+  <div id="modalLayer"></div>
+  <div id="toasts"></div>
+  <div id="dropOverlay"><div><i class="ic ic-lib big"></i><p>Drop .nam, .wav or .zip files to import</p></div></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
