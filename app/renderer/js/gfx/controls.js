@@ -1,5 +1,6 @@
 // Interactive control graphics: knobs, selectors, toggles, buttons, footswitches, LEDs, sliders, treadles.
 import { svg, clamp, shade, luminance } from '../util.js';
+import { haloFill, setA } from './fx.js';
 
 export const KNOB_SWEEP = 270; // degrees
 export const angleFor = (v01, sweep = KNOB_SWEEP) => -sweep / 2 + sweep * clamp(v01, 0, 1);
@@ -46,7 +47,7 @@ export function drawKnob(parent, ctl, theme) {
       if (ctl.scale === 10) text(g, Math.sin(a) * (r + 10), -Math.cos(a) * (r + 10), String(i), { size: 5.5, fill: theme.text, weight: 600 });
     }
   }
-  svg('circle', { r: r + 0.6, cy: 2.2, fill: '#000', opacity: 0.55, filter: 'url(#f-small)' }, g);
+  svg('circle', { r: r + 2.6, cy: 2.4, fill: 'url(#g-knobShadow)', opacity: 0.8 }, g);
   const rot = svg('g', { class: 'knob-rot' }, g);
   if (style === 'chicken' || style === 'vox') {
     const col = style === 'vox' ? 'url(#g-cream)' : ctl.cap === 'white' ? 'url(#g-whiteKnob)' : 'url(#g-knobBlack)';
@@ -134,8 +135,7 @@ export function drawSelector(parent, ctl, theme) {
     set(idx) {
       k.set(n > 1 ? idx / (n - 1) : 0.5);
       ring.forEach((d, i) => {
-        d.setAttribute('fill', i === idx && i > 0 ? '#ff3020' : i === idx ? '#555' : '#2a0d0d');
-        d.setAttribute('filter', i === idx && i > 0 ? 'url(#f-glowSoft)' : '');
+        setA(d, 'fill', i === idx && i > 0 ? '#ff3020' : i === idx ? '#555' : '#2a0d0d');
       });
     },
     sweep,
@@ -215,16 +215,20 @@ export function drawButton(parent, ctl, theme) {
     svg('circle', { r: r * 0.6, cx: -r * 0.2, cy: -r * 0.25, fill: '#fff', opacity: 0.12 }, g);
   }
   let led = null;
-  if (ctl.led) led = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 2, class: 'led', fill: '#3a1010' }, g);
+  let ledHalo = null;
+  if (ctl.led) {
+    led = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 2, class: 'led', fill: '#3a1010' }, g);
+    ledHalo = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 6, fill: haloFill(ctl.ledColor || '#4aa8ff'), opacity: 0, 'pointer-events': 'none' }, g);
+  }
   if (ctl.label) text(g, 0, ctl.labelPos === 'above' ? -r - 8 : r + 8, ctl.label, { size: ctl.labelSize || 5.6, fill: theme.text, weight: 700 });
   return {
     g,
     set(on) {
       if (led) {
-        led.setAttribute('fill', on ? ctl.ledColor || '#4aa8ff' : '#151a22');
-        led.setAttribute('filter', on ? 'url(#f-glowSoft)' : '');
+        setA(led, 'fill', on ? ctl.ledColor || '#4aa8ff' : '#151a22');
+        if (ledHalo) setA(ledHalo, 'opacity', on ? 0.9 : 0);
       }
-      capEl.setAttribute('opacity', on && !led ? 0.85 : 1);
+      setA(capEl, 'opacity', on && !led ? 0.85 : 1);
     },
     press(p) {
       g.setAttribute('transform', `translate(${ctl.x},${ctl.y + (p ? 0.6 : 0)})`);
@@ -238,6 +242,7 @@ export function drawLed(parent, ctl) {
   const r = ctl.r || 3;
   svg('circle', { r: r + 1.3, fill: ctl.bezel || 'url(#g-chrome)' }, g);
   const lens = svg('circle', { r, class: 'led', fill: offColor(ctl.color || '#ff2a1a') }, g);
+  const halo = svg('circle', { r: r * 3.4, opacity: 0, 'pointer-events': 'none' }, g);
   svg('circle', { r: r * 0.95, fill: 'url(#g-ledLens)' }, g);
   if (ctl.label) text(g, 0, -r - 6, ctl.label, { size: 5.5, fill: ctl.textColor || '#222', weight: 700 });
   let cur = null;
@@ -250,10 +255,11 @@ export function drawLed(parent, ctl) {
       cur = c;
       if (!c) {
         lens.setAttribute('fill', offColor(ctl.color || '#ff2a1a'));
-        lens.removeAttribute('filter');
+        halo.setAttribute('opacity', 0);
       } else {
         lens.setAttribute('fill', c);
-        lens.setAttribute('filter', 'url(#f-glow)');
+        halo.setAttribute('fill', haloFill(c));
+        halo.setAttribute('opacity', 1);
       }
     },
   };
@@ -293,7 +299,7 @@ export function drawFoot(parent, ctl, theme) {
     svg('circle', { r, fill: 'url(#g-knobBlack)' }, inner);
   } else {
     const r = ctl.r || 11;
-    svg('circle', { r: r + 4, cy: 2.5, fill: '#000', opacity: 0.5, filter: 'url(#f-small)' }, inner);
+    svg('circle', { r: r + 6, cy: 2.8, fill: 'url(#g-knobShadow)', opacity: 0.75 }, inner);
     svg('polygon', { points: hex(r + 3.5), fill: 'url(#g-nut)', stroke: '#2a2d31', 'stroke-width': 0.5 }, inner);
     svg('circle', { r: r + 0.5, fill: 'url(#g-chrome)' }, inner);
     svg('circle', { r: r - 1.2, fill: 'none', stroke: '#000', 'stroke-width': 1.4, 'stroke-dasharray': '0.8 1', opacity: 0.35 }, inner);
@@ -337,8 +343,7 @@ export function drawSlider(parent, ctl, theme) {
     },
     led(on) {
       if (led) {
-        led.setAttribute('fill', on ? ctl.ledColor || '#3fa8ff' : '#0b1a2a');
-        led.setAttribute('filter', on ? 'url(#f-glowSoft)' : '');
+        setA(led, 'fill', on ? ctl.ledColor || '#3fa8ff' : '#0b1a2a');
       }
     },
     h,

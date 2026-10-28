@@ -251,7 +251,7 @@ public:
       const float ph = float(lfo.phase);
       lfo.next(0);
       const float tri = LFO::value(ph, 1);
-      const float sq = std::tanh(tri * (1.f + 30.f * wave)) / std::tanh(1.f + 30.f * wave);
+      const float sq = fastTanh(tri * (1.f + 30.f * wave)) / fastTanh(1.f + 30.f * wave);
       float m = sm.next(lerp(tri, sq, wave)); // -1..1
       for (int c = 0; c < std::max(1, nOut); ++c)
       {
@@ -269,7 +269,7 @@ public:
           float g = 1.f - depth * 0.5f * (1.f + mm);
           if (mode == 2) g = std::pow(std::max(0.f, g), 1.6f); // bias trem: more "throb"
           y = x * g;
-          if (mode == 2) y = std::tanh(y * 1.4f) / 1.2f;
+          if (mode == 2) y = fastTanh(y * 1.4f) / 1.2f;
         }
         out[c][i] = y * lvl;
       }
@@ -320,7 +320,7 @@ public:
         for (int s = 0; s < 4; ++s) ap[c][s].setFreq(base[s] * sweep, sr);
         for (int k = 0; k < m; ++k)
         {
-          const float x = std::tanh(in[std::min(c, nIn - 1)][i + k] * drive) / drive;
+          const float x = fastTanh(in[std::min(c, nIn - 1)][i + k] * drive) / drive;
           float y = x;
           for (int s = 0; s < 4; ++s) y = ap[c][s].process(y);
           float o = vib ? y : 0.5f * (x + y) * 1.3f;
@@ -379,7 +379,7 @@ public:
       if (hornPh > 1) hornPh -= 1;
       if (drumPh > 1) drumPh -= 1;
       const float x0 = nIn > 1 ? 0.5f * (in[0][i] + in[1][i]) : in[0][i];
-      const float x = std::tanh(x0 * drive) / std::sqrt(drive);
+      const float x = fastTanh(x0 * drive) / std::sqrt(drive);
       for (int c = 0; c < std::max(1, nOut); ++c)
       {
         const float off = c == 0 ? 0.f : 0.25f; // mics at 90 degrees

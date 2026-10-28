@@ -18,6 +18,27 @@ function finalize(d) {
 
 [...realPedals, ...strymonPedals, podExpress, ...ampDefs, ...preampDefs, ...cabDefs, ...originals, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
+export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility'];
+export function kindOf(d) {
+  if (d.kind) return d.kind;
+  if (d.cat === 'Amp' || d.cat === 'Bass Amp') return 'Amp';
+  if (d.cat === 'Preamp') return 'Preamp';
+  if (d.cat === 'Cab' || d.cat === 'Bass Cab' || d.cat === 'IR') return 'Cab';
+  if (d.cat === 'Multi-FX') return 'Multi-FX';
+  if (d.cat === 'Utility' && (d.form === 'util' || d.hardwired)) return 'Utility';
+  if (d.cat === 'NAM') return d.packCat === 'cab' ? 'Cab' : 'Amp';
+  return 'Pedal';
+}
+export function isOriginal(d) {
+  return !d.pack && (d.brand === 'Tone Zone' || d.ref === 'Tone Zone original' || d.ref === 'Utility');
+}
+export function brandOf(d) {
+  if (d.pack) return null;
+  if (isOriginal(d)) return 'Tone Zone';
+  if (d.brand) return d.brand;
+  return d.ref ? d.ref.split(' ')[0] : null;
+}
+
 export function getDef(id) {
   return registry.get(id);
 }

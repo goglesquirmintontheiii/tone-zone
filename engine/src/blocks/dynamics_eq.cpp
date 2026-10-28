@@ -76,7 +76,7 @@ public:
       {
         const float x = in[std::min(c, nIn - 1)][i];
         float y = x * g;
-        if (type == "ota") y = std::tanh(y * 1.2f) / 1.2f;
+        if (type == "ota") y = fastTanh(y * 1.2f) / 1.2f;
         y = toneHs[c].process(y);
         out[std::min(c, nOut - 1)][i] = y * blend + x * (1.f - blend);
       }

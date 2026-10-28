@@ -1,5 +1,6 @@
 // Shared SVG <defs>: gradients, patterns and filters used by every pedal / amp / cab graphic.
 import { svg } from '../util.js';
+import { noisePattern, setFxDefs } from './fx.js';
 
 let installed = false;
 
@@ -17,6 +18,10 @@ function rad(defs, id, stops, cx = 0.5, cy = 0.5, r = 0.5, fx, fy) {
 export function installDefs(defs) {
   if (installed && defs.childNodes.length) return;
   installed = true;
+  setFxDefs(defs);
+  noisePattern(defs, 'p-grain', 48, 96, [255, 255, 255], 0, 0.1, 1);
+  noisePattern(defs, 'p-tolex', 40, 64, [0, 0, 0], 0.05, 0.6, 1);
+  rad(defs, 'g-knobShadow', [[0, '#000', 0.75], [0.7, '#000', 0.45], [1, '#000', 0]]);
   // ---- shading overlays
   lin(defs, 'g-shadeV', [[0, '#fff', 0.28], [0.12, '#fff', 0.1], [0.45, '#fff', 0], [0.85, '#000', 0.14], [1, '#000', 0.32]]);
   lin(defs, 'g-shadeH', [[0, '#000', 0.22], [0.08, '#000', 0], [0.92, '#000', 0], [1, '#000', 0.28]], 0, 0, 1, 0);

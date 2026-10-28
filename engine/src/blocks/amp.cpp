@@ -363,7 +363,7 @@ public:
         const float a = std::fabs(v) / m.pwrH;
         ch.sagEnv += (a > ch.sagEnv ? sagA : sagR) * (a - ch.sagEnv);
         const float H = m.pwrH / (1.f + sagAmt * ch.sagEnv);
-        if (m.power == 1) v = H * std::tanh(v / H) * (1.f - 0.05f * std::tanh(v / H) * std::tanh(v / H));
+        if (m.power == 1) v = H * fastTanh(v / H) * (1.f - 0.05f * fastTanh(v / H) * fastTanh(v / H));
         else if (m.power == 2) v = H * shape::asym(v / H, 0.18f);
         else v = H * shape::hard(v / H, 4.f);
         v = ch.otHp.processHP(v);

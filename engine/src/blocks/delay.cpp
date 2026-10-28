@@ -210,8 +210,8 @@ public:
         w = hpf[c].processHP(w);
         switch (mode)
         {
-          case DAnalog: w = bbdLp[c].process(w); w = std::tanh(w * 1.3f) / 1.3f; break;
-          case DTape: w = ageLp[c].processLP(lpf[c].processLP(w)); w = std::tanh(w * sat) / sat; break;
+          case DAnalog: w = bbdLp[c].process(w); w = fastTanh(w * 1.3f) / 1.3f; break;
+          case DTape: w = ageLp[c].processLP(lpf[c].processLP(w)); w = fastTanh(w * sat) / sat; break;
           case DLofi: { w = lpf[c].processLP(w); const float q = 256.f; w = std::round(w * q) / q; break; }
           case DShimmer: w = lpf[c].processLP(shift[c].process(w, 2.0f)) * 0.8f; break;
           case DWarp: w = diff[c].process(lpf[c].processLP(w)); break;
@@ -301,7 +301,7 @@ public:
           // pre-emphasis -> tape curve -> de-emphasis
           const float lo = emph[c].processLP(x);
           float e = lo + (x - lo) * 1.6f;
-          e = std::tanh(e * drive) / std::sqrt(drive) * 1.15f;
+          e = fastTanh(e * drive) / std::sqrt(drive) * 1.15f;
           x = lp[c].processLP(hp[c].processHP(e));
           x *= vol;
         }

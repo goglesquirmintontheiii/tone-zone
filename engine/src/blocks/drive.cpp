@@ -213,13 +213,13 @@ public:
   {
     switch (v.clip)
     {
-      case CTs: return std::tanh(x * 0.9f) * 0.9f;
+      case CTs: return fastTanh(x * 0.9f) * 0.9f;
       case CDiode: return shape::diode(x * 0.8f);
       case CAsym: return shape::asym(x, v.bias) * 0.95f;
       case COpamp:
       {
         // op-amp rail clip with slew-rate limiting, then hard diodes to ground
-        float y = 4.5f * std::tanh(x / 4.5f);
+        float y = 4.5f * fastTanh(x / 4.5f);
         if (slewMax > 0)
         {
           const float d = clampf(y - s.slewY, -slewMax, slewMax);
@@ -235,9 +235,9 @@ public:
         const float b = v.bias - 0.25f * clampf(s.env * 2.f, 0.f, 1.f);
         return shape::fuzzGe(x, b);
       }
-      case CSi: return std::tanh(x * 1.5f + 0.12f) - std::tanh(0.12f);
+      case CSi: return fastTanh(x * 1.5f + 0.12f) - fastTanh(0.12f);
       case CMuff: return shape::hard(x, 2.0f);
-      case CLed: return std::tanh(x * 0.55f) * 1.6f;
+      case CLed: return fastTanh(x * 0.55f) * 1.6f;
       case CJfet: return shape::tube(x * 0.8f, v.bias) * 1.1f;
       case CTube: return shape::tube(x, v.bias);
       case CMosfet: return shape::asym(x * 0.9f, v.bias * 0.5f);

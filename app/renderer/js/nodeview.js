@@ -5,6 +5,7 @@ import { getDef } from './catalog/index.js';
 import { state, uiParams, nodePorts, engineParamsFor } from './state.js';
 import { drawScreen } from './screens.js';
 import { drawLed } from './gfx/controls.js';
+import { setA, setText } from './gfx/fx.js';
 
 export function knobPos(c, v) {
   const min = c.min ?? 0, max = c.max ?? 1;
@@ -59,17 +60,19 @@ export class NodeView {
     }
     // selection ring + load badge
     svg('rect', { class: 'sel-ring', x: -5, y: -5, width: this.w + 10, height: this.h + 10, rx: 14 }, this.g);
+    this.dim = svg('rect', { x: 0, y: 0, width: this.w, height: this.h, rx: 8, fill: '#05070a', opacity: 0, 'pointer-events': 'none' }, this.g);
     this.badge = svg('text', { class: 'load-badge', x: this.w - 2, y: this.h + 14, 'text-anchor': 'end', fill: '#8c94a6' }, this.g);
     if (old && old.parentNode) old.replaceWith(this.g);
     else this.layer.appendChild(this.g);
     this.updateControls();
     this.updateSelection();
+    this.setBypassVisual();
   }
 
   setPosition(x, y) {
     this.block.x = x;
     this.block.y = y;
-    this.g.setAttribute('transform', `translate(${x},${y})`);
+    setA(this.g, 'transform', `translate(${x},${y})`);
   }
 
   updateSelection() {
@@ -193,7 +196,11 @@ export class NodeView {
     const st = state.status.blocks[this.block.id] || {};
     this.updateLeds(now);
     for (const s of this.screens) drawScreen(s, this, st, now);
-    if (typeof st.load === 'number' && state.settings.showLoad !== false) this.badge.textContent = (st.load * 100).toFixed(1) + '%';
+    // load badge: 2 Hz is plenty (text changes are comparatively expensive to repaint)
+    if (now - (this._badgeT || 0) > 500) {
+      this._badgeT = now;
+      setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false ? (st.load * 100).toFixed(1) + '%' : '');
+    }
     if (this.ioMeters) {
       const peaks = this.def.io === 'in' ? state.status.inPeak : state.status.outPeak;
       if (peaks)
@@ -202,7 +209,7 @@ export class NodeView {
           const lit = Math.round(clamp((db + 54) / 54, 0, 1) * segs.length);
           segs.forEach((s, k) => {
             const col = k >= 9 ? '#ff4d5e' : k >= 7 ? '#ffc24b' : '#37d6c2';
-            s.setAttribute('fill', k < lit ? col : '#14181f');
+            setA(s, 'fill', k < lit ? col : '#14181f');
           });
         });
     }
@@ -210,7 +217,7 @@ export class NodeView {
 
   setBypassVisual() {
     this.updateLeds();
-    this.g.style.filter = this.block.bypass && !this.def.alwaysOn && !this.def.tunerBlock ? 'saturate(0.85) brightness(0.92)' : '';
+    if (this.dim) setA(this.dim, 'opacity', this.block.bypass && !this.def.alwaysOn && !this.def.tunerBlock ? 0.1 : 0);
   }
 }
 

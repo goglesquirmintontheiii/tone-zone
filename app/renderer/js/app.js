@@ -3,6 +3,7 @@ import { bus, toast, el, clamp } from './util.js';
 import { Editor } from './editor.js';
 import { initBrowser } from './browser.js';
 import { initInspector } from './inspector.js';
+import { buildGraph } from './state.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, CABLE_COLORS } from './state.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu } from './menus.js';
@@ -18,7 +19,7 @@ async function boot() {
   state.settings = await window.tz.settings.get();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
   editor = new Editor();
-  window.__tz = { editor, state };
+  window.__tz = { editor, state, removeBlocks, loadPreset, buildGraph };
   initBrowser(editor);
   initInspector(editor);
   initTabs();
@@ -111,25 +112,38 @@ function initTopbar() {
 }
 
 let peakHoldIn = 0, peakHoldOut = 0;
+const meterEls = {};
+const meterCache = {};
+function mset(key, fn, v) {
+  if (meterCache[key] === v) return;
+  meterCache[key] = v;
+  fn(v);
+}
 function updateMeters(st) {
-  const fill = document.querySelector('.dsp-meter .fill');
-  const meter = document.querySelector('.dsp-meter');
+  const $ = (k, sel) => meterEls[k] || (meterEls[k] = document.querySelector(sel));
   const budget = state.settings.budget ?? 0.75;
   const load = st.load || 0;
-  fill.style.width = clamp(load * 100, 0, 100) + '%';
-  document.querySelector('.dsp-meter .budget').style.left = budget * 100 + '%';
-  meter.classList.toggle('over', load > budget);
-  document.getElementById('dspVal').textContent = Math.round(load * 100) + '%';
-  document.getElementById('latVal').textContent = st.running ? st.latencyMs.toFixed(1) + ' ms' : '–';
-  const toW = (p) => clamp((20 * Math.log10(Math.max(p, 1e-6)) + 60) / 60, 0, 1) * 100;
+  // transforms only: no layout, composited (width transitions forced a relayout every frame)
+  mset('dsp', (v) => ($('fill', '.dsp-meter .fill').style.transform = `scaleX(${v})`), (Math.round(clamp(load, 0, 1) * 100) / 100).toFixed(2));
+  mset('budget', (v) => ($('budget', '.dsp-meter .budget').style.left = v + '%'), budget * 100);
+  mset('over', (v) => $('meter', '.dsp-meter').classList.toggle('over', v), load > budget);
+  if (Date.now() - (meterCache.txtT || 0) > 250) {
+    meterCache.txtT = Date.now();
+    mset('dspVal', (v) => ($('dspVal', '#dspVal').textContent = v), Math.round(load * 100) + '%');
+  }
+  mset('lat', (v) => ($('lat', '#latVal').textContent = v), st.running ? st.latencyMs.toFixed(1) + ' ms' : '–');
+  const toW = (p) => clamp((20 * Math.log10(Math.max(p, 1e-6)) + 60) / 60, 0, 1);
   const inP = Math.max(...(st.inPeak || [0]).slice(0, 2)), outP = Math.max(...(st.outPeak || [0]).slice(0, 2));
   peakHoldIn = Math.max(inP, peakHoldIn * 0.85);
   peakHoldOut = Math.max(outP, peakHoldOut * 0.85);
-  document.querySelector('#vuIn i').style.width = toW(peakHoldIn) + '%';
-  document.querySelector('#vuOut i').style.width = toW(peakHoldOut) + '%';
-  const dot = document.getElementById('engineDot');
-  dot.className = 'engine-dot ' + (st.running ? 'ok' : 'err');
-  dot.title = st.running ? `PipeWire · ${st.sr} Hz · ${st.buffer} frames · xruns ${st.xruns}` : 'Audio engine not connected';
+  mset('vin', (v) => ($('vin', '#vuIn i').style.transform = `scaleX(${v})`), (Math.round(toW(peakHoldIn) * 60) / 60).toFixed(3));
+  mset('vout', (v) => ($('vout', '#vuOut i').style.transform = `scaleX(${v})`), (Math.round(toW(peakHoldOut) * 60) / 60).toFixed(3));
+  const dot = $('dot', '#engineDot');
+  mset('dotc', (v) => (dot.className = v), 'engine-dot ' + (st.running ? 'ok' : 'err'));
+  if (Date.now() - (meterCache.dotT || 0) > 1000) {
+    meterCache.dotT = Date.now();
+    dot.title = st.running ? `PipeWire · ${st.sr} Hz · ${st.buffer} frames · xruns ${st.xruns}` : 'Audio engine not connected';
+  }
 }
 
 // ------------------------------------------------------------ automatic quality scaling (DSP budget)

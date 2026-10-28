@@ -35,7 +35,9 @@ export class Editor {
     bus.on('param', ({ id }) => this.views.get(id)?.updateControls());
     bus.on('bypass', ({ id }) => this.views.get(id)?.setBypassVisual());
     bus.on('selection', () => this.views.forEach((v) => v.updateSelection()));
-    requestAnimationFrame(() => this.frame());
+    this.boardView = document.getElementById('view-board');
+    // timer, not rAF: an always-running rAF loop forces a BeginMainFrame on every vsync
+    setInterval(() => this.frame(), 25);
   }
 
   // ------------------------------------------------------------ view
@@ -179,7 +181,10 @@ export class Editor {
     if (!a || !b) return;
     const d = this.cablePath(a, b);
     const col = c.color || '#e8473d';
-    const sh = svg('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 7, opacity: 0.38, filter: 'url(#f-cableShadow)', transform: 'translate(5,12)', 'pointer-events': 'none' }, this.layerShadows);
+    const sh = svg('g', { transform: 'translate(5,12)', 'pointer-events': 'none', fill: 'none', stroke: '#000', 'stroke-linecap': 'round' }, this.layerShadows);
+    svg('path', { d, 'stroke-width': 16, opacity: 0.07 }, sh);
+    svg('path', { d, 'stroke-width': 10, opacity: 0.1 }, sh);
+    svg('path', { d, 'stroke-width': 5, opacity: 0.12 }, sh);
     const g = svg('g', { class: 'cable' + (state.selectedCable === c.id ? ' selected' : '') }, this.layerCables);
     g.dataset.cable = c.id;
     svg('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 16 }, g);
@@ -870,9 +875,8 @@ export class Editor {
   // ------------------------------------------------------------ animation loop for LEDs / screens
   frame() {
     const now = performance.now();
-    if (!document.hidden && document.getElementById('view-board').classList.contains('active'))
+    if (!document.hidden && this.boardView.classList.contains('active'))
       for (const v of this.views.values()) v.updateStatus(now);
-    requestAnimationFrame(() => this.frame());
   }
 }
 

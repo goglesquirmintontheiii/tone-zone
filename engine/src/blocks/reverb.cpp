@@ -174,6 +174,7 @@ public:
       for (int k = 0; k < 4; ++k) inAp[c][k].g = (mode == RPlate ? 0.72f : diffG);
     const float shim = p(pShimmer), ensAmt = p(pEnsemble) + (mode == RCloud ? 0.25f : 0.f);
     const float er = mode == RRoom ? 0.6f : mode == RHall ? 0.3f : 0.f;
+    const float lowDampAmt = 0.5f * (1.f - p(pLowDamp));
     for (int i = 0; i < n; ++i)
     {
       const float xl = in[0][i];
@@ -191,8 +192,8 @@ public:
       const float preS = sPre.next(p(pPre)) * 0.001f * sr;
       pre[0].push(il);
       pre[1].push(ir);
-      il = pre[0].read(std::max(1.f, preS));
-      ir = pre[1].read(std::max(1.f, preS));
+      il = pre[0].readLinear(std::max(1.f, preS));
+      ir = pre[1].readLinear(std::max(1.f, preS));
       if (mode == RDelay)
       {
         const float e = echo.read(0.38f * sr);
@@ -227,7 +228,7 @@ public:
         for (int k = 0; k < N; ++k)
         {
           const float len = baseLen[k] * sizeScale + lfo[k].next(0) * modD;
-          v[k] = line[k].read(std::max(4.f, len));
+          v[k] = line[k].readLinear(std::max(4.f, len));
         }
         wl = (v[0] + v[2] + v[4] + v[6]) * 0.35f;
         wr = (v[1] + v[3] + v[5] + v[7]) * 0.35f;
@@ -245,13 +246,13 @@ public:
         float shimIn = 0;
         if (mode == RShimmer)
         {
-          shimIn = std::tanh(shift[0].process(wl + wr, 2.0f) * shim * 0.6f) * 0.55f;
+          shimIn = fastTanh(shift[0].process(wl + wr, 2.0f) * shim * 0.6f) * 0.55f;
         }
         for (int k = 0; k < N; ++k)
         {
           float y = v[k] * norm;
           y = damp[k].processLP(y);
-          y = y - lowDamp[k].processLP(y) * 0.5f * (1.f - p(pLowDamp));
+          y = y - lowDamp[k].processLP(y) * lowDampAmt;
           const float gg = freeze ? 1.0f : g[k];
           const float inj = (k & 1) ? ir : il;
           line[k].push(flushDenorm(y * gg + inj * 0.5f + shimIn * 0.22f));

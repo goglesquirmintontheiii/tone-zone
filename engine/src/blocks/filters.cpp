@@ -84,7 +84,7 @@ public:
           if (filt == 0) y = svf[c].lp;
           else if (filt == 2) y = svf[c].hp;
           else y = svf[c].bp * 1.25f + svf[c].lp * 0.12f; // wah: resonant band + a little low end
-          out[c][i + k] = std::tanh(y * lvl * 1.1f) / 1.1f;
+          out[c][i + k] = fastTanh(y * lvl * 1.1f) / 1.1f;
         }
       }
     }
@@ -145,7 +145,7 @@ public:
         }
         for (int k = 0; k < m; ++k)
         {
-          const float x = std::tanh(in[std::min(c, nIn - 1)][i + k] * 3.f) * 0.5f; // talk boxes are driven hard
+          const float x = fastTanh(in[std::min(c, nIn - 1)][i + k] * 3.f) * 0.5f; // talk boxes are driven hard
           const float y = f[c][0].process(x) + f[c][1].process(x) + f[c][2].process(x);
           out[c][i + k] = y * 3.0f * lvl;
         }

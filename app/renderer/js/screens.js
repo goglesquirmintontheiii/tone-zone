@@ -1,6 +1,7 @@
 // Live displays drawn inside pedal screens: tuners (needle / stream / strobe / polyphonic), looper LCDs,
 // loop ring and model-name readouts. Elements are created once and updated per status frame.
-import { svg, clamp } from './util.js';
+import { svg, clamp, shade } from './util.js';
+import { setA, setText } from './gfx/fx.js';
 import { state, uiParams } from './state.js';
 
 const LCD_FONT = "'Share Tech Mono', monospace";
@@ -44,14 +45,14 @@ const SCREENS = {
     update(s, st, nv, now) {
       const tu = st.tuner || {};
       const engaged = !nv.block.bypass;
-      s.off.textContent = engaged ? '' : 'PEDAL = TUNE';
+      setText(s.off, engaged ? '' : 'PEDAL = TUNE');
       const ui = state.ui[nv.block.id] || {};
       if (!engaged || !tu.note) {
-        s.segs.forEach((r) => r.setAttribute('fill', '#1a0d0d'));
-        s.note.textContent = engaged ? '–' : '';
-        s.sub.textContent = engaged ? `${uiParams(nv.block).calib ?? 440}Hz` : '';
-        s.arrowL.setAttribute('fill', '#1a0d0d');
-        s.arrowR.setAttribute('fill', '#1a0d0d');
+        s.segs.forEach((r) => setA(r, 'fill', '#1a0d0d'));
+        setText(s.note, engaged ? '–' : '');
+        setText(s.sub, engaged ? `${uiParams(nv.block).calib ?? 440}Hz` : '');
+        setA(s.arrowL, 'fill', '#1a0d0d');
+        setA(s.arrowR, 'fill', '#1a0d0d');
         return;
       }
       const c = tu.cents;
@@ -61,16 +62,16 @@ const SCREENS = {
         const speed = clamp(Math.abs(c) / 50, 0, 1) * 18;
         s.phase = (s.phase || 0) + (c > 0 ? 1 : -1) * speed * 0.033;
         const pos = ((Math.floor(s.phase) % 21) + 21) % 21;
-        s.segs.forEach((r, i) => r.setAttribute('fill', inTune ? (i === 10 ? '#3ddc84' : '#1a0d0d') : i === pos ? '#ff3b2f' : '#1a0d0d'));
+        s.segs.forEach((r, i) => setA(r, 'fill', inTune ? (i === 10 ? '#3ddc84' : '#1a0d0d') : i === pos ? '#ff3b2f' : '#1a0d0d'));
       } else {
         const idx = Math.round(clamp(c / 50, -1, 1) * 10) + 10;
-        s.segs.forEach((r, i) => r.setAttribute('fill', i === 10 ? (inTune ? '#3ddc84' : '#3a1414') : i === idx ? '#ff3b2f' : '#1a0d0d'));
+        s.segs.forEach((r, i) => setA(r, 'fill', i === 10 ? (inTune ? '#3ddc84' : '#3a1414') : i === idx ? '#ff3b2f' : '#1a0d0d'));
       }
-      s.arrowL.setAttribute('fill', c < -1.5 ? '#ff3b2f' : inTune ? '#3ddc84' : '#1a0d0d');
-      s.arrowR.setAttribute('fill', c > 1.5 ? '#ff3b2f' : inTune ? '#3ddc84' : '#1a0d0d');
-      s.note.textContent = tu.note;
-      s.note.setAttribute('fill', inTune ? '#3ddc84' : '#ff3b2f');
-      s.sub.textContent = `${c >= 0 ? '+' : ''}${c.toFixed(1)}¢`;
+      setA(s.arrowL, 'fill', c < -1.5 ? '#ff3b2f' : inTune ? '#3ddc84' : '#1a0d0d');
+      setA(s.arrowR, 'fill', c > 1.5 ? '#ff3b2f' : inTune ? '#3ddc84' : '#1a0d0d');
+      setText(s.note, tu.note);
+      setA(s.note, 'fill', inTune ? '#3ddc84' : '#ff3b2f');
+      setText(s.sub, `${c >= 0 ? '+' : ''}${c.toFixed(1)}¢`);
       void now;
     },
   },
@@ -96,13 +97,13 @@ const SCREENS = {
       const disp = state.ui[nv.block.id]?.display || 'needle';
       const off = '#170808';
       const all = s.cols.flat();
-      all.forEach((d) => d.setAttribute('fill', off));
-      s.left.textContent = TUNINGS[ui.tuning | 0] || '';
-      s.mode.textContent = nv.block.bypass ? 'BYPASS' : disp.toUpperCase();
+      all.forEach((d) => setA(d, 'fill', off));
+      setText(s.left, TUNINGS[ui.tuning | 0] || '');
+      setText(s.mode, nv.block.bypass ? 'BYPASS' : disp.toUpperCase());
       if (nv.block.bypass) {
-        s.note.textContent = '';
+        setText(s.note, '');
         // four "ready" LEDs at the bottom
-        for (let c = 2; c < 6; c++) s.cols[c][10].setAttribute('fill', '#5a1010');
+        for (let c = 2; c < 6; c++) setA(s.cols[c][10], 'fill', '#5a1010');
         return;
       }
       if (tu.polyActive && tu.strings) {
@@ -111,29 +112,29 @@ const SCREENS = {
         tu.strings.forEach((sv, i) => {
           const col = s.cols[start + i];
           if (!col) return;
-          if (!sv.active) { col[5].setAttribute('fill', '#3a1010'); return; }
+          if (!sv.active) { setA(col[5], 'fill', '#3a1010'); return; }
           const off2 = Math.round(clamp(sv.cents / 25, -1, 1) * 5);
-          if (Math.abs(sv.cents) < 2) col[5].setAttribute('fill', '#3ddc84');
-          else if (off2 > 0) for (let r = 5 - off2; r <= 5; r++) col[r].setAttribute('fill', '#ff3b2f');
-          else for (let r = 5; r <= 5 - off2; r++) col[r].setAttribute('fill', '#ff3b2f');
+          if (Math.abs(sv.cents) < 2) setA(col[5], 'fill', '#3ddc84');
+          else if (off2 > 0) for (let r = 5 - off2; r <= 5; r++) setA(col[r], 'fill', '#ff3b2f');
+          else for (let r = 5; r <= 5 - off2; r++) setA(col[r], 'fill', '#ff3b2f');
         });
-        s.note.textContent = '';
+        setText(s.note, '');
         return;
       }
-      if (!tu.note) { s.note.textContent = '·'; return; }
+      if (!tu.note) { setText(s.note, '·'); return; }
       const c = tu.cents;
       const inTune = Math.abs(c) < 1.5;
       if (disp === 'strobe') {
         s.phase = (s.phase || 0) + c * 0.012;
         const shift = ((Math.floor(s.phase * 8) % 8) + 8) % 8;
-        s.cols.forEach((col, ci) => col.forEach((d, r) => { if (r < 10 && (r + ci + shift) % 4 === 0) d.setAttribute('fill', inTune ? '#3ddc84' : '#ff3b2f'); }));
+        s.cols.forEach((col, ci) => col.forEach((d, r) => { if (r < 10 && (r + ci + shift) % 4 === 0) setA(d, 'fill', inTune ? '#3ddc84' : '#ff3b2f'); }));
       } else {
         const x = Math.round(clamp(c / 50, -1, 1) * 3.5 + 3.5);
-        for (let r = 1; r < 10; r++) s.cols[clamp(x, 0, 7)][r].setAttribute('fill', inTune ? '#3ddc84' : '#ff3b2f');
-        if (x === 3 || x === 4) for (let r = 1; r < 10; r++) s.cols[x === 3 ? 4 : 3][r].setAttribute('fill', inTune ? '#3ddc84' : '#5a1010');
+        for (let r = 1; r < 10; r++) setA(s.cols[clamp(x, 0, 7)][r], 'fill', inTune ? '#3ddc84' : '#ff3b2f');
+        if (x === 3 || x === 4) for (let r = 1; r < 10; r++) setA(s.cols[x === 3 ? 4 : 3][r], 'fill', inTune ? '#3ddc84' : '#5a1010');
       }
-      s.note.textContent = tu.note;
-      s.note.setAttribute('fill', inTune ? '#3ddc84' : '#ff3b2f');
+      setText(s.note, tu.note);
+      setA(s.note, 'fill', inTune ? '#3ddc84' : '#ff3b2f');
       void now;
     },
   },
@@ -153,18 +154,18 @@ const SCREENS = {
     update(s, st, nv) {
       const tu = st.tuner || {};
       if (nv.block.bypass || !tu.note) {
-        s.note.textContent = nv.block.bypass ? 'OFF' : '–';
-        s.cents.textContent = '';
+        setText(s.note, nv.block.bypass ? 'OFF' : '–');
+        setText(s.cents, '');
         return;
       }
       s.ph = s.ph || [0, 0, 0];
       s.bands.forEach((b, r) => {
         s.ph[r] = (s.ph[r] + tu.cents * 0.08 * (r + 1)) % 10;
-        b.setAttribute('transform', `translate(${s.ph[r]},0)`);
-        b.querySelectorAll('rect').forEach((x) => x.setAttribute('fill', Math.abs(tu.cents) < 1 ? '#3ddc84' : '#2a8cff'));
+        setA(b, 'transform', `translate(${s.ph[r]},0)`);
+        b.querySelectorAll('rect').forEach((x) => setA(x, 'fill', Math.abs(tu.cents) < 1 ? '#3ddc84' : '#2a8cff'));
       });
-      s.note.textContent = tu.note + (tu.octave ?? '');
-      s.cents.textContent = `${tu.cents >= 0 ? '+' : ''}${tu.cents.toFixed(1)} ¢  ${tu.freq ? tu.freq.toFixed(2) + ' Hz' : ''}`;
+      setText(s.note, tu.note + (tu.octave ?? ''));
+      setText(s.cents, `${tu.cents >= 0 ? '+' : ''}${tu.cents.toFixed(1)} ¢  ${tu.freq ? tu.freq.toFixed(2) + ' Hz' : ''}`);
     },
   },
 
@@ -189,19 +190,19 @@ const SCREENS = {
       const ui = state.ui[nv.block.id] || {};
       const cur = ui.current ?? 0;
       const p = uiParams(nv.block);
-      s.tempo.textContent = `${Math.round(p.tempo ?? 100)} BPM`;
+      setText(s.tempo, `${Math.round(p.tempo ?? 100)} BPM`);
       if (!L) return;
       // backlight colour follows the current track state like the real unit
       const cs = L.tracks[cur]?.state ?? 0;
-      s.bg.setAttribute('fill', ['#0d2a4a', '#4a0d0d', '#0d4a22', '#4a420d', '#3a3a3a'][cs]);
+      setA(s.bg, 'fill', ['#0d2a4a', '#4a0d0d', '#0d4a22', '#4a420d', '#3a3a3a'][cs]);
       L.tracks.slice(0, 2).forEach((tr, i) => {
         const v = s.tracks[i];
-        v.fill.setAttribute('width', (tr.state === 1 ? (now % 1000) / 1000 : tr.pos) * v.w);
-        v.fill.setAttribute('fill', STATE_COL[tr.state]);
-        v.stt.textContent = STATE_NAMES[tr.state] + (tr.len ? ` ${tr.len.toFixed(1)}s` : '');
-        v.lab.textContent = (i === cur ? '▶' : ' ') + `TR${i + 1}`;
+        setA(v.fill, 'width', (tr.state === 1 ? (now % 1000) / 1000 : tr.pos) * v.w);
+        setA(v.fill, 'fill', STATE_COL[tr.state]);
+        setText(v.stt, STATE_NAMES[tr.state] + (tr.len ? ` ${tr.len.toFixed(1)}s` : ''));
+        setText(v.lab, (i === cur ? '▶' : ' ') + `TR${i + 1}`);
       });
-      s.foot.textContent = L.rhythm ? `RHYTHM ${['ROCK', 'POP', 'FUNK', 'SHFL', 'METAL', 'BALLAD', '4/4', 'HALF', 'BOSSA', 'CLICK'][p.pattern | 0]} ${'•'.repeat((L.step >> 2) + 1)}` : 'RHYTHM OFF';
+      setText(s.foot, L.rhythm ? `RHYTHM ${['ROCK', 'POP', 'FUNK', 'SHFL', 'METAL', 'BALLAD', '4/4', 'HALF', 'BOSSA', 'CLICK'][p.pattern | 0]} ${'•'.repeat((L.step >> 2) + 1)}` : 'RHYTHM OFF');
     },
   },
 
@@ -225,16 +226,16 @@ const SCREENS = {
       const L = st.looper;
       const p = uiParams(nv.block);
       const ui = state.ui[nv.block.id] || {};
-      s.tempo.textContent = `♩${Math.round(p.tempo ?? 100)}`;
+      setText(s.tempo, `♩${Math.round(p.tempo ?? 100)}`);
       if (!L) return;
       L.tracks.forEach((tr, i) => {
         const v = s.tr[i];
         if (!v) return;
         const hh = tr.state === 0 ? 0 : v.hh * (tr.state === 1 ? 1 : 1 - tr.pos);
-        v.lvl.setAttribute('height', hh);
-        v.lvl.setAttribute('y', 17 + (v.hh - hh));
-        v.st.textContent = tr.state ? STATE_NAMES[tr.state] : '';
-        v.name.textContent = ((ui.current ?? 0) === i ? '▸' : '') + (i + 1);
+        setA(v.lvl, 'height', hh);
+        setA(v.lvl, 'y', 17 + (v.hh - hh));
+        setText(v.st, tr.state ? STATE_NAMES[tr.state] : '');
+        setText(v.name, ((ui.current ?? 0) === i ? '▸' : '') + (i + 1));
       });
     },
   },
@@ -248,9 +249,9 @@ const SCREENS = {
     update(s, st, nv, now) {
       const tr = st.looper?.tracks?.[0];
       if (!tr) return;
-      s.fill.setAttribute('width', (tr.state === 1 ? (now % 1000) / 1000 : tr.pos) * (s.bar.getAttribute('width') | 0));
-      s.fill.setAttribute('fill', STATE_COL[tr.state]);
-      s.txt.textContent = STATE_NAMES[tr.state] + (tr.len ? `  ${tr.len.toFixed(1)} s` : '');
+      setA(s.fill, 'width', (tr.state === 1 ? (now % 1000) / 1000 : tr.pos) * (s.bar.getAttribute('width') | 0));
+      setA(s.fill, 'fill', STATE_COL[tr.state]);
+      setText(s.txt, STATE_NAMES[tr.state] + (tr.len ? `  ${tr.len.toFixed(1)} s` : ''));
     },
   },
 
@@ -272,8 +273,7 @@ const SCREENS = {
       const pos = tr ? Math.floor((tr.state === 1 ? 0 : tr.pos) * 16) : L.rhythm ? L.step : -1;
       const col = tr ? STATE_COL[tr.state] : '#3f6dff';
       s.segs.forEach((seg, i) => {
-        seg.setAttribute('fill', i <= pos ? col : '#2a0a0a');
-        seg.setAttribute('filter', i === pos ? 'url(#f-glowSoft)' : '');
+        setA(seg, 'fill', i === pos ? shade(col, 0.25) : i <= pos ? col : '#2a0a0a');
       });
     },
   },
@@ -286,7 +286,7 @@ const SCREENS = {
     update(s, st, nv) {
       const idx = uiParams(nv.block).model | 0;
       const names = s.ctl.names || [];
-      s.txt.textContent = (names[idx] || '').slice(0, 18);
+      setText(s.txt, (names[idx] || '').slice(0, 18));
     },
   },
 };

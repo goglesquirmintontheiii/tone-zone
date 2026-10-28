@@ -1,3 +1,6 @@
+#if defined(__x86_64__) || defined(__i386__)
+#include <xmmintrin.h>
+#endif
 #include "engine.h"
 
 #include <chrono>
@@ -195,8 +198,17 @@ void Engine::listPorts()
 }
 
 // ------------------------------------------------------------------ RT process
+static inline void flushDenormals()
+{
+#if defined(__x86_64__) || defined(__i386__)
+  // FTZ + DAZ: decaying filter / reverb / feedback states otherwise fall into denormals and stall the CPU
+  _mm_setcsr(_mm_getcsr() | 0x8040);
+#endif
+}
+
 int Engine::process(jack_nframes_t nframes)
 {
+  flushDenormals();
   const int n = int(nframes);
   const double t0 = nowNs();
   if (CompiledGraph* p = pending.exchange(nullptr, std::memory_order_acq_rel)) inUse.store(p, std::memory_order_release);
@@ -810,6 +822,7 @@ int Engine::runOffline(const std::string& graphPath, const std::string& inWav, c
     s["cmd"] = "settings";
     handleCommand(s);
   }
+  flushDenormals();
   setGraph(g.contains("graph") ? g["graph"] : g);
   const size_t len = input[0].size();
   std::vector<std::vector<float>> out(2, std::vector<float>(len, 0.f));

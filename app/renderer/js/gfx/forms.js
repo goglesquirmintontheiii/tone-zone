@@ -2,14 +2,15 @@
 // multi-FX, wah / volume treadles, amp heads, combos, cabinets, rack units, utilities and the audio I/O panels.
 // Each form lays out the block's controls and returns jacks + control views for the editor.
 import { svg, shade, luminance } from '../util.js';
+import { softShadow } from './fx.js';
 import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawJack, drawTreadle, label, hex, textColorFor } from './controls.js';
 
 function body(g, w, h, color, o = {}) {
   const rx = o.rx ?? 8;
-  svg('rect', { x: 0, y: 4, width: w, height: h, rx, fill: '#000', opacity: 0.6, filter: 'url(#f-node)' }, g);
+  softShadow(g, { w, h, rx, dy: 14, blur: 9, opacity: 0.6 });
   svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: color }, g);
   if (o.brushed) svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: 'url(#p-brushed)' }, g);
-  if (o.grain !== false) svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: color, filter: 'url(#f-grain)', opacity: 0.9 }, g);
+  if (o.grain !== false) svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: 'url(#p-grain)' }, g);
   svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: 'url(#g-shadeV)' }, g);
   svg('rect', { x: 0, y: 0, width: w, height: h, rx, fill: 'url(#g-shadeH)' }, g);
   svg('rect', { x: 0.75, y: 0.75, width: w - 1.5, height: h - 1.5, rx: rx - 0.5, fill: 'none', stroke: '#fff', 'stroke-opacity': 0.18, 'stroke-width': 1.2 }, g);
@@ -213,10 +214,10 @@ forms.nine = (ctx, def) => {
   const w = 150, h = 250;
   const col = def.color, txt = def.text || textColorFor(col);
   const g = ctx.g;
-  svg('path', { d: `M10 4 Q${w / 2} -8 ${w - 10} 4 L${w} 30 V${h - 8} Q${w} ${h} ${w - 8} ${h} H8 Q0 ${h} 0 ${h - 8} V30 Z`, fill: '#000', opacity: 0.55, filter: 'url(#f-node)', transform: 'translate(0,4)' }, g);
+  softShadow(g, { w, h, path: `M10 4 Q${w / 2} -8 ${w - 10} 4 L${w} 30 V${h - 8} Q${w} ${h} ${w - 8} ${h} H8 Q0 ${h} 0 ${h - 8} V30 Z`, dy: 14, blur: 9, opacity: 0.55 });
   const shape = `M10 4 Q${w / 2} -8 ${w - 10} 4 L${w} 30 V${h - 8} Q${w} ${h} ${w - 8} ${h} H8 Q0 ${h} 0 ${h - 8} V30 Z`;
   svg('path', { d: shape, fill: col }, g);
-  svg('path', { d: shape, fill: col, filter: 'url(#f-grain)' }, g);
+  svg('path', { d: shape, fill: 'url(#p-grain)' }, g);
   svg('path', { d: shape, fill: 'url(#g-shadeV)' }, g);
   svg('path', { d: shape, fill: 'none', stroke: '#000', 'stroke-opacity': 0.5 }, g);
   const theme = { text: txt, knob: 'boss', labelSize: 7.4 };
@@ -440,8 +441,9 @@ forms.amp = (ctx, def) => {
   const w = Math.max(420, 70 + knobs.length * 44 + 90), h = combo ? 330 : 200;
   const g = ctx.g;
   const tolex = def.tolex || '#151515';
-  svg('rect', { x: 0, y: 6, width: w, height: h, rx: 12, fill: '#000', opacity: 0.6, filter: 'url(#f-node)' }, g);
-  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: tolex, filter: 'url(#f-tolex)' }, g);
+  softShadow(g, { w, h, rx: 12, dy: 16, blur: 10, opacity: 0.6 });
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: tolex }, g);
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: 'url(#p-tolex)' }, g);
   svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: 'url(#g-shadeV)', opacity: 0.8 }, g);
   svg('rect', { x: 0.7, y: 0.7, width: w - 1.4, height: h - 1.4, rx: 11.5, fill: 'none', stroke: def.piping || '#000', 'stroke-width': def.piping ? 2.2 : 1, 'stroke-opacity': 0.9 }, g);
   // corners
@@ -501,8 +503,9 @@ forms.cab = (ctx, def) => {
   const [w, h, cols, rows] = dims[size] || dims['4x12'];
   const g = ctx.g;
   const tolex = def.tolex || '#141414';
-  svg('rect', { x: 0, y: 6, width: w, height: h, rx: 12, fill: '#000', opacity: 0.6, filter: 'url(#f-node)' }, g);
-  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: tolex, filter: 'url(#f-tolex)' }, g);
+  softShadow(g, { w, h, rx: 12, dy: 16, blur: 10, opacity: 0.6 });
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: tolex }, g);
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: 'url(#p-tolex)' }, g);
   svg('rect', { x: 0, y: 0, width: w, height: h, rx: 12, fill: 'url(#g-shadeV)', opacity: 0.7 }, g);
   for (const [cx, cy] of [[0, 0], [w, 0], [0, h], [w, h]]) svg('circle', { cx: cx ? cx - 10 : 10, cy: cy ? cy - 10 : 10, r: 8, fill: 'url(#g-chromeR)', opacity: def.corners === false ? 0 : 0.9 }, g);
   const gx = 18, gy = 18, gw = w - 36, gh = h - 36;
