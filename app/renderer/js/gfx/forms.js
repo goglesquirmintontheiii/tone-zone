@@ -836,3 +836,33 @@ forms.meter = (ctx, def) => {
   placeControls(ctx, def.controls, theme);
   return { w, h, theme, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 60, gap: 30 }) };
 };
+
+// Tone Zone studio parametric EQ: big interactive screen, 10 footswitches (6 bands, HPF, LPF, LISTEN, SPECTRUM)
+forms.paraeq = (ctx, def) => {
+  const w = 540, h = 340, g = ctx.g;
+  const txt = '#dfe4ee';
+  body(g, w, h, def.color || '#16191f', { rx: 14, brushed: true });
+  svg('rect', { x: 0, y: 0, width: w, height: 5, rx: 2.5, fill: def.accent || '#ff7a2f' }, g);
+  label(g, 22, 24, def.logo || 'PARAMETRIC', { size: 13, fill: txt, weight: 800, ls: 2, anchor: 'start', font: "'Oswald', sans-serif" });
+  label(g, 22, 36, (def.typeName || '').toUpperCase(), { size: 5.6, fill: txt, weight: 700, ls: 1.6, anchor: 'start', opacity: 0.6 });
+  tzBadge(g, w / 2, h - 9, txt, 4.4);
+  const scr = def.controls.find((c) => c.t === 'screen');
+  if (scr) Object.assign(scr, { x: w / 2, y: 140, w: 490, h: 188, bg: '#06080c', bezel: '#050608' });
+  const foots = def.controls.filter((c) => c.t === 'foot');
+  const step = (w - 40) / foots.length;
+  foots.forEach((f, i) => {
+    const x = 20 + step * (i + 0.5);
+    Object.assign(f, { x, y: 300, r: 10.5, style: 'soft' });
+    const led = def.controls.find((c) => c.t === 'led' && c.bind === 'param:' + f.p);
+    if (led) Object.assign(led, { x, y: 256, r: 2.6 });
+    label(g, x, 271, f.caption || '', { size: 6.2, fill: f.labelColor || txt, weight: 800, ls: 0.6 });
+  });
+  // separators between band / filter / utility groups
+  for (const k of [6, 8]) svg('line', { x1: 20 + step * k, x2: 20 + step * k, y1: 250, y2: 318, stroke: txt, 'stroke-opacity': 0.12 }, g);
+  const kn = def.controls.find((c) => c.t === 'knob');
+  if (kn) Object.assign(kn, { x: w - 40, y: 26, r: 10, labelPos: 'none' });
+  if (kn) label(g, w - 62, 26, 'OUTPUT', { size: 5.6, fill: txt, weight: 700, ls: 1, anchor: 'end', opacity: 0.7 });
+  const theme = { text: txt, knob: 'strymon', labelSize: 6 };
+  placeControls(ctx, def.controls, theme);
+  return { w, h, theme, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 120, gap: 30 }) };
+};

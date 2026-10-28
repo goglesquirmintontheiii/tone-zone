@@ -3,6 +3,7 @@ import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH } from './gfx
 import { svg, clamp, shade, bus, toast } from './util.js';
 import { installDefs } from './gfx/defs.js';
 import { NodeView, knobPos, knobValue } from './nodeview.js';
+import { screenPointer } from './screens.js';
 import { getDef, jackKindOf, kindsCompatible, KIND_NAMES } from './catalog/index.js';
 import {
   state, blockById, addBlock, removeBlocks, duplicateBlocks, setParam, setBypass, connect, removeCable, setCableColor,
@@ -447,11 +448,26 @@ export class Editor {
   }
 
   // --- controls
+  screenLocal(e, v, c) {
+    const w = this.toWorld(e.clientX, e.clientY);
+    return { x: w.x - v.block.x - (c.x - c.w / 2), y: w.y - v.block.y - (c.y - c.h / 2) };
+  }
+  screenOf(v, c) {
+    return v.screens.find((s) => s.ctl === c);
+  }
   startControl(e, nodeId, cid) {
     const v = this.views.get(nodeId);
     const entry = v && v.views.get(cid);
     if (!entry) return;
     const c = entry.ctl;
+    if (c.t === 'screen') {
+      // interactive screens (e.g. the parametric EQ) handle their own pointer gestures
+      const s = this.screenOf(v, c);
+      commitNow();
+      this.drag = { kind: 'ctl', node: nodeId, c, view: entry.view, sx: e.clientX, sy: e.clientY, moved: false, screen: s };
+      if (s) screenPointer(s, v, 'down', this.screenLocal(e, v, c), e, this);
+      return;
+    }
     const b = v.block;
     const ui = uiParams(b);
     const alt = state.ui[b.id]?.alt && c.alt;
@@ -488,6 +504,11 @@ export class Editor {
     const v = this.views.get(d.node);
     if (!v) return;
     const c = d.c;
+    if (c.t === 'screen') {
+      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 2) d.moved = true;
+      if (d.screen) screenPointer(d.screen, v, 'move', this.screenLocal(e, v, c), e, this);
+      return;
+    }
     const dy = e.clientY - d.sy, dx = e.clientX - d.sx;
     if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
     const fine = e.shiftKey ? 0.2 : 1;
@@ -519,6 +540,11 @@ export class Editor {
     this.hideTip();
     if (!v) return;
     const c = d.c;
+    if (c.t === 'screen') {
+      if (d.screen) screenPointer(d.screen, v, 'up', this.screenLocal(e, v, c), e, this);
+      if (d.moved) markDirty();
+      return;
+    }
     const b = v.block;
     if (c.t === 'foot') return this.footUp(v, c, d.view);
     if (d.moved) return markDirty();
@@ -600,6 +626,7 @@ export class Editor {
     if (hk && hk.foot && hk.foot(v, c, true)) return;
     if (c.action === 'ctrl') return footCtrl(v.block, c.idx ?? 0, true);
     if (c.action === 'select') return this.selectFoot(v, c);
+    if (c.action === 'toggle' && c.p) return setParam(v.block.id, c.p, (uiParams(v.block)[c.p] ?? c.def ?? 0) > 0.5 ? 0 : 1);
     const b = v.block;
     const d = v.def;
     const ui = uiParams(b);
@@ -639,7 +666,7 @@ export class Editor {
     const hk = hooksFor(v.block.type);
     if (hk && hk.foot && hk.foot(v, c, false)) return;
     if (c.action === 'ctrl') return footCtrl(v.block, c.idx ?? 0, false);
-    if (c.action === 'select') return;
+    if (c.action === 'select' || c.action === 'toggle') return;
     const dr = this.drag;
     clearTimeout(dr.holdTimer);
     const b = v.block;
@@ -825,6 +852,11 @@ export class Editor {
         const c = entry.ctl;
         const ui = uiParams(v.block);
         const dir = e.deltaY < 0 ? 1 : -1;
+        if (c.t === 'screen') {
+          const sc = this.screenOf(v, c);
+          if (sc) screenPointer(sc, v, 'wheel', this.screenLocal(e, v, c), e, this);
+          return;
+        }
         if (c.t === 'mic') {
           const k = `m${c.idx}dist`;
           const nd = clamp((ui[k] ?? 0.15) - dir * 0.04, 0, 1);
@@ -861,6 +893,11 @@ export class Editor {
     if (ctlEl && nodeEl) {
       const v = this.views.get(nodeEl.dataset.node);
       const entry = v && v.views.get(ctlEl.dataset.ctl);
+      if (entry && entry.ctl.t === 'screen') {
+        const sc = this.screenOf(v, entry.ctl);
+        if (sc) screenPointer(sc, v, 'dbl', this.screenLocal(e, v, entry.ctl), e, this);
+        return;
+      }
       if (entry && entry.ctl.p && (entry.ctl.t === 'knob' || entry.ctl.t === 'slider')) {
         setParam(v.block.id, entry.ctl.p, entry.ctl.def ?? 0.5);
         toast(`${entry.ctl.label || entry.ctl.p} reset`, 'info', 900);

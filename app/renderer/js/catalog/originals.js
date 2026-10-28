@@ -143,6 +143,26 @@ export const converters = [
         TOG('mode', 'MODE', ['ONE', 'MULTI']), K('fade', 'XFADE', { min: 1, max: 200, def: 12, unit: 'ms' }),
       ] })
   ),
+  // studio parametric EQ with an interactive screen
+  (() => {
+    const bands = [1, 2, 3, 4, 5, 6];
+    const BC = ['#ff7a2f', '#ffc23c', '#3ddc84', '#37d6c2', '#4aa8ff', '#a98bff'];
+    const init = { hpon: 0, hpf: 80, hps: 1, lpon: 0, lpf: 9000, lps: 1, listen: 0, listenf: 1000, listenq: 2, spectrum: 1, specpost: 1 };
+    const defF = [80, 250, 800, 2500, 6000, 12000], defT = [1, 0, 0, 0, 0, 2];
+    bands.forEach((i) => Object.assign(init, { [`b${i}on`]: 1, [`b${i}type`]: defT[i - 1], [`b${i}f`]: defF[i - 1], [`b${i}g`]: 0, [`b${i}q`]: 0.9 }));
+    return TZ({ id: 'tz.paraeq', name: 'TZ Parametric EQ', cat: 'EQ', kind: 'Pedal', form: 'paraeq', color: '#15181e', accent: '#ff7a2f', logo: 'PARAMETRIC', typeName: '6-band studio EQ · analyser · listen', algo: 'pareq', stereo: 'both', cost: 0.6, noStd: true,
+      initParams: init,
+      desc: 'Drag the numbered handles (frequency / gain), scroll for Q (or HPF/LPF slope), double-click to switch a band on/off, click the band name to change its type. LISTEN solos the band you pick (or click / drag anywhere on the screen); SPECTRUM shows the analyser – PRE / POST in the corner.',
+      controls: [
+        SCREEN('paraeq', { interactive: true }),
+        ...bands.flatMap((i) => [FOOT({ action: 'toggle', p: `b${i}on`, caption: `B${i}`, labelColor: BC[i - 1] }), LED({ bind: `param:b${i}on`, color: BC[i - 1] })]),
+        FOOT({ action: 'toggle', p: 'hpon', caption: 'HPF' }), LED({ bind: 'param:hpon', color: '#e9ecf3' }),
+        FOOT({ action: 'toggle', p: 'lpon', caption: 'LPF' }), LED({ bind: 'param:lpon', color: '#e9ecf3' }),
+        FOOT({ action: 'toggle', p: 'listen', caption: 'LISTEN', labelColor: '#ffc23c' }), LED({ bind: 'param:listen', color: '#ffc23c' }),
+        FOOT({ action: 'toggle', p: 'spectrum', caption: 'SPECTRUM', labelColor: '#37d6c2' }), LED({ bind: 'param:spectrum', color: '#37d6c2' }),
+        K('level', 'OUTPUT', { min: -24, max: 12, def: 0, display: db }),
+      ] });
+  })(),
   // control sources
   def({ id: 'tz.expctl', name: 'TZ Expression Pedal', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'EXP', cat: 'Control', kind: 'Utility', form: 'treadle', color: '#23262e', algo: null,
     ports: { ins: [], outs: [] }, ctrl: { outs: [{ label: 'EXP OUT', source: 'param:pos' }] }, controls: [{ t: 'treadle', p: 'pos', def: 0.5, min: 0, max: 1, virtual: true }], logo: 'EXPRESSION', logoFont: "'Oswald', sans-serif", logoColor: '#9aa3b5', noBypassClick: true, alwaysOn: true,

@@ -350,6 +350,11 @@ const SCREENS = {
 
 export const TUNING_NAMES = TUNINGS;
 
+// pointer gestures on interactive screens: type = down | move | up | wheel | dbl, pt = screen-local coords
+export function screenPointer(s, nv, type, pt, e, editor) {
+  const fn = SCREENS[s.ctl.kind];
+  if (fn && fn.pointer) fn.pointer(s, nv, type, pt, e, editor);
+}
 export function registerScreen(kind, impl) {
   if (SCREENS[kind] && !impl.override) throw new Error(`screen "${kind}" already exists`);
   SCREENS[kind] = impl;
