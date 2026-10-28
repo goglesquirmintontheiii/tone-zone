@@ -114,7 +114,7 @@ export function buildGraph() {
     lastSent[b.id] = Object.assign({}, params);
     const m = maps[b.id];
     const nIn = m.ins.reduce((a, x) => a + x.length, 0), nOut = m.outs.reduce((a, x) => a + x.length, 0);
-    nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
+    nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: b.opts ? Object.assign({}, d.opts, b.opts) : d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
   }
   const valid = new Set(nodes.map((n) => n.id).concat(['__in', '__out']));
   const cables = [];

@@ -228,7 +228,9 @@ function setupIpc() {
 }
 
 // ---------------------------------------------------------------- lifecycle
-const gotLock = app.requestSingleInstanceLock();
+// automated test runs (Playwright attaches a debugger) may run several instances side by side
+const testRun = app.commandLine.hasSwitch('remote-debugging-port') || !!process.env.TZ_NO_SINGLE_INSTANCE;
+const gotLock = testRun || app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 app.on('second-instance', () => {
   if (win) {
@@ -237,8 +239,16 @@ app.on('second-instance', () => {
   }
 });
 
+// Web MIDI (device plugins such as the Line 6 Helix talk MIDI from the renderer)
+function allowMidi() {
+  const ok = (p) => p === 'midi' || p === 'midiSysex' || p === 'clipboard-sanitized-write' || p === 'media';
+  session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(ok(perm)));
+  session.defaultSession.setPermissionCheckHandler((_wc, perm) => ok(perm));
+}
+
 app.whenReady().then(() => {
   lib.ensureDirs();
+  allowMidi();
   lib.installFactoryPresets(path.join(APP_ROOT, 'presets'));
   settings = Object.assign({ buffer: 64, quality: 1, budget: 0.75, autoConnect: true }, lib.loadSettings());
   setupIpc();

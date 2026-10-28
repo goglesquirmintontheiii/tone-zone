@@ -48,7 +48,7 @@ export class NodeView {
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
     this.g.dataset.node = this.block.id;
     const content = svg('g', {}, this.g);
-    const ctx = { g: content, views: new Map(), flip: !!state.settings.flowLeftToRight };
+    const ctx = { g: content, views: new Map(), flip: !!state.settings.flowLeftToRight, block: this.block };
     const res = renderForm(ctx, rdef);
     this.w = res.w;
     this.h = res.h;

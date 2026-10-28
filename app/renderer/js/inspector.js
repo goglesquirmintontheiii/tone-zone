@@ -4,6 +4,7 @@ import { el, esc, bus, clamp } from './util.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { state, blockById, uiParams, setParam, setBypass, setVariant, removeBlocks, duplicateBlocks, engineParamsFor, commitNow, sendParamsFor } from './state.js';
 import { knobPos, knobValue } from './nodeview.js';
+import { hooksFor } from './plugins.js';
 import { ioConf, setIo, IO_PORT_NAMES, IO_DEFAULT_LABELS, portsSnapshot, requestPorts, openPortPicker, sendEngineSettings } from './pages/settings.js';
 
 let root, body, current = null, editorRef = null;
@@ -106,7 +107,7 @@ function render() {
   const seen = new Set();
   for (const c of d.controls) {
     if (!c.p || seen.has(c.p) || c.t === 'screen' || c.t === 'led' || c.t === 'foot') continue;
-    if (c.t === 'mic') continue;
+    if (c.t === 'mic' || c.noInspector) continue;
     seen.add(c.p);
     rowFor(ctlSec, b, c, ui);
   }
@@ -145,6 +146,12 @@ function render() {
     rowFor(cs, b, { t: 'knob', p: 'lowcut', label: 'Low cut', min: 20, max: 500, def: 30, curve: 'log', unit: 'Hz' }, ui);
     rowFor(cs, b, { t: 'knob', p: 'highcut', label: 'High cut', min: 2000, max: 20000, def: 14000, curve: 'log', unit: 'Hz' }, ui);
     rowFor(cs, b, { t: 'knob', p: 'level', label: 'Level', min: -24, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
+  }
+  // plugin-provided inspector section
+  const hk = hooksFor(d.id);
+  if (hk && hk.inspector) {
+    const sec = el('div', { class: 'insp-section' }, body);
+    try { hk.inspector(sec, b, { rowFor: (c) => rowFor(sec, b, c, uiParams(b)), rerender: () => render() }); } catch (e) { console.error(e); }
   }
   if (d.id === 'mx.m222') {
     const ms = el('div', { class: 'insp-section' }, body);

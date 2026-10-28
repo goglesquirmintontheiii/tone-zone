@@ -2,7 +2,7 @@
 // See docs/plugins.md for the API reference.
 import * as helpers from './catalog/helpers.js';
 import * as builders from './catalog/builders.js';
-import { registerPluginDefs, unregisterPlugin, pluginDefIds, rememberPluginBlocks, CATEGORIES } from './catalog/index.js';
+import { registerPluginDefs, unregisterPlugin, pluginDefIds, rememberPluginBlocks, CATEGORIES, getDef } from './catalog/index.js';
 import { registerForm, unregisterForm, formKit } from './gfx/forms.js';
 import { registerScreen } from './screens.js';
 import * as controls from './gfx/controls.js';
@@ -10,7 +10,7 @@ import * as jacks from './gfx/jacks.js';
 import * as fx from './gfx/fx.js';
 import * as cabgeom from './gfx/cabgeom.js';
 import { svg, el, esc, shade, clamp, bus, toast, luminance } from './util.js';
-import { state } from './state.js';
+import { state, uiParams, setParam, syncGraph } from './state.js';
 
 export const API_VERSION = 1;
 const loaded = new Map(); // id -> { info, cleanup: [] , count, error }
@@ -92,6 +92,18 @@ function makeApi(info) {
       },
     },
     midi: (opts = { sysex: false }) => navigator.requestMIDIAccess(opts),
+    app: {
+      state,
+      ui: (block) => uiParams(block),
+      setParam: (id, p, v) => setParam(id, p, v),
+      syncGraph: () => syncGraph(),
+      getDef: (id) => getDef(id),
+    },
+    presets: {
+      list: () => window.tz.presets.list(),
+      load: (f) => window.tz.presets.load(f),
+      open: (f) => import('./presets.js').then((m) => m.openPreset(f)),
+    },
     sys: { usbDevices: () => window.tz.sys.usbDevices() },
     onUnload: (fn) => cleanup.push(fn),
   };
