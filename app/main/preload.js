@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('tz', {
     load: (f) => ipcRenderer.invoke('presets:load', f),
     save: (p, f) => ipcRenderer.invoke('presets:save', p, f),
     remove: (f) => ipcRenderer.invoke('presets:delete', f),
+    meta: (f, patch) => ipcRenderer.invoke('presets:meta', f, patch),
+    duplicate: (f) => ipcRenderer.invoke('presets:duplicate', f),
     exportPreset: (p) => ipcRenderer.invoke('presets:export', p),
     importPresets: () => ipcRenderer.invoke('presets:import'),
   },

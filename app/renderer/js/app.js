@@ -1,7 +1,8 @@
 // Tone Zone renderer bootstrap.
 import { bus, toast, el, clamp } from './util.js';
 import { Editor } from './editor.js';
-import { initBrowser } from './browser.js';
+import { initBrowser, isFavorite, toggleFavorite } from './browser.js';
+import { makeDockable } from './panels.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, CABLE_COLORS } from './state.js';
@@ -11,6 +12,7 @@ import { refreshPacks, renderLibrary, importDialog } from './pages/library.js';
 import { initTone3000, showTone3000 } from './pages/tone3000.js';
 import { renderSettings, sendEngineSettings, onPorts } from './pages/settings.js';
 import { renderCapture } from './pages/capture.js';
+import { renderPresets } from './pages/presets.js';
 import { refreshPresetList, openPreset, savePreset, step, updateTitle, showPresetMenu, localStorageSafeGet } from './presets.js';
 
 let editor;
@@ -22,6 +24,8 @@ async function boot() {
   window.__tz = { editor, state, removeBlocks, loadPreset, buildGraph };
   initBrowser(editor);
   initInspector(editor);
+  makeDockable(document.getElementById('browser'), { id: 'browser', side: 'left', title: 'Blocks', min: 230, max: 560, toolHost: document.querySelector('#browser .search') });
+  makeDockable(document.getElementById('inspector'), { id: 'inspector', side: 'right', title: 'Block settings', min: 260, max: 640 });
   initTabs();
   initTopbar();
   initEngineEvents();
@@ -58,13 +62,13 @@ function initTabs() {
     ink.style.width = b.offsetWidth + 'px';
   };
   const show = (name) => {
-    tabs.querySelectorAll('button').forEach((b) => {
-      const on = b.dataset.tab === name;
-      b.classList.toggle('active', on);
-      if (on) moveInk(b);
-    });
+    tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    moveInk(tabs.querySelector('button.active'));
     document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
     if (name === 'library') renderLibrary();
+    if (name === 'presets') renderPresets();
+    if (name === 'tonematch') import('./pages/tonematch.js').then((m) => m.renderToneMatch()).catch((e) => console.error(e));
+    if (name === 'plugins') import('./pages/plugins.js').then((m) => m.renderPlugins()).catch((e) => console.error(e));
     if (name === 'settings') renderSettings();
     if (name === 'capture') renderCapture();
     if (name === 'tone3000') showTone3000();
@@ -78,7 +82,7 @@ function initTabs() {
 
 // ------------------------------------------------------------ top bar & meters
 function initTopbar() {
-  document.getElementById('presetName').onclick = (e) => showPresetMenu(e.currentTarget);
+  document.getElementById('presetName').onclick = () => bus.emit('tab', 'presets');
   document.getElementById('presetPrev').onclick = () => step(-1);
   document.getElementById('presetNext').onclick = () => step(1);
   document.getElementById('presetSave').onclick = () => savePreset(false);
@@ -288,6 +292,8 @@ function initNodeMenu() {
       if (!d.alwaysOn) items.push({ label: b.bypass ? 'Enable' : 'Bypass', icon: 'power', kbd: 'B', onClick: () => setBypass(id, !b.bypass) });
       if (canSwitchVariant(d)) items.push({ label: (b.variant || 'mono') === 'stereo' ? 'Switch to mono' : 'Switch to stereo', icon: 'cable', onClick: () => { setVariant(id, (b.variant || 'mono') === 'stereo' ? 'mono' : 'stereo'); editor.rerenderNode(id); } });
       items.push({ label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', onClick: () => editor.select(duplicateBlocks([...state.selection]).map((n) => n.id)) });
+      items.push({ label: isFavorite(b.type) ? 'Remove from favourites' : 'Add to favourites', icon: 'star', onClick: () => toggleFavorite(b.type) });
+      if (d.cabMics) items.push({ label: 'Add microphone', icon: 'mic', onClick: () => { import('./inspector.js').then((m) => { m.addMic(b); editor.select([id]); }); } });
       items.push({ label: 'Unplug all cables', icon: 'cable', onClick: () => { commitNow(); state.preset.cables = state.preset.cables.filter((c) => c.from.node !== id && c.to.node !== id); bus.emit('cables'); import('./state.js').then((m) => m.syncGraph()); } });
       items.push({ sep: true });
       items.push({ label: 'Delete', icon: 'trash', kbd: 'Del', onClick: () => removeBlocks([...state.selection]) });

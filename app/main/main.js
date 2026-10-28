@@ -47,7 +47,10 @@ function createWindow() {
   win.loadFile(path.join(APP_ROOT, 'renderer', 'index.html'));
   win.once('ready-to-show', () => win.show());
   win.on('closed', () => (win = null));
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url, frameName }) => {
+    // pop-out panels (blocks browser / inspector) share the renderer's JS context
+    if (url === 'about:blank' && /^tz-panel-/.test(frameName))
+      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0f1218', icon: path.join(APP_ROOT, 'build/icon.png'), minWidth: 280, minHeight: 300, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
@@ -154,6 +157,8 @@ function setupIpc() {
   ipcMain.handle('presets:load', (_e, f) => lib.loadPreset(f));
   ipcMain.handle('presets:save', (_e, p, f) => lib.savePreset(p, f));
   ipcMain.handle('presets:delete', (_e, f) => lib.deletePreset(f));
+  ipcMain.handle('presets:meta', (_e, f, patch) => lib.presetMeta(f, patch));
+  ipcMain.handle('presets:duplicate', (_e, f) => lib.duplicatePreset(f));
   ipcMain.handle('presets:export', async (_e, p) => {
     const r = await dialog.showSaveDialog(win, { title: 'Export preset', defaultPath: `${p.name || 'preset'}.tzpreset.json`, filters: [{ name: 'Tone Zone preset', extensions: ['json'] }] });
     if (r.canceled || !r.filePath) return false;

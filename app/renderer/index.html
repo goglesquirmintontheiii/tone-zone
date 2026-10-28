@@ -20,11 +20,14 @@
         <div class="brand-text"><span>TONE</span><b>ZONE</b></div>
       </div>
       <nav id="tabs">
-        <button data-tab="board" class="active"><i class="ic ic-board"></i>Board</button>
-        <button data-tab="library"><i class="ic ic-lib"></i>Library</button>
-        <button data-tab="tone3000"><i class="ic ic-cloud"></i>TONE3000</button>
-        <button data-tab="capture"><i class="ic ic-mic"></i>Capture</button>
-        <button data-tab="settings"><i class="ic ic-gear"></i>Settings</button>
+        <button data-tab="board" class="active" title="Board"><i class="ic ic-board"></i><span>Board</span></button>
+        <button data-tab="presets" title="Presets"><i class="ic ic-list"></i><span>Presets</span></button>
+        <button data-tab="library" title="Library"><i class="ic ic-lib"></i><span>Library</span></button>
+        <button data-tab="tonematch" title="Tone Match"><i class="ic ic-wave"></i><span>Tone Match</span></button>
+        <button data-tab="tone3000" title="TONE3000"><i class="ic ic-cloud"></i><span>TONE3000</span></button>
+        <button data-tab="capture" title="Capture"><i class="ic ic-mic"></i><span>Capture</span></button>
+        <button data-tab="plugins" title="Plugins"><i class="ic ic-plug"></i><span>Plugins</span></button>
+        <button data-tab="settings" title="Settings"><i class="ic ic-gear"></i><span>Settings</span></button>
         <span class="tab-ink"></span>
       </nav>
       <div id="presetbar">
@@ -97,6 +100,12 @@
         </aside>
       </section>
 
+      <!-- PRESETS -->
+      <section class="view" id="view-presets"></section>
+      <!-- TONE MATCH -->
+      <section class="view" id="view-tonematch"></section>
+      <!-- PLUGINS -->
+      <section class="view" id="view-plugins"></section>
       <!-- LIBRARY -->
       <section class="view" id="view-library"></section>
       <!-- TONE3000 -->

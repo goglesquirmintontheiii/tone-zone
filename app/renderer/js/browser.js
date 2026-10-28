@@ -6,6 +6,7 @@ import { renderForm } from './gfx/forms.js';
 import { state } from './state.js';
 
 let editorRef = null;
+let listEl = null;
 const F = loadFilters();
 
 function loadFilters() {
@@ -88,6 +89,7 @@ export function initBrowser(editor) {
   editorRef = editor;
   const head = document.querySelector('#browser .browser-head');
   const chips = document.getElementById('catChips');
+  listEl = document.getElementById('blockList');
   chips.innerHTML = '';
   chips.className = 'filter-bar';
   // quick row: favourites + filter toggle + kind chips
@@ -206,7 +208,7 @@ export function initBrowser(editor) {
 
 let observer = null;
 export function renderList() {
-  const list = document.getElementById('blockList');
+  const list = listEl;
   if (!list) return;
   const scroll = list.scrollTop;
   list.innerHTML = '';
@@ -265,7 +267,14 @@ export function renderList() {
         e.stopPropagation();
         toggleFavorite(d.id);
       };
-      item.addEventListener('pointerdown', (e) => startDrag(e, d, item));
+      // docked: pointer drag (instant); popped out into another window: native drag-and-drop across windows
+      item.addEventListener('pointerdown', (e) => item.ownerDocument === document && startDrag(e, d, item));
+      item.draggable = true;
+      item.addEventListener('dragstart', (e) => {
+        if (item.ownerDocument === document) return e.preventDefault();
+        e.dataTransfer.setData('application/x-tz-block', d.id);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
       item.addEventListener('dblclick', () => editorRef.addNear(d.id));
       observer.observe(item);
     }

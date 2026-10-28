@@ -351,25 +351,6 @@ export function drawSlider(parent, ctl, theme) {
 }
 
 // jack (1/4" socket with hex nut)
-export function drawJack(parent, j, theme) {
-  const g = svg('g', { class: 'jack', transform: `translate(${j.x},${j.y})` }, parent);
-  g.dataset.jack = j.key;
-  svg('circle', { r: 11, class: 'jack-hot' }, g);
-  const sideRot = { left: 0, right: 0, top: 90, bottom: 90 }[j.side] || 0;
-  const body = svg('g', { transform: `rotate(${sideRot})` }, g);
-  // nut seen at an angle from above: a squashed hexagon protruding from the side
-  svg('rect', { x: -3.5, y: -7.5, width: 7, height: 15, rx: 1.6, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.5 }, body);
-  svg('rect', { x: -2, y: -4, width: 4, height: 8, rx: 1, fill: '#0c0d0f' }, body);
-  if (j.label && theme.jackLabels !== false) {
-    // printed next to the jack, just above it on the enclosure (like the real thing)
-    const lx = j.side === 'left' ? 5 : j.side === 'right' ? -5 : 0;
-    const ly = j.side === 'top' ? 13 : j.side === 'bottom' ? -13 : -12;
-    const anchor = j.side === 'left' ? 'start' : j.side === 'right' ? 'end' : 'middle';
-    text(g, lx, ly, j.label, { size: 4.6, fill: theme.jackText || theme.text, anchor, weight: 700, opacity: 0.8, ls: 0.3 });
-  }
-  return g;
-}
-
 // expression treadle (wah / volume / whammy)
 export function drawTreadle(parent, ctl) {
   const g = svg('g', { class: 'ctl treadle', transform: `translate(${ctl.x},${ctl.y})` }, parent);

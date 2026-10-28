@@ -1,4 +1,5 @@
 // The board: pan / zoom, block placement and dragging, realistic patch cables, control interaction.
+import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH } from './gfx/jacks.js';
 import { svg, clamp, shade, bus, toast } from './util.js';
 import { installDefs } from './gfx/defs.js';
 import { NodeView, knobPos, knobValue } from './nodeview.js';
@@ -8,6 +9,7 @@ import {
   commitNow, uiParams, engineParamsFor, CABLE_COLORS, markDirty, estimatedLoad,
 } from './state.js';
 import { showMenu } from './menus.js';
+import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
 
 const PLUG_LEN = 30; // sleeve + boot length
 
@@ -133,12 +135,13 @@ export class Editor {
     const p = v.jackWorld(key);
     if (!p) return null;
     const dir = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1], front: [0, 1] }[p.side] || [1, 0];
-    return { x: p.x, y: p.y, dx: dir[0], dy: dir[1], front: p.side === 'front' };
+    return { x: p.x, y: p.y, dx: dir[0], dy: dir[1], front: p.side === 'front', kind: p.kind || 'inst' };
   }
   cablePath(a, b) {
     // a, b: plug tips {x,y,dx,dy}; cable starts at the end of each boot
-    const ax = a.x + a.dx * PLUG_LEN, ay = a.y + a.dy * (a.front ? 6 : PLUG_LEN);
-    const bx = b.x + b.dx * PLUG_LEN, by = b.y + b.dy * (b.front ? 6 : PLUG_LEN);
+    const la = a.front ? 6 : (JACK_TIP[a.kind] ?? 6) + (PLUG_LENS[a.kind] || 30), lb = b.front ? 6 : (JACK_TIP[b.kind] ?? 6) + (PLUG_LENS[b.kind] || 30);
+    const ax = a.x + a.dx * la, ay = a.y + a.dy * la;
+    const bx = b.x + b.dx * lb, by = b.y + b.dy * lb;
     const dist = Math.hypot(bx - ax, by - ay);
     const L = clamp(dist * 0.42, 40, 220);
     const sag = clamp(dist * 0.28, 22, 180);
@@ -147,26 +150,7 @@ export class Editor {
     return `M${ax.toFixed(1)},${ay.toFixed(1)} C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)}`;
   }
   drawPlug(parent, j, color) {
-    const ang = (Math.atan2(j.dy, j.dx) * 180) / Math.PI;
-    const g = svg('g', { transform: `translate(${j.x},${j.y}) rotate(${j.front ? 90 : ang})`, 'pointer-events': 'none' }, parent);
-    if (j.front) {
-      // plug seen from the front of an amp: round boot
-      svg('circle', { r: 9, fill: '#000', opacity: 0.4, cy: 3 }, g);
-      svg('circle', { r: 8, fill: shade(color, -0.35) }, g);
-      svg('circle', { r: 6, fill: color }, g);
-      svg('circle', { r: 3, cx: -1.5, cy: -1.5, fill: '#fff', opacity: 0.25 }, g);
-      return g;
-    }
-    svg('rect', { x: 2, y: -6, width: PLUG_LEN, height: 12, rx: 4, fill: '#000', opacity: 0.35, transform: 'translate(3,4)' }, g);
-    // metal sleeve
-    svg('rect', { x: 0, y: -4.2, width: 11, height: 8.4, rx: 1.4, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
-    svg('rect', { x: 3.5, y: -4.2, width: 1.2, height: 8.4, fill: '#000', opacity: 0.25 }, g);
-    // boot
-    svg('rect', { x: 10, y: -5.6, width: PLUG_LEN - 10, height: 11.2, rx: 4.5, fill: shade(color, -0.45) }, g);
-    svg('rect', { x: 10.5, y: -5, width: PLUG_LEN - 11, height: 10, rx: 4, fill: shade(color, -0.12) }, g);
-    svg('rect', { x: 11, y: -4.6, width: PLUG_LEN - 12, height: 3.4, rx: 2, fill: '#fff', opacity: 0.22 }, g);
-    for (let i = 0; i < 3; i++) svg('rect', { x: PLUG_LEN - 7 + i * 2.4, y: -4.8, width: 0.9, height: 9.6, fill: '#000', opacity: 0.25 }, g);
-    return g;
+    return drawPlugGfx(parent, j, color, j.kind);
   }
   drawCables() {
     this.layerCables.innerHTML = '';
@@ -332,6 +316,12 @@ export class Editor {
       this.highlightCables();
       return;
     }
+    // shift / ctrl + drag on empty board: rubber-band selection
+    if (e.shiftKey || e.ctrlKey) {
+      const rect = svg('rect', { class: 'marquee', x: w.x, y: w.y, width: 0, height: 0, rx: 4 }, this.layerDrag);
+      this.drag = { kind: 'marquee', sx: w.x, sy: w.y, rect, base: new Set(state.selection) };
+      return;
+    }
     // empty board: pan + deselect
     if (state.selection.size || state.selectedCable) {
       state.selection.clear();
@@ -459,7 +449,7 @@ export class Editor {
         this.showTip(e, c, ui[pName]);
         break;
       case 'mic':
-        this.drag.start = { pos: ui.position ?? 0.3, dist: ui.distance ?? 0.15 };
+        this.drag.start = { x: ui[`_m${c.idx}x`] ?? 0.5, y: ui[`_m${c.idx}y`] ?? 0.5 };
         break;
       case 'foot':
         this.footDown(v, c, entry.view);
@@ -492,12 +482,14 @@ export class Editor {
       if (idx !== (uiParams(v.block)[c.p] ?? c.def)) this.setCtl(v, c, c.p, idx);
       this.showTip(e, c, idx);
     } else if (c.t === 'mic') {
-      const r = c.rx || 40;
-      const pos = clamp(d.start.pos + dx / (r * this.view.z), 0, 1);
-      const dist = clamp(d.start.dist + dy / (r * 2 * this.view.z), 0, 1);
-      setParam(v.block.id, 'position', pos, { silent: true });
-      setParam(v.block.id, 'distance', dist, { silent: true });
-      this.tipText(e, `Mic: ${pos < 0.15 ? 'cap centre' : pos > 0.8 ? 'cone edge' : 'cap edge'} · ${(1 + dist * 30).toFixed(0)} cm`);
+      const g = c.geom;
+      const x = clamp(d.start.x + dx / (g.gw * this.view.z), 0, 1);
+      const y = clamp(d.start.y + dy / (g.gh * this.view.z), 0, 1);
+      setParam(v.block.id, `_m${c.idx}x`, x, { silent: true });
+      setParam(v.block.id, `_m${c.idx}y`, y, { silent: true });
+      const s = micToSpeaker(v.def.cabSize || '4x12', x, y);
+      const dist = uiParams(v.block)[`m${c.idx}dist`] ?? 0.15;
+      this.tipText(e, `Mic ${c.idx} · speaker ${s.spk + 1} · ${s.pos < 0.15 ? 'dust cap' : s.pos < 0.45 ? 'cap edge' : s.pos <= 1 ? 'cone' : 'off the cone'} · ${(1 + dist * 30).toFixed(0)} cm  (scroll = distance)`);
     }
   }
   endControl(e) {
@@ -524,9 +516,18 @@ export class Editor {
     } else if (c.t === 'treadle' && (v.def.toeSwitch || !v.def.noBypassClick)) {
       setBypass(b.id, !b.bypass);
     } else if (c.t === 'mic') {
-      const cur = uiParams(b).mic ?? v.def.opts.mic ?? 0;
-      setParam(b.id, 'mic', ((cur | 0) + 1) % 4);
-      toast(`Microphone: ${['Dynamic 57', 'Condenser 414', 'Ribbon 121', 'Dynamic 421'][((cur | 0) + 1) % 4]}`, 'info', 1300);
+      // click selects the mic (inspector shows its settings); shift-click cycles the mic model
+      const sui = (state.ui[b.id] = state.ui[b.id] || {});
+      if (e.shiftKey) {
+        const cur = uiParams(b)[`m${c.idx}type`] ?? 0;
+        setParam(b.id, `m${c.idx}type`, ((cur | 0) + 1) % MIC_TYPES.length);
+        toast(`Mic ${c.idx}: ${MIC_TYPES[((cur | 0) + 1) % MIC_TYPES.length]}`, 'info', 1300);
+      } else {
+        sui.selMic = c.idx;
+        this.select([b.id]);
+        v.updateControls();
+        bus.emit('selection');
+      }
     }
   }
   buttonAction(v, c) {
@@ -748,6 +749,22 @@ export class Editor {
       d.moved = true;
       this.updateCableDrag(e);
     } else if (d.kind === 'ctl') this.dragControl(e);
+    else if (d.kind === 'marquee') {
+      const w = this.toWorld(e.clientX, e.clientY);
+      const x0 = Math.min(d.sx, w.x), y0 = Math.min(d.sy, w.y), x1 = Math.max(d.sx, w.x), y1 = Math.max(d.sy, w.y);
+      d.rect.setAttribute('x', x0); d.rect.setAttribute('y', y0);
+      d.rect.setAttribute('width', x1 - x0); d.rect.setAttribute('height', y1 - y0);
+      const sel = new Set(d.base);
+      for (const [id, v] of this.views) {
+        if (id.startsWith('__')) continue;
+        const b = v.block;
+        if (b.x < x1 && b.x + v.w > x0 && b.y < y1 && b.y + v.h > y0) sel.add(id);
+      }
+      if (sel.size !== state.selection.size || [...sel].some((i) => !state.selection.has(i))) {
+        state.selection = sel;
+        this.views.forEach((v) => v.updateSelection());
+      }
+    }
   }
   onUp(e) {
     const d = this.drag;
@@ -756,6 +773,10 @@ export class Editor {
     if (d.kind === 'cable') this.finishCableDrag();
     else if (d.kind === 'ctl') this.endControl(e);
     else if (d.kind === 'node' && d.moved) markDirty();
+    else if (d.kind === 'marquee') {
+      d.rect.remove();
+      bus.emit('selection');
+    }
     this.drag = null;
   }
   onWheel(e) {
@@ -768,6 +789,15 @@ export class Editor {
         const c = entry.ctl;
         const ui = uiParams(v.block);
         const dir = e.deltaY < 0 ? 1 : -1;
+        if (c.t === 'mic') {
+          const k = `m${c.idx}dist`;
+          const nd = clamp((ui[k] ?? 0.15) - dir * 0.04, 0, 1);
+          setParam(v.block.id, k, nd);
+          this.tipText(e, `Mic ${c.idx} distance · ${(1 + nd * 30).toFixed(0)} cm`);
+          clearTimeout(this._tipT);
+          this._tipT = setTimeout(() => this.hideTip(), 700);
+          return;
+        }
         if (c.t === 'knob' || c.t === 'slider' || c.t === 'treadle') {
           const alt = state.ui[v.block.id]?.alt && c.alt;
           const pName = alt ? c.alt : c.p;

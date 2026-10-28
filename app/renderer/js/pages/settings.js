@@ -13,11 +13,38 @@ export async function applySettings(s) {
 export function sendEngineSettings() {
   const s = state.settings;
   window.tz.engine.send({ cmd: 'settings', quality: s.quality ?? 1, budget: s.budget ?? 0.75, autoQuality: !!s.autoQuality, inGainDb: s.inGainDb ?? 0, outGainDb: s.outGainDb ?? 0 });
+  for (const dir of ['in', 'out']) (ioConf(dir) || []).forEach((c, index) => sendIo(dir, index, c));
+}
+
+// ---------------- per-port I/O configuration (labels, trim, mute, polarity) – stored per machine
+export const IO_DEFAULT_LABELS = { in: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R'], out: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R'] };
+export const IO_PORT_NAMES = { in: ['in_1', 'in_2', 'return_1', 'return_2'], out: ['out_L', 'out_R', 'send_1', 'send_2'] };
+export function ioConf(dir) {
+  const io = (state.settings.io = state.settings.io || {});
+  if (!io[dir]) io[dir] = IO_DEFAULT_LABELS[dir].map((label) => ({ label, gainDb: 0, mute: false, invert: false }));
+  return io[dir];
+}
+function sendIo(dir, index, c) {
+  window.tz.engine.send({ cmd: 'io', dir, index, gainDb: c.gainDb || 0, mute: !!c.mute, invert: !!c.invert });
+}
+export function setIo(dir, index, patch) {
+  const c = ioConf(dir)[index];
+  Object.assign(c, patch);
+  sendIo(dir, index, c);
+  window.tz.settings.set({ io: state.settings.io });
+  if ('label' in patch) bus.emit('rebuildBoard');
+}
+export function portsSnapshot() {
+  return portsData;
+}
+export function requestPorts() {
+  window.tz.engine.send({ cmd: 'ports' });
 }
 
 export function onPorts(ev) {
   portsData = ev;
   renderPorts();
+  bus.emit('ports', ev);
 }
 
 function srow(parent, title, sub, ctrl) {
@@ -123,6 +150,7 @@ export function renderSettings() {
     const sc = [
       ['Drag knob', 'turn (Shift = fine), wheel works too, double-click = default'],
       ['Drag jack', 'patch a cable; drag a plugged input to move / unplug it'],
+      ['Shift+drag board', 'rubber-band select several blocks (Shift+click adds one)'],
       ['Shift+drag output', 'pick up the last cable from an output'],
       ['Right-click', 'block / cable menus (colours, stereo, duplicate…)'],
       ['Del', 'delete selection'], ['Ctrl+D', 'duplicate'], ['B', 'bypass selected'], ['F', 'fit board'],
@@ -140,7 +168,7 @@ function renderPorts() {
   if (!box) return;
   box.innerHTML = '';
   if (!portsData || !portsData.self) {
-    el('p', { style: { color: 'var(--muted)', gridColumn: '1/-1' } }, box).textContent = 'Waiting for the audio engine…';
+    el('p', { class: 'ports-wait' }, box).textContent = 'Waiting for the audio engine…';
     return;
   }
   const me = portsData.self + ':';
@@ -149,20 +177,58 @@ function renderPorts() {
   const otherSrc = portsData.sources.filter((p) => !p.name.startsWith(me));
   const otherSink = portsData.sinks.filter((p) => !p.name.startsWith(me));
   const col = (title, mine, others, isInput) => {
-    const c = el('div', {}, box);
-    el('h5', { style: { margin: '6px 0 8px', color: 'var(--muted)', letterSpacing: '.1em' } }, c).textContent = title;
+    const c = el('div', { class: 'port-col' }, box);
+    el('h5', {}, c).textContent = title;
     for (const m of mine) {
-      el('div', { style: { fontWeight: 600, fontSize: '12px', margin: '10px 0 4px' } }, c).textContent = m.name.slice(me.length);
-      const list = el('div', { class: 'port-list' }, c);
-      for (const o of others) {
-        const connected = isInput ? m.connections.includes(o.name) : m.connections.includes(o.name);
-        const pr = el('div', { class: 'pr' + (connected ? ' on' : '') }, list);
-        el('span', { title: o.name }, pr).textContent = (o.physical ? '🔌 ' : '') + o.name;
-        const t = toggle(connected, (on) => window.tz.engine.send({ cmd: 'connect', src: isInput ? o.name : m.name, dst: isInput ? m.name : o.name, on }));
-        pr.appendChild(t);
+      const row = el('div', { class: 'port-row' }, c);
+      el('div', { class: 'port-name' }, row).textContent = m.name.slice(me.length);
+      const chips = el('div', { class: 'port-chips' }, row);
+      const conns = others.filter((o) => m.connections.includes(o.name));
+      for (const o of conns) {
+        const ch = el('span', { class: 'port-chip', title: o.name }, chips, `${o.physical ? '<i class="hw"></i>' : ''}<span><strong>${esc(o.name.split(':').slice(1).join(':'))}</strong> <em>${esc(o.name.split(':')[0])}</em></span><b>×</b>`);
+        ch.querySelector('b').onclick = () => window.tz.engine.send({ cmd: 'connect', src: isInput ? o.name : m.name, dst: isInput ? m.name : o.name, on: false });
+      }
+      const add = el('button', { class: 'port-add', title: 'Connect…' }, chips, '+');
+      add.onclick = (e) => {
+        e.stopPropagation();
+        openPortPicker(add, others.filter((o) => !m.connections.includes(o.name)), (o) => window.tz.engine.send({ cmd: 'connect', src: isInput ? o.name : m.name, dst: isInput ? m.name : o.name, on: true }));
+      };
+    }
+  };
+  col('TONE ZONE INPUTS', mineIn, otherSrc, true);
+  col('TONE ZONE OUTPUTS', mineOut, otherSink, false);
+}
+
+export function openPortPicker(anchor, list, onPick) {
+  document.querySelectorAll('.port-picker').forEach((x) => x.remove());
+  const r = anchor.getBoundingClientRect();
+  const pop = el('div', { class: 'port-picker' }, document.body);
+  pop.style.left = Math.min(window.innerWidth - 380, r.left) + 'px';
+  pop.style.top = Math.min(window.innerHeight - 340, r.bottom + 6) + 'px';
+  const q = el('input', { placeholder: 'Filter ports…', spellcheck: 'false' }, pop);
+  const ul = el('div', { class: 'pp-list' }, pop);
+  const draw = () => {
+    ul.innerHTML = '';
+    const f = q.value.trim().toLowerCase();
+    const groups = new Map();
+    for (const o of list) {
+      if (f && !o.name.toLowerCase().includes(f)) continue;
+      const client = o.name.split(':')[0];
+      if (!groups.has(client)) groups.set(client, []);
+      groups.get(client).push(o);
+    }
+    if (!groups.size) el('div', { class: 'pp-empty' }, ul).textContent = 'No matching ports';
+    for (const [client, ports] of groups) {
+      el('div', { class: 'pp-client' }, ul).textContent = client;
+      for (const o of ports) {
+        const it = el('div', { class: 'pp-item' }, ul, `${o.physical ? '<i class="hw"></i>' : ''}${esc(o.name.slice(client.length + 1))}`);
+        it.onclick = () => { onPick(o); pop.remove(); };
       }
     }
   };
-  col('INPUTS', mineIn, otherSrc, true);
-  col('OUTPUTS', mineOut, otherSink, false);
+  q.oninput = draw;
+  draw();
+  setTimeout(() => q.focus(), 0);
+  const close = (e) => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('pointerdown', close, true); } };
+  document.addEventListener('pointerdown', close, true);
 }

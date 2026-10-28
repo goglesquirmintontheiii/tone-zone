@@ -281,7 +281,20 @@ function listPresets() {
       try {
         const j = JSON.parse(fs.readFileSync(p, 'utf8'));
         name = j.name || name;
-        meta = { tags: j.tags || [], blocks: (j.blocks || []).length, favorite: !!j.favorite, order: j.order || 0 };
+        const bl = (j.blocks || []).filter((b) => !String(b.id).startsWith('__'));
+        const idx = new Map(bl.map((b, i) => [b.id, i]));
+        meta = {
+          tags: j.tags || [],
+          blocks: bl.length,
+          favorite: !!j.favorite,
+          order: j.order || 0,
+          factory: !!j.factory,
+          saved: j.saved || 0,
+          desc: j.desc || '',
+          // compact layout for preset thumbnails
+          layout: { b: bl.map((b) => [b.type, Math.round(b.x), Math.round(b.y), b.bypass ? 1 : 0]), c: (j.cables || []).map((c) => [idx.has(c.from.node) ? idx.get(c.from.node) : -1, idx.has(c.to.node) ? idx.get(c.to.node) : -1]) },
+          types: [...new Set(bl.map((b) => b.type))],
+        };
       } catch (_) {}
       return Object.assign({ file: f, name, mtime: fs.statSync(p).mtimeMs }, meta);
     })
@@ -293,6 +306,22 @@ function loadPreset(file) {
 function savePreset(preset, file) {
   const f = file ? path.basename(file) : `${slug(preset.name)}.json`;
   fs.writeFileSync(path.join(presetDir(), f), JSON.stringify(preset, null, 2));
+  return f;
+}
+function presetMeta(file, patch) {
+  const p = path.join(presetDir(), path.basename(file));
+  const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+  for (const k of ['name', 'tags', 'favorite', 'desc', 'order']) if (k in patch) j[k] = patch[k];
+  fs.writeFileSync(p, JSON.stringify(j, null, 2));
+  return true;
+}
+function duplicatePreset(file) {
+  const j = loadPreset(file);
+  j.name = j.name + ' copy';
+  delete j.factory;
+  let f = `${slug(j.name)}.json`;
+  for (let i = 2; fs.existsSync(path.join(presetDir(), f)); i++) f = `${slug(j.name)}-${i}.json`;
+  fs.writeFileSync(path.join(presetDir(), f), JSON.stringify(j, null, 2));
   return f;
 }
 function deletePreset(file) {
@@ -320,6 +349,8 @@ function saveSettings(s) {
 }
 
 module.exports = {
+  presetMeta,
+  duplicatePreset,
   dataRoot, ensureDirs, inspect, commit, list, update, remove, discardStaging,
   listPresets, loadPreset, savePreset, deletePreset, installFactoryPresets, loadSettings, saveSettings, readNamMeta,
 };

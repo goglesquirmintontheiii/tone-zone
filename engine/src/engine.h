@@ -101,6 +101,7 @@ private:
 
   Settings settings;
   std::atomic<float> inGain{1.f}, outGain{1.f};
+  std::atomic<float> inTrim[8] = {1, 1, 1, 1, 1, 1, 1, 1}, outTrim[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 
   // metering
   std::atomic<float> inPeak[kNumSysIn], outPeak[kNumSysOut];

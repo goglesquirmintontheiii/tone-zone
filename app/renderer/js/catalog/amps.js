@@ -1,4 +1,5 @@
 // Amplifiers, preamps and speaker cabinets.
+import { defaultMicXY, micToSpeaker } from '../gfx/cabgeom.js';
 import { K, TOG, FOOT, LED, MIC, def, ten } from './helpers.js';
 
 const k = (p, label, o = {}) => K(p, label, Object.assign({ display: ten }, o));
@@ -77,10 +78,26 @@ export const preampDefs = ampDefs
   ]);
 
 // ------------------------------------------------------------------ cabinets
-const CAB = (o) =>
-  def(Object.assign({ form: 'cab', cat: o.bass ? 'Bass Cab' : 'Cab', algo: 'cab', cost: 0.9, stereo: 'both', ports: { ins: ['INPUT'], outs: ['MIC OUT'] } }, o, {
-    controls: [MIC({ p: 'position', p2: 'distance' })],
+export const CAB = (o) => {
+  const d = def(Object.assign({ form: 'cab', cat: o.bass ? 'Bass Cab' : 'Cab', algo: 'cab', cost: 0.9, stereo: 'both', ports: { ins: ['INPUT'], outs: ['MIC OUT'] } }, o, {
+    controls: [1, 2, 3, 4].map((idx) => MIC({ idx })),
   }));
+  const size = d.cabSize || '4x12';
+  const m1 = defaultMicXY(size, 1);
+  d.initParams = Object.assign({ m1on: 1, m1type: d.opts.mic ?? 0, m1dist: 0.15, _m1x: m1.x, _m1y: m1.y }, d.initParams || {});
+  d.cabMics = true;
+  d.derive = (ui) => {
+    const out = {};
+    for (let i = 1; i <= 4; i++) {
+      if (ui[`_m${i}x`] === undefined) continue;
+      const s = micToSpeaker(size, ui[`_m${i}x`], ui[`_m${i}y`]);
+      out[`m${i}pos`] = s.pos;
+      out[`m${i}spk`] = s.spk;
+    }
+    return out;
+  };
+  return d;
+};
 export const cabDefs = [
   CAB({ id: 'cab.1x12us', name: '1x12 US Deluxe', ref: 'Fender Deluxe 1x12 (Jensen)', opts: { model: '1x12us' }, cabSize: '1x12', grille: 'silver', logo: 'Delux', logoColor: '#eee' }),
   CAB({ id: 'cab.2x12twin', name: '2x12 US Twin', ref: 'Fender Twin 2x12', opts: { model: '2x12twin' }, cabSize: '2x12', grille: 'silver', logo: 'Twain', logoColor: '#eee' }),

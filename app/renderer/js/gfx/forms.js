@@ -3,7 +3,9 @@
 // Each form lays out the block's controls and returns jacks + control views for the editor.
 import { svg, shade, luminance } from '../util.js';
 import { softShadow } from './fx.js';
-import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawJack, drawTreadle, label, hex, textColorFor } from './controls.js';
+import { drawJack } from './jacks.js';
+import { cabGeom, MIC_SHORT, MIC_COLORS } from './cabgeom.js';
+import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, label, hex, textColorFor } from './controls.js';
 
 function body(g, w, h, color, o = {}) {
   const rx = o.rx ?? 8;
@@ -48,38 +50,81 @@ function placeControls(ctx, list, theme) {
   }
 }
 
+let screenSeq = 0;
 function drawScreenFrame(g, c) {
   const s = svg('g', { transform: `translate(${c.x},${c.y})`, class: c.interactive ? 'ctl' : '' }, g);
   if (c.interactive) s.dataset.ctl = c.cid;
   svg('rect', { x: -c.w / 2 - 2.5, y: -c.h / 2 - 2.5, width: c.w + 5, height: c.h + 5, rx: 4, fill: c.bezel || '#0b0b0c', stroke: '#000', 'stroke-width': 0.6 }, s);
   const area = svg('g', { transform: `translate(${-c.w / 2},${-c.h / 2})` }, s);
   svg('rect', { width: c.w, height: c.h, rx: 2, fill: c.bg || 'url(#g-screen)' }, area);
-  const content = svg('g', {}, area);
+  const clipId = 'sc' + (++screenSeq);
+  const cp = svg('clipPath', { id: clipId }, area);
+  svg('rect', { width: c.w, height: c.h, rx: 2 }, cp);
+  const content = svg('g', { 'clip-path': `url(#${clipId})` }, area);
   svg('rect', { width: c.w, height: c.h, rx: 2, fill: 'url(#g-glass)', 'pointer-events': 'none' }, area);
   return { g: s, content, w: c.w, h: c.h, set() {} };
 }
 
-// draggable microphone in front of a speaker (cab position / distance)
+// draggable microphone in front of the speakers: x / y anywhere over the grille, size shows distance
+function micHead(g, type) {
+  switch (type) {
+    case 1: // 414: large-diaphragm, gold grille
+    case 6: // 87: nickel
+      svg('rect', { x: -7.5, y: -11, width: 15, height: 22, rx: 7.5, fill: type === 1 ? '#b9a26a' : '#c9ccd1', stroke: '#2a2a2a', 'stroke-width': 0.6 }, g);
+      svg('rect', { x: -6, y: -9.5, width: 12, height: 13, rx: 6, fill: type === 1 ? 'url(#p-grille-wheat)' : 'url(#p-grille-silver)' }, g);
+      svg('rect', { x: -7.5, y: 4, width: 15, height: 1.2, fill: '#000', opacity: 0.4 }, g);
+      break;
+    case 2: // 121 ribbon: slotted bar
+    case 7:
+      svg('rect', { x: -5.5, y: -12, width: 11, height: 24, rx: 3, fill: type === 2 ? '#9aa0a8' : '#2b2c30', stroke: '#111', 'stroke-width': 0.6 }, g);
+      for (let i = -9; i <= 9; i += 2.4) svg('rect', { x: -3.6, y: i, width: 7.2, height: 1.1, rx: 0.5, fill: '#0d0d0f', opacity: 0.85 }, g);
+      break;
+    case 3: // 421: dark oblong with slots
+    case 5: // 441: long silver
+      svg('rect', { x: -5.5, y: -12, width: 11, height: 24, rx: 5.5, fill: type === 3 ? '#26272b' : '#b8bcc2', stroke: '#111', 'stroke-width': 0.6 }, g);
+      for (let i = -8; i <= 2; i += 2.5) svg('rect', { x: -4, y: i, width: 8, height: 1.2, rx: 0.6, fill: type === 3 ? '#55575d' : '#5a5e65' }, g);
+      break;
+    case 4: // 906: flat, hangs over the cab
+      svg('rect', { x: -9, y: -5, width: 18, height: 10, rx: 3, fill: '#1d1e21', stroke: '#000', 'stroke-width': 0.6 }, g);
+      svg('rect', { x: -7, y: -3.2, width: 14, height: 6.4, rx: 2, fill: 'url(#p-grille-black)' }, g);
+      break;
+    default: // 57: mesh ball
+      svg('circle', { r: 8, fill: '#2b2e33', stroke: '#c7ccd2', 'stroke-width': 1.6 }, g);
+      svg('circle', { r: 5.6, fill: 'url(#p-grille-silver)' }, g);
+  }
+  svg('ellipse', { cx: -2.5, cy: -4, rx: 2.6, ry: 1.6, fill: '#fff', opacity: 0.22 }, g);
+}
 function drawMic(g, c) {
-  const m = svg('g', { class: 'ctl mic', transform: `translate(${c.x},${c.y})` }, g);
+  const geo = c.geom;
+  const m = svg('g', { class: 'ctl mic' }, g);
   m.dataset.ctl = c.cid;
-  const area = svg('rect', { x: -c.rx, y: -c.ry, width: c.rx * 2, height: c.ry * 2, fill: 'transparent' }, m);
-  const mic = svg('g', {}, m);
-  svg('ellipse', { cx: 0, cy: 3, rx: 11, ry: 6, fill: '#000', opacity: 0.45 }, mic);
-  svg('rect', { x: -4.5, y: -2, width: 9, height: 24, rx: 3, fill: 'url(#g-plugMetal)', stroke: '#222', 'stroke-width': 0.5 }, mic);
-  svg('circle', { r: 7, fill: '#2b2e33', stroke: 'url(#g-chrome)', 'stroke-width': 2 }, mic);
-  svg('circle', { r: 4.5, fill: 'url(#p-grille-black)' }, mic);
-  const tag = label(mic, 0, 30, c.micName || '57', { size: 6, fill: '#eee', weight: 800 });
+  const body = svg('g', {}, m);
+  let lastType = -1;
+  const col = MIC_COLORS[(c.idx - 1) % 4];
   return {
     g: m,
     set(v) {
-      // v = {pos 0..1, dist 0..1}
-      const x = -c.rx + 8 + (c.rx * 2 - 16) * (v.pos ?? 0.3) * 0.5 + (c.rx - 8) * 0; // centre..edge to the right
-      const px = (v.pos ?? 0.3) * (c.rx - 10);
-      const py = -c.ry + 10 + (v.dist ?? 0.15) * (c.ry * 2 - 30);
-      mic.setAttribute('transform', `translate(${px},${py})`);
-      if (v.name) tag.textContent = v.name;
-      void x;
+      m.style.display = v.on ? '' : 'none';
+      if (!v.on) return;
+      const x = geo.gx + (v.x ?? 0.5) * geo.gw, y = geo.gy + (v.y ?? 0.5) * geo.gh;
+      const sc = 1.5 - 0.55 * (v.dist ?? 0.15);
+      m.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+      const bottom = geo.gy + geo.gh + 16 - y;
+      const key = `${v.type}|${sc.toFixed(2)}|${v.sel ? 1 : 0}|${Math.round(bottom)}`;
+      if (key === lastType) return;
+      lastType = key;
+      body.innerHTML = '';
+      svg('circle', { r: 26, fill: 'transparent' }, body);
+      // cable / stand shadow dropping out of view and the mic shadow on the grille (farther = softer, offset)
+      svg('ellipse', { cx: 3 + 6 * (v.dist ?? 0), cy: 6 + 8 * (v.dist ?? 0), rx: 10 * sc, ry: 12 * sc, fill: '#000', opacity: 0.38 - 0.18 * (v.dist ?? 0) }, body);
+      svg('path', { d: `M0 ${10 * sc} C 0 ${(bottom * 0.55).toFixed(1)} 14 ${(bottom * 0.85).toFixed(1)} 22 ${bottom.toFixed(1)}`, stroke: '#0c0c0d', 'stroke-width': 2.6, fill: 'none', opacity: 0.9, 'stroke-linecap': 'round' }, body);
+      const head = svg('g', { transform: `scale(${sc.toFixed(2)})` }, body);
+      micHead(head, v.type | 0);
+      if (v.sel) svg('circle', { r: 17 * sc, fill: 'none', stroke: col, 'stroke-width': 1.6, 'stroke-dasharray': '3 2' }, body);
+      const tag = svg('g', { transform: `translate(${(13 * sc).toFixed(1)},${(-13 * sc).toFixed(1)})` }, body);
+      svg('circle', { r: 5.2, fill: col, stroke: '#000', 'stroke-width': 0.6 }, tag);
+      label(tag, 0, 0.3, String(c.idx), { size: 6.2, fill: '#111', weight: 800 });
+      label(body, 0, 18 * sc + 7, MIC_SHORT[v.type | 0], { size: 6, fill: '#eee', weight: 800 });
     },
   };
 }
@@ -499,8 +544,8 @@ forms.amp = (ctx, def) => {
 // speaker cabinet
 forms.cab = (ctx, def) => {
   const size = def.cabSize || '4x12';
-  const dims = { '1x12': [250, 236, 1, 1], '2x12': [400, 262, 2, 1], '4x12': [440, 420, 2, 2], '4x10': [300, 330, 2, 2], '8x10': [270, 480, 2, 4], '1x15': [264, 300, 1, 1], '2x10': [300, 240, 2, 1] };
-  const [w, h, cols, rows] = dims[size] || dims['4x12'];
+  const geo = cabGeom(size);
+  const { w, h, cols, rows } = geo;
   const g = ctx.g;
   const tolex = def.tolex || '#141414';
   softShadow(g, { w, h, rx: 12, dy: 16, blur: 10, opacity: 0.6 });
@@ -525,12 +570,11 @@ forms.cab = (ctx, def) => {
   const ly = rows >= 2 ? gy + 26 : gy + 24;
   if (def.logoPlate) svg('rect', { x: w / 2 - 54, y: ly - 12, width: 108, height: 24, rx: 4, fill: def.logoPlate }, g);
   label(g, w / 2, ly, def.logo || def.name, { size: def.logoSize || 18, fill: def.logoColor || '#efe3c3', font: def.logoFont || "'Dancing Script', cursive", weight: 700 });
-  // mic over the first speaker
-  const [mx, my] = centers[0];
   const theme = { text: '#ddd', labelSize: 6 };
   def.controls.forEach((c) => {
-    if (c.t === 'mic' && c.x === undefined) Object.assign(c, { x: mx, y: my, rx: sr, ry: sr });
+    if (c.t === 'mic') Object.assign(c, { geom: geo });
   });
+  void centers;
   const cabKnobs = def.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && c.x === undefined);
   if (cabKnobs.length || def.controls.some((c) => c.t === 'screen')) {
     svg('rect', { x: 24, y: h - 64, width: w - 48, height: 46, rx: 6, fill: '#101113', opacity: 0.92, stroke: '#000' }, g);
@@ -642,12 +686,9 @@ export function renderForm(ctx, def) {
   const res = f(ctx, def);
   // jacks are drawn last so they sit above the enclosure edge
   for (const j of res.jacks) {
+    if (!j.kind && def.jackKinds) j.kind = def.jackKinds[j.key];
     if (j.side === 'face') {
-      const jg = svg('g', { class: 'jack', transform: `translate(${j.x},${j.y})` }, ctx.g);
-      jg.dataset.jack = j.key;
-      svg('circle', { r: 12, class: 'jack-hot' }, jg);
-      svg('polygon', { points: hex(7.5), fill: 'url(#g-nut)', stroke: '#222', 'stroke-width': 0.5 }, jg);
-      svg('circle', { r: 4.2, fill: 'url(#g-hole)' }, jg);
+      drawJack(ctx.g, Object.assign({}, j, { label: j.label && def.form !== 'amp' ? j.label : '' }), res.theme);
       j.side = 'front';
     } else drawJack(ctx.g, j, res.theme);
   }

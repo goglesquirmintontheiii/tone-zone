@@ -83,6 +83,23 @@ struct CabModel
   float detail = 2.5f;
 };
 
+CabModel cabModelFromJson(const json& j)
+{
+  CabModel m;
+  m.hp = j.value("hp", m.hp); m.hpQ = j.value("hpQ", m.hpQ); m.resDb = j.value("resDb", m.resDb);
+  m.lp = j.value("lp", m.lp); m.lpQ = j.value("lpQ", m.lpQ); m.open = j.value("open", false);
+  m.seed = j.value("seed", 1); m.detail = j.value("detail", m.detail);
+  if (j.contains("peaks"))
+    for (auto& pk : j["peaks"])
+    {
+      EqBand b;
+      if (pk.is_array()) { b.type = Biquad::Peak; b.f = pk[0]; b.q = pk[1]; b.db = pk[2]; }
+      else { b.type = parseType(pk.value("type", "peak")); b.f = pk.value("f", 1000.f); b.q = pk.value("q", 1.f); b.db = pk.value("db", 0.f); }
+      m.peaks.push_back(b);
+    }
+  return m;
+}
+
 CabModel cabModel(const std::string& id)
 {
   CabModel m;
@@ -107,8 +124,19 @@ CabModel cabModel(const std::string& id)
   return m;
 }
 
-std::vector<float> synthCabIR(const CabModel& m, int micType, float pos, float dist, float sr, int len)
+std::vector<float> synthCabIR(const CabModel& m0, int micType, float pos, float dist, float sr, int len, int spk = 0, float axis = 0.f)
 {
+  // every speaker in a multi-speaker cab is a little different
+  CabModel m = m0;
+  if (spk > 0)
+  {
+    std::mt19937 vr(m0.seed * 131 + spk * 17);
+    std::uniform_real_distribution<float> u(-1.f, 1.f);
+    m.hp *= 1.f + 0.05f * u(vr);
+    m.lp *= 1.f + 0.06f * u(vr);
+    m.resDb += 0.8f * u(vr);
+    m.seed = m0.seed + spk * 101;
+  }
   const int N = 16384;
   std::vector<float> mag(N / 2 + 1, 1.f);
   std::vector<Biquad> f;
@@ -128,8 +156,14 @@ std::vector<float> synthCabIR(const CabModel& m, int micType, float pos, float d
   b.set(Biquad::Peak, 400, 0.8, 2.5f * pos, sr); f.push_back(b);
   // proximity effect: close mic = more low end
   b.set(Biquad::LowShelf, 180, 0.7, 5.f * (1.f - dist) - 1.f, sr); f.push_back(b);
+  // off-axis (angled) mic: duller top end, slightly less presence
+  if (axis > 0.01f) { b.set(Biquad::HighShelf, 3000, 0.6, -9.f * axis, sr); f.push_back(b); b.set(Biquad::Peak, 5500, 1.2, -3.f * axis, sr); f.push_back(b); }
   // microphone colour
-  if (micType == 0) { b.set(Biquad::Peak, 5500, 1.0, 5, sr); f.push_back(b); b.set(Biquad::HP, 90, 0.7, 0, sr); f.push_back(b); }   // dynamic '57'
+  if (micType == 4) { b.set(Biquad::Peak, 4500, 0.8, 4, sr); f.push_back(b); b.set(Biquad::Peak, 250, 1, -2.5, sr); f.push_back(b); b.set(Biquad::HP, 70, 0.7, 0, sr); f.push_back(b); } // e906-style
+  else if (micType == 5) { b.set(Biquad::HighShelf, 7000, 0.7, 1.5, sr); f.push_back(b); b.set(Biquad::Peak, 120, 0.8, 1.5, sr); f.push_back(b); } // MD441 / flat dynamic
+  else if (micType == 6) { b.set(Biquad::HighShelf, 8000, 0.7, 3.5, sr); f.push_back(b); b.set(Biquad::Peak, 400, 1, -1, sr); f.push_back(b); } // large-diaphragm 87-style
+  else if (micType == 7) { b.set(Biquad::HighShelf, 3500, 0.6, -7, sr); f.push_back(b); b.set(Biquad::LowShelf, 200, 0.7, 3, sr); f.push_back(b); } // dark ribbon 160-style
+  else if (micType == 0) { b.set(Biquad::Peak, 5500, 1.0, 5, sr); f.push_back(b); b.set(Biquad::HP, 90, 0.7, 0, sr); f.push_back(b); }   // dynamic '57'
   else if (micType == 1) { b.set(Biquad::HighShelf, 9000, 0.7, 2.5, sr); f.push_back(b); b.set(Biquad::Peak, 3000, 1, 1, sr); f.push_back(b); } // condenser
   else if (micType == 2) { b.set(Biquad::HighShelf, 4500, 0.6, -5, sr); f.push_back(b); b.set(Biquad::LowShelf, 150, 0.7, 2, sr); f.push_back(b); } // ribbon
   else { b.set(Biquad::Peak, 4000, 0.9, 3, sr); f.push_back(b); b.set(Biquad::Peak, 200, 1, -2, sr); f.push_back(b); }  // '421' style
@@ -163,6 +197,20 @@ std::vector<float> synthCabIR(const CabModel& m, int micType, float pos, float d
     }
     for (size_t i = 0; i < ir.size(); ++i) ir[i] += add[i];
   }
+  // time of flight: farther mics arrive later (comb filtering when mixing mics is real and intended)
+  const float delaySamp = dist * 0.0009f * sr;
+  if (delaySamp > 0.05f)
+  {
+    std::vector<float> d(ir.size(), 0.f);
+    const int di = int(delaySamp);
+    const float fr = delaySamp - float(di);
+    for (size_t i = 0; i < ir.size(); ++i)
+    {
+      if (i + di < d.size()) d[i + di] += ir[i] * (1.f - fr);
+      if (i + di + 1 < d.size()) d[i + di + 1] += ir[i] * fr;
+    }
+    ir.swap(d);
+  }
   // normalise to roughly unity loudness for a guitar-band signal
   double e = 0;
   for (float v : ir) e += v * v;
@@ -174,29 +222,40 @@ std::vector<float> synthCabIR(const CabModel& m, int micType, float pos, float d
 class CabBlock : public Block
 {
 public:
-  int pMic, pPos, pDist, pMic2, pPos2, pMix, pLowCut, pHighCut, pLevel, pModel;
-  std::vector<std::string> models;
+  static constexpr int kMics = 4;
+  struct MicP { int on, type, pos, dist, spk, lvl, pan, phase, axis; } mp[kMics];
+  int pLowCut, pHighCut, pLevel, pModel;
+  std::vector<CabModel> models;
   ConvSlot slot[2];
   float sr = 48000;
   int part = 64;
-  float last[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+  std::vector<float> lastSig;
   Biquad lc[2], hc[2];
   float lastLc = -1, lastHc = -1;
   std::vector<float> m1, m2;
   bool dual = false;
   CabBlock(const json& o)
   {
-    pMic = addParam("mic", o.value("mic", 0.f), 0, 3);
-    pPos = addParam("position", 0.3f);
-    pDist = addParam("distance", 0.15f);
-    pMic2 = addParam("mic2", 2, 0, 3);
-    pPos2 = addParam("position2", 0.5f);
-    pMix = addParam("mix", 0.5f);
+    for (int i = 0; i < kMics; ++i)
+    {
+      const std::string k = "m" + std::to_string(i + 1);
+      mp[i].on = addParam(k + "on", i == 0 ? 1.f : 0.f, 0, 1);
+      mp[i].type = addParam(k + "type", i == 0 ? o.value("mic", 0.f) : 2.f, 0, 7);
+      mp[i].pos = addParam(k + "pos", i == 0 ? 0.3f : 0.5f, 0, 1.3f);
+      mp[i].dist = addParam(k + "dist", 0.15f, 0, 1);
+      mp[i].spk = addParam(k + "spk", 0, 0, 7);
+      mp[i].lvl = addParam(k + "lvl", 0, -40, 6);
+      mp[i].pan = addParam(k + "pan", 0, -1, 1);
+      mp[i].phase = addParam(k + "phase", 0, 0, 1);
+      mp[i].axis = addParam(k + "axis", 0, 0, 1);
+    }
     pLowCut = addParam("lowcut", 30, 20, 500);
     pHighCut = addParam("highcut", 14000, 2000, 20000);
     pLevel = addParam("level", 0, -24, 12);
-    if (o.contains("models")) for (auto& m : o["models"]) models.push_back(m.get<std::string>());
-    else models.push_back(o.value("model", "4x12gb"));
+    if (o.contains("cabs")) for (auto& m : o["cabs"]) models.push_back(cabModelFromJson(m));
+    else if (o.contains("cab")) models.push_back(cabModelFromJson(o["cab"]));
+    else if (o.contains("models")) for (auto& m : o["models"]) models.push_back(cabModel(m.get<std::string>()));
+    else models.push_back(cabModel(o.value("model", "4x12gb")));
     pModel = addParam("model", 0, 0, float(std::max<size_t>(1, models.size()) - 1));
     finalizeParams();
   }
@@ -208,42 +267,66 @@ public:
     for (auto& s : slot) s.prepare(c.maxBlock, sr);
     m1.assign(c.maxBlock, 0.f);
     m2.assign(c.maxBlock, 0.f);
-    regen(true);
-    // install synchronously before audio starts
+    lastSig.clear();
+    regen();
     for (auto& s : slot)
       if (Convolver* p = s.pending.exchange(nullptr)) s.active.reset(p);
   }
   int irLen() const { return int(0.06f * sr); }
-  void regen(bool force)
+  std::vector<float> signature()
   {
-    const float cur[6] = {p(pMic), p(pPos), p(pDist), p(pMic2), p(pPos2), p(pModel)};
-    bool ch1 = force, ch2 = force;
-    for (int i = 0; i < 3; ++i) if (cur[i] != last[i]) ch1 = true;
-    for (int i = 3; i < 5; ++i) if (cur[i] != last[i]) ch2 = true;
-    if (cur[5] != last[5]) ch1 = ch2 = true;
-    const auto& model = cabModel(models[std::max(0, std::min(int(models.size()) - 1, int(std::round(cur[5]))))]);
-    if (ch1)
+    std::vector<float> v;
+    v.push_back(p(pModel));
+    for (auto& m : mp) for (int id : {m.on, m.type, m.pos, m.dist, m.spk, m.lvl, m.pan, m.phase, m.axis}) v.push_back(p(id));
+    return v;
+  }
+  void regen()
+  {
+    auto sig = signature();
+    if (sig == lastSig) return;
+    const auto& model = models[std::max(0, std::min(int(models.size()) - 1, int(std::round(p(pModel)))))];
+    const int L = irLen() + 64;
+    std::vector<float> irL(L, 0.f), irR(L, 0.f);
+    float maxG = 0;
+    int nOn = 0;
+    for (auto& m : mp)
     {
-      auto ir = synthCabIR(model, int(std::round(cur[0])), cur[1], cur[2], sr, irLen());
+      if (p(m.on) < 0.5f) continue;
+      ++nOn;
+      auto ir = synthCabIR(model, int(std::round(p(m.type))), std::min(1.f, p(m.pos)), p(m.dist), sr, L, int(std::round(p(m.spk))), p(m.axis));
+      // beyond the cone edge (pos > 1): much darker, quieter
+      const float edge = std::max(0.f, p(m.pos) - 1.f) / 0.3f;
+      float g = dbToGain(p(m.lvl)) * (1.f - 0.6f * edge) * (p(m.phase) > 0.5f ? -1.f : 1.f);
+      maxG = std::max(maxG, std::fabs(g));
+      const float pan = p(m.pan);
+      const float gl = dual ? std::cos((pan + 1.f) * 0.25f * float(kPi)) * 1.41421f : 1.f;
+      const float gr = dual ? std::sin((pan + 1.f) * 0.25f * float(kPi)) * 1.41421f : 0.f;
+      for (int i = 0; i < L && i < int(ir.size()); ++i) { irL[i] += ir[i] * g * std::min(1.f, gl); irR[i] += ir[i] * g * std::min(1.f, gr); }
+    }
+    if (nOn == 0) irL[0] = 0.f;
+    // keep loudness roughly constant when mics are added: normalise to the loudest single mic
+    auto norm = [&](std::vector<float>& v) {
+      double e = 0;
+      for (float x : v) e += x * x;
+      if (e > 1e-12 && nOn > 1) { const float s = float(0.55 * maxG / std::sqrt(e)); for (auto& x : v) x *= std::min(1.f, s * 1.25f); }
+    };
+    norm(irL);
+    if (dual) norm(irR);
+    auto mk = [&](std::vector<float>& ir) {
       auto cv = std::make_unique<Convolver>();
       cv->prepare(part);
       cv->setIR(ir.data(), int(ir.size()));
-      if (slot[0].offer(std::move(cv))) for (int i = 0; i < 3; ++i) last[i] = cur[i];
-    }
-    if (ch2 && dual)
-    {
-      auto ir = synthCabIR(model, int(std::round(cur[3])), cur[4], cur[2], sr, irLen());
-      auto cv = std::make_unique<Convolver>();
-      cv->prepare(part);
-      cv->setIR(ir.data(), int(ir.size()));
-      if (slot[1].offer(std::move(cv))) for (int i = 3; i < 5; ++i) last[i] = cur[i];
-    }
-    last[5] = cur[5];
+      return cv;
+    };
+    if (slot[0].pending.load() || (dual && slot[1].pending.load())) return; // previous swap not consumed yet
+    slot[0].offer(mk(irL));
+    if (dual) slot[1].offer(mk(irR));
+    lastSig = sig;
   }
   void controlTick() override
   {
     for (auto& s : slot) s.collect();
-    regen(false);
+    regen();
   }
   void process(const float* const* in, float* const* out, int n) override
   {
@@ -263,15 +346,10 @@ public:
     if (dual)
     {
       slot[1].process(x, out[1], n);
-      const float mix = p(pMix);
-      // stereo: L = mic 1, R = mic 2 (mix knob blends towards mono)
       for (int i = 0; i < n; ++i)
       {
-        const float a = m1[i], b = out[1][i];
-        const float l = a * (1.f - mix * 0.5f) + b * mix * 0.5f;
-        const float r = b * (1.f - mix * 0.5f) + a * mix * 0.5f;
-        out[0][i] = hc[0].process(lc[0].process(l)) * g;
-        out[1][i] = hc[1].process(lc[1].process(r)) * g;
+        out[0][i] = hc[0].process(lc[0].process(m1[i])) * g;
+        out[1][i] = hc[1].process(lc[1].process(out[1][i])) * g;
       }
     }
     else

@@ -239,9 +239,10 @@ void Engine::processGraph(CompiledGraph* g, const float* const* sysIn, float* co
   {
     float* b = g->buffers[c].data();
     float pk = 0;
+    const float tg = ig * inTrim[c].load(std::memory_order_relaxed);
     for (int i = 0; i < n; ++i)
     {
-      const float v = sysIn[c][i] * ig;
+      const float v = sysIn[c][i] * tg;
       b[i] = v;
       pk = std::max(pk, std::fabs(v));
     }
@@ -348,10 +349,11 @@ void Engine::processGraph(CompiledGraph* g, const float* const* sysIn, float* co
       for (int k = 0; k < n; ++k) o[k] += s[k];
     }
     float pk = 0;
+    const float tg = og * outTrim[c].load(std::memory_order_relaxed);
     for (int k = 0; k < n; ++k)
     {
       // soft safety limiter above 0 dBFS so a runaway preset cannot blast ears/speakers
-      float v = o[k] * og;
+      float v = o[k] * tg;
       const float a = std::fabs(v);
       if (a > 0.95f) v = std::copysign(0.95f + 0.05f * std::tanh((a - 0.95f) / 0.05f), v);
       o[k] = v;
@@ -653,6 +655,13 @@ void Engine::handleCommand(const json& cmd)
       if (b != bufSize) jack->set_buffer_size(client, b);
     }
     if (oldQ != settings.quality) rebuild();
+  }
+  else if (c == "io")
+  {
+    // per-port trim / mute / polarity: {dir:"in"|"out", index, gainDb, mute, invert}
+    const int idx = cmd.value("index", 0);
+    const float g = (cmd.value("mute", false) ? 0.f : dbToGain(cmd.value("gainDb", 0.f))) * (cmd.value("invert", false) ? -1.f : 1.f);
+    if (idx >= 0 && idx < 8) (cmd.value("dir", "in") == "in" ? inTrim[idx] : outTrim[idx]).store(g);
   }
   else if (c == "ports")
     listPorts();

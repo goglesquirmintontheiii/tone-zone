@@ -143,12 +143,16 @@ const SCREENS = {
   strobe: {
     build(s, g, w, h) {
       s.bands = [];
+      const bandH = Math.max(4, (h * 0.42) / 3 - 2);
+      s.rects = [];
       for (let r = 0; r < 3; r++) {
         const row = svg('g', {}, g);
-        for (let i = -2; i < 16; i++) svg('rect', { x: i * 10, y: 6 + r * 9, width: 5, height: 7, fill: '#2a8cff', opacity: 0.85 - r * 0.2 }, row);
+        for (let i = -2; i < Math.ceil(w / 10) + 2; i++) s.rects.push(svg('rect', { x: i * 10, y: 4 + r * (bandH + 2), width: 5, height: bandH, rx: 1, fill: '#2a8cff', opacity: 0.85 - r * 0.2 }, row));
         s.bands.push(row);
       }
-      s.note = t(g, w / 2, h - 20, '', { fill: '#e9ecf3', size: 16, weight: 700 });
+      // centre reference marks
+      svg('path', { d: `M${w / 2} 2 v3 M${w / 2} ${4 + 3 * (bandH + 2)} v3`, stroke: '#e9ecf3', 'stroke-width': 1, opacity: 0.6 }, g);
+      s.note = t(g, w / 2, h - 20, '', { fill: '#e9ecf3', size: Math.min(16, h * 0.24), weight: 700 });
       s.cents = t(g, w / 2, h - 7, '', { fill: '#7d8597', size: 7 });
     },
     update(s, st, nv) {
@@ -161,9 +165,10 @@ const SCREENS = {
       s.ph = s.ph || [0, 0, 0];
       s.bands.forEach((b, r) => {
         s.ph[r] = (s.ph[r] + tu.cents * 0.08 * (r + 1)) % 10;
-        setA(b, 'transform', `translate(${s.ph[r]},0)`);
-        b.querySelectorAll('rect').forEach((x) => setA(x, 'fill', Math.abs(tu.cents) < 1 ? '#3ddc84' : '#2a8cff'));
+        setA(b, 'transform', `translate(${s.ph[r].toFixed(1)},0)`);
       });
+      const col = Math.abs(tu.cents) < 1 ? '#3ddc84' : '#2a8cff';
+      if (s.col !== col) { s.col = col; s.rects.forEach((x) => setA(x, 'fill', col)); }
       setText(s.note, tu.note + (tu.octave ?? ''));
       setText(s.cents, `${tu.cents >= 0 ? '+' : ''}${tu.cents.toFixed(1)} ¢  ${tu.freq ? tu.freq.toFixed(2) + ' Hz' : ''}`);
     },

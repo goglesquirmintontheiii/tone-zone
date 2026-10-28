@@ -1,8 +1,10 @@
 // Right-hand inspector: precise parameter editing, variants, DSP cost and block info.
+import { MIC_TYPES, MIC_COLORS, defaultMicXY } from './gfx/cabgeom.js';
 import { el, esc, bus, clamp } from './util.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { state, blockById, uiParams, setParam, setBypass, setVariant, removeBlocks, duplicateBlocks, engineParamsFor, commitNow, sendParamsFor } from './state.js';
 import { knobPos, knobValue } from './nodeview.js';
+import { ioConf, setIo, IO_PORT_NAMES, IO_DEFAULT_LABELS, portsSnapshot, requestPorts, openPortPicker, sendEngineSettings } from './pages/settings.js';
 
 let root, body, current = null, editorRef = null;
 const blockInfo = {};
@@ -31,6 +33,8 @@ function fmtVal(c, v) {
 }
 
 function render() {
+  const io = [...state.selection].find((id) => id === '__in' || id === '__out');
+  if (io && state.selection.size === 1) return renderIO(io === '__in' ? 'in' : 'out');
   const ids = [...state.selection].filter((id) => !id.startsWith('__'));
   if (ids.length !== 1) {
     current = null;
@@ -106,21 +110,41 @@ function render() {
     seen.add(c.p);
     rowFor(ctlSec, b, c, ui);
   }
-  // cabinet microphone section
-  if (d.algo === 'cab') {
+  // cabinet microphones (up to 4, any speaker, mixed / panned)
+  if (d.cabMics) {
     const ms = el('div', { class: 'insp-section' }, body);
-    el('h5', {}, ms).textContent = 'Microphone';
-    rowFor(ms, b, { t: 'sel', p: 'mic', label: 'Mic', options: ['Dynamic 57', 'Condenser 414', 'Ribbon 121', 'Dynamic 421'], def: d.opts.mic ?? 0 }, ui);
-    rowFor(ms, b, { t: 'knob', p: 'position', label: 'Position', min: 0, max: 1, def: 0.3, display: (v) => (v < 0.15 ? 'Cap centre' : v > 0.8 ? 'Cone edge' : Math.round(v * 100) + '%') }, ui);
-    rowFor(ms, b, { t: 'knob', p: 'distance', label: 'Distance', min: 0, max: 1, def: 0.15, display: (v) => (1 + v * 30).toFixed(0) + ' cm' }, ui);
-    if ((b.variant || 'mono') === 'stereo') {
-      rowFor(ms, b, { t: 'sel', p: 'mic2', label: 'Mic 2', options: ['Dynamic 57', 'Condenser 414', 'Ribbon 121', 'Dynamic 421'], def: 2 }, ui);
-      rowFor(ms, b, { t: 'knob', p: 'position2', label: 'Position 2', min: 0, max: 1, def: 0.5 }, ui);
-      rowFor(ms, b, { t: 'knob', p: 'mix', label: 'Mic blend', min: 0, max: 1, def: 0.5 }, ui);
+    const hdr = el('h5', { class: 'h5-row' }, ms, 'Microphones');
+    const sel = state.ui[b.id]?.selMic ?? 1;
+    const stereo = (b.variant || 'mono') === 'stereo';
+    let count = 0;
+    for (let i = 1; i <= 4; i++) {
+      if ((ui[`m${i}on`] ?? 0) < 0.5) continue;
+      count++;
+      const card = el('div', { class: 'mic-card' + (sel === i ? ' sel' : '') }, ms);
+      const top = el('div', { class: 'mic-top' }, card, `<span class="mic-dot" style="background:${MIC_COLORS[i - 1]}">${i}</span><b>Mic ${i}</b><small>speaker ${(engineParamsFor(b)[`m${i}spk`] ?? 0) + 1}</small>`);
+      top.onclick = () => { (state.ui[b.id] = state.ui[b.id] || {}).selMic = i; editorRef.views.get(b.id)?.updateControls(); render(); };
+      if (count > 1 || [2, 3, 4].some((k) => (ui[`m${k}on`] ?? 0) > 0.5)) {
+        const rm = el('button', { class: 'icon-btn sm', title: 'Remove mic' }, top, '<i class="ic ic-trash"></i>');
+        rm.onclick = (e) => { e.stopPropagation(); setParam(b.id, `m${i}on`, 0); render(); };
+      }
+      rowFor(card, b, { t: 'sel', p: `m${i}type`, label: 'Model', options: MIC_TYPES, def: 0 }, ui);
+      rowFor(card, b, { t: 'knob', p: `m${i}dist`, label: 'Distance', min: 0, max: 1, def: 0.15, display: (v) => (1 + v * 30).toFixed(0) + ' cm' }, ui);
+      rowFor(card, b, { t: 'knob', p: `m${i}axis`, label: 'Angle', min: 0, max: 1, def: 0, display: (v) => (v < 0.02 ? 'On axis' : Math.round(v * 45) + '° off') }, ui);
+      rowFor(card, b, { t: 'knob', p: `m${i}lvl`, label: 'Level', min: -40, max: 6, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
+      if (stereo) rowFor(card, b, { t: 'knob', p: `m${i}pan`, label: 'Pan', min: -1, max: 1, def: 0, display: (v) => (Math.abs(v) < 0.02 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100)) }, ui);
+      rowFor(card, b, { t: 'toggle', p: `m${i}phase`, label: 'Polarity', options: ['Normal', 'Inverted'], def: 0 }, ui);
     }
-    rowFor(ms, b, { t: 'knob', p: 'lowcut', label: 'Low cut', min: 20, max: 500, def: 30, curve: 'log', unit: 'Hz' }, ui);
-    rowFor(ms, b, { t: 'knob', p: 'highcut', label: 'High cut', min: 2000, max: 20000, def: 14000, curve: 'log', unit: 'Hz' }, ui);
-    rowFor(ms, b, { t: 'knob', p: 'level', label: 'Level', min: -24, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
+    if (count < 4) {
+      const add = el('button', { class: 'btn small', style: { marginTop: '8px' } }, ms, '<i class="ic ic-plus"></i>Add microphone');
+      add.onclick = () => { addMic(b); render(); };
+    }
+    el('p', { class: 'hint' }, ms).textContent = 'Drag mics anywhere over the speakers · scroll on a mic for distance · shift-click to change model.';
+    void hdr;
+    const cs = el('div', { class: 'insp-section' }, body);
+    el('h5', {}, cs).textContent = 'Cabinet';
+    rowFor(cs, b, { t: 'knob', p: 'lowcut', label: 'Low cut', min: 20, max: 500, def: 30, curve: 'log', unit: 'Hz' }, ui);
+    rowFor(cs, b, { t: 'knob', p: 'highcut', label: 'High cut', min: 2000, max: 20000, def: 14000, curve: 'log', unit: 'Hz' }, ui);
+    rowFor(cs, b, { t: 'knob', p: 'level', label: 'Level', min: -24, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
   }
   if (d.id === 'mx.m222') {
     const ms = el('div', { class: 'insp-section' }, body);
@@ -151,7 +175,7 @@ function render() {
   if (reg) {
     const fixed = new Set(Object.keys(d.fixed || {}));
     const derived = d.derive ? new Set(Object.keys(d.derive(ui) || {})) : new Set();
-    const extra = reg.filter((p) => !seen.has(p.name) && !fixed.has(p.name) && !derived.has(p.name) && !(d.algo === 'cab' && ['mic', 'position', 'distance', 'mic2', 'position2', 'mix', 'lowcut', 'highcut', 'level', 'model'].includes(p.name)));
+    const extra = reg.filter((p) => !seen.has(p.name) && !fixed.has(p.name) && !derived.has(p.name) && !(d.algo === 'cab' && (/^m[1-4]/.test(p.name) || ['lowcut', 'highcut', 'level', 'model'].includes(p.name))));
     if (extra.length) {
       const det = el('details', { class: 'insp-section' }, body);
       el('summary', { style: { cursor: 'pointer', color: 'var(--muted)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700 } }, det).textContent = `Advanced (${extra.length})`;
@@ -240,3 +264,87 @@ export function getBlockInfo() {
   return blockInfo;
 }
 void esc;
+
+export function addMic(b) {
+  const ui = uiParams(b);
+  const d = getDef(b.type);
+  for (let i = 1; i <= 4; i++) {
+    if ((ui[`m${i}on`] ?? 0) > 0.5) continue;
+    commitNow();
+    const xy = defaultMicXY(d.cabSize || '4x12', i);
+    Object.assign(b.params, { [`m${i}on`]: 1, [`m${i}type`]: [0, 2, 1, 3][i - 1], [`m${i}dist`]: 0.15, [`_m${i}x`]: xy.x, [`_m${i}y`]: xy.y });
+    if ((b.variant || 'mono') === 'stereo') b.params[`m${i}pan`] = i % 2 ? -0.7 : 0.7;
+    (state.ui[b.id] = state.ui[b.id] || {}).selMic = i;
+    sendParamsFor(b);
+    bus.emit('param', { id: b.id });
+    return i;
+  }
+  return 0;
+}
+
+// ------------------------------------------------------------------ AUDIO IN / AUDIO OUT configuration
+let ioPortsHandler = null;
+function renderIO(dir) {
+  current = dir === 'in' ? '__in' : '__out';
+  root.classList.remove('collapsed');
+  body.innerHTML = '';
+  const t = el('div', { class: 'insp-title' }, body);
+  el('div', { class: 'swatch', style: { background: 'linear-gradient(135deg,#2a3040,#161a22)' } }, t);
+  el('div', {}, t, `<h3>${dir === 'in' ? 'Audio In' : 'Audio Out'}</h3><p>${dir === 'in' ? 'Inputs from PipeWire into the board' : 'Board outputs to PipeWire'}</p>`);
+  const conf = ioConf(dir);
+  const snap = portsSnapshot();
+  const me = snap && snap.self ? snap.self + ':' : null;
+  const g = el('div', { class: 'insp-section' }, body);
+  el('h5', {}, g).textContent = dir === 'in' ? 'Global input gain' : 'Global output gain';
+  const key = dir === 'in' ? 'inGainDb' : 'outGainDb';
+  const gr = el('div', { class: 'io-gain' }, g);
+  const rng = el('input', { type: 'range', min: dir === 'in' ? -24 : -36, max: dir === 'in' ? 24 : 12, step: 0.5, value: state.settings[key] ?? 0 }, gr);
+  const rv = el('span', { class: 'rv' }, gr);
+  const upd = () => { rv.textContent = (+rng.value > 0 ? '+' : '') + (+rng.value).toFixed(1) + ' dB'; rng.style.setProperty('--p', ((rng.value - rng.min) / (rng.max - rng.min)) * 100 + '%'); };
+  upd();
+  rng.oninput = () => { upd(); state.settings[key] = +rng.value; sendEngineSettings(); };
+  rng.onchange = () => window.tz.settings.set({ [key]: +rng.value });
+  conf.forEach((c, i) => {
+    const sec = el('div', { class: 'insp-section io-port' }, body);
+    const hdr = el('div', { class: 'io-hdr' }, sec);
+    el('span', { class: 'io-idx' }, hdr).textContent = IO_PORT_NAMES[dir][i];
+    const name = el('input', { class: 'io-label', value: c.label, spellcheck: 'false', maxlength: 18 }, hdr);
+    name.onchange = () => setIo(dir, i, { label: name.value.trim().toUpperCase() || IO_DEFAULT_LABELS[dir][i] });
+    const row = el('div', { class: 'io-row' }, sec);
+    const trim = el('input', { type: 'range', min: -24, max: 24, step: 0.5, value: c.gainDb || 0 }, row);
+    const tv = el('span', { class: 'rv' }, row);
+    const up2 = () => { tv.textContent = (+trim.value > 0 ? '+' : '') + (+trim.value).toFixed(1) + ' dB'; trim.style.setProperty('--p', ((+trim.value + 24) / 48) * 100 + '%'); };
+    up2();
+    trim.oninput = () => { up2(); setIo(dir, i, { gainDb: +trim.value }); };
+    const mute = el('button', { class: 'chip sm' + (c.mute ? ' on' : ''), title: 'Mute' }, row, 'M');
+    mute.onclick = () => { setIo(dir, i, { mute: !c.mute }); mute.classList.toggle('on', c.mute); };
+    const inv = el('button', { class: 'chip sm' + (c.invert ? ' on' : ''), title: 'Invert polarity' }, row, 'Ø');
+    inv.onclick = () => { setIo(dir, i, { invert: !c.invert }); inv.classList.toggle('on', c.invert); };
+    // PipeWire connections for this port
+    const chips = el('div', { class: 'port-chips io-conn' }, sec);
+    if (!me) {
+      el('small', { class: 'muted' }, chips).textContent = 'Audio engine not connected';
+      return;
+    }
+    const full = me + IO_PORT_NAMES[dir][i];
+    const mine = (dir === 'in' ? snap.sinks : snap.sources).find((p) => p.name === full);
+    const others = (dir === 'in' ? snap.sources : snap.sinks).filter((p) => !p.name.startsWith(me));
+    const conns = mine ? others.filter((o) => mine.connections.includes(o.name)) : [];
+    if (!conns.length) el('small', { class: 'muted' }, chips).textContent = 'Not connected';
+    for (const o of conns) {
+      const ch = el('span', { class: 'port-chip', title: o.name }, chips, `${o.physical ? '<i class="hw"></i>' : ''}<span><strong>${esc(o.name.split(':').slice(1).join(':'))}</strong> <em>${esc(o.name.split(':')[0])}</em></span><b>×</b>`);
+      ch.querySelector('b').onclick = () => window.tz.engine.send({ cmd: 'connect', src: dir === 'in' ? o.name : full, dst: dir === 'in' ? full : o.name, on: false });
+    }
+    const add = el('button', { class: 'port-add', title: 'Connect…' }, chips, '+');
+    add.onclick = (e) => {
+      e.stopPropagation();
+      openPortPicker(add, others.filter((o) => !conns.includes(o)), (o) => window.tz.engine.send({ cmd: 'connect', src: dir === 'in' ? o.name : full, dst: dir === 'in' ? full : o.name, on: true }));
+    };
+  });
+  el('p', { class: 'hint', style: { padding: '0 16px' } }, body).textContent = 'Labels, trims and connections are saved for this computer, not per preset.';
+  if (!ioPortsHandler) {
+    ioPortsHandler = () => { if (current === '__in' || current === '__out') renderIO(current === '__in' ? 'in' : 'out'); };
+    bus.on('ports', ioPortsHandler);
+  }
+  requestPorts();
+}

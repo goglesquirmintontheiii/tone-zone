@@ -1,4 +1,5 @@
 // Preset model, engine synchronisation and undo/redo history.
+import { cabGeom } from './gfx/cabgeom.js';
 import { getDef, portsFor, defaultVariant } from './catalog/index.js';
 import { bus, uid, clamp, debounce } from './util.js';
 
@@ -245,6 +246,12 @@ export function setVariant(id, variant) {
   if (!b || b.variant === variant) return;
   commitNow();
   b.variant = variant;
+  const d = getDef(b.type);
+  if (d && d.cabMics && variant === 'stereo' && !(b.params.m2on > 0.5)) {
+    const g = cabGeom(d.cabSize || '4x12');
+    const [cx, cy] = g.centers[Math.min(1, g.centers.length - 1)];
+    Object.assign(b.params, { m2on: 1, m2type: 2, m2dist: 0.15, _m2x: (cx - 0.4 * g.sr - g.gx) / g.gw, _m2y: (cy - g.gy) / g.gh, m1pan: -0.8, m2pan: 0.8 });
+  }
   // drop cables to ports that no longer exist
   const ports = nodePorts(b);
   state.preset.cables = state.preset.cables.filter(
@@ -279,11 +286,31 @@ export function setCableColor(id, color) {
   bus.emit('cables');
 }
 
+// bring blocks saved by older versions up to date
+function migrateBlock(b) {
+  const d = getDef(b.type);
+  if (!d) return;
+  const P = b.params || (b.params = {});
+  if (d.cabMics && P._m1x === undefined && (P.position !== undefined || P.mic !== undefined || P.distance !== undefined)) {
+    const size = d.cabSize || '4x12';
+    const g = cabGeom(size);
+    const [cx, cy] = g.centers[0];
+    const pos = P.position ?? 0.3;
+    Object.assign(P, { m1on: 1, m1type: P.mic ?? d.opts.mic ?? 0, m1dist: P.distance ?? 0.15, _m1x: (cx + pos * g.sr - g.gx) / g.gw, _m1y: (cy - g.gy) / g.gh });
+    if (b.variant === 'stereo') {
+      const p2 = P.position2 ?? 0.5;
+      Object.assign(P, { m2on: 1, m2type: P.mic2 ?? 2, m2dist: P.distance ?? 0.15, _m2x: (cx - p2 * g.sr - g.gx) / g.gw, _m2y: (cy - g.gy) / g.gh, m1pan: -1, m2pan: 1 });
+    }
+    for (const k of ['position', 'distance', 'mic', 'mic2', 'position2', 'mix']) delete P[k];
+  }
+}
+
 export function loadPreset(p, file = null) {
   // ensure I/O blocks exist
   if (!p.blocks.find((b) => b.id === '__in')) p.blocks.push({ id: '__in', type: '__in', x: 1500, y: 120, params: {} });
   if (!p.blocks.find((b) => b.id === '__out')) p.blocks.push({ id: '__out', type: '__out', x: -300, y: 120, params: {} });
   p.blocks = p.blocks.filter((b) => getDef(b.type) || b.id.startsWith('__'));
+  for (const b of p.blocks) migrateBlock(b);
   state.preset = p;
   state.file = file;
   state.selection.clear();

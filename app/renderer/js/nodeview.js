@@ -35,6 +35,10 @@ export class NodeView {
     const d = this.def;
     const rdef = Object.create(d);
     rdef.ports = nodePorts(this.block);
+    if (d.io && state.settings.io && state.settings.io[d.io]) {
+      const labels = state.settings.io[d.io].map((c) => c.label);
+      rdef.ports = d.io === 'in' ? { ins: [], outs: labels } : { ins: labels, outs: [] };
+    }
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
     this.g.dataset.node = this.block.id;
     const content = svg('g', {}, this.g);
@@ -85,7 +89,7 @@ export class NodeView {
   jackWorld(key) {
     const j = this.jack(key);
     if (!j) return null;
-    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side };
+    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side, kind: j.kind };
   }
 
   // visual state of all controls from block params
@@ -114,8 +118,8 @@ export class NodeView {
           else if (c.toggle) view.set(!!ui[c.p]);
           break;
         case 'mic': {
-          const micNames = ['57', 'C414', 'R121', '421'];
-          view.set({ pos: ui.position ?? 0.3, dist: ui.distance ?? 0.15, name: micNames[(ui.mic ?? this.def.opts.mic ?? 0) | 0] });
+          const i = c.idx;
+          view.set({ on: (ui[`m${i}on`] ?? 0) > 0.5, x: ui[`_m${i}x`], y: ui[`_m${i}y`], dist: ui[`m${i}dist`] ?? 0.15, type: ui[`m${i}type`] ?? 0, sel: state.ui[this.block.id]?.selMic === i && state.selection.has(this.block.id) });
           break;
         }
       }
