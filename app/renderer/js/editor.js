@@ -3,12 +3,14 @@ import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH } from './gfx
 import { svg, clamp, shade, bus, toast } from './util.js';
 import { installDefs } from './gfx/defs.js';
 import { NodeView, knobPos, knobValue } from './nodeview.js';
-import { getDef } from './catalog/index.js';
+import { getDef, jackKindOf, kindsCompatible, KIND_NAMES } from './catalog/index.js';
 import {
   state, blockById, addBlock, removeBlocks, duplicateBlocks, setParam, setBypass, connect, removeCable, setCableColor,
   commitNow, uiParams, engineParamsFor, CABLE_COLORS, markDirty, estimatedLoad,
 } from './state.js';
 import { showMenu } from './menus.js';
+import { footCtrl } from './control.js';
+import { hooksFor } from './plugins.js';
 import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
 
 const PLUG_LEN = 30; // sleeve + boot length
@@ -163,8 +165,13 @@ export class Editor {
     const a = this.jackGeom(c.from.node, 'o' + c.from.port);
     const b = this.jackGeom(c.to.node, 'i' + c.to.port);
     if (!a || !b) return;
+    // cable kind follows the jacks (an interface combo jack takes whatever is plugged in)
+    let kind = a.kind !== 'any' ? a.kind : b.kind !== 'any' ? b.kind : 'inst';
+    if (a.kind === 'any') a.kind = kind;
+    if (b.kind === 'any') b.kind = kind;
     const d = this.cablePath(a, b);
     const col = c.color || '#e8473d';
+    const cw = CABLE_WIDTH[kind] || 5.6;
     const sh = svg('g', { transform: 'translate(5,12)', 'pointer-events': 'none', fill: 'none', stroke: '#000', 'stroke-linecap': 'round' }, this.layerShadows);
     svg('path', { d, 'stroke-width': 16, opacity: 0.07 }, sh);
     svg('path', { d, 'stroke-width': 10, opacity: 0.1 }, sh);
@@ -172,9 +179,10 @@ export class Editor {
     const g = svg('g', { class: 'cable' + (state.selectedCable === c.id ? ' selected' : '') }, this.layerCables);
     g.dataset.cable = c.id;
     svg('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 16 }, g);
-    svg('path', { d, fill: 'none', stroke: shade(col, -0.6), 'stroke-width': 7.4, 'stroke-linecap': 'round' }, g);
-    svg('path', { d, fill: 'none', stroke: col, 'stroke-width': 5.6, 'stroke-linecap': 'round', class: 'cable-main' }, g);
-    svg('path', { d, fill: 'none', stroke: shade(col, 0.55), 'stroke-width': 1.4, 'stroke-linecap': 'round', opacity: 0.55, transform: 'translate(-0.6,-1.4)', 'pointer-events': 'none' }, g);
+    svg('path', { d, fill: 'none', stroke: shade(col, -0.6), 'stroke-width': cw + 1.8, 'stroke-linecap': 'round' }, g);
+    svg('path', { d, fill: 'none', stroke: col, 'stroke-width': cw, 'stroke-linecap': 'round', class: 'cable-main' }, g);
+    svg('path', { d, fill: 'none', stroke: shade(col, 0.55), 'stroke-width': Math.max(0.8, cw * 0.25), 'stroke-linecap': 'round', opacity: 0.55, transform: 'translate(-0.6,-1.4)', 'pointer-events': 'none' }, g);
+    if (kind === 'ctrl' || kind === 'midi') svg('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 1, 'stroke-dasharray': '2 6', opacity: 0.35, 'pointer-events': 'none' }, g);
     const pg = svg('g', {}, this.layerPlugs);
     this.drawPlug(pg, a, col);
     this.drawPlug(pg, b, col);
@@ -339,7 +347,7 @@ export class Editor {
   // --- cable dragging
   startCableDrag(e, nodeId, key) {
     const isIn = key[0] === 'i';
-    const port = parseInt(key.slice(1), 10);
+    const port = portOf(key);
     let fixed; // the end that stays put
     let existing = null;
     if (isIn) {
@@ -383,7 +391,13 @@ export class Editor {
     this.drawPlug(d.plug, a, d.color);
     this.drawPlug(d.plug, b, d.color);
   }
+  jackKind(nodeId, key) {
+    const v = this.views.get(nodeId);
+    const j = v && v.jack(key);
+    return (j && j.kind) || jackKindOf(v && v.def, key);
+  }
   jackUnder(e, prefix) {
+    if (this.drag) this.drag.badKind = null;
     const els = document.elementsFromPoint(e.clientX, e.clientY);
     for (const el of els) {
       const j = el.closest && el.closest('[data-jack]');
@@ -392,6 +406,10 @@ export class Editor {
       if (!n) continue;
       if (j.dataset.jack[0] !== prefix) continue;
       if (n.dataset.node === this.drag.fixed.node) continue;
+      const fk = this.jackKind(this.drag.fixed.node, this.drag.fixed.key), tk = this.jackKind(n.dataset.node, j.dataset.jack);
+      // control jacks only take control cables (and audio only audio)
+      if ((/^[io]c/.test(j.dataset.jack)) !== (/^[io]c/.test(this.drag.fixed.key))) { this.drag.badKind = [fk, tk]; continue; }
+      if (!kindsCompatible(fk, tk)) { this.drag.badKind = [fk, tk]; continue; }
       return { node: n.dataset.node, key: j.dataset.jack };
     }
     return null;
@@ -400,8 +418,8 @@ export class Editor {
     const d = this.drag;
     this.layerDrag.innerHTML = '';
     if (d.target) {
-      const tPort = parseInt(d.target.key.slice(1), 10);
-      const fPort = parseInt(d.fixed.key.slice(1), 10);
+      const tPort = portOf(d.target.key);
+      const fPort = portOf(d.fixed.key);
       const from = d.fixed.dir === 'out' ? { node: d.fixed.node, port: fPort } : { node: d.target.node, port: tPort };
       const to = d.fixed.dir === 'out' ? { node: d.target.node, port: tPort } : { node: d.fixed.node, port: fPort };
       if (d.existing) {
@@ -415,7 +433,10 @@ export class Editor {
     } else if (d.existing) {
       removeCable(d.existing.id);
       toast('Cable unplugged', 'info', 1400);
-    } else this.drawCables();
+    } else {
+      if (d.badKind) toast(`A ${KIND_NAMES[d.badKind[0]] || d.badKind[0]} cable doesn't fit a ${KIND_NAMES[d.badKind[1]] || d.badKind[1]} jack – use a DI box, re-amp box or adapter from Utilities.`, 'warn', 4200);
+      this.drawCables();
+    }
   }
   flashJack(node, key) {
     const v = this.views.get(node);
@@ -530,6 +551,13 @@ export class Editor {
       }
     }
   }
+  // output-selector pedals: each footswitch picks an output pair (or toggles it in additive mode)
+  selectFoot(v, c) {
+    const b = v.block;
+    const ui = uiParams(b);
+    if ((ui.mode ?? 0) > 0.5) setParam(b.id, 'mask', ((ui.mask ?? 1) ^ (1 << c.idx)) || (1 << c.idx));
+    else setParam(b.id, 'sel', c.idx);
+  }
   buttonAction(v, c) {
     const b = v.block;
     const ui = uiParams(b);
@@ -568,6 +596,10 @@ export class Editor {
   // --- footswitches
   footDown(v, c, view) {
     view.press(true);
+    const hk = hooksFor(v.block.type);
+    if (hk && hk.foot && hk.foot(v, c, true)) return;
+    if (c.action === 'ctrl') return footCtrl(v.block, c.idx ?? 0, true);
+    if (c.action === 'select') return this.selectFoot(v, c);
     const b = v.block;
     const d = v.def;
     const ui = uiParams(b);
@@ -604,6 +636,10 @@ export class Editor {
   }
   footUp(v, c, view) {
     view.press(false);
+    const hk = hooksFor(v.block.type);
+    if (hk && hk.foot && hk.foot(v, c, false)) return;
+    if (c.action === 'ctrl') return footCtrl(v.block, c.idx ?? 0, false);
+    if (c.action === 'select') return;
     const dr = this.drag;
     clearTimeout(dr.holdTimer);
     const b = v.block;
@@ -908,6 +944,12 @@ export class Editor {
     if (!document.hidden && this.boardView.classList.contains('active'))
       for (const v of this.views.values()) v.updateStatus(now);
   }
+}
+
+// jack key -> cable port: audio ports are numbers, control ports strings like "c0"
+export function portOf(key) {
+  const s = key.slice(1);
+  return s[0] === 'c' ? s : parseInt(s, 10);
 }
 
 function sendEvent(b, ev, sui) {

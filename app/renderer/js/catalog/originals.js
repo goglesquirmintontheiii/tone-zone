@@ -98,6 +98,63 @@ export const originals = [
 ];
 
 // Audio interface endpoints (always present, cannot be deleted)
+// ------------------------------------------------------------------ hard-wired utilities (passive boxes, no switch)
+const BOX = (o) => def(Object.assign({ form: 'box', brand: 'Tone Zone', ref: 'Utility', cat: 'Utility', kind: 'Utility', hardwired: true, alwaysOn: true, cost: 0.01, noBypassClick: true }, o));
+const outs = (n, p = 'OUT') => [...Array(n)].map((_, i) => `${p} ${i + 1}`);
+export const boxes = [
+  BOX({ id: 'box.split2', name: '1 → 2 Splitter', logo: 'SPLIT', sub: '1 IN · 2 OUT', typeName: 'Passive Y splitter', algo: 'split', ports: { ins: ['IN'], outs: outs(2) } }),
+  BOX({ id: 'box.split4', name: '1 → 4 Splitter', logo: 'SPLIT ×4', sub: '1 IN · 4 OUT', typeName: 'Buffered 4-way splitter', algo: 'split', ports: { ins: ['IN'], outs: outs(4) } }),
+  BOX({ id: 'box.split8', name: '1 → 8 Splitter', logo: 'SPLIT ×8', sub: '1 IN · 8 OUT', typeName: 'Buffered 8-way splitter', algo: 'split', ports: { ins: ['IN'], outs: outs(8) }, boxW: 104 }),
+  BOX({ id: 'box.merge2', name: '2 → 1 Merger', logo: 'MERGE', sub: '2 IN · 1 OUT', typeName: 'Passive mixer', algo: 'merge', ports: { ins: outs(2, 'IN'), outs: ['OUT'] }, color: '#7f8a96' }),
+  BOX({ id: 'box.merge4', name: '4 → 1 Merger', logo: 'MERGE ×4', sub: '4 IN · 1 OUT', typeName: 'Summing mixer', algo: 'merge', ports: { ins: outs(4, 'IN'), outs: ['OUT'] }, color: '#7f8a96' }),
+  BOX({ id: 'box.merge8', name: '8 → 1 Merger', logo: 'MERGE ×8', sub: '8 IN · 1 OUT', typeName: 'Summing mixer', algo: 'merge', ports: { ins: outs(8, 'IN'), outs: ['OUT'] }, color: '#7f8a96', boxW: 104 }),
+  BOX({ id: 'box.st2mono', name: 'Stereo → Mono Box', logo: 'L+R → M', sub: 'SUMMING BOX', typeName: 'Stereo summing box', algo: 'merge', ports: { ins: ['IN L', 'IN R'], outs: ['MONO'] }, color: '#6f7a86' }),
+  BOX({ id: 'box.mono2st', name: 'Mono → Stereo Box', logo: 'M → L/R', sub: 'DUAL MONO', typeName: 'Mono to dual-mono', algo: 'split', ports: { ins: ['IN'], outs: ['L', 'R'] }, color: '#6f7a86' }),
+  BOX({ id: 'box.trs2lr', name: 'TRS → L/R Insert', logo: 'TRS → L/R', sub: 'INSERT Y-CABLE', typeName: 'Stereo breakout', algo: 'thru', ports: { ins: ['TRS IN'], outs: ['L', 'R'] }, jackKinds: { i0: 'trs' }, color: '#5c6a78' }),
+  BOX({ id: 'box.lr2trs', name: 'L/R → TRS', logo: 'L/R → TRS', sub: 'STEREO COMBINER', typeName: 'Stereo combiner', algo: 'thru', ports: { ins: ['L', 'R'], outs: ['TRS OUT'] }, jackKinds: { o0: 'trs' }, color: '#5c6a78' }),
+  BOX({ id: 'box.phones2lr', name: 'Headphone → L/R', logo: 'PHONES', sub: 'TO L / R', typeName: 'Headphone breakout', algo: 'thru', ports: { ins: ['PHONES IN'], outs: ['L', 'R'] }, jackKinds: { i0: 'phones' }, color: '#4f5b69', text: '#e9ecf3' }),
+  BOX({ id: 'box.mini2q', name: '3.5 mm ↔ 1/4" Adapter', logo: '3.5 → 1/4', sub: 'STEREO ADAPTER', typeName: 'Jack adapter', algo: 'thru', ports: { ins: ['3.5 MM IN'], outs: ['1/4" TRS OUT'] }, jackKinds: { i0: 'mini', o0: 'trs' }, color: '#4f5b69', text: '#e9ecf3' }),
+  BOX({ id: 'box.invert', name: 'Polarity Inverter', logo: 'Ø', logoSize: 16, sub: 'PHASE FLIP', typeName: 'Polarity inverter', algo: 'split', initParams: { inv1: 1 }, ports: { ins: ['IN'], outs: ['OUT'] }, color: '#8a8f99' }),
+];
+
+// ------------------------------------------------------------------ converters / DI / control (Tone Zone originals)
+export const converters = [
+  TZ({ id: 'tz.di', name: 'TZ Direct Box', cat: 'Utility', kind: 'Utility', color: '#1d4f8f', text: '#f2f5fa', logo: 'DIRECT BOX', typeName: 'Instrument → XLR DI', algo: 'di', alwaysOn: true, noStd: true,
+    ports: { ins: ['INPUT'], outs: ['XLR OUT', 'THRU'] }, jackKinds: { o0: 'xlr' },
+    controls: [TOG('pad', 'PAD', ['0', '-20', '-40']), TOG('lift', 'GND', ['GND', 'LIFT']), TOG('invert', 'Ø', ['0°', '180°']), TOG('speaker', 'SPKR SIM', ['OFF', 'ON']), K('lowcut', 'LOW CUT', { min: 20, max: 300, def: 20, curve: 'log', unit: 'Hz' }), K('level', 'LEVEL', { min: -24, max: 24, def: 0, display: db })] }),
+  TZ({ id: 'tz.reamp', name: 'TZ Re-Amp Box', cat: 'Utility', kind: 'Utility', color: '#8f3b1d', text: '#f7efe9', logo: 'RE-AMP', typeName: 'XLR → instrument level', algo: 'di', opts: { reamp: true }, alwaysOn: true, noStd: true,
+    ports: { ins: ['XLR IN'], outs: ['TO AMP'] }, jackKinds: { i0: 'xlr' },
+    controls: [TOG('invert', 'Ø', ['0°', '180°']), K('level', 'LEVEL', { min: -24, max: 24, def: 0, display: db }), K('lowcut', 'LOW CUT', { min: 20, max: 300, def: 20, curve: 'log', unit: 'Hz' })] }),
+  TZ({ id: 'tz.hpamp', name: 'TZ Headphone Amp', cat: 'Utility', kind: 'Utility', color: '#222630', text: '#e9ecf3', logo: 'PHONES AMP', typeName: 'Stereo → headphone out', algo: 'stereo', opts: { mode: 6 }, stereo: 'stereo',
+    ports: { ins: ['IN L', 'IN R'], outs: ['PHONES'] }, jackKinds: { o0: 'phones' }, controls: [K('level', 'VOLUME', { min: -40, max: 12, def: -6, display: db }), K('pan', 'BALANCE', { min: -1, max: 1, def: 0 })] }),
+  TZ({ id: 'tz.xlrsplit', name: 'TZ Mic Splitter', cat: 'Utility', kind: 'Utility', color: '#3a3f4a', text: '#e9ecf3', logo: 'XLR SPLIT', typeName: 'XLR 1 → 2 (isolated)', algo: 'split', alwaysOn: true, noStd: true,
+    ports: { ins: ['XLR IN'], outs: ['XLR A', 'XLR B'] }, jackKinds: { i0: 'xlr', o0: 'xlr', o1: 'xlr' }, controls: [TOG('lift', 'B GND', ['GND', 'LIFT']), TOG('inv2', 'B Ø', ['0°', '180°'])] }),
+  TZ({ id: 'tz.stereo', name: 'TZ Stereo Image', cat: 'Utility', kind: 'Pedal', color: '#2c1f4f', text: '#efeaff', logo: 'STEREO IMAGE', typeName: 'Mono → stereo widener', algo: 'stereo', stereo: 'stereo', led: '#a98bff',
+    ports: { ins: ['IN L (MONO)', 'IN R'], outs: ['OUT L', 'OUT R'] },
+    controls: [SEL('mode', 'MODE', ['WIDTH', 'HAAS', 'DUAL', 'A-PAN', 'MONO', 'SWAP', 'PAN'], { sweep: 210 }), K('width', 'WIDTH', { def: 0.65 }), K('time', 'TIME', { min: 1, max: 40, def: 12, unit: 'ms' }), K('rate', 'RATE', { def: 0.3 }), K('depth', 'DEPTH', { def: 0.5 }), K('monobass', 'MONO BASS', { min: 20, max: 400, def: 20, curve: 'log', unit: 'Hz' }), K('level', 'LEVEL', { min: -24, max: 12, def: 0, display: db })] }),
+  TZ({ id: 'tz.meter', name: 'TZ Level Meter', cat: 'Utility', kind: 'Pedal', form: 'meter', color: '#15181e', text: '#e9ecf3', logo: 'LEVEL METER', typeName: 'Stereo peak / RMS meter', algo: 'meter', stereo: 'stereo', alwaysOn: true, noStd: true,
+    ports: { ins: ['IN L', 'IN R'], outs: ['OUT L', 'OUT R'] }, controls: [SCREEN('meter', { w: 92, h: 150 }), BTN('PEAK', { action: 'resetPeak', shape: 'rect', w: 18, h: 8 })] }),
+  // output selectors: stereo in, N stereo pairs out, a footswitch + LED per output
+  ...[2, 4, 6].map((n) =>
+    TZ({ id: `tz.select${n}`, name: `TZ Output Selector ${n}`, cat: 'Utility', kind: 'Pedal', form: 'selector', color: n === 2 ? '#1f2a36' : n === 4 ? '#24303d' : '#2a3644', text: '#e9ecf3', logo: n === 2 ? 'A / B' : n === 4 ? 'A B C D' : 'SELECT 6', typeName: `Stereo 1 → ${n} selector`, algo: 'select', stereo: 'stereo', alwaysOn: true, noStd: true,
+      ports: { ins: ['IN L (MONO)', 'IN R'], outs: [...Array(n)].flatMap((_, i) => [`${'ABCDEF'[i]} L`, `${'ABCDEF'[i]} R`]) },
+      controls: [
+        ...[...Array(n)].flatMap((_, i) => [FOOT({ action: 'select', idx: i, label: 'ABCDEF'[i] }), LED({ bind: `select:${i}`, color: ['#3ddc84', '#ff7a2f', '#37a3ff', '#ffd23f', '#e84393', '#a98bff'][i] })]),
+        TOG('mode', 'MODE', ['ONE', 'MULTI']), K('fade', 'XFADE', { min: 1, max: 200, def: 12, unit: 'ms' }),
+      ] })
+  ),
+  // control sources
+  def({ id: 'tz.expctl', name: 'TZ Expression Pedal', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'EXP', cat: 'Control', kind: 'Utility', form: 'treadle', color: '#23262e', algo: null,
+    ports: { ins: [], outs: [] }, ctrl: { outs: [{ label: 'EXP OUT', source: 'param:pos' }] }, controls: [{ t: 'treadle', p: 'pos', def: 0.5, min: 0, max: 1, virtual: true }], logo: 'EXPRESSION', logoFont: "'Oswald', sans-serif", logoColor: '#9aa3b5', noBypassClick: true, alwaysOn: true,
+    desc: 'Plug its TRS cable into any EXP / CTRL jack (or a device plugin like the Helix) to sweep that parameter.' }),
+  ...[1, 2, 3].map((n) =>
+    def({ id: `tz.fs${n}`, name: `TZ Footswitch ${n === 1 ? '' : '×' + n}`.trim(), brand: 'Tone Zone', ref: 'Tone Zone original', code: 'FS', cat: 'Control', kind: 'Utility', form: 'footswitch', color: '#1a1d23', text: '#e9ecf3', algo: null, logo: n === 1 ? 'FS' : `FS ×${n}`, alwaysOn: true,
+      ports: { ins: [], outs: [] }, ctrl: { outs: [...Array(n)].map((_, i) => ({ label: `SW ${i + 1}`, source: 'foot' })) },
+      controls: [...[...Array(n)].flatMap((_, i) => [FOOT({ action: 'ctrl', idx: i, label: String(i + 1) }), LED({ bind: `param:sw${i + 1}`, color: '#ff3020' })]), ...[...Array(n)].map((_, i) => TOG(`mode${i + 1}`, `SW${i + 1}`, ['MOM', 'LATCH'], { def: 0 }))],
+      desc: 'External footswitch. Connect its control jacks to EXT FS / CTRL inputs (tap tempo, bypass, presets, Helix footswitches…).' })
+  ),
+];
+
 // generic (not brand-specific) amp / cab
 export const coreGear = [
 AMP({ id: 'amp.acoustic', name: 'Acoustic DI Pre', brand: 'Tone Zone', ref: 'Tone Zone original', cat: 'Preamp', opts: { model: 'acoustic' }, tolex: '#4b3324', panel: '#d9c7a4', panelText: '#2a1d10', grille: 'brown', headGrille: false, logo: 'Acoustic', logoColor: '#f3e7cf', knob: 'cream', controls: [k('gain', 'GAIN'), k('bass', 'BASS'), k('mid', 'MIDDLE'), k('treble', 'TREBLE')] }),
@@ -106,5 +163,5 @@ CAB({ id: 'cab.4x10bass', name: '4x10 Bass', brand: 'Tone Zone', ref: 'Tone Zone
 
 export const ioDefs = [
   def({ id: '__in', name: 'Audio In', cat: 'I/O', form: 'io', io: 'in', algo: null, ports: { ins: [], outs: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R'] }, controls: [], fixedNode: true }),
-  def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R'], outs: [] }, controls: [], fixedNode: true }),
+  def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R', 'PHONES'], outs: [] }, jackKinds: { i4: 'phones' }, ioMap: { i4: [0, 1] }, controls: [], fixedNode: true }),
 ];

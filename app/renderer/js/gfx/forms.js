@@ -684,6 +684,17 @@ forms.io = (ctx, def) => {
 export function renderForm(ctx, def) {
   const f = forms[def.form] || forms.tz;
   const res = f(ctx, def);
+  // control (TRS footswitch / expression) jacks: on the top edge unless the form placed them
+  const ci = def.ctrl?.ins || [], co = def.ctrl?.outs || [];
+  if ((ci.length || co.length) && !res.jacks.some((j) => /^[io]c/.test(j.key))) {
+    const all = [...co.map((c, i) => ({ c, key: 'oc' + i, dir: 'out' })), ...ci.map((c, i) => ({ c, key: 'ic' + i, dir: 'in' }))];
+    const gap = Math.min(30, (res.w - 30) / Math.max(1, all.length));
+    const x0 = res.w / 2 - (gap * (all.length - 1)) / 2;
+    all.forEach((a, i) => {
+      const x = ctx.flip ? res.w - (x0 + i * gap) : x0 + i * gap;
+      res.jacks.push({ key: a.key, dir: a.dir, port: a.key.slice(1), label: a.c.label, side: 'top', x, y: -2, kind: a.c.kind || 'ctrl' });
+    });
+  }
   // jacks are drawn last so they sit above the enclosure edge
   for (const j of res.jacks) {
     if (!j.kind && def.jackKinds) j.kind = def.jackKinds[j.key];
@@ -696,13 +707,14 @@ export function renderForm(ctx, def) {
 }
 
 // ------------------------------------------------------------------ plugin access
-const builtinForms = new Set(Object.keys(forms));
+let builtinForms = null;
 export function registerForm(name, fn) {
+  builtinForms = builtinForms || new Set(Object.keys(forms));
   if (builtinForms.has(name)) throw new Error(`form "${name}" is built in`);
   forms[name] = fn;
 }
 export function unregisterForm(name) {
-  if (!builtinForms.has(name)) delete forms[name];
+  if (builtinForms && !builtinForms.has(name)) delete forms[name];
 }
 export function hasForm(name) {
   return !!forms[name];
@@ -720,4 +732,107 @@ forms.missing = (ctx, def) => {
   label(g, w / 2, cy + 8, def.missingPlugin ? `enable the “${def.missingPlugin}” plugin` : 'plugin not installed', { size: Math.min(6.4, w / 22), fill: '#6b7385', weight: 600 });
   return { w, h, theme: { text: '#8c94a6', jackText: '#6b7385' }, jacks: jacksSide(def, w, { flip: ctx.flip, y0: Math.min(54, h * 0.3), gap: Math.min(28, (h * 0.6) / Math.max(1, Math.max(def.ports.ins.length, def.ports.outs.length))) }) };
 };
+
+// hard-wired junction box (passive splitter / merger / adapter): folded aluminium, no switch, jacks only
+forms.box = (ctx, def) => {
+  const nIn = def.ports.ins.length, nOut = def.ports.outs.length;
+  const n = Math.max(nIn, nOut, 1);
+  const gap = 30;
+  const w = def.boxW || 96, h = Math.max(110, 56 + n * gap);
+  const g = ctx.g;
+  body(g, w, h, def.color || '#9aa1aa', { rx: 6, brushed: true, grain: false });
+  // folded edges + corner screws
+  svg('rect', { x: 4, y: 4, width: w - 8, height: h - 8, rx: 4, fill: 'none', stroke: '#fff', 'stroke-opacity': 0.25 }, g);
+  for (const [x, y] of [[10, 10], [w - 10, 10], [10, h - 10], [w - 10, h - 10]]) screw(g, x, y, 2.6);
+  const txt = def.text || '#1b1e23';
+  label(g, w / 2, 24, def.logo || def.name, { size: def.logoSize || 9, fill: txt, weight: 800, ls: 0.8 });
+  if (def.sub) label(g, w / 2, 35, def.sub, { size: 5.4, fill: txt, weight: 700, opacity: 0.7, ls: 0.6 });
+  // printed wiring diagram between the jack rows
+  const y0 = 56 + ((n - nIn) * gap) / 2, y1 = 56 + ((n - nOut) * gap) / 2;
+  const xi = ctx.flip ? 14 : w - 14, xo = ctx.flip ? w - 14 : 14;
+  const mid = w / 2;
+  for (let i = 0; i < nIn; i++)
+    for (let o = 0; o < nOut; o++)
+      svg('path', { d: `M${xi} ${y0 + i * gap} C ${mid} ${y0 + i * gap} ${mid} ${y1 + o * gap} ${xo} ${y1 + o * gap}`, fill: 'none', stroke: txt, 'stroke-width': 0.8, opacity: 0.35 }, g);
+  const theme = { text: txt, labelSize: 6, jackText: txt };
+  placeControls(ctx, def.controls, theme);
+  const jacks = [];
+  def.ports.ins.forEach((l, i) => jacks.push({ key: `i${i}`, dir: 'in', port: i, label: l, side: ctx.flip ? 'left' : 'right', x: ctx.flip ? -2 : w + 2, y: y0 + i * gap }));
+  def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: l, side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: y1 + i * gap }));
+  return { w, h, theme, jacks };
+};
+
+// output selector: stereo input on the side, output pairs along the top, a footswitch + LED per output
+forms.selector = (ctx, def) => {
+  const foots = def.controls.filter((c) => c.t === 'foot');
+  const n = foots.length;
+  const w = Math.max(200, 40 + n * 66), h = 210;
+  const col = def.color, txt = def.text || '#e9ecf3', g = ctx.g;
+  body(g, w, h, col, { rx: 12 });
+  svg('rect', { x: 10, y: 40, width: w - 20, height: 1.2, fill: txt, opacity: 0.25 }, g);
+  label(g, 18, 26, def.logo, { size: 12, fill: txt, weight: 800, ls: 1.4, anchor: 'start', font: "'Oswald', sans-serif" });
+  label(g, w - 18, 26, 'OUTPUT SELECTOR', { size: 5.6, fill: txt, weight: 700, ls: 1.2, anchor: 'end', opacity: 0.7 });
+  tzBadge(g, w / 2, h - 10, txt, 4.6);
+  const theme = { text: txt, knob: 'mxr', labelSize: 6 };
+  const step = (w - 40) / n;
+  foots.forEach((f, i) => {
+    const x = 20 + step * (i + 0.5);
+    Object.assign(f, { x, y: 150, r: 12 });
+    const led = def.controls.find((c) => c.t === 'led' && c.bind === `select:${i}`);
+    if (led) Object.assign(led, { x, y: 104, r: 3.4 });
+    label(g, x, 124, f.label, { size: 13, fill: txt, weight: 800, font: "'Oswald', sans-serif" });
+  });
+  const tog = def.controls.find((c) => c.t === 'toggle');
+  if (tog) Object.assign(tog, { x: 40, y: 66 });
+  const kn = def.controls.find((c) => c.t === 'knob');
+  if (kn) Object.assign(kn, { x: w - 40, y: 66, r: 10 });
+  placeControls(ctx, def.controls, theme);
+  const jacks = [];
+  def.ports.ins.forEach((l, i) => jacks.push({ key: `i${i}`, dir: 'in', port: i, label: l.replace(' (MONO)', ''), side: ctx.flip ? 'left' : 'right', x: ctx.flip ? -2 : w + 2, y: 70 + i * 30 }));
+  def.ports.outs.forEach((l, i) => {
+    const pair = Math.floor(i / 2), lr = i % 2;
+    const cx = 20 + step * (pair + 0.5) + (lr ? 9 : -9);
+    jacks.push({ key: `o${i}`, dir: 'out', port: i, label: l, side: 'top', x: ctx.flip ? w - cx : cx, y: -2 });
+  });
+  return { w, h, theme: Object.assign({}, theme, { jackText: txt }), jacks };
+};
+
+// external footswitch box (control outputs on top)
+forms.footswitch = (ctx, def) => {
+  const foots = def.controls.filter((c) => c.t === 'foot');
+  const n = foots.length;
+  const w = Math.max(110, 30 + n * 64), h = 150;
+  const g = ctx.g;
+  body(g, w, h, def.color || '#1a1d23', { rx: 10 });
+  const txt = def.text || '#e9ecf3';
+  label(g, w / 2, 22, def.logo, { size: 11, fill: txt, weight: 800, ls: 1.2, font: "'Oswald', sans-serif" });
+  const theme = { text: txt, labelSize: 5.4 };
+  const step = (w - 30) / n;
+  foots.forEach((f, i) => {
+    const x = 15 + step * (i + 0.5);
+    Object.assign(f, { x, y: 100, r: 11, style: f.style || 'soft' });
+    const led = def.controls.find((c) => c.t === 'led' && c.bind === `param:sw${i + 1}`);
+    if (led) Object.assign(led, { x, y: 70, r: 2.8 });
+    const tg = def.controls.find((c) => c.t === 'toggle' && c.p === `mode${i + 1}`);
+    if (tg) Object.assign(tg, { x, y: 46, orient: 'h', labelPos: 'none' });
+  });
+  tzBadge(g, w / 2, h - 9, txt, 4.2);
+  placeControls(ctx, def.controls, theme);
+  return { w, h, theme, jacks: [] };
+};
+
+// tall stereo meter pedal
+forms.meter = (ctx, def) => {
+  const w = 130, h = 270, g = ctx.g;
+  const txt = def.text || '#e9ecf3';
+  body(g, w, h, def.color || '#15181e', { rx: 12 });
+  label(g, w / 2, 20, def.logo || 'LEVEL METER', { size: 9, fill: txt, weight: 800, ls: 1.4 });
+  const scr = def.controls.find((c) => c.t === 'screen');
+  if (scr) Object.assign(scr, { x: w / 2, y: 120, w: 96, h: 170, bg: '#07090c' });
+  const btn = def.controls.find((c) => c.t === 'button');
+  if (btn) Object.assign(btn, { x: w / 2, y: 228 });
+  tzBadge(g, w / 2, h - 10, txt, 4.4);
+  const theme = { text: txt, labelSize: 6 };
+  placeControls(ctx, def.controls, theme);
+  return { w, h, theme, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 60, gap: 30 }) };
 };

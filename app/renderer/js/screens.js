@@ -27,6 +27,58 @@ export function drawScreen(s, nv, st, now) {
 }
 
 const SCREENS = {
+  // ---------------------------------------------------------------- stereo bar meter (peak + RMS, hold, clip)
+  meter: {
+    build(s, g, w, h) {
+      const top = 14, bot = h - 16, H = bot - top;
+      s.H = H; s.top = top; s.bot = bot;
+      s.bars = [];
+      const bw = (w - 38) / 2;
+      // dB scale
+      for (const db of [0, -6, -12, -18, -24, -36, -48]) {
+        const y = top + H * (-db / 60);
+        svg('line', { x1: 4, x2: w - 4, y1: y, y2: y, stroke: '#ffffff', 'stroke-opacity': 0.06 }, g);
+        t(g, w / 2, y, String(db), { size: 5.2, fill: '#6b7385' });
+      }
+      ['L', 'R'].forEach((nm, c) => {
+        const x = c === 0 ? 6 : w - 6 - bw;
+        svg('rect', { x, y: top, width: bw, height: H, rx: 2, fill: '#0e1218' }, g);
+        const segs = [];
+        const N = 30;
+        for (let k = 0; k < N; k++) {
+          const sh = H / N;
+          const db = -60 + (60 * (k + 0.5)) / N;
+          const col = db > -3 ? '#ff4d5e' : db > -12 ? '#ffc24b' : '#37d6c2';
+          segs.push(svg('rect', { x: x + 1, y: bot - (k + 1) * sh + 0.6, width: bw - 2, height: sh - 1.2, rx: 0.8, fill: col, opacity: 0.08 }, g));
+        }
+        const rms = svg('rect', { x: x + bw * 0.35, y: bot, width: bw * 0.3, height: 0, fill: '#ffffff', opacity: 0.55 }, g);
+        const hold = svg('rect', { x: x + 1, y: top, width: bw - 2, height: 1.6, fill: '#fff', opacity: 0 }, g);
+        const clip = svg('rect', { x, y: 2, width: bw, height: 8, rx: 2, fill: '#3a1010' }, g);
+        t(g, x + bw / 2, h - 7, nm, { size: 7, fill: '#9aa3b5', weight: 700 });
+        s.bars.push({ segs, rms, hold, clip, pk: 0, rm: 0, holdDb: -60, holdT: 0, clipT: 0 });
+      });
+    },
+    update(s, st, nv, now) {
+      const m = st.meter || [];
+      s.bars.forEach((b, c) => {
+        const v = m[c] || m[0] || [0, 0, 0];
+        const toDb = (x) => 20 * Math.log10(Math.max(1e-6, x));
+        const pkDb = Math.max(-60, toDb(v[0])), rmDb = Math.max(-60, toDb(v[1]));
+        b.pk = pkDb > b.pk ? pkDb : Math.max(pkDb, b.pk - 1.4); // ballistic fall
+        b.rm = rmDb > b.rm ? rmDb : Math.max(rmDb, b.rm - 0.8);
+        if (b.pk >= b.holdDb || now - b.holdT > 1500) { b.holdDb = b.pk; b.holdT = now; }
+        if (v[2] > 0) b.clipT = now;
+        const lit = Math.round(((b.pk + 60) / 60) * b.segs.length);
+        b.segs.forEach((sg, k) => setA(sg, 'opacity', k < lit ? 1 : 0.08));
+        const rh = (s.H * (b.rm + 60)) / 60;
+        setA(b.rms, 'y', (s.bot - rh).toFixed(1));
+        setA(b.rms, 'height', rh.toFixed(1));
+        setA(b.hold, 'y', (s.bot - (s.H * (b.holdDb + 60)) / 60).toFixed(1));
+        setA(b.hold, 'opacity', b.holdDb > -59 ? 0.9 : 0);
+        setA(b.clip, 'fill', now - b.clipT < 2500 ? '#ff2a1a' : '#3a1010');
+      });
+    },
+  },
   // ---------------------------------------------------------------- BOSS TU-3 style LED meter
   tu3: {
     build(s, g, w, h) {

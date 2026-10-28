@@ -1,6 +1,6 @@
 // Preset model, engine synchronisation and undo/redo history.
 import { cabGeom } from './gfx/cabgeom.js';
-import { getDef, portsFor, defaultVariant } from './catalog/index.js';
+import { getDef, portsFor, defaultVariant, jackChannels } from './catalog/index.js';
 import { bus, uid, clamp, debounce } from './util.js';
 
 export const CABLE_COLORS = ['#e8473d', '#f39c12', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#6c5ce7', '#e84393', '#ecf0f1', '#95a5a6', '#2d3436', '#c0873f'];
@@ -82,21 +82,51 @@ export function nodePorts(block) {
 
 // -------- engine sync
 let lastSent = {}; // id -> {param: value}
+// UI jack -> engine channel indices (stereo TRS / headphone jacks carry two engine channels)
+export function channelMap(b) {
+  const d = getDef(b.type);
+  const ports = nodePorts(b);
+  if (b.id === '__out' || b.id === '__in') {
+    // interface panels: one channel per jack, except the PHONES jack (= main L/R)
+    const map = (list, dir) => list.map((_, i) => (d && d.ioMap && d.ioMap[dir + i]) || [i]);
+    return { ins: map(ports.ins, 'i'), outs: map(ports.outs, 'o') };
+  }
+  const mk = (list, dir) => {
+    let n = 0;
+    return list.map((_, i) => {
+      const ch = jackChannels(d, dir + i);
+      const r = ch === 2 ? [n, n + 1] : [n];
+      n += ch;
+      return r;
+    });
+  };
+  return { ins: mk(ports.ins, 'i'), outs: mk(ports.outs, 'o') };
+}
 export function buildGraph() {
   const nodes = [];
+  const maps = {};
   for (const b of state.preset.blocks) {
+    maps[b.id] = channelMap(b);
     if (b.id === '__in' || b.id === '__out') continue;
     const d = getDef(b.type);
     if (!d || !d.algo) continue;
-    const ports = nodePorts(b);
     const params = engineParamsFor(b);
     lastSent[b.id] = Object.assign({}, params);
-    nodes.push({ id: b.id, algo: d.algo, nIn: ports.ins.length, nOut: ports.outs.length, opts: d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
+    const m = maps[b.id];
+    const nIn = m.ins.reduce((a, x) => a + x.length, 0), nOut = m.outs.reduce((a, x) => a + x.length, 0);
+    nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
   }
   const valid = new Set(nodes.map((n) => n.id).concat(['__in', '__out']));
-  const cables = state.preset.cables
-    .filter((c) => valid.has(c.from.node) && valid.has(c.to.node))
-    .map((c) => ({ from: { node: c.from.node, port: c.from.port }, to: { node: c.to.node, port: c.to.port } }));
+  const cables = [];
+  for (const c of state.preset.cables) {
+    if (c.ctrl || typeof c.from.port !== 'number' || !valid.has(c.from.node) || !valid.has(c.to.node)) continue;
+    const a = maps[c.from.node]?.outs[c.from.port], z = maps[c.to.node]?.ins[c.to.port];
+    if (!a || !z) continue;
+    // stereo -> stereo: L->L, R->R; stereo -> mono: L only; mono -> stereo: into L (the engine normals L to R)
+    const n = Math.min(a.length, z.length);
+    for (let k = 0; k < n; k++) cables.push({ from: { node: c.from.node, port: a[k] }, to: { node: c.to.node, port: z[k] } });
+    if (a.length === 1 && z.length === 2 && (c.to.node === '__out')) cables.push({ from: { node: c.from.node, port: a[0] }, to: { node: c.to.node, port: z[1] } });
+  }
   return { nodes, cables };
 }
 export function syncGraph() {

@@ -1,5 +1,5 @@
 // Block catalog registry: core Tone Zone blocks + blocks registered by plugins + user NAM / IR packs.
-import { originals, ioDefs, coreGear } from './originals.js';
+import { originals, ioDefs, coreGear, boxes, converters } from './originals.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
 export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
@@ -14,7 +14,7 @@ function finalize(d) {
   return d;
 }
 
-[...originals, ...coreGear, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
 // ---- plugin registration
 export function registerPluginDefs(pluginId, defs, defaults = {}) {
@@ -42,6 +42,30 @@ export function unregisterPlugin(pluginId) {
 }
 export function pluginDefIds(pluginId) {
   return [...(byPlugin.get(pluginId) || [])];
+}
+
+// ---- jack / cable kinds
+// inst = 1/4" TS (mono), trs = 1/4" TRS stereo, phones = headphone (TRS stereo), mini = 3.5 mm stereo,
+// xlr = balanced mic / line, ctrl = footswitch / expression control (not audio), usb, midi, any = interface combo jack
+export const STEREO_KINDS = new Set(['trs', 'phones', 'mini']);
+export const CONTROL_KINDS = new Set(['ctrl', 'midi']);
+export function jackKindOf(d, key) {
+  if (!d) return 'inst';
+  if (d.jackKinds && d.jackKinds[key]) return d.jackKinds[key];
+  if (/^[io]c/.test(key)) return (d.ctrlKinds && d.ctrlKinds[key]) || 'ctrl';
+  if (d.io) return 'any';
+  return 'inst';
+}
+export function kindsCompatible(a, b) {
+  if (a === 'any' || b === 'any') return !CONTROL_KINDS.has(a) && !CONTROL_KINDS.has(b) && a !== 'usb' && b !== 'usb';
+  if (a === b) return true;
+  const quarter = new Set(['inst', 'trs', 'phones']);
+  return quarter.has(a) && quarter.has(b);
+}
+export const KIND_NAMES = { inst: '1/4" instrument', trs: '1/4" TRS stereo', phones: 'headphone', mini: '3.5 mm', xlr: 'XLR', ctrl: 'control (TRS)', usb: 'USB', midi: 'MIDI', any: 'combo' };
+// audio channels carried by an input / output jack
+export function jackChannels(d, key) {
+  return STEREO_KINDS.has(jackKindOf(d, key)) ? 2 : 1;
 }
 
 export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility'];

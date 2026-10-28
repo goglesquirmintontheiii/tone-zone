@@ -41,7 +41,8 @@ export class NodeView {
       if (this.block._ports) rdef.ports = { ins: [...Array(this.block._ports[0])].map((_, i) => 'IN ' + (i + 1)), outs: [...Array(this.block._ports[1])].map((_, i) => 'OUT ' + (i + 1)) };
     }
     if (d.io && state.settings.io && state.settings.io[d.io]) {
-      const labels = state.settings.io[d.io].map((c) => c.label);
+      const base = d.io === 'in' ? d.ports.outs : d.ports.ins;
+      const labels = base.map((l, i) => state.settings.io[d.io][i]?.label || l);
       rdef.ports = d.io === 'in' ? { ins: [], outs: labels } : { ins: labels, outs: [] };
     }
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
@@ -153,6 +154,11 @@ export class NodeView {
         return on && !(this.def.alwaysOn && b.bypass) ? true : null;
       case 'param':
         return ui[parts[1]] > 0.5 ? true : null;
+      case 'select': {
+        const i = +parts[1];
+        if ((ui.mode ?? 0) > 0.5) return ((ui.mask ?? 1) >> i) & 1 ? true : null;
+        return (ui.sel ?? 0) === i ? true : null;
+      }
       case 'fav':
         return state.ui[b.id]?.favActive ? true : null;
       case 'tunerOk': {
