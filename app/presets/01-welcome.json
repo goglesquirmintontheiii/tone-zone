@@ -8,7 +8,7 @@
       "x": -146,
       "y": 120,
       "params": {},
-      "bypass": false,
+      "bypass": true,
       "variant": "mono"
     },
     {
@@ -28,7 +28,7 @@
       "id": "b3",
       "type": "amp.jcm800",
       "x": -916,
-      "y": 60,
+      "y": -120,
       "params": {
         "gain": 0.55,
         "master": 0.5
@@ -39,8 +39,8 @@
     {
       "id": "b4",
       "type": "cab.4x12gb",
-      "x": -1370,
-      "y": 40,
+      "x": -916,
+      "y": 94,
       "params": {},
       "bypass": false,
       "variant": "mono"
@@ -48,7 +48,7 @@
     {
       "id": "b5",
       "type": "bx.rv6",
-      "x": -1606,
+      "x": -1152,
       "y": 120,
       "params": {
         "mix": 0.3,
@@ -67,7 +67,7 @@
     {
       "id": "__out",
       "type": "__out",
-      "x": -1846,
+      "x": -1392,
       "y": 120,
       "params": {}
     }

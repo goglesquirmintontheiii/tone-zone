@@ -8,7 +8,7 @@
       "x": -146,
       "y": 120,
       "params": {},
-      "bypass": false,
+      "bypass": true,
       "variant": "mono"
     },
     {
@@ -26,7 +26,7 @@
       "id": "b54",
       "type": "amp.plexi",
       "x": -942,
-      "y": 60,
+      "y": -60,
       "params": {},
       "bypass": false,
       "variant": "mono"
@@ -34,8 +34,8 @@
     {
       "id": "b55",
       "type": "cab.2x12cream",
-      "x": -1412,
-      "y": 120,
+      "x": -907,
+      "y": 154,
       "params": {},
       "bypass": false,
       "variant": "mono"
@@ -43,7 +43,7 @@
     {
       "id": "b56",
       "type": "bx.dd8",
-      "x": -1648,
+      "x": -1178,
       "y": 120,
       "params": {},
       "bypass": false,
@@ -52,7 +52,7 @@
     {
       "id": "b57",
       "type": "bx.rc500",
-      "x": -2038,
+      "x": -1568,
       "y": 120,
       "params": {},
       "bypass": false,
@@ -68,7 +68,7 @@
     {
       "id": "__out",
       "type": "__out",
-      "x": -2278,
+      "x": -1808,
       "y": 120,
       "params": {}
     }

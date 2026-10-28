@@ -132,6 +132,22 @@ function updateMeters(st) {
   dot.title = st.running ? `PipeWire · ${st.sr} Hz · ${st.buffer} frames · xruns ${st.xruns}` : 'Audio engine not connected';
 }
 
+// ------------------------------------------------------------ automatic quality scaling (DSP budget)
+let overSince = 0;
+function autoQuality(st) {
+  const s = state.settings;
+  if (!s.autoQuality || !st.running) return;
+  const over = st.load > (s.budget ?? 0.75);
+  if (!over) { overSince = 0; return; }
+  if (!overSince) overSince = Date.now();
+  if (Date.now() - overSince > 3000 && (s.quality ?? 1) > 0) {
+    overSince = 0;
+    const q = (s.quality ?? 1) - 1;
+    import('./pages/settings.js').then((m) => m.applySettings({ quality: q }));
+    toast(`Over DSP budget – quality lowered to ${['Eco', 'Standard', 'High', 'Ultra'][q]}`, 'warn', 4000);
+  }
+}
+
 // ------------------------------------------------------------ engine events
 let overBudgetWarned = 0;
 function initEngineEvents() {
@@ -140,6 +156,7 @@ function initEngineEvents() {
       case 'status':
         state.status = ev;
         updateMeters(ev);
+        autoQuality(ev);
         if (ev.load > (state.settings.budget ?? 0.75) && Date.now() - overBudgetWarned > 20000) {
           overBudgetWarned = Date.now();
           toast(`DSP load ${Math.round(ev.load * 100)}% is over your budget – lower the quality, raise the buffer or remove blocks.`, 'warn', 5000);

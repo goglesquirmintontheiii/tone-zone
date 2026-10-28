@@ -459,8 +459,27 @@ std::shared_ptr<CompiledGraph> Engine::compile(const json& gj, std::map<std::str
   for (auto& b : order)
     if (!done.count(b->id)) sorted.push_back(b);
 
+  // only blocks that feed a system output (or that must always run, e.g. tuners / loopers) are processed
+  std::set<std::string> live;
+  {
+    std::map<std::string, std::set<std::string>> rev; // to -> froms
+    for (const auto& c : gj.value("cables", json::array()))
+      rev[c["to"].value("node", "")].insert(c["from"].value("node", ""));
+    std::vector<std::string> stack = {"__out"};
+    for (auto& b : order)
+      if (b->alwaysProcess()) stack.push_back(b->id);
+    while (!stack.empty())
+    {
+      const std::string n = stack.back();
+      stack.pop_back();
+      if (live.count(n)) continue;
+      live.insert(n);
+      for (auto& f : rev[n]) stack.push_back(f);
+    }
+  }
   for (auto& b : sorted)
   {
+    if (!live.count(b->id)) continue;
     CompiledGraph::Node node;
     node.b = b.get();
     node.inSum.resize(b->nIn);

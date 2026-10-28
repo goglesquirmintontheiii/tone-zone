@@ -1,5 +1,6 @@
 // Delays: digital, analog (BBD), tape, lo-fi, modulated, reverse, shimmer, ping-pong, dual, warp; plus Deco-style
 // tape saturation + doubletracker.
+#include "../dsp/pitch.h"
 #include "common.h"
 
 namespace tz
@@ -61,7 +62,7 @@ public:
   OnePole lpf[2], hpf[2], ageLp[2];
   Biquad bbdLp[2];
   LFO wow, flutter, mod;
-  FbShifter shift[2];
+  WsolaShifter shift[2];
   SmallDiffuser diff[2];
   TapTempo tap;
   std::atomic<float> curMs{0};
@@ -100,7 +101,7 @@ public:
     for (int i = 0; i < 2; ++i)
     {
       hpf[i].lp(60, sr);
-      shift[i].prepare(sr);
+      shift[i].prepare(sr, 3.f, 50.f, 8.f);
       diff[i].prepare(sr);
     }
     wow.setRate(0.55f, sr);

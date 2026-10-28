@@ -10,11 +10,20 @@ function chain(name, items, opts = {}) {
   let x = 0;
   const y = opts.y || 120;
   const placed = [];
+  let prevBlock = null;
   for (const it of items) {
     const id = 'b' + ++n;
     placed.push({ id, it });
-    blocks.push({ id, type: it.type, x: -x - it.w, y: it.y ?? (it.tall ? y - 60 : y), params: it.params || {}, bypass: !!it.bypass, variant: it.variant || (it.stereo ? 'stereo' : 'mono') });
-    x += it.w + (it.gap ?? 90);
+    let bx = -x - it.w, by = it.y ?? (it.tall ? y - 60 : y);
+    if (it.stack && prevBlock) {
+      // speaker cabinet stacked under the amp head, like a real half stack
+      bx = prevBlock.x + (prevBlock.w - it.w) / 2;
+      by = prevBlock.y + 214;
+    }
+    const b = { id, type: it.type, x: Math.round(bx), y: Math.round(by), params: it.params || {}, bypass: it.bypass ?? /tu3|polytune|tuner/.test(it.type), variant: it.variant || (it.stereo ? 'stereo' : 'mono') };
+    blocks.push(b);
+    prevBlock = { x: b.x, y: b.y, w: it.w };
+    if (!it.stack) x += it.w + (it.gap ?? 90);
   }
   blocks.push({ id: '__in', type: '__in', x: 120, y, params: {} });
   blocks.push({ id: '__out', type: '__out', x: -x - 150, y, params: {} });
@@ -35,8 +44,8 @@ const P = [];
 P.push(['01-welcome', chain('Welcome · Brit Crunch', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'ib.ts9', w: W.nine, params: { gain: 0.3, tone: 0.55, level: 0.7 } },
-  { type: 'amp.jcm800', w: 440, tall: true, params: { gain: 0.55, master: 0.5 } },
-  { type: 'cab.4x12gb', w: W.cab4, tall: true, y: 40 },
+  { type: 'amp.jcm800', w: 440, y: -120, params: { gain: 0.55, master: 0.5 } },
+  { type: 'cab.4x12gb', w: 440, stack: true },
   { type: 'bx.rv6', w: W.compact, stereo: true, ins: 1, params: { mix: 0.3, decay: 0.45 } },
 ])]);
 P.push(['02-clean-ambient', chain('Clean Ambient Shimmer', [
@@ -49,30 +58,30 @@ P.push(['02-clean-ambient', chain('Clean Ambient Shimmer', [
 P.push(['03-modern-metal', chain('Modern Metal (gated)', [
   { type: 'bx.ns2', w: W.compact },
   { type: 'bx.mt2', w: W.compact, params: { gain: 0.35, level: 0.6 }, bypass: true },
-  { type: 'amp.5150', w: 460, tall: true, params: { gain: 0.7, master: 0.45 } },
-  { type: 'cab.4x12v30', w: W.cab4, tall: true, y: 40, stereo: true, outs: 2 },
+  { type: 'amp.5150', w: 462, y: -120, params: { gain: 0.7, master: 0.45 } },
+  { type: 'cab.4x12v30', w: 440, stack: true, stereo: true, outs: 2 },
 ])]);
 P.push(['04-bass-rig', chain('Bass · Grind & Fridge', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'mx.m102', w: W.mxr },
   { type: 'pre.sansamp', w: W.tz, params: { gain: 0.35, blend: 0.65 } },
-  { type: 'amp.svt', w: 520, tall: true },
-  { type: 'cab.8x10svt', w: W.cab810, y: -80 },
+  { type: 'amp.svt', w: 506, y: -200 },
+  { type: 'cab.8x10svt', w: 270, stack: true },
 ])]);
 P.push(['05-rig-x', chain('Rig X Express', [{ type: 'l6.podexpress', w: W.pod, outs: 2, params: { dist: 0.4, ampsel: 5, mod: 0.12, dly: 0.35, rev: 0.4 } }])]);
 P.push(['06-looper-jam', chain('Looper Jam', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'bx.bd2', w: W.compact, params: { gain: 0.45 } },
-  { type: 'amp.plexi', w: 470, tall: true },
-  { type: 'cab.2x12cream', w: W.cab2 },
+  { type: 'amp.plexi', w: 470, y: -60 },
+  { type: 'cab.2x12cream', w: 400, stack: true },
   { type: 'bx.dd8', w: W.compact, stereo: true, ins: 1 },
   { type: 'bx.rc500', w: W.rc500, stereo: true },
 ])]);
 P.push(['07-drop-tune', chain('Drop Tune Chug', [
   { type: 'dt.drop', w: W.drop, params: { dsel: 1 } },
   { type: 'pc.rat2', w: W.rat, params: { gain: 0.55, tone: 0.45, level: 0.55 } },
-  { type: 'amp.recto', w: 460, tall: true, params: { channel: 1, gain: 0.6 } },
-  { type: 'cab.4x12v30', w: W.cab4, y: 40 },
+  { type: 'amp.recto', w: 462, y: -120, params: { channel: 1, gain: 0.6 } },
+  { type: 'cab.4x12v30', w: 440, stack: true },
 ])]);
 P.push(['08-boutique', chain('Boutique Board', [
   { type: 'sy.fairfax', w: W.strymonS },

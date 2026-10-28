@@ -77,6 +77,7 @@ export function renderSettings() {
   srow(a, 'Buffer size (quantum)', 'Smaller = lower latency, more CPU. 64 @ 48 kHz ≈ 1.3 ms per buffer.', seg([[32, '32'], [64, '64'], [128, '128'], [256, '256'], [512, '512']], s.buffer ?? 64, (b) => { applySettings({ buffer: b }); toast(`Requesting a ${b}-frame quantum from PipeWire…`, 'info'); }));
   srow(a, 'DSP quality', 'Oversampling for amps & drives, IR length and A2 NAM size.', seg([[0, 'Eco'], [1, 'Standard'], [2, 'High'], [3, 'Ultra']], s.quality ?? 1, (q) => applySettings({ quality: q })));
   srow(a, 'DSP budget', 'Share of each audio cycle the board may use. Shown as the white marker on the DSP meter.', range(20, 95, 1, Math.round((s.budget ?? 0.75) * 100), (x) => x + '%', (x, fin) => fin && applySettings({ budget: x / 100 })));
+  srow(a, 'Auto-lower quality', 'If the board stays over budget for a few seconds, step the DSP quality down automatically.', toggle(!!s.autoQuality, (x) => applySettings({ autoQuality: x })));
   srow(a, 'Enforce budget', 'Refuse to add blocks that would exceed the budget.', toggle(!!s.hardLimit, (x) => applySettings({ hardLimit: x })));
   srow(a, 'Input gain', 'Applied to every input before the board.', range(-24, 24, 0.5, s.inGainDb ?? 0, (x) => (x > 0 ? '+' : '') + x.toFixed(1) + ' dB', (x) => applySettings({ inGainDb: x })));
   srow(a, 'Output gain', 'Master level after the board (a soft safety limiter sits after it).', range(-36, 12, 0.5, s.outGainDb ?? 0, (x) => (x > 0 ? '+' : '') + x.toFixed(1) + ' dB', (x) => applySettings({ outGainDb: x })));

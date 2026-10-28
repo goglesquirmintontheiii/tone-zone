@@ -1,4 +1,5 @@
 // Algorithmic reverbs: room, hall, plate, spring, shimmer, cloud/ambient, modulated, dynamic, +delay, swell.
+#include "../dsp/pitch.h"
 #include "common.h"
 
 namespace tz
@@ -57,7 +58,7 @@ public:
   DelayLine pre[2];
   DelayLine echo;
   OnePole outLp[2], outHp[2];
-  ShiftLite shift[2];
+  WsolaShifter shift[2];
   LFO ens[3];
   DelayLine ensDl;
   EnvFollower duck;
@@ -107,7 +108,7 @@ public:
       springLp[c].lp(4300, sr);
       springHp[c].lp(180, sr);
       pre[c].allocate(int(0.55f * sr));
-      shift[c].prepare(sr);
+      shift[c].prepare(sr, 3.f, 50.f, 8.f);
     }
     echo.allocate(int(0.9f * sr));
     ensDl.allocate(int(0.05f * sr));
@@ -244,7 +245,7 @@ public:
         float shimIn = 0;
         if (mode == RShimmer)
         {
-          shimIn = shift[0].process(wl + wr, 2.0f) * shim * 0.5f;
+          shimIn = std::tanh(shift[0].process(wl + wr, 2.0f) * shim * 0.6f) * 0.55f;
         }
         for (int k = 0; k < N; ++k)
         {
@@ -253,7 +254,7 @@ public:
           y = y - lowDamp[k].processLP(y) * 0.5f * (1.f - p(pLowDamp));
           const float gg = freeze ? 1.0f : g[k];
           const float inj = (k & 1) ? ir : il;
-          line[k].push(flushDenorm(y * gg + inj * 0.5f + shimIn * 0.35f));
+          line[k].push(flushDenorm(y * gg + inj * 0.5f + shimIn * 0.22f));
         }
       }
       wl = outHp[0].processHP(outLp[0].processLP(wl));

@@ -349,7 +349,7 @@ forms.rc500 = (ctx, def) => {
   label(g, w - 70, 132, 'Loop Station', { size: 8, fill: '#fff', weight: 700, italic: true });
   tzBadge(g, w / 2, 132, '#fff', 4.4);
   placeControls(ctx, def.controls, theme);
-  return { w, h, theme, jacks: jacksSide(def, w, { y0: 40, gap: 26, flip: ctx.flip }) };
+  return { w, h, theme, jacks: jacksSide(def, w, { y0: 150, gap: 28, flip: ctx.flip }) };
 };
 
 // RC-600 style 6-track looper
@@ -491,7 +491,7 @@ forms.amp = (ctx, def) => {
 // speaker cabinet
 forms.cab = (ctx, def) => {
   const size = def.cabSize || '4x12';
-  const dims = { '1x12': [250, 236, 1, 1], '2x12': [380, 250, 2, 1], '4x12': [364, 364, 2, 2], '4x10': [300, 330, 2, 2], '8x10': [270, 480, 2, 4], '1x15': [264, 300, 1, 1], '2x10': [300, 240, 2, 1] };
+  const dims = { '1x12': [250, 236, 1, 1], '2x12': [400, 262, 2, 1], '4x12': [440, 420, 2, 2], '4x10': [300, 330, 2, 2], '8x10': [270, 480, 2, 4], '1x15': [264, 300, 1, 1], '2x10': [300, 240, 2, 1] };
   const [w, h, cols, rows] = dims[size] || dims['4x12'];
   const g = ctx.g;
   const tolex = def.tolex || '#141414';
@@ -609,11 +609,12 @@ forms.io = (ctx, def) => {
   const meters = [];
   labels.forEach((l, i) => {
     const y = 56 + i * 50;
-    label(g, isIn ? 18 : w - 18, y - 16, l, { size: 6.4, fill: '#e3e7ef', weight: 700, anchor: isIn ? 'start' : 'end', ls: 0.6 });
+    const leftAligned = ctx.flip ? isIn : !isIn;
+    label(g, leftAligned ? 18 : w - 18, y - 16, l, { size: 6.4, fill: '#e3e7ef', weight: 700, anchor: leftAligned ? 'start' : 'end', ls: 0.6 });
     // level meter (10 segments)
     const segs = [];
     for (let s = 0; s < 10; s++) {
-      const sx = (isIn ? 18 : w - 18 - 9 * 9) + s * 9;
+      const sx = (leftAligned ? 18 : w - 18 - 9 * 9) + s * 9;
       segs.push(svg('rect', { x: sx, y: y - 6, width: 7, height: 10, rx: 1.5, fill: '#14181f', class: 'led' }, g));
     }
     meters.push(segs);
@@ -621,8 +622,9 @@ forms.io = (ctx, def) => {
   ctx.ioMeters = meters;
   placeControls(ctx, def.controls, theme);
   const jacks = [];
-  if (isIn) def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: '', side: ctx.flip ? 'left' : 'right', x: ctx.flip ? -2 : w + 2, y: 56 + i * 50 - 1 }));
-  else def.ports.ins.forEach((l, i) => jacks.push({ key: `i${i}`, dir: 'in', port: i, label: '', side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: 56 + i * 50 - 1 }));
+  // realistic flow: the interface input sits on the right of the board (jacks face left), the output on the left
+  if (isIn) def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: '', side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: 56 + i * 50 - 1 }));
+  else def.ports.ins.forEach((l, i) => jacks.push({ key: `i${i}`, dir: 'in', port: i, label: '', side: ctx.flip ? 'left' : 'right', x: ctx.flip ? -2 : w + 2, y: 56 + i * 50 - 1 }));
   return { w, h, theme, jacks };
 };
 

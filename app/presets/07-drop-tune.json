@@ -29,8 +29,8 @@
     {
       "id": "b69",
       "type": "amp.recto",
-      "x": -936,
-      "y": 60,
+      "x": -938,
+      "y": -120,
       "params": {
         "channel": 1,
         "gain": 0.6
@@ -41,8 +41,8 @@
     {
       "id": "b70",
       "type": "cab.4x12v30",
-      "x": -1390,
-      "y": 40,
+      "x": -927,
+      "y": 94,
       "params": {},
       "bypass": false,
       "variant": "mono"
@@ -57,7 +57,7 @@
     {
       "id": "__out",
       "type": "__out",
-      "x": -1630,
+      "x": -1178,
       "y": 120,
       "params": {}
     }
