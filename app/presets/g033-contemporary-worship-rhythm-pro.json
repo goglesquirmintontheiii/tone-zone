@@ -1,0 +1,411 @@
+{
+ "version": 1,
+ "name": "Contemporary Worship · Rhythm Pro",
+ "tags": [
+  "contemporary-worship",
+  "worship",
+  "ambient",
+  "rhythm",
+  "complex"
+ ],
+ "desc": "Modern worship rhythm board: swell, comp, Klon-style and multistage drives (off), chorus, dotted delay, hall and a freeze for pads.",
+ "factory": true,
+ "order": 133,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3mini",
+   "x": -96,
+   "y": 70,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.tidalswell",
+   "x": -316,
+   "y": 53.5,
+   "params": {
+    "sens": 0.5,
+    "attack": 0.4,
+    "level": -2.4
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "sy.compadre",
+   "x": -590,
+   "y": 50,
+   "params": {
+    "c.on": 1,
+    "b.on": 0,
+    "c.blend": 0.6,
+    "c.sustain": 0.4,
+    "c.level": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.klone",
+   "x": -810,
+   "y": 40,
+   "params": {
+    "gain": 0.3,
+    "tone": 0.55,
+    "level": 0.6
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "sy.riverside",
+   "x": -1084,
+   "y": 50,
+   "params": {
+    "gain": 0.4,
+    "level": 0.55,
+    "bass": 0.5,
+    "mid": 0.5,
+    "treble": 0.55
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "amp.dc30",
+   "x": -1574,
+   "y": 0,
+   "params": {
+    "gain": 0.38,
+    "bass": 0.48,
+    "treble": 0.55,
+    "presence": 0.5,
+    "master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tworock.cab-1x12",
+   "x": -1894,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.3037383177570093,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "sy.ola",
+   "x": -2168,
+   "y": 50,
+   "params": {
+    "rate": 0.3,
+    "depth": 0.35,
+    "mix": 0.3
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b9",
+   "type": "sy.timeline",
+   "x": -2538,
+   "y": 46,
+   "params": {
+    "d.time": 175.6465,
+    "d.feedback": 0.336,
+    "d.mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b10",
+   "type": "sy.bigsky",
+   "x": -2908,
+   "y": 46,
+   "params": {
+    "inf": 0,
+    "decay": 0.7,
+    "mix": 0.32
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b11",
+   "type": "tz.glacier",
+   "x": -3188,
+   "y": 39.5,
+   "params": {
+    "mix": 0.5,
+    "decay": 0.6
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b12",
+   "type": "tz.meter",
+   "x": -3388,
+   "y": 30,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -3628,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c13",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "b9",
+    "port": 1
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b9",
+    "port": 1
+   },
+   "to": {
+    "node": "b10",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b10",
+    "port": 1
+   },
+   "to": {
+    "node": "b11",
+    "port": 1
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b11",
+    "port": 1
+   },
+   "to": {
+    "node": "b12",
+    "port": 1
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b12",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  }
+ ],
+ "view": null
+}

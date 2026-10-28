@@ -1,0 +1,12 @@
+{
+  "id": "beetronics",
+  "name": "Beetronics FX",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Hand-crafted, bee-themed pedals inspired by Beetronics FX: envelope filter, octave and harmonic fuzzes, an OD / fuzz blender, octave stutter, overdrive, harmonizer modulation and a bass octave fuzz. Domed enclosures with honeycomb, dripping honey and gold-on-black plates.",
+  "kind": "brand",
+  "brand": "Beetronics FX",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e0a21a"
+}

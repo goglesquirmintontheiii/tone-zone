@@ -327,13 +327,24 @@ function duplicatePreset(file) {
 function deletePreset(file) {
   fs.rmSync(path.join(presetDir(), path.basename(file)), { force: true });
 }
+// Copies factory presets the user hasn't received yet. The marker remembers which ones were installed, so presets
+// added in a later version still arrive after an update while ones the user deleted stay deleted.
 function installFactoryPresets(srcDir) {
   const d = presetDir();
   const marker = path.join(dataRoot(), '.factory-installed');
-  if (fs.existsSync(marker)) return;
+  let done = [];
+  try {
+    const raw = fs.readFileSync(marker, 'utf8');
+    done = raw.trim().startsWith('[') ? JSON.parse(raw) : ['01-welcome.json', '02-clean-ambient.json', '03-modern-metal.json', '04-bass-rig.json', '05-rig-x.json', '06-looper-jam.json', '07-drop-tune.json', '08-boutique.json', '09-wah-fuzz.json'];
+  } catch (_) {}
+  const have = new Set(done);
   if (fs.existsSync(srcDir))
-    for (const f of fs.readdirSync(srcDir)) if (f.endsWith('.json') && !fs.existsSync(path.join(d, f))) fs.copyFileSync(path.join(srcDir, f), path.join(d, f));
-  fs.writeFileSync(marker, String(Date.now()));
+    for (const f of fs.readdirSync(srcDir)) {
+      if (!f.endsWith('.json') || have.has(f)) continue;
+      if (!fs.existsSync(path.join(d, f))) fs.copyFileSync(path.join(srcDir, f), path.join(d, f));
+      have.add(f);
+    }
+  fs.writeFileSync(marker, JSON.stringify([...have]));
 }
 
 // ---------------- settings ----------------

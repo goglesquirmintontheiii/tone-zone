@@ -1,0 +1,12 @@
+{
+  "id": "lr-baggs",
+  "name": "LR Baggs",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Acoustic preamps, DIs and Align-style acoustic effects inspired by LR Baggs gear: Venue / Session / Para / Voiceprint style DIs (XLR + 1/4\" outs, notch, phase, saturate) and the Align series pedals.",
+  "kind": "brand",
+  "brand": "LR Baggs",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b5832f"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dreadbox",
+  "name": "Dreadbox",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Analog-minded effects inspired by Dreadbox (Greece): a BBD chorus / flanger with feedback, a delay + spring reverb processor and a fuzz into a resonant filter. Black enclosures with ink-on-paper, Japanese-inspired artwork.",
+  "kind": "brand",
+  "brand": "Dreadbox",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c8322b"
+}

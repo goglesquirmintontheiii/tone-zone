@@ -61,6 +61,7 @@ export default function register(tz) {
 | `kind` | browser type filter override: Pedal, Amp, Preamp, Cab, Multi-FX, Utility (derived from `cat` otherwise) |
 | `typeName`, `desc`, `tags` | subtitle, inspector text, extra search words |
 | `form` | enclosure renderer (see Forms) |
+| `baseForm` | for a custom enclosure that stands in for an amp or cab: `'amp'` / `'cab'` (amp heads stack on cabs in presets, z-order, stereo mic ports, thumbnails) |
 | `color`, `text`, `accent`, `knob`, `labelBg`, `labelText`, `codeColor`, `plate`, `plateText`, `tolex`, `panel`, `panelText`, `grille`, `piping`, `wide`, `small`, `rows`, `tagline` | look; which ones matter depends on the form |
 | `algo`, `opts` | engine algorithm and creation options – see `docs/engine-blocks.md` |
 | `controls` | knobs, switches, footswitches, LEDs, screens (see Controls) |
@@ -85,9 +86,31 @@ All controls take `x`, `y` (optional – forms auto-place controls without coord
 * `SEL(p, label, options, {sweep, values, printLabels, ring, optSize, labelRadius})` – rotary selector; `values` maps positions to engine values.
 * `TOG(p, label, options, {values, orient:'h'|'v'})` – 2/3-way mini toggle.
 * `BTN(label, {p, toggle, event: {type, value, arg}, action, led, ledColor, shape:'rect', w, h})` – push button.
-* `FOOT({action, label, style, idx, hold, tapTarget})` – footswitch. `action`: `bypass` (default), `tap`, `ctrl` (control output `idx`), `select` (output selector), plus `hold: {ms, event, release, action}`. `style`: stomp, soft, plate, ts, rc.
-* `LED({bind, color, r, label})` – `bind`: `on` (bypass state, default), `param:<p>`, `tap:<param ms>`, `rate:on:<p>`, `tunerOk`, `select:<i>`, `looper:…`, `fav`.
-* `SLIDER(p, label, …)`, `TREADLE(p, {…})` (wah / volume / whammy), `SCREEN(kind, {w, h, interactive})` – live displays (tu3, polytune, strobe, looper500, looper600, looperMini, ring, modelName, meter, or one you register).
+* `FOOT({action, label, style, idx, hold, tapTarget})` – footswitch. `action`: `bypass` (default), `tap`, `ctrl` (control output `idx`), `select` (output selector), plus `hold: {ms, event, release, action}`. `style`: stomp, soft, plate, ts, rc. Tap options: `tapTarget` (param that
+  mirrors the tapped time, default `time`), `tapHz: true` (target is a rate in Hz → 1000/ms × `tapMul`), `tapSub: i`
+  (send the tap to sub-block `i` of a chain).
+* `LED({bind, color, r, label})` – `bind`: `on` (bypass state, default), `param:<p>`, `param:!<p>` (inverted),
+  `param:<p>:=2` / `param:<p>:>0.3` / `param:<p>:<0.3` (compare), `onparam:<p>` (block on **and** param set),
+  `fn` with `ledFn(ui, block, status, now) → true | '#colour' | null` for anything derived, `tap:<param ms>`,
+  `rate:on:<p>`, `tunerOk`, `select:<i>`, `looper:…`, `fav`. Add `sub: '<prefix>'` to read a chain sub-block's status
+  (e.g. a looper inside a `chain`).
+* `SLIDER(p, label, {h, w, orient: 'h' for horizontal, led, capColor})`, `TREADLE(p, {…})` (wah / volume / whammy), `SCREEN(kind, {w, h, interactive})` – live displays (tu3, polytune, strobe, looper500, looper600, looperMini, ring, modelName, meter, or one you register).
+
+### Chains (several engine blocks in one pedal)
+
+`algo: 'chain', opts: { chain: [{ algo, prefix, opts, params, on, group, ch, lvl }], mix }` – sub-blocks run in
+series; every sub param is exposed as `<prefix>.<param>` plus `<prefix>.on`.
+
+* `group: n` – consecutive subs with the same group number run **in parallel** from the same input and are summed
+  (each gets a `<prefix>.lvl` gain, 0–2). Turning every lane off passes the dry signal.
+* `ch: 0 | 1` – the sub only processes that channel (per-input EQ on a two-channel DI, for example).
+* `lvl: true` – adds `<prefix>.lvl` to a series sub.
+* `mix: true` (chain option) – adds a chain-level `mix` param (dry/wet of the whole chain, e.g. a bass DI blend after
+  the speaker sim).
+* Events: footswitch events reach sub-block `i` with `arg = i * 100 + innerArg` (tap tempo on the 3rd sub = `arg: 200`).
+
+Engine ranges worth knowing: drive `mode` 0–15 (16 voicings via `opts.modes`), pitch has three voices
+(`semis1..3` / `level1..3`, diatonic `deg1..3`), `outTrim` in `opts` is a linear gain (not dB), cab `open` is boolean.
 
 ## Forms (enclosures)
 
@@ -121,6 +144,9 @@ tz.addForm('acme-wedge', (ctx, def) => {
 });
 ```
 
+* **Forms run more than once** (re-renders, zoom, variants) and the control objects are shared, so positions you
+  assign stick. Don't decide layout with `c.x === undefined` alone – mark what you placed (e.g. `c._auto = true`)
+  and lay those out again on every call.
 * `ctx.g` is the SVG group; `ctx.flip` is true when the user chose left→right signal flow (inputs on the left).
 * Return `{ w, h, theme, jacks }`. A jack is `{ key: 'i0'|'o0'|'ic0'|'oc0', dir, port, label, side: 'left'|'right'|'top'|'bottom'|'face', x, y, kind }`.
 * Performance rule: **no SVG `filter`s** (blur, turbulence…) – use `tz.gfx.softShadow`, `noisePattern`, gradients and
@@ -134,7 +160,7 @@ tz.addForm('acme-wedge', (ctx, def) => {
 | `helpers`, `builders`, `categories` | definition helpers (see above) |
 | `gfx` | `svg, label, shade, luminance, clamp, softShadow, noisePattern, haloFill, setA, setText, drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, drawJack, drawPlug, formKit, cabgeom` |
 | `addDefs(defs)` | register blocks (arrays may be nested) |
-| `addForm(name, fn)`, `addScreen(kind, {build(s,g,w,h,view), update(s,status,view,now)})`, `addStyles(css)` | rendering |
+| `addForm(name, fn)`, `addScreen(kind, {build(s,g,w,h,view), update(s,status,view,now)})`, `addStyles(css)` | rendering. In `update`, `s.ui` holds the block's current UI params (defaults filled in). Screens are removed when the plugin unloads. |
 | `blockHooks(type, {foot(view, ctl, down) → handled, ctrl(block, input, value, kind), …})` | custom behaviour |
 | `addPage({id, title, icon, render(el)})` | a full page tab |
 | `engine.send(cmd)`, `engine.onEvent(fn)` | talk to the DSP engine |

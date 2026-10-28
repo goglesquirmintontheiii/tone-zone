@@ -207,26 +207,36 @@ export function initBrowser(editor) {
   changed();
 }
 
-let observer = null;
+let pending = [];
+let lazyQueued = false;
+function fillThumbs() {
+  lazyQueued = false;
+  const list = listEl;
+  if (!list || !pending.length || !list.isConnected) return;
+  const top = list.scrollTop - 300, bot = list.scrollTop + list.clientHeight + 300;
+  const rest = [];
+  for (const item of pending) {
+    const y = item.offsetTop;
+    if (y + item.offsetHeight < top || y > bot) { rest.push(item); continue; }
+    const th = item.querySelector('.thumb');
+    th.innerHTML = '';
+    th.appendChild(thumbnail(item._def, 42));
+  }
+  pending = rest;
+}
+function queueThumbs() {
+  if (lazyQueued) return;
+  lazyQueued = true;
+  requestAnimationFrame(fillThumbs);
+}
 export function renderList() {
   const list = listEl;
   if (!list) return;
   const scroll = list.scrollTop;
   list.innerHTML = '';
-  if (observer) observer.disconnect();
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const en of entries) {
-        if (!en.isIntersecting) continue;
-        const item = en.target;
-        observer.unobserve(item);
-        const th = item.querySelector('.thumb');
-        th.innerHTML = '';
-        th.appendChild(thumbnail(item._def, 42));
-      }
-    },
-    { root: list, rootMargin: '300px' }
-  );
+  // thumbnails are drawn lazily for items scrolled into view. (An IntersectionObserver / content-visibility on
+  // hundreds of items is re-evaluated on every animation frame of the board, which costs far more.)
+  pending = [];
   const favs = favorites();
   const defs = sourceDefs().filter((d) => matches(d));
   const groups = new Map();
@@ -277,10 +287,16 @@ export function renderList() {
         e.dataTransfer.effectAllowed = 'copy';
       });
       item.addEventListener('dblclick', () => editorRef.addNear(d.id));
-      observer.observe(item);
+      pending.push(item);
     }
   }
   list.scrollTop = scroll;
+  if (!list._lazy) {
+    list._lazy = true;
+    list.addEventListener('scroll', queueThumbs, { passive: true });
+    new ResizeObserver(queueThumbs).observe(list);
+  }
+  queueThumbs();
 }
 
 // ------------------------------------------------------------------ pointer drag (no OS drag-and-drop:

@@ -4,7 +4,7 @@ import * as helpers from './catalog/helpers.js';
 import * as builders from './catalog/builders.js';
 import { registerPluginDefs, unregisterPlugin, pluginDefIds, rememberPluginBlocks, CATEGORIES, getDef } from './catalog/index.js';
 import { registerForm, unregisterForm, formKit } from './gfx/forms.js';
-import { registerScreen } from './screens.js';
+import { registerScreen, unregisterScreen } from './screens.js';
 import * as controls from './gfx/controls.js';
 import * as jacks from './gfx/jacks.js';
 import * as fx from './gfx/fx.js';
@@ -55,6 +55,7 @@ function makeApi(info) {
     },
     addScreen(kind, impl) {
       registerScreen(kind, impl);
+      cleanup.push(() => unregisterScreen(kind));
     },
     addStyles(css) {
       const st = document.createElement('style');

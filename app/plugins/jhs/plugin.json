@@ -1,0 +1,12 @@
+{
+  "id": "jhs",
+  "name": "JHS",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by JHS Pedals: hand-painted boxes with hand-drawn art – the Daybreak Bloom, the nine-voice Tiny Tree, Grumpy Chuck, Kilt-style tartan fuzz, a nine-way rat pack, a console-style preamp, tape and bucket-brigade delays, spring reverb, uni-vibe, chorus, tremolo, dual overdrives and the minimal Trio Series (overdrive, distortion, fuzz, delay, reverb, chorus, compressor, phaser).",
+  "kind": "brand",
+  "brand": "JHS",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2f6fb5"
+}

@@ -83,7 +83,8 @@ const peak = (a) => a.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
   win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.stack));
   win.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errs.push('CONSOLE ' + m.text()));
   await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
-  await win.waitForTimeout(3000);
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 60000 }).catch(() => {});
+  await win.waitForTimeout(600);
   const info = await win.evaluate(async ({ pluginId, only }) => {
     const cat = await import('./js/catalog/index.js');
     const pl = await import('./js/plugins.js');

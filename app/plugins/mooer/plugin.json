@@ -1,0 +1,12 @@
+{
+  "id": "mooer",
+  "name": "Mooer",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedal preamps inspired by the Mooer Micro Preamp series: tiny two-channel amp-in-a-box pedals with cab sim.",
+  "kind": "brand",
+  "brand": "Mooer",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d0d3d6"
+}

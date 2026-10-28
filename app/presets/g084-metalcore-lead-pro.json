@@ -1,0 +1,345 @@
+{
+ "version": 1,
+ "name": "Metalcore · Lead Pro",
+ "tags": [
+  "metalcore",
+  "metal",
+  "high-gain",
+  "lead",
+  "complex"
+ ],
+ "desc": "Whammy (off), boost, gate, chorus (off), stereo delay and ambient reverb.",
+ "factory": true,
+ "order": 184,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3w",
+   "x": -146,
+   "y": 101,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.whammy",
+   "x": -368,
+   "y": 78,
+   "params": {
+    "expr": 0
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "ib.tsmini",
+   "x": -534,
+   "y": 137,
+   "params": {
+    "gain": 0.1,
+    "tone": 0.6,
+    "level": 0.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.hush",
+   "x": -754,
+   "y": 118.5,
+   "params": {
+    "threshold": 0.35,
+    "decay": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "revv.amp-generator",
+   "x": -1336,
+   "y": 0,
+   "params": {
+    "gain": 0.68,
+    "bass": 0.55,
+    "mid": 0.5,
+    "treble": 0.6,
+    "presence": 0.55,
+    "master": 0.45,
+    "channel": 2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "engl.cab-pro4x12",
+   "x": -1300,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": 2.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tz.halo",
+   "x": -1556,
+   "y": 108.5,
+   "params": {
+    "rate": 0.3,
+    "depth": 0.3,
+    "mix": 0.25
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b8",
+   "type": "bx.dd500",
+   "x": -1896,
+   "y": 97,
+   "params": {
+    "time": 260.4561,
+    "feedback": 0.3675,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b9",
+   "type": "mrs.mercury7",
+   "x": -2172,
+   "y": 114,
+   "params": {
+    "inf": 0,
+    "decay": 0.6,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b10",
+   "type": "tz.meter",
+   "x": -2372,
+   "y": 95,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2612,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c11",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "b9",
+    "port": 1
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b9",
+    "port": 1
+   },
+   "to": {
+    "node": "b10",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b10",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  }
+ ],
+ "view": null
+}

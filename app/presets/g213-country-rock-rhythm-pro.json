@@ -1,0 +1,260 @@
+{
+ "version": 1,
+ "name": "Country Rock · Rhythm Pro",
+ "tags": [
+  "country-rock",
+  "country",
+  "rock",
+  "rhythm",
+  "complex"
+ ],
+ "desc": "Compressor, BD-2, dual-mic cab, slapback (off) and spring.",
+ "factory": true,
+ "order": 313,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3mini",
+   "x": -96,
+   "y": 70,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "mx.m102",
+   "x": -294,
+   "y": 54,
+   "params": {
+    "level": 0.55,
+    "sustain": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "bx.bd2",
+   "x": -510,
+   "y": 36,
+   "params": {
+    "level": 0.6,
+    "tone": 0.55,
+    "gain": 0.35
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "fender.amp-hotrod",
+   "x": -1180,
+   "y": 0,
+   "params": {
+    "a.vol": 0.45,
+    "a.drv": 0.4,
+    "a.treble": 0.6,
+    "a.bass": 0.5,
+    "a.mid": 0.55,
+    "a.master": 0.5,
+    "r.mix": 0.15,
+    "a.channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "cab.1x12us",
+   "x": -1500,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.3037383177570093,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -1.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "bx.dd3",
+   "x": -1716,
+   "y": 36,
+   "params": {
+    "mix": 0.15,
+    "feedback": 0.196,
+    "dtime": 0.3
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tz.spring",
+   "x": -1936,
+   "y": 40,
+   "params": {
+    "mix": 0.12
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "tz.meter",
+   "x": -2136,
+   "y": 30,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2376,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c9",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e8473d"
+  }
+ ],
+ "view": null
+}

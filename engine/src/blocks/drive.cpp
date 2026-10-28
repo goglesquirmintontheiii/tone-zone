@@ -114,7 +114,7 @@ public:
     pTreble = addParam("treble", 0.5f);
     pMidFreq = addParam("midfreq", 0.5f);
     pBlend = addParam("blend", 1.0f);
-    pMode = addParam("mode", 0, 0, 7);
+    pMode = addParam("mode", 0, 0, 15);
     pBright = addParam("bright", 0, 0, 1);
     pHiMid = addParam("himid", 0.5f);
     pSag = addParam("sag", 0.f);

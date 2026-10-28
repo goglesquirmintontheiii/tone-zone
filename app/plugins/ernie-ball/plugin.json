@@ -1,0 +1,12 @@
+{
+  "id": "ernie-ball",
+  "name": "Ernie Ball",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Volume and expression-series treadle pedals inspired by Ernie Ball gear: a compact volume pedal plus delay, tremolo and overdrive with foot-swept parameters.",
+  "kind": "brand",
+  "brand": "Ernie Ball",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d9262c"
+}

@@ -1,0 +1,295 @@
+{
+ "version": 1,
+ "name": "Pop Punk · Lead Pro",
+ "tags": [
+  "pop-punk",
+  "punk",
+  "rock",
+  "lead",
+  "complex"
+ ],
+ "desc": "SD-1 plus boost, flanger (off), delay and reverb.",
+ "factory": true,
+ "order": 244,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 25,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3w",
+   "x": -146,
+   "y": 101,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "bx.sd1",
+   "x": -362,
+   "y": 101,
+   "params": {
+    "level": 0.7,
+    "tone": 0.55,
+    "gain": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.boost",
+   "x": -582,
+   "y": 105,
+   "params": {
+    "gain": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "mesa.amp-markv",
+   "x": -1120,
+   "y": 0,
+   "params": {
+    "gain": 0.6,
+    "master": 0.5,
+    "treble": 0.6,
+    "mid": 0.5,
+    "bass": 0.55,
+    "presence": 0.55,
+    "channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "mesa.cab-2x12recto",
+   "x": -1086,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.645,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "mx.m117",
+   "x": -1318,
+   "y": 119,
+   "params": {
+    "speed": 0.3,
+    "regen": 0.4
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "bx.dd8",
+   "x": -1534,
+   "y": 101,
+   "params": {
+    "mix": 0.22,
+    "feedback": 0.294,
+    "dtime": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "tz.reverb",
+   "x": -1800,
+   "y": 105,
+   "params": {
+    "decay": 0.35,
+    "mix": 0.12
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b9",
+   "type": "tz.meter",
+   "x": -2000,
+   "y": 95,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2240,
+   "y": 25,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c10",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "b9",
+    "port": 1
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b9",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  }
+ ],
+ "view": null
+}

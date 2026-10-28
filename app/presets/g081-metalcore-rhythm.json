@@ -1,0 +1,163 @@
+{
+ "version": 1,
+ "name": "Metalcore · Rhythm",
+ "tags": [
+  "metalcore",
+  "metal",
+  "high-gain",
+  "rhythm",
+  "simple"
+ ],
+ "desc": "Modern tight high gain with a TS front end and gate, for chugs and open chords.",
+ "factory": true,
+ "order": 181,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tz.hush",
+   "x": -150,
+   "y": 118.5,
+   "params": {
+    "threshold": 0.45,
+    "decay": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "ib.tsmini",
+   "x": -316,
+   "y": 137,
+   "params": {
+    "gain": 0,
+    "tone": 0.6,
+    "level": 0.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "revv.amp-generator",
+   "x": -898,
+   "y": 0,
+   "params": {
+    "gain": 0.6,
+    "bass": 0.55,
+    "mid": 0.5,
+    "treble": 0.6,
+    "presence": 0.55,
+    "master": 0.45,
+    "channel": 2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "engl.cab-pro4x12",
+   "x": -862,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "level": 5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1138,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c5",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#3498db"
+  }
+ ],
+ "view": null
+}

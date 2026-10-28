@@ -1,0 +1,12 @@
+{
+  "id": "two-rock",
+  "name": "Two-Rock",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Two-Rock: Californian boutique clean and lead tones.",
+  "kind": "brand",
+  "brand": "Two-Rock",
+  "main": "index.js",
+  "api": 1,
+  "color": "#9aa0a6"
+}

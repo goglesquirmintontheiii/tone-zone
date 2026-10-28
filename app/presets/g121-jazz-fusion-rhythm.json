@@ -1,0 +1,200 @@
+{
+ "version": 1,
+ "name": "Jazz Fusion · Rhythm",
+ "tags": [
+  "jazz-fusion",
+  "jazz",
+  "lead",
+  "rhythm",
+  "simple"
+ ],
+ "desc": "Compressed Dumble-style clean with chorus for comping chords.",
+ "factory": true,
+ "order": 221,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 21,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tz.comp",
+   "x": -196,
+   "y": 105,
+   "params": {
+    "sustain": 0.35,
+    "ratio": 0.4,
+    "level": 0.55,
+    "blend": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "amp.dumble",
+   "x": -690,
+   "y": 0,
+   "params": {
+    "gain": 0.3,
+    "treble": 0.5,
+    "mid": 0.6,
+    "bass": 0.45,
+    "master": 0.55,
+    "presence": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "cab.2x12cream",
+   "x": -678,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": 2.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.chorus",
+   "x": -956,
+   "y": 105,
+   "params": {
+    "rate": 0.3,
+    "depth": 0.3,
+    "mix": 0.3
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b5",
+   "type": "tz.reverb",
+   "x": -1222,
+   "y": 105,
+   "params": {
+    "decay": 0.4,
+    "mix": 0.2
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1462,
+   "y": 21,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b4",
+    "port": 1
+   },
+   "to": {
+    "node": "b5",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  }
+ ],
+ "view": null
+}

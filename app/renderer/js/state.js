@@ -38,15 +38,16 @@ export function blockById(id) {
 // -------- control <-> value helpers
 export function ctlDefault(c) {
   if (c.t === 'sel' || c.t === 'toggle') return c.def ?? 0;
-  if (c.t === 'button') return 0;
+  if (c.t === 'button') return c.def ?? 0;
   return c.def ?? (c.min ?? 0);
 }
 export function uiParams(block) {
   const d = getDef(block.type);
   const p = {};
   if (d) {
-    for (const c of d.controls) if (c.p) p[c.p] = block.params[c.p] ?? ctlDefault(c);
-    if (d.initParams) for (const k in d.initParams) if (p[k] === undefined) p[k] = block.params[k] ?? d.initParams[k];
+    const ip = d.initParams || {};
+    for (const c of d.controls) if (c.p) p[c.p] = block.params[c.p] ?? ip[c.p] ?? ctlDefault(c);
+    for (const k in ip) if (p[k] === undefined) p[k] = block.params[k] ?? ip[k];
   }
   for (const k in block.params) if (p[k] === undefined) p[k] = block.params[k];
   return p;
@@ -102,23 +103,24 @@ export function channelMap(b) {
   };
   return { ins: mk(ports.ins, 'i'), outs: mk(ports.outs, 'o') };
 }
-export function buildGraph() {
+export function buildGraph(preset = state.preset) {
+  const live = preset === state.preset;
   const nodes = [];
   const maps = {};
-  for (const b of state.preset.blocks) {
+  for (const b of preset.blocks) {
     maps[b.id] = channelMap(b);
     if (b.id === '__in' || b.id === '__out') continue;
     const d = getDef(b.type);
     if (!d || !d.algo) continue;
     const params = engineParamsFor(b);
-    lastSent[b.id] = Object.assign({}, params);
+    if (live) lastSent[b.id] = Object.assign({}, params);
     const m = maps[b.id];
     const nIn = m.ins.reduce((a, x) => a + x.length, 0), nOut = m.outs.reduce((a, x) => a + x.length, 0);
     nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: b.opts ? Object.assign({}, d.opts, b.opts) : d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
   }
   const valid = new Set(nodes.map((n) => n.id).concat(['__in', '__out']));
   const cables = [];
-  for (const c of state.preset.cables) {
+  for (const c of preset.cables) {
     if (c.ctrl || typeof c.from.port !== 'number' || !valid.has(c.from.node) || !valid.has(c.to.node)) continue;
     const a = maps[c.from.node]?.outs[c.from.port], z = maps[c.to.node]?.ins[c.to.port];
     if (!a || !z) continue;

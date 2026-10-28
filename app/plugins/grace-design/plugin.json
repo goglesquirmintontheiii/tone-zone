@@ -1,0 +1,12 @@
+{
+  "id": "grace-design",
+  "name": "Grace Design",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Studio-grade dual and single channel acoustic preamp / DIs inspired by Grace Design.",
+  "kind": "brand",
+  "brand": "Grace Design",
+  "main": "index.js",
+  "api": 1,
+  "color": "#9aa3ad"
+}

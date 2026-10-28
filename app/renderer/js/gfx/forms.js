@@ -4,6 +4,7 @@
 import { svg, shade, luminance } from '../util.js';
 import { softShadow } from './fx.js';
 import { drawJack } from './jacks.js';
+import { installTzForms } from './forms-tz.js';
 import { cabGeom, MIC_SHORT, MIC_COLORS } from './cabgeom.js';
 import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, label, hex, textColorFor } from './controls.js';
 
@@ -866,3 +867,5 @@ forms.paraeq = (ctx, def) => {
   placeControls(ctx, def.controls, theme);
   return { w, h, theme, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 120, gap: 30 }) };
 };
+
+installTzForms(registerForm);

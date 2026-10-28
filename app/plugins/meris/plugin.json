@@ -1,0 +1,12 @@
+{
+  "id": "meris",
+  "name": "Meris",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Studio-grade boutique effects inspired by Meris: modulated multi-tap delay, cathedral reverb, diatonic harmonizer, bitcrusher / sequencer, guitar synth and the display-equipped delay and reverb systems. Matte black enclosures with colourful vertical knob columns.",
+  "kind": "brand",
+  "brand": "Meris",
+  "main": "index.js",
+  "api": 1,
+  "color": "#7a5cff"
+}

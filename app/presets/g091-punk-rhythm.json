@@ -1,0 +1,114 @@
+{
+ "version": 1,
+ "name": "Punk · Rhythm",
+ "tags": [
+  "punk",
+  "crunch",
+  "rhythm",
+  "simple"
+ ],
+ "desc": "Cranked British dual-channel head straight into T75s – loud, raw and simple.",
+ "factory": true,
+ "order": 191,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "marshall.amp-jcm900",
+   "x": -512,
+   "y": 0,
+   "params": {
+    "presence": 0.6,
+    "bass": 0.55,
+    "mid": 0.6,
+    "treble": 0.65,
+    "ga": 0.6,
+    "gb": 0.6,
+    "master": 0.55,
+    "channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "cab.4x12t75",
+   "x": -476,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "level": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -752,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c3",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c4",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c5",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  }
+ ],
+ "view": null
+}

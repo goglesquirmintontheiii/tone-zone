@@ -1,0 +1,136 @@
+{
+ "version": 1,
+ "name": "Jazz · Rhythm",
+ "tags": [
+  "jazz",
+  "clean",
+  "rhythm",
+  "simple"
+ ],
+ "desc": "Warm solid-state clean with the treble rolled back and a touch of spring – comping on the neck pickup.",
+ "factory": true,
+ "order": 111,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "amp.jc120",
+   "x": -420,
+   "y": 0,
+   "params": {
+    "gain": 0.32,
+    "treble": 0.38,
+    "mid": 0.55,
+    "bass": 0.58,
+    "bright": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "cab.2x12jc",
+   "x": -890,
+   "y": 34,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": 11
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.spring",
+   "x": -1110,
+   "y": 40,
+   "params": {
+    "mix": 0.18,
+    "decay": 0.35,
+    "tone": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1350,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c4",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c5",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  }
+ ],
+ "view": null
+}

@@ -1,0 +1,12 @@
+{
+  "id": "supro",
+  "name": "Supro",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps and preamps inspired by Supro: vintage-style American combos with tremolo.",
+  "kind": "brand",
+  "brand": "Supro",
+  "main": "index.js",
+  "api": 1,
+  "color": "#3c5a8a"
+}

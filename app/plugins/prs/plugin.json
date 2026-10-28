@@ -1,0 +1,12 @@
+{
+  "id": "prs",
+  "name": "PRS",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals, amp heads, preamps and V30 cabinets inspired by PRS Guitars amps and effects.",
+  "kind": "brand",
+  "brand": "PRS",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8a6a2a"
+}

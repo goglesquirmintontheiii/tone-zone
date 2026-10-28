@@ -3,9 +3,10 @@
   "name": "Marshall",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Marshall gear.",
+  "description": "Amps, preamps and cabs inspired by Marshall: Plexi, JCM800 / 900, Jubilee, JVM, DSL and the Bluesbreaker combo.",
   "kind": "brand",
   "brand": "Marshall",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#c9a64e"
 }

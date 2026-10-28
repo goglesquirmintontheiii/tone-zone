@@ -3,9 +3,10 @@
   "name": "Markbass",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Markbass gear.",
+  "description": "Bass amps, preamps and cabs inspired by Markbass.",
   "kind": "brand",
   "brand": "Markbass",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#f5d000"
 }

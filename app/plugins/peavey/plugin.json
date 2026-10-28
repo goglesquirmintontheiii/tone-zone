@@ -3,9 +3,10 @@
   "name": "Peavey",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Peavey gear.",
+  "description": "Amps and preamps inspired by Peavey: 5150 / 6505+ and the Invective.",
   "kind": "brand",
   "brand": "Peavey",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#c8202a"
 }

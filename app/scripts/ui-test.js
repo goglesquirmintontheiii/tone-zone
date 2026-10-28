@@ -8,7 +8,8 @@ const S = process.env.SHOTS || '/tmp';
   const errs = [];
   win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.stack));
   win.on('console', (m) => m.type() === 'error' && errs.push('CONSOLE ' + m.text()));
-  await win.waitForTimeout(3000);
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 90000 });
+  await win.waitForTimeout(500);
   const ev = (f, a) => win.evaluate(f, a);
   // 1. knob drag on the green drive
   const ts = await ev(() => window.__tz.state.preset.blocks.find((b) => b.type === 'ib.ts9').id);
@@ -35,8 +36,14 @@ const S = process.env.SHOTS || '/tmp';
   const board = await win.$('#board');
   const bb = await board.boundingBox();
   const nBefore = await ev(() => window.__tz.state.preset.blocks.length);
-  await win.dragAndDrop('.bl-item >> nth=3', '#board', { targetPosition: { x: bb.width * 0.5, y: bb.height * 0.25 } });
-  await win.waitForTimeout(500);
+  const ib0 = await (await win.$('.bl-item >> nth=3')).boundingBox();
+  await win.mouse.move(ib0.x + 30, ib0.y + ib0.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(bb.x + bb.width * 0.5, bb.y + bb.height * 0.25, { steps: 10 });
+  await win.mouse.up();
+  const tDrop = Date.now();
+  await win.waitForFunction((n) => window.__tz.state.preset.blocks.length > n, nBefore, { timeout: 3000 }).catch(() => {});
+  console.log('drop-in latency ms', Date.now() - tDrop);
   console.log('blocks', nBefore, '->', await ev(() => window.__tz.state.preset.blocks.length));
   // 4. patch a cable: unplug TS9 input then re-plug by dragging from the TS9 output to the new block input
   const newId = await ev(() => { const s = window.__tz.state; return [...s.selection][0]; });
@@ -52,6 +59,14 @@ const S = process.env.SHOTS || '/tmp';
     await win.mouse.up();
   }
   console.log('cables', cablesBefore, '->', await ev(() => window.__tz.state.preset.cables.length));
+  // 4b. shift+drag marquee selects several blocks
+  await win.keyboard.down('Shift');
+  await win.mouse.move(bb.x + 20, bb.y + 20);
+  await win.mouse.down();
+  await win.mouse.move(bb.x + bb.width - 20, bb.y + bb.height - 20, { steps: 8 });
+  await win.mouse.up();
+  await win.keyboard.up('Shift');
+  console.log('marquee selected', await ev(() => window.__tz.state.selection.size));
   // 5. undo
   await win.keyboard.press('Control+z');
   await win.waitForTimeout(200);

@@ -3,9 +3,10 @@
   "name": "TC Electronic",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by TC Electronic gear.",
+  "description": "Pedals inspired by TC Electronic gear: TonePrint-era die-cast stompboxes (reverbs, delays, loopers, modulation, drives, dynamics, pitch), the mini series, the newer budget line, a five-slot multi pedal, PolyTune-style tuners and a buffer.",
   "kind": "brand",
   "brand": "TC Electronic",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#2f6fd6"
 }

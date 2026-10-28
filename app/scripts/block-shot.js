@@ -10,7 +10,8 @@ const path = require('path');
   win.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
   win.on('console', (m) => m.type() === 'error' && logs.push('ERR: ' + m.text()));
   await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
-  await win.waitForTimeout(3000);
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 60000 }).catch(() => {});
+  await win.waitForTimeout(600);
   await win.evaluate(async ({ types, zoom }) => {
     const T = window.__tz;
     const st = await import('./js/state.js');

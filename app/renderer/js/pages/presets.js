@@ -1,11 +1,13 @@
 // Presets tab: searchable / sortable grid of preset cards with board thumbnails, favourites, tags and actions.
 import { el, svg, esc, bus, toast } from '../util.js';
 import { state, loadPreset, newPreset, markDirty, serialize } from '../state.js';
-import { getDef } from '../catalog/index.js';
+import { getDef, portsFor, defaultVariant } from '../catalog/index.js';
+import { renderForm } from '../gfx/forms.js';
 import { openPreset, savePreset, refreshPresetList, updateTitle } from '../presets.js';
-import { prompt, confirmDlg, showMenu } from '../menus.js';
+import { prompt, confirmDlg, showMenu, modal } from '../menus.js';
 
-const V = { q: '', sort: 'name', filter: 'All', tag: null };
+const V = { q: '', sort: 'name', filter: 'All', tags: new Set(), tagMode: 'any' };
+export const GENRE_TAGS = ['rhythm', 'lead', 'clean', 'crunch', 'high-gain', 'ambient', 'simple', 'complex', 'jazz', 'worship', 'contemporary-worship', 'gospel', 'rock', 'classic-rock', 'alt-rock', 'metal', 'heavy-metal', 'classic-metal', 'deathcore', 'metalcore', 'punk', 'pop-punk', 'pop', 'experimental', 'jazz-fusion', 'edm', 'acoustic', 'country', 'country-rock', 'blues', 'funk', 'bass'];
 
 function thumb(layout) {
   const s = svg('svg', { class: 'pc-thumb', xmlns: 'http://www.w3.org/2000/svg', preserveAspectRatio: 'xMidYMid meet' });
@@ -18,7 +20,7 @@ function thumb(layout) {
   const boxes = bl.map(([type, x, y, byp]) => {
     const d = getDef(type);
     const sz = d ? sizeOf(d) : [120, 200];
-    return { x, y, w: sz[0], h: sz[1], color: d ? (d.form === 'cab' || d.form === 'amp' ? d.tolex || '#1b1b1d' : d.color) : '#444', byp, missing: !d, form: d?.form, panel: d && d.form === 'amp' ? d.panel || d.color : d && d.form === 'cab' ? '#b9a27a' : null };
+    return { x, y, w: sz[0], h: sz[1], color: d ? (d.baseForm === 'cab' || d.baseForm === 'amp' ? d.tolex || '#1b1b1d' : d.color) : '#444', byp, missing: !d, form: d?.baseForm, panel: d && d.baseForm === 'amp' ? d.panel || d.color : d && d.baseForm === 'cab' ? '#b9a27a' : null };
   });
   const minX = Math.min(...boxes.map((b) => b.x)) - 40, minY = Math.min(...boxes.map((b) => b.y)) - 40;
   const maxX = Math.max(...boxes.map((b) => b.x + b.w)) + 40, maxY = Math.max(...boxes.map((b) => b.y + b.h)) + 40;
@@ -39,7 +41,24 @@ function thumb(layout) {
   }
   return s;
 }
-function sizeOf(d) {
+const sizeCache = new Map();
+// real rendered size of a block (measured once by drawing its enclosure off-screen), table fallback
+export function sizeOf(d) {
+  if (!d) return [120, 200];
+  if (sizeCache.has(d.id)) return sizeCache.get(d.id);
+  let r = null;
+  try {
+    const g = svg('g');
+    const rdef = Object.create(d);
+    rdef.ports = portsFor(d, defaultVariant(d));
+    const res = renderForm({ g, views: new Map(), flip: false, thumb: true }, rdef);
+    if (res && res.w > 0 && res.h > 0) r = [Math.round(res.w), Math.round(res.h)];
+  } catch {}
+  r = r || sizeGuess(d);
+  sizeCache.set(d.id, r);
+  return r;
+}
+function sizeGuess(d) {
   const f = d.form;
   if (f === 'amp') return [440, d.combo ? 330 : 200];
   if (f === 'cab') return [{ '1x12': 250, '2x12': 400, '4x12': 440, '4x10': 300, '8x10': 270, '1x15': 264, '2x10': 300 }[d.cabSize || '4x12'] || 400, { '1x12': 236, '2x12': 262, '4x12': 420, '4x10': 330, '8x10': 480, '1x15': 300, '2x10': 240 }[d.cabSize || '4x12'] || 300];
@@ -67,11 +86,32 @@ export async function renderPresets() {
   const sr = el('div', { class: 'search' }, tools, '<i class="ic ic-search"></i>');
   const q = el('input', { placeholder: 'Search presets, blocks or tags…', value: V.q, spellcheck: 'false' }, sr);
   const chips = el('div', { class: 'filter-row' }, tools);
-  const tags = [...new Set(list.flatMap((p) => p.tags || []))].sort();
-  for (const f of ['All', 'Favourites', 'Factory', 'Mine', ...tags.map((t) => '#' + t)]) {
-    const b = el('button', { class: 'chip' + (V.filter === f ? ' on' : '') }, chips, f === 'Favourites' ? '★ Favourites' : esc(f));
+  for (const f of ['All', 'Favourites', 'Factory', 'Mine']) {
+    const b = el('button', { class: 'chip' + (V.filter === f ? ' on' : '') + (f === 'Favourites' ? ' fav' : '') }, chips, f === 'Favourites' ? '★ Favourites' : esc(f));
     b.onclick = () => { V.filter = f; draw(); chips.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b)); };
   }
+  // tag filter: multi-select, match any / all
+  const counts = new Map();
+  for (const p of list) for (const t of p.tags || []) counts.set(t, (counts.get(t) || 0) + 1);
+  const tags = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
+  for (const t of [...V.tags]) if (!counts.has(t)) V.tags.delete(t);
+  const tagRow = el('div', { class: 'pp-tags' }, page);
+  const drawTags = () => {
+    tagRow.innerHTML = '';
+    if (!tags.length) return;
+    el('span', { class: 'pp-tags-l' }, tagRow, '<i class="ic ic-filter"></i>Tags');
+    const mode = el('button', { class: 'chip sm', title: 'Show presets with any / all of the selected tags' }, tagRow, V.tagMode === 'any' ? 'match any' : 'match all');
+    mode.onclick = () => { V.tagMode = V.tagMode === 'any' ? 'all' : 'any'; drawTags(); draw(); };
+    for (const t of tags) {
+      const b = el('button', { class: 'chip sm' + (V.tags.has(t) ? ' on' : '') }, tagRow, `#${esc(t)}<em>${counts.get(t)}</em>`);
+      b.onclick = () => { V.tags.has(t) ? V.tags.delete(t) : V.tags.add(t); drawTags(); draw(); };
+    }
+    if (V.tags.size) {
+      const c = el('button', { class: 'chip sm' }, tagRow, '<i class="ic ic-x"></i>Clear');
+      c.onclick = () => { V.tags.clear(); drawTags(); draw(); };
+    }
+  };
+  drawTags();
   const sortSel = el('select', { class: 'pp-sort' }, tools, '<option value="name">Name</option><option value="recent">Recently saved</option><option value="blocks">Most blocks</option>');
   sortSel.value = V.sort;
   sortSel.onchange = () => { V.sort = sortSel.value; draw(); };
@@ -84,7 +124,11 @@ export async function renderPresets() {
       if (V.filter === 'Favourites' && !p.favorite) return false;
       if (V.filter === 'Factory' && !p.factory) return false;
       if (V.filter === 'Mine' && p.factory) return false;
-      if (V.filter.startsWith('#') && !(p.tags || []).includes(V.filter.slice(1))) return false;
+      if (V.tags.size) {
+        const pt = new Set(p.tags || []);
+        const hit = [...V.tags].filter((t) => pt.has(t)).length;
+        if (V.tagMode === 'all' ? hit < V.tags.size : !hit) return false;
+      }
       if (V.q) {
         const hay = [p.name, p.desc, ...(p.tags || []), ...(p.types || []).map((t) => getDef(t)?.name || t)].join(' ').toLowerCase();
         if (!V.q.split(/\s+/).every((w) => hay.includes(w))) return false;
@@ -115,7 +159,11 @@ export async function renderPresets() {
     if ((p.tags || []).length || p.factory) {
       const tg = el('div', { class: 'pc-tags' }, meta);
       if (p.factory) el('span', { class: 'pc-tag f' }, tg).textContent = 'factory';
-      for (const t of p.tags || []) el('span', { class: 'pc-tag' }, tg).textContent = '#' + t;
+      for (const t of p.tags || []) {
+        const x = el('span', { class: 'pc-tag' + (V.tags.has(t) ? ' on' : ''), title: 'Filter by this tag' }, tg);
+        x.textContent = '#' + t;
+        x.onclick = (e) => { e.stopPropagation(); V.tags.has(t) ? V.tags.delete(t) : V.tags.add(t); drawTags(); draw(); };
+      }
     }
     const more = el('button', { class: 'icon-btn pc-more', title: 'More' }, c, '<i class="ic ic-dots"></i>');
     more.onclick = (e) => { e.stopPropagation(); cardMenu(p, more); };
@@ -128,7 +176,7 @@ export async function renderPresets() {
     showMenu(r.left, r.bottom + 4, [
       { label: 'Load', icon: 'play', onClick: () => openPreset(p.file).then(draw) },
       { label: 'Rename…', icon: 'edit', onClick: async () => { const n = await prompt('Rename preset', p.name); if (n) { await window.tz.presets.meta(p.file, { name: n }); if (state.file === p.file) { state.preset.name = n; updateTitle(); } renderPresets(); } } },
-      { label: 'Edit tags…', icon: 'list', onClick: async () => { const n = await prompt('Tags (comma separated)', (p.tags || []).join(', ')); if (n !== null && n !== undefined) { await window.tz.presets.meta(p.file, { tags: n.split(',').map((x) => x.trim().replace(/^#/, '')).filter(Boolean) }); renderPresets(); } } },
+      { label: 'Edit tags…', icon: 'list', onClick: async () => { const n = await editTags(p.name, p.tags || [], tags); if (n) { await window.tz.presets.meta(p.file, { tags: n }); if (state.file === p.file) state.preset.tags = n; renderPresets(); } } },
       { label: 'Duplicate', icon: 'copy', onClick: async () => { await window.tz.presets.duplicate(p.file); renderPresets(); } },
       { label: 'Export…', icon: 'import', onClick: async () => window.tz.presets.exportPreset(await window.tz.presets.load(p.file)) },
       { sep: true },
@@ -136,6 +184,55 @@ export async function renderPresets() {
     ]);
   }
   draw();
+}
+
+// chip-based tag editor with suggestions (genres + tags used elsewhere)
+export function editTags(name, current, known = []) {
+  return new Promise((resolve) => {
+    const tags = [...current];
+    const body = el('div', { class: 'tag-ed' });
+    const box = el('div', { class: 'tag-box' }, body);
+    const inp = el('input', { type: 'text', placeholder: 'Type a tag and press Enter…', spellcheck: 'false' });
+    const sug = el('div', { class: 'tag-sug' }, body);
+    const norm = (t) => t.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-').replace(/[^a-z0-9+\-]/g, '');
+    const add = (t) => { t = norm(t); if (t && !tags.includes(t)) tags.push(t); inp.value = ''; paint(); inp.focus(); };
+    const paint = () => {
+      box.innerHTML = '';
+      for (const t of tags) {
+        const c = el('span', { class: 'tag-chip' }, box, `#${esc(t)}<button title="Remove">×</button>`);
+        c.querySelector('button').onclick = () => { tags.splice(tags.indexOf(t), 1); paint(); };
+      }
+      box.appendChild(inp);
+      paintSug();
+    };
+    const paintSug = () => {
+      sug.innerHTML = '';
+      const q = norm(inp.value);
+      const pool = [...new Set([...known, ...GENRE_TAGS])].filter((t) => !tags.includes(t) && (!q || t.includes(q)));
+      for (const t of pool.slice(0, 40)) {
+        const c = el('button', { class: 'chip sm' }, sug, '#' + esc(t));
+        c.onclick = () => add(t);
+      }
+    };
+    inp.onkeydown = (e) => {
+      if ((e.key === 'Enter' || e.key === ',') && inp.value.trim()) { e.preventDefault(); add(inp.value); }
+      else if (e.key === 'Backspace' && !inp.value && tags.length) { tags.pop(); paint(); }
+    };
+    inp.oninput = paintSug;
+    box.onclick = () => inp.focus();
+    paint();
+    modal({
+      title: 'Tags',
+      subtitle: name,
+      body,
+      buttons: [
+        { label: 'Cancel', value: null },
+        { label: 'Save', cls: 'btn-accent', onClick: () => { if (inp.value.trim()) add(inp.value); return tags.slice(); } },
+      ],
+      onClose: (v) => resolve(v),
+    });
+    setTimeout(() => inp.focus(), 30);
+  });
 }
 
 async function newPresetAction() {

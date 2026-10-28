@@ -3,9 +3,10 @@
   "name": "Bogner",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Bogner gear.",
+  "description": "Amps, preamps and cabs inspired by Bogner: Überschall, Shiva and Ecstasy.",
   "kind": "brand",
   "brand": "Bogner",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#8a8f96"
 }

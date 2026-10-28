@@ -25,7 +25,7 @@ export default function register(tz) {
       alwaysOn: true, initParams: { 't.on': 1, 'r.on': 1 },
     }),
     S({
-      id: 'sy.deco', name: 'Retro Tape Doubler', ref: 'Strymon Deco V2', code: 'RETRO', logo: 'retro', tagline: 'TAPE SATURATION & DOUBLETRACKER', cat: 'Drive', color: '#c9b48f',
+      id: 'sy.deco', name: 'Retro Tape Doubler', ref: 'Strymon Deco V2', code: 'RETRO', logo: 'retro', tagline: 'TAPE SATURATION & DOUBLETRACKER', cat: 'Modulation', color: '#c9b48f',
       algo: 'deco',
       controls: [
         K('saturation', 'SATURATION', { x: 36, y: 42, def: 0.4 }), K('volume', 'VOLUME', { x: 80, y: 42 }), K('tone', 'TONE', { x: 58, y: 110 }),
@@ -211,5 +211,332 @@ export default function register(tz) {
       ],
       derive: (p) => ({ heads: p.voice === 1 ? 6 : 4, age: p.voice === 2 ? 0.4 : 0.1 }),
     })
+  ]);
+  registerWorkstations(tz);
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Big Strymon "workstations" (BigSky / TimeLine / Mobius / NightSky / Magneto): wide brushed enclosure, an
+// LCD that names the selected machine, a TYPE selector + VALUE knob on top, a long knob row and 3 footswitches.
+function registerWorkstations(tz) {
+  const { K, SEL, TOG, FOOT, LED, SCREEN, ms, db, STEREO } = tz.helpers;
+  const { S, onFoot, onLed } = tz.builders;
+  const { svg, label, formKit, setText } = tz.gfx;
+
+  const blockVal = (b, ctl, p, dflt) => (b && b.params && b.params[p] !== undefined ? b.params[p] : (ctl.defaults || {})[p] ?? dflt);
+  // two-line LCD: machine name (from a selector param) + a status line
+  tz.addScreen('sy-lcd', {
+    override: true,
+    build(s, g, w, h, nv) {
+      svg('rect', { width: w, height: h, rx: 2, fill: '#04070b' }, g);
+      for (let y = 2; y < h; y += 2) svg('line', { x1: 0, x2: w, y1: y, y2: y, stroke: '#9fd6ff', 'stroke-opacity': 0.035 }, g);
+      s.l1 = svg('text', { x: w / 2, y: h * 0.4, fill: '#dff1ff', 'font-family': "'Share Tech Mono', monospace", 'font-size': Math.min(12, h * 0.34), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'letter-spacing': 1 }, g, '');
+      s.l2 = svg('text', { x: w / 2, y: h * 0.78, fill: '#8fc6ee', 'font-family': "'Share Tech Mono', monospace", 'font-size': Math.min(6.6, h * 0.2), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'letter-spacing': 0.6 }, g, '');
+      this.update(s, {}, nv);
+    },
+    update(s, st, nv) {
+      const c = s.ctl, b = nv && nv.block;
+      const idx = blockVal(b, c, c.param, 0) | 0;
+      let l1 = (c.names || [])[idx] || '';
+      if (c.param2) l1 = `${(c.names || [])[idx] || ''} > ${(c.names2 || c.names || [])[blockVal(b, c, c.param2, 0) | 0] || ''}`;
+      setText(s.l1, l1);
+      const bank = c.bank || '00';
+      setText(s.l2, b && b.bypass ? `${bank}  BYPASS` : `${bank}  ${c.status ? c.status((p, d) => blockVal(b, c, p, d)) : 'ON'}`);
+    },
+  });
+
+  tz.addForm('sy-work', (ctx, def) => {
+    const w = def.wsW || 300, h = 238, g = ctx.g;
+    const col = def.color, txt = def.text || '#f2f2f2';
+    formKit.body(g, w, h, col, { rx: 6, brushed: true });
+    // recessed top deck with the display + a thin silk-screen line under the knob row
+    const hasScreen = def.controls.some((c) => c.t === 'screen');
+    const theme = { text: txt, knob: 'strymon', labelSize: 5.9, labelLs: 0.3, toggleTitles: false };
+    const type = def.controls.find((c) => c.role === 'type');
+    const type2 = def.controls.find((c) => c.role === 'type2');
+    const value = def.controls.find((c) => c.role === 'value');
+    if (hasScreen) {
+      svg('rect', { x: 10, y: 12, width: w - 20, height: 70, rx: 5, fill: '#000', opacity: 0.16 }, g);
+      svg('rect', { x: 10.5, y: 12.5, width: w - 21, height: 69, rx: 4.5, fill: 'none', stroke: '#fff', 'stroke-opacity': 0.08 }, g);
+    }
+    const scr = def.controls.find((c) => c.t === 'screen');
+    if (scr && scr.x === undefined) Object.assign(scr, { x: w / 2, y: 44, w: scr.w || 120, h: scr.h || 34, bezel: '#050505' });
+    if (type && type.x === undefined) Object.assign(type, { x: 50, y: 46, r: 14, optSize: 3.5, labelRadius: 8.5, labelPos: 'none' });
+    if (type2 && type2.x === undefined) Object.assign(type2, { x: w - 50, y: 46, r: 14, optSize: 3.5, labelRadius: 8.5, labelPos: 'none' });
+    if (value && value.x === undefined) Object.assign(value, { x: w - 50, y: 46, r: 14, labelPos: 'none' });
+    if (type && type.labelPos === 'none') label(g, type.x, 76, type.label || 'TYPE', { size: 5.6, fill: txt, weight: 700, ls: 1 });
+    if (type2 && type2.labelPos === 'none') label(g, type2.x, 76, type2.label || 'TYPE', { size: 5.6, fill: txt, weight: 700, ls: 1 });
+    if (value && value.labelPos === 'none') label(g, value.x, 76, value.label || 'VALUE', { size: 5.6, fill: txt, weight: 700, ls: 1 });
+    // remaining knobs / selectors: one or two rows
+    const rest = def.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && c.x === undefined);
+    const rows = def.wsRows || [rest.length];
+    let i0 = 0;
+    const rowY = hasScreen ? [108] : rows.length > 1 ? [36, 86] : [60];
+    rows.forEach((n, ri) => {
+      const r = rest.slice(i0, i0 + n);
+      i0 += n;
+      formKit.autoRow(r, 34, w - 34, rowY[ri] ?? 98);
+      r.forEach((k) => { k.r = k.r || (n > 6 ? 11 : 12.5); k.labelPos = k.labelPos || 'below'; });
+    });
+    const tog = def.controls.filter((c) => c.t === 'toggle' && c.x === undefined);
+    tog.forEach((t, i) => Object.assign(t, { x: tog.length === 1 ? w / 2 : 70 + (i * (w - 140)) / (tog.length - 1), y: 124, orient: 'h' }));
+    const logoY = tog.length ? 158 : 148;
+    label(g, w / 2, logoY, def.logo || def.name.toLowerCase(), { size: 18, fill: txt, font: "'Inter', sans-serif", weight: 700, ls: 1.4 });
+    label(g, w / 2, logoY + 12, def.tagline || '', { size: 5.4, fill: txt, weight: 700, ls: 1.6, opacity: 0.72 });
+    const bdg = formKit.tzBadge(g, w - 18, logoY + 1, txt, 4.2);
+    bdg.setAttribute('text-anchor', 'end');
+    const foots = def.controls.filter((c) => c.t === 'foot' && c.x === undefined);
+    const fx = (i) => (foots.length === 3 ? [0.17, 0.5, 0.83][i] : [0.3, 0.7][i] ?? 0.5) * w;
+    foots.forEach((f, i) => Object.assign(f, { style: 'stomp', r: 12, x: fx(i), y: 207 }));
+    const leds = def.controls.filter((c) => c.t === 'led' && c.x === undefined);
+    leds.forEach((l, i) => Object.assign(l, { r: 2.6, x: fx(i), y: 185 }));
+    formKit.placeControls(ctx, def.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksTop(def, w, { flip: ctx.flip }) };
+  });
+
+  const W = (o) => S(Object.assign({ form: 'sy-work', cost: 2 }, o));
+  const lcd = (param, names, o = {}) => SCREEN('sy-lcd', Object.assign({ param, names }, o));
+  const ctlDefaults = (d) => {
+    const scr = d.controls.find((c) => c.t === 'screen');
+    if (scr) scr.defaults = Object.fromEntries(d.controls.filter((c) => c.p).map((c) => [c.p, c.def ?? 0]));
+    return d;
+  };
+
+  // ---- reverb workstation
+  const SKY = ['ROOM', 'HALL', 'PLATE', 'SPRING', 'SWELL', 'BLOOM', 'CLOUD', 'CHORALE', 'SHIMMER', 'MAGNETO', 'NONLINEAR', 'REFLECTIONS'];
+  const SKYS = ['room', 'hall', 'plate', 'sprg', 'swell', 'bloom', 'cloud', 'chorl', 'shim', 'magn', 'nonl', 'refl'];
+  const SKY_MODE = [0, 1, 2, 3, 9, 6, 5, 6, 4, 8, 0, 0];
+  const skyVoice = (m, p1, p2) => {
+    const o = { mode: SKY_MODE[m], size: 0.25 + 0.75 * p1, diffusion: 0.4 + 0.6 * p2, shimmer: 0, ensemble: 0 };
+    if (m === 7) o.ensemble = 0.4 + 0.6 * p2;
+    if (m === 5) o.diffusion = 0.9;
+    if (m === 8) { o.shimmer = 0.15 + 0.85 * p1; o.size = 0.7; }
+    if (m === 10) { o.size = 0.2 + 0.3 * p1; o.diffusion = 0.15 + 0.3 * p2; }
+    if (m === 11) { o.size = 0.1 + 0.3 * p1; o.diffusion = 0.2 + 0.4 * p2; }
+    return o;
+  };
+  const sky = ctlDefaults(W({
+    id: 'sy.bigsky', name: 'Vast Sky Reverberator', ref: 'Strymon BigSky', code: 'VASTSKY', logo: 'vastsky', tagline: 'MULTIDIMENSIONAL REVERBERATOR', cat: 'Reverb', color: '#2c3540',
+    algo: 'reverb', cost: 1.8,
+    controls: [
+      SEL('machine', 'TYPE', SKYS, { role: 'type', def: 1, sweep: 300 }),
+      lcd('machine', SKY, { bank: '00A', status: (v) => (v('inf', 0) > 0.5 ? 'INFINITE' : 'ON') }),
+      K('level', 'VALUE', { role: 'value', def: 0.5 }),
+      K('decay', 'DECAY', { def: 0.5 }), K('predelay', 'PRE-DELAY', { min: 0, max: 500, def: 30, display: ms }), K('mix', 'MIX', { def: 0.35 }),
+      K('tone', 'TONE', { def: 0.6 }), K('p1', 'PARAM 1', { def: 0.5, virtual: true }), K('p2', 'PARAM 2', { def: 0.5, virtual: true }), K('mod', 'MOD', { def: 0.3 }),
+      onFoot({ label: 'A · ON' }), FOOT({ action: 'favorite', label: 'B · FAV' }), FOOT({ action: 'param', p: 'inf', label: 'C · INFINITE' }),
+      onLed(), LED({ bind: 'fav' }), LED({ bind: 'param:inf', color: '#4aa8ff' }),
+    ],
+    initParams: { inf: 0 },
+    derive: (p) => Object.assign(skyVoice(p.machine ?? 1, p.p1 ?? 0.5, p.p2 ?? 0.5), p.inf > 0.5 ? { decay: 1 } : {}),
+    desc: '12 reverb machines (TYPE). PARAM 1 / PARAM 2 follow the machine (size, diffusion, shimmer amount, ensemble). VALUE trims the output level. C holds an infinite wash.',
+  }));
+  const skyMx = ctlDefaults(W({
+    id: 'sy.bigskymx', name: 'Vast Sky MX', ref: 'Strymon BigSky MX', code: 'VASTSKY MX', logo: 'vastsky mx', tagline: 'DUAL-ENGINE REVERB', cat: 'Reverb', color: '#1d232b', cost: 3.4,
+    algo: 'chain', opts: { chain: [{ prefix: 'a', algo: 'reverb' }, { prefix: 'b', algo: 'reverb', params: { mode: 5 } }] },
+    controls: [
+      SEL('ma', 'TYPE A', SKYS, { role: 'type', def: 1, sweep: 300 }),
+      lcd('ma', SKY, { param2: 'mb', bank: 'A+B', w: 130, status: (v) => (v('inf', 0) > 0.5 ? 'INFINITE' : `BLEND ${Math.round(v('blend', 0.5) * 100)}%`) }),
+      SEL('mb', 'TYPE B', SKYS, { role: 'type2', def: 6, sweep: 300 }),
+      K('decay', 'DECAY', { def: 0.5, virtual: true }), K('predelay', 'PRE-DELAY', { min: 0, max: 500, def: 25, display: ms, virtual: true }), K('mix', 'MIX', { def: 0.35, virtual: true }),
+      K('tone', 'TONE', { def: 0.6, virtual: true }), K('mod', 'MOD', { def: 0.3, virtual: true }), K('param', 'PARAM', { def: 0.5, virtual: true }), K('blend', 'A / B', { def: 0.5, virtual: true }),
+      onFoot({ label: 'A · ON' }), FOOT({ action: 'favorite', label: 'B · FAV' }), FOOT({ action: 'param', p: 'inf', label: 'C · INFINITE' }),
+      onLed(), LED({ bind: 'fav' }), LED({ bind: 'param:inf', color: '#4aa8ff' }),
+    ],
+    initParams: { inf: 0 },
+    derive: (p) => {
+      const o = {}, bl = p.blend ?? 0.5, mix = p.mix ?? 0.35, inf = p.inf > 0.5;
+      for (const [pre, m, share] of [['a', p.ma ?? 1, 1 - bl], ['b', p.mb ?? 6, bl]]) {
+        const v = skyVoice(m, p.param ?? 0.5, p.param ?? 0.5);
+        for (const k in v) o[`${pre}.${k}`] = v[k];
+        o[`${pre}.decay`] = inf ? 1 : p.decay ?? 0.5;
+        o[`${pre}.predelay`] = p.predelay ?? 25;
+        o[`${pre}.tone`] = p.tone ?? 0.6;
+        o[`${pre}.mod`] = p.mod ?? 0.3;
+        o[`${pre}.mix`] = Math.min(1, mix * Math.min(1, share * 1.6));
+      }
+      return o;
+    },
+    desc: 'Two reverb engines in series (TYPE A → TYPE B). A / B blends their wet levels; PARAM drives each machine’s character. C holds an infinite wash.',
+  }));
+
+  // ---- delay workstation
+  const TL = ['dTAPE', 'dBUCKET', 'DIGITAL', 'DUAL', 'PATTERN', 'REVERSE', 'ICE', 'DUCK', 'SWELL', 'TREM', 'FILTER', 'LO-FI'];
+  const TLS = ['tape', 'bckt', 'digi', 'dual', 'pttn', 'rvrs', 'ice', 'duck', 'swell', 'trem', 'fltr', 'lofi'];
+  const TL_MODE = [2, 1, 0, 8, 7, 5, 6, 0, 0, 4, 4, 3];
+  const timeline = ctlDefaults(W({
+    id: 'sy.timeline', name: 'Chronicle Delay', ref: 'Strymon TimeLine', code: 'CHRONICLE', logo: 'chronicle', tagline: 'MULTIDIMENSIONAL DELAY', cat: 'Delay', color: '#3a3f46', cost: 2,
+    algo: 'chain',
+    opts: { chain: [
+      { prefix: 'd', algo: 'delay', opts: { maxMs: 2600 } },
+      { prefix: 't', algo: 'tremolo', on: false },
+      { prefix: 'f', algo: 'wah', on: false, params: { mode: 1, filter: 0 } },
+      { prefix: 'sw', algo: 'swell', on: false },
+    ] },
+    controls: [
+      SEL('machine', 'TYPE', TLS, { role: 'type', def: 2, sweep: 300 }),
+      lcd('machine', TL, { bank: '00A', status: (v) => `${Math.round(v('d.time', 420))} ms` }),
+      K('d.level', 'VALUE', { role: 'value', def: 0.5 }),
+      K('d.time', 'TIME', { min: 20, max: 2500, def: 420, display: ms, curve: 'log' }), K('d.feedback', 'REPEATS', { def: 0.38, max: 1.05 }), K('d.mix', 'MIX', { def: 0.35 }),
+      K('d.tone', 'FILTER', { def: 0.6 }), K('grit', 'GRIT', { def: 0.2, virtual: true }), K('d.modrate', 'SPEED', { def: 0.3 }), K('d.moddepth', 'DEPTH', { def: 0.15 }),
+      onFoot({ label: 'A · ON' }), FOOT({ action: 'favorite', label: 'B · FAV' }),
+      FOOT({ action: 'tap', label: 'TAP', hold: { event: { type: 2, value: 1, arg: 0 }, release: { type: 2, value: 0, arg: 0 } } }),
+      onLed(), LED({ bind: 'fav' }), LED({ bind: 'tap:d.time' }),
+    ],
+    tapTarget: 'd.time',
+    derive: (p) => {
+      const m = p.machine ?? 2, g = p.grit ?? 0.2;
+      return {
+        'd.mode': TL_MODE[m], 'd.age': g, 'd.sat': 0.15 + 0.6 * g, 'd.heads': m === 0 ? 4 : 4,
+        't.on': m === 9 ? 1 : 0, 't.rate': p['d.modrate'] ?? 0.3, 't.depth': 0.3 + 0.7 * (p['d.moddepth'] ?? 0.15),
+        'f.on': m === 10 ? 1 : 0, 'f.rate': p['d.modrate'] ?? 0.3, 'f.range': 0.3 + 0.7 * (p['d.moddepth'] ?? 0.15),
+        'sw.on': m === 8 ? 1 : 0,
+        'd.moddepth': m === 9 || m === 10 ? 0 : p['d.moddepth'] ?? 0.15,
+      };
+    },
+    desc: '12 delay machines. GRIT adds tape age / saturation, SPEED / DEPTH set the modulation (or the tremolo / filter rate in TREM and FILTER). Hold TAP for infinite repeats; VALUE trims the delay level.',
+  }));
+
+  // ---- modulation workstation
+  const MB = ['CHORUS', 'FLANGER', 'ROTARY', 'VIBE', 'PHASER', 'FILTER', 'FORMANT', 'VINTAGE TREM', 'PATTERN TREM', 'AUTOSWELL', 'DESTROYER', 'QUADRATURE'];
+  const MBS = ['chor', 'flng', 'rtry', 'vibe', 'phsr', 'fltr', 'frmt', 'vtrm', 'ptrm', 'aswl', 'dstr', 'quad'];
+  const mobius = ctlDefaults(W({
+    id: 'sy.mobius', name: 'Twist Modulation', ref: 'Strymon Mobius', code: 'TWIST', logo: 'twist', tagline: 'MULTIDIMENSIONAL MODULATION', cat: 'Modulation', color: '#4a2f55', cost: 2,
+    algo: 'chain',
+    opts: { chain: [
+      { prefix: 'ch', algo: 'chorus', on: false }, { prefix: 'fl', algo: 'flanger', on: false }, { prefix: 'ro', algo: 'rotary', on: false },
+      { prefix: 'vb', algo: 'vibe', on: false }, { prefix: 'ph', algo: 'phaser', on: false }, { prefix: 'wa', algo: 'wah', on: false, params: { mode: 1 } },
+      { prefix: 'tr', algo: 'tremolo', on: false }, { prefix: 'sl', algo: 'slicer', on: false }, { prefix: 'sw', algo: 'swell', on: false },
+      { prefix: 'cr', algo: 'crusher', on: false }, { prefix: 'rm', algo: 'ringmod', on: false },
+      { prefix: 'o', algo: 'utility', opts: { kind: 'gain' } },
+    ] },
+    controls: [
+      SEL('machine', 'TYPE', MBS, { role: 'type', def: 0, sweep: 300 }),
+      lcd('machine', MB, { bank: '00A', status: (v) => (v('fast', 0) > 0.5 ? 'FAST' : 'ON') }),
+      K('mix', 'VALUE', { role: 'value', def: 0.6, virtual: true }),
+      K('speed', 'SPEED', { def: 0.35, virtual: true }), K('depth', 'DEPTH', { def: 0.55, virtual: true }), K('lvl', 'LEVEL', { def: 0.5, virtual: true }),
+      K('pa', 'PARAM 1', { def: 0.5, virtual: true }), K('pb', 'PARAM 2', { def: 0.4, virtual: true }),
+      onFoot({ label: 'A · ON' }), FOOT({ action: 'favorite', label: 'B · FAV' }), FOOT({ action: 'param', p: 'fast', label: 'C · FAST' }),
+      onLed(), LED({ bind: 'fav' }), LED({ bind: 'param:fast', color: '#4aa8ff' }),
+    ],
+    initParams: { fast: 0 },
+    derive: (p) => {
+      const m = p.machine ?? 0, sp = Math.min(1, (p.speed ?? 0.35) * (p.fast > 0.5 ? 1.6 : 1)), dp = p.depth ?? 0.55, a = p.pa ?? 0.5, b = p.pb ?? 0.4, mix = p.mix ?? 0.6;
+      const o = { 'o.level': ((p.lvl ?? 0.5) - 0.5) * 18 };
+      ['ch', 'fl', 'ro', 'vb', 'ph', 'wa', 'tr', 'sl', 'sw', 'cr', 'rm'].forEach((k) => (o[k + '.on'] = 0));
+      const on = { 0: 'ch', 1: 'fl', 2: 'ro', 3: 'vb', 4: 'ph', 5: 'wa', 6: 'wa', 7: 'tr', 8: 'sl', 9: 'sw', 10: 'cr', 11: 'rm' }[m];
+      o[on + '.on'] = 1;
+      Object.assign(o, {
+        'ch.rate': sp, 'ch.depth': dp, 'ch.mix': mix * 0.85, 'ch.tone': a, 'ch.mode': b > 0.66 ? 2 : b > 0.33 ? 3 : 0,
+        'fl.speed': sp * 0.7, 'fl.width': dp, 'fl.mix': mix * 0.85, 'fl.manual': a, 'fl.regen': b,
+        'ro.speed': p.fast > 0.5 ? 1 : 0, 'ro.balance': a, 'ro.drive': b * 0.6, 'ro.mix': 0.5 + mix * 0.5,
+        'vb.speed': sp, 'vb.intensity': dp, 'vb.mode': b > 0.5 ? 1 : 0, 'vb.tone': a,
+        'ph.rate': sp, 'ph.depth': dp, 'ph.mix': mix * 0.8, 'ph.feedback': b * 0.85, 'ph.center': a, 'ph.stages': 4 + Math.round(b * 4) * 2,
+        'wa.rate': sp, 'wa.range': dp, 'wa.q': m === 6 ? 0.85 : 0.3 + 0.6 * b, 'wa.filter': m === 6 ? 1 : 0, 'wa.pos': a,
+        'tr.rate': sp, 'tr.depth': dp, 'tr.wave': a, 'tr.mode': b > 0.5 ? 1 : 0,
+        'sl.time': 90 + (1 - sp) * 400, 'sl.depth': dp, 'sl.pattern': Math.round(a * 15), 'sl.smooth': b,
+        'sw.attack': 0.15 + dp * 0.8, 'sw.sens': a,
+        'cr.bits': 1 - dp * 0.85, 'cr.rate': 0.15 + 0.7 * a, 'cr.mix': mix,
+        'rm.freq': sp, 'rm.fine': a, 'rm.mix': mix * 0.8,
+      });
+      return o;
+    },
+    desc: '12 modulation machines. VALUE is the wet mix, PARAM 1 / PARAM 2 follow the machine (tone / regen / manual / stages …). C toggles a faster speed (rotary fast).',
+  }));
+
+  // ---- time-warped reverb (no display)
+  const nightsky = W({
+    id: 'sy.nightsky', name: 'Polar Night Reverb', ref: 'Strymon NightSky', code: 'POLAR', logo: 'polar night', tagline: 'TIME-WARPED REVERBERATOR', cat: 'Reverb', color: '#1b2238', text: '#e8ecff', cost: 2.2,
+    algo: 'chain',
+    opts: { chain: [{ prefix: 'r', algo: 'reverb', params: { mode: 5 } }, { prefix: 'f', algo: 'wah', params: { mode: 0, filter: 0 } }] },
+    wsRows: [5, 5],
+    controls: [
+      K('r.decay', 'DECAY', { def: 0.6 }), K('r.mix', 'MIX', { def: 0.38 }), K('r.size', 'SIZE', { def: 0.65 }), K('r.diffusion', 'TEXTURE', { def: 0.7 }), K('r.shimmer', 'PITCH', { def: 0 }),
+      K('r.predelay', 'PRE-DELAY', { min: 0, max: 500, def: 30, display: ms }), K('f.pos', 'FILTER', { def: 0.85 }), K('f.q', 'RESONANCE', { def: 0.2 }), K('r.mod', 'MOD', { def: 0.35 }), K('r.tone', 'TONE', { def: 0.6 }),
+      TOG('sky', 'REVERB', ['sky', 'vast', 'deep'], { def: 0 }), TOG('shim', 'SHIMMER', ['+oct', '+5th', '-oct'], { def: 0 }), TOG('flt', 'FILTER', ['lp', 'bp', 'hp'], { def: 0 }),
+      onFoot({ label: 'ON' }), FOOT({ action: 'favorite', label: 'FAV' }), FOOT({ action: 'param', p: 'inf', label: 'HOLD' }),
+      onLed(), LED({ bind: 'fav' }), LED({ bind: 'param:inf', color: '#9a7cff' }),
+    ],
+    initParams: { inf: 0 },
+    derive: (p) => {
+      const sh = p['r.shimmer'] ?? 0;
+      return {
+        'r.mode': sh > 0.03 ? 4 : [5, 1, 6][p.sky ?? 0], 'r.ensemble': [0.2, 0.4, 0.7][p.sky ?? 0], 'r.decay': p.inf > 0.5 ? 1 : p['r.decay'] ?? 0.6,
+        'f.filter': p.flt ?? 0, 'f.on': (p.flt ?? 0) === 0 && (p['f.pos'] ?? 0.85) > 0.97 ? 0 : 1, 'f.level': 0.5,
+      };
+    },
+    desc: 'Approximation: cloud / hall / modulated reverb with a pitch-shimmer engine and a resonant post filter (no sequencer). HOLD freezes the wash.',
+  });
+
+  // ---- 4-head tape echo (no display)
+  const HEADS = ['1', '2', '1+2', '3', '1+3', '2+3', 'all'];
+  const magneto = W({
+    id: 'sy.magneto', name: 'Iron Tape Echo', ref: 'Strymon Magneto', code: 'IRON', logo: 'iron', tagline: 'FOUR-HEAD dTAPE ECHO & LOOPER', cat: 'Delay', color: '#5b3a2a', cost: 2,
+    algo: 'chain',
+    opts: { chain: [{ prefix: 'd', algo: 'delay', opts: { maxMs: 2600, fixedMode: 2 } }, { prefix: 's', algo: 'reverb', params: { mode: 3, mix: 0 } }] },
+    wsRows: [5, 5],
+    controls: [
+      K('d.time', 'TIME', { min: 40, max: 2400, def: 420, display: ms, curve: 'log' }), K('d.feedback', 'REPEATS', { def: 0.4, max: 1.1 }), K('d.mix', 'MIX', { def: 0.38 }), K('d.age', 'AGE', { def: 0.35 }), K('wf', 'WOW & FLUT', { def: 0.3, virtual: true }),
+      K('d.lowcut', 'LOW', { def: 0.15 }), K('d.tone', 'HIGH', { def: 0.55 }), K('s.mix', 'SPRING', { def: 0.1 }), K('d.sat', 'DRIVE', { def: 0.35 }),
+      SEL('d.heads', 'HEADS', HEADS, { def: 3, values: [1, 2, 3, 4, 5, 6, 7], optSize: 4 }),
+      TOG('d.subdiv', 'SUBDIV', ['1/4', 'dot', 'trip'], { values: [0, 1, 3] }), TOG('mode', 'MODE', ['single', 'multi', 'swell'], { def: 1, virtual: true }),
+      onFoot({ label: 'ON' }), FOOT({ action: 'tap', label: 'TAP', hold: { event: { type: 2, value: 1, arg: 0 }, release: { type: 2, value: 0, arg: 0 } } }), FOOT({ action: 'favorite', label: 'FAV' }),
+      onLed(), LED({ bind: 'tap:d.time' }), LED({ bind: 'fav' }),
+    ],
+    tapTarget: 'd.time',
+    derive: (p) => {
+      const wf = p.wf ?? 0.3, o = { 'd.moddepth': wf * 0.6, 'd.modrate': 0.15 + 0.35 * wf, 's.decay': 0.4 };
+      if ((p.mode ?? 1) === 0) o['d.heads'] = 4;
+      if (p.mode === 2) o['d.feedback'] = Math.max(p['d.feedback'] ?? 0.4, 0.75);
+      return o;
+    },
+    desc: 'Approximation: multi-head tape echo with spring reverb (the looper is not modelled — hold TAP for infinite repeats instead).',
+  });
+
+  tz.addDefs([
+    sky, skyMx, timeline, mobius, nightsky, magneto,
+    S({
+      id: 'sy.iridium', name: 'Prism Amp & IR Cab', ref: 'Strymon Iridium', code: 'PRISM', logo: 'prism', tagline: 'AMP & IR CAB', cat: 'Amp', kind: 'Pedal', color: '#2a2b2e', cost: 3.6,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'a', algo: 'amp', opts: { models: ['deluxe', 'ac30', 'plexi'] } },
+        { prefix: 'c', algo: 'cab', opts: { models: ['1x12us', '2x12blue', '4x12gb'] } },
+        { prefix: 'r', algo: 'reverb', params: { mode: 0, decay: 0.3, size: 0.25 } },
+      ] },
+      controls: [
+        K('a.gain', 'DRIVE', { def: 0.45 }), K('a.bass', 'BASS'), K('a.mid', 'MIDDLE'),
+        K('a.treble', 'TREBLE'), K('r.mix', 'ROOM', { def: 0.15 }), K('a.level', 'LEVEL', { min: -20, max: 12, def: 0, display: db }),
+        TOG('amp', 'AMP', ['round', 'chime', 'punch'], { def: 0 }), TOG('cab', 'CAB', ['a', 'b', 'c'], { def: 0 }),
+        onFoot({ label: 'ON' }), onLed(),
+      ],
+      derive: (p) => ({ 'a.channel': p.amp ?? 0, 'c.model': p.cab ?? 0 }),
+      desc: 'Three amps (round = blackface, chime = top-boost, punch = plexi) into a matching IR cab, with a small room.',
+    }),
+    S({
+      id: 'sy.orbit', name: 'Ellipse dBucket Flanger', ref: 'Strymon Orbit', code: 'ELLIPSE', logo: 'ellipse', tagline: 'dBUCKET FLANGER', cat: 'Modulation', small: true, color: '#b5462e', cost: 0.8,
+      algo: 'flanger',
+      controls: [
+        K('speed', 'SPEED', { def: 0.3 }), K('width', 'WIDTH', { def: 0.6 }), K('manual', 'MANUAL', { def: 0.45 }),
+        K('regen', 'REGEN', { def: 0.55, x: 26, y: 92 }), K('mix', 'MIX', { def: 0.5, x: 102, y: 92 }),
+        TOG('mode', 'TYPE', ['clsc', 'TZ', 'ultra'], { values: [0, 3, 1], x: 64, y: 90, orient: 'h' }),
+        onFoot({ label: '' }), LED({ bind: 'rate:on:speed', color: '#ff2a1a' }),
+      ],
+    }),
+    S({
+      id: 'sy.zelzah', name: 'Zephyr Phaser', ref: 'Strymon Zelzah', code: 'ZEPHYR', logo: 'zephyr', tagline: 'MULTIDIMENSIONAL PHASER', cat: 'Modulation', color: '#a8783a', cost: 1.2,
+      algo: 'chain', opts: { chain: [{ prefix: 'ph', algo: 'phaser', opts: { stages: 6 } }, { prefix: 'ch', algo: 'chorus', params: { mix: 0.3 } }] },
+      controls: [
+        K('ph.rate', 'SPEED', { def: 0.3 }), K('ph.depth', 'INTENSITY', { def: 0.75 }), K('ph.mix', 'MIX', { def: 0.5 }),
+        K('ph.feedback', 'REGEN', { def: 0.4 }), K('ph.center', 'CENTER', { def: 0.5 }), K('dim', 'DIMENSION', { def: 0, virtual: true }),
+        TOG('ph.stages', 'STAGES', ['4', '6', '10'], { values: [4, 6, 10], def: 1 }), TOG('pmode', 'MODE', ['phase', 'vibe', 'barber'], { def: 0, virtual: true }),
+        onFoot({ label: 'ON' }), FOOT({ action: 'favorite', label: 'FAVORITE' }), onLed(), LED({ bind: 'fav' }),
+      ],
+      derive: (p) => {
+        const d = p.dim ?? 0, m = p.pmode ?? 0;
+        return { 'ch.on': d > 0.02 ? 1 : 0, 'ch.mix': d * 0.6, 'ch.depth': 0.3 + 0.5 * d, 'ch.rate': (p['ph.rate'] ?? 0.3) * 0.8,
+          'ph.mix': m === 1 ? 1 : p['ph.mix'] ?? 0.5, 'ph.feedback': m === 2 ? Math.max(0.7, p['ph.feedback'] ?? 0.4) : p['ph.feedback'] ?? 0.4 };
+      },
+      desc: 'Classic multi-stage phaser; DIMENSION blends in a BBD-style chorus, MODE picks phase / vibe (100% wet) / barber-pole-like high regen.',
+    }),
   ]);
 }

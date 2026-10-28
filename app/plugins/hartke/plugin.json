@@ -1,0 +1,12 @@
+{
+  "id": "hartke",
+  "name": "Hartke",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Bass amps, preamps and cabs inspired by Hartke.",
+  "kind": "brand",
+  "brand": "Hartke",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d22a2a"
+}

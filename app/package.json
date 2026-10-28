@@ -1,7 +1,7 @@
 {
   "name": "tone-zone",
   "productName": "Tone Zone",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tone Zone - guitar & bass DSP workstation",
   "main": "main/main.js",
   "author": "goglesquirmintontheiii <goglesquirmintontheiii@gmail.com>",
@@ -38,6 +38,7 @@
       "renderer/**",
       "presets/**",
       "plugins/**",
+      "tools/**",
       "build/icon.png",
       "package.json",
       "!**/*.map"
@@ -87,7 +88,8 @@
       "compression": "zstd"
     },
     "asarUnpack": [
-      "plugins/**"
+      "plugins/**",
+      "tools/**"
     ]
   },
   "desktopName": "tone-zone.desktop"

@@ -42,7 +42,7 @@ export class Editor {
     bus.on('selection', () => this.views.forEach((v) => v.updateSelection()));
     this.boardView = document.getElementById('view-board');
     // timer, not rAF: an always-running rAF loop forces a BeginMainFrame on every vsync
-    setInterval(() => this.frame(), 25);
+    setInterval(() => this.frame(), 45); // ~22 Hz: LEDs, screens and meters all repaint in the same frame
   }
 
   // ------------------------------------------------------------ view
@@ -514,7 +514,7 @@ export class Editor {
     const fine = e.shiftKey ? 0.2 : 1;
     if (c.t === 'knob' || c.t === 'slider' || c.t === 'treadle' || (c.t === 'sel' && d.alt)) {
       const range = c.t === 'slider' ? (c.h || 46) * this.view.z * 1.6 : c.t === 'treadle' ? (c.h || 220) * this.view.z * 0.7 : 170;
-      const pos = clamp(d.start - (dy / range) * fine, 0, 1);
+      const pos = clamp(d.start - ((c.t === 'slider' && c.orient === 'h' ? -dx : dy) / range) * fine, 0, 1);
       const val = d.alt ? altVal(d.pName, pos) : knobValue(c, pos);
       this.setCtl(v, c, d.pName, val);
       this.showTip(e, c, val);
@@ -699,13 +699,18 @@ export class Editor {
         setParam(b.id, c.p, ui[c.p] > 0.5 ? 0 : 1);
         break;
       case 'tap': {
-        window.tz.engine.send({ cmd: 'event', id: b.id, type: 1, value: 0, arg: 0 });
-        // mirror tap tempo into the UI param so knobs follow
+        // tapSub: route the tap to sub-block i of a chain (arg = i * 100)
+        window.tz.engine.send({ cmd: 'event', id: b.id, type: 1, value: 0, arg: (c.tapSub ?? d.tapSub ?? 0) * 100 });
+        // mirror tap tempo into the UI param so knobs follow (tapHz: the target is a rate in Hz, e.g. tremolo speed)
         const now = performance.now();
         const dt = now - (sui.lastTap || 0);
         sui.lastTap = now;
         const target = c.tapTarget || d.tapTarget || 'time';
-        if (dt > 80 && dt < 3000) {
+        if (dt > 80 && dt < 3000 && (c.tapHz || d.tapHz)) {
+          const dctl = d.controls.find((x) => x.p === target);
+          const hz = (1000 / dt) * (c.tapMul || d.tapMul || 1);
+          setParam(b.id, target, dctl ? clamp(hz, dctl.min ?? 0.05, dctl.max ?? 20) : hz);
+        } else if (dt > 80 && dt < 3000) {
           const dctl = d.controls.find((x) => x.p === target);
           if (dctl && !dctl.virtual) setParam(b.id, target, clamp(dt, dctl.min ?? 10, dctl.max ?? 3000), { silent: true });
           else if (!dctl) setParam(b.id, target, dt, { silent: true });
@@ -978,8 +983,26 @@ export class Editor {
   // ------------------------------------------------------------ animation loop for LEDs / screens
   frame() {
     const now = performance.now();
-    if (!document.hidden && this.boardView.classList.contains('active'))
-      for (const v of this.views.values()) v.updateStatus(now);
+    if (this.onTick) this.onTick(now);
+    this._tickN = (this._tickN || 0) + 1;
+    if (document.hidden || !this.boardView.classList.contains('active')) return;
+    // only blocks in view are animated; when zoomed far out (LEDs and screens are tiny) they update less often –
+    // every changed pixel of a big zoomed-out board costs a large SVG repaint
+    const { x, y, z } = this.view;
+    if (!this._vr || now - this._vrT > 250) {
+      this._vrT = now;
+      this._vr = this.svg.getBoundingClientRect();
+    }
+    const r = this._vr;
+    const wx0 = -x / z, wy0 = -y / z, wx1 = (r.width - x) / z, wy1 = (r.height - y) / z;
+    // one pass for every visible block at once (so the repaints coalesce into one frame)
+    const every = z < 0.35 ? 3 : z < 0.55 ? 2 : 1;
+    if (this._tickN % every) return;
+    for (const v of this.views.values()) {
+      const b = v.block;
+      if (b.x > wx1 || b.y > wy1 || b.x + (v.w || 200) < wx0 || b.y + (v.h || 200) < wy0) continue;
+      v.updateStatus(now);
+    }
   }
 }
 
@@ -1012,8 +1035,8 @@ function altVal(p, pos) {
 function zOrder(b) {
   const d = getDef(b.type);
   if (!d) return 0;
-  if (d.form === 'cab') return 0;
-  if (d.form === 'amp') return 1;
+  if (d.baseForm === 'cab') return 0;
+  if (d.baseForm === 'amp') return 1;
   if (d.form === 'io') return 3;
   return 2;
 }

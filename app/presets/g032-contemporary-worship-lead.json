@@ -1,0 +1,200 @@
+{
+ "version": 1,
+ "name": "Contemporary Worship · Lead",
+ "tags": [
+  "contemporary-worship",
+  "worship",
+  "ambient",
+  "lead",
+  "simple"
+ ],
+ "desc": "Transparent drive into the amp with longer, wetter delays and reverb for lead lines.",
+ "factory": true,
+ "order": 132,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "eqd.westwood",
+   "x": -104,
+   "y": 65,
+   "params": {
+    "level": 0.6,
+    "gain": 0.5,
+    "bass": 0.5,
+    "treble": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "amp.dc30",
+   "x": -594,
+   "y": 0,
+   "params": {
+    "gain": 0.42,
+    "bass": 0.48,
+    "treble": 0.55,
+    "presence": 0.5,
+    "master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tworock.cab-1x12",
+   "x": -914,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "level": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "sy.timeline",
+   "x": -1284,
+   "y": 46,
+   "params": {
+    "d.time": 175.6465,
+    "d.feedback": 0.42,
+    "d.mix": 0.3
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b5",
+   "type": "sy.bigsky",
+   "x": -1654,
+   "y": 46,
+   "params": {
+    "inf": 0,
+    "decay": 0.75,
+    "mix": 0.38
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1894,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b4",
+    "port": 1
+   },
+   "to": {
+    "node": "b5",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  }
+ ],
+ "view": null
+}

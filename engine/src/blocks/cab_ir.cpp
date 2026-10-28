@@ -244,7 +244,7 @@ public:
       mp[i].pos = addParam(k + "pos", i == 0 ? 0.3f : 0.5f, 0, 1.3f);
       mp[i].dist = addParam(k + "dist", 0.15f, 0, 1);
       mp[i].spk = addParam(k + "spk", 0, 0, 7);
-      mp[i].lvl = addParam(k + "lvl", 0, -40, 6);
+      mp[i].lvl = addParam(k + "lvl", 0, -40, 12);
       mp[i].pan = addParam(k + "pan", 0, -1, 1);
       mp[i].phase = addParam(k + "phase", 0, 0, 1);
       mp[i].axis = addParam(k + "axis", 0, 0, 1);

@@ -3,9 +3,10 @@
   "name": "Celestion",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Celestion gear.",
+  "description": "Speaker cabinets inspired by Celestion speakers: Creamback, Alnico Blue / Gold, Vintage 30, G12H-30 and G12-65.",
   "kind": "brand",
   "brand": "Celestion",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#b9a27a"
 }

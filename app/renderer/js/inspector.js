@@ -131,7 +131,7 @@ function render() {
       rowFor(card, b, { t: 'sel', p: `m${i}type`, label: 'Model', options: MIC_TYPES, def: 0 }, ui);
       rowFor(card, b, { t: 'knob', p: `m${i}dist`, label: 'Distance', min: 0, max: 1, def: 0.15, display: (v) => (1 + v * 30).toFixed(0) + ' cm' }, ui);
       rowFor(card, b, { t: 'knob', p: `m${i}axis`, label: 'Angle', min: 0, max: 1, def: 0, display: (v) => (v < 0.02 ? 'On axis' : Math.round(v * 45) + '° off') }, ui);
-      rowFor(card, b, { t: 'knob', p: `m${i}lvl`, label: 'Level', min: -40, max: 6, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
+      rowFor(card, b, { t: 'knob', p: `m${i}lvl`, label: 'Level', min: -40, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
       if (stereo) rowFor(card, b, { t: 'knob', p: `m${i}pan`, label: 'Pan', min: -1, max: 1, def: 0, display: (v) => (Math.abs(v) < 0.02 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100)) }, ui);
       rowFor(card, b, { t: 'toggle', p: `m${i}phase`, label: 'Polarity', options: ['Normal', 'Inverted'], def: 0 }, ui);
     }

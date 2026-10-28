@@ -3,9 +3,10 @@
   "name": "Diezel",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Diezel gear.",
+  "description": "Amps and preamps inspired by Diezel: VH4 and Herbert.",
   "kind": "brand",
   "brand": "Diezel",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#5a5d62"
 }

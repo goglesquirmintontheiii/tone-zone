@@ -3,9 +3,10 @@
   "name": "Darkglass",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Darkglass gear.",
+  "description": "Bass preamps, amps and cabs inspired by Darkglass: B7K, Alpha·Omega, Vintage Ultra, Microtubes 900 and DG cabs.",
   "kind": "brand",
   "brand": "Darkglass",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#6a6d72"
 }

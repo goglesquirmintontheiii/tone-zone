@@ -1,0 +1,12 @@
+{
+  "id": "keeley",
+  "name": "Keeley",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Hand-built boutique pedals inspired by Keeley Electronics: compressors, overdrives, boosts, fuzzes, flanger / phaser, tape echo, delay / reverb and modulation workstations in rounded, bright powder-coated enclosures with side-printed names.",
+  "kind": "brand",
+  "brand": "Keeley",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2f7fd6"
+}

@@ -1,0 +1,197 @@
+{
+ "version": 1,
+ "name": "Pop · Lead",
+ "tags": [
+  "pop",
+  "clean",
+  "lead",
+  "simple"
+ ],
+ "desc": "Blues Driver edge, tempo delay and hall.",
+ "factory": true,
+ "order": 232,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.bd2",
+   "x": -146,
+   "y": 36,
+   "params": {
+    "level": 0.55,
+    "tone": 0.55,
+    "gain": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "amp.deluxe",
+   "x": -636,
+   "y": 0,
+   "params": {
+    "gain": 0.35,
+    "treble": 0.55,
+    "bass": 0.45,
+    "master": 0.6,
+    "bright": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "cab.1x12us",
+   "x": -956,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "level": 2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.delay",
+   "x": -1222,
+   "y": 40,
+   "params": {
+    "time": 87.3587,
+    "feedback": 0.33,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b5",
+   "type": "tz.reverb",
+   "x": -1488,
+   "y": 40,
+   "params": {
+    "decay": 0.45,
+    "mix": 0.22
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1728,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b4",
+    "port": 1
+   },
+   "to": {
+    "node": "b5",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  }
+ ],
+ "view": null
+}

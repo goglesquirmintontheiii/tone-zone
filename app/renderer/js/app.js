@@ -25,6 +25,7 @@ async function boot() {
   await loadPlugins();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
   editor = new Editor();
+  editor.onTick = flushMeters;
   window.__tz = { editor, state, removeBlocks, loadPreset, buildGraph };
   initBrowser(editor);
   initInspector(editor);
@@ -49,6 +50,7 @@ async function boot() {
   } else loadPreset(newPreset(), null);
   updateTitle();
   sendEngineSettings();
+  window.__tz.ready = true;
   setTimeout(() => {
     const h = document.getElementById('boardHint');
     h.textContent = 'Drag pedals from the left · drag between 1/4" jacks to patch · scroll to zoom';
@@ -172,12 +174,20 @@ function autoQuality(st) {
 
 // ------------------------------------------------------------ engine events
 let overBudgetWarned = 0;
+let pendingMeters = null;
+export function flushMeters() {
+  if (!pendingMeters) return;
+  const ev = pendingMeters;
+  pendingMeters = null;
+  updateMeters(ev);
+}
 function initEngineEvents() {
   window.tz.engine.onEvent((ev) => {
     switch (ev.ev) {
       case 'status':
         state.status = ev;
-        updateMeters(ev);
+        // the top-bar meters are applied in the board's tick so all repaints land in one frame
+        pendingMeters = ev;
         autoQuality(ev);
         if (ev.load > (state.settings.budget ?? 0.75) && Date.now() - overBudgetWarned > 20000) {
           overBudgetWarned = Date.now();

@@ -1,0 +1,12 @@
+{
+  "id": "eden",
+  "name": "Eden",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Bass amps, preamps and cabs inspired by Eden.",
+  "kind": "brand",
+  "brand": "Eden",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e2dccb"
+}

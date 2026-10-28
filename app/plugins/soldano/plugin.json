@@ -3,9 +3,10 @@
   "name": "Soldano",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Soldano gear.",
+  "description": "Amps and preamps inspired by Soldano: SLO-100 and Hot Rod 50+.",
   "kind": "brand",
   "brand": "Soldano",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#c7ccd2"
 }

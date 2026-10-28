@@ -1,0 +1,12 @@
+{
+  "id": "swr",
+  "name": "SWR",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Bass amps and preamps inspired by SWR.",
+  "kind": "brand",
+  "brand": "SWR",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8a8f96"
+}

@@ -1,0 +1,277 @@
+{
+ "version": 1,
+ "name": "Metal · Rhythm Pro",
+ "tags": [
+  "metal",
+  "high-gain",
+  "rhythm",
+  "complex"
+ ],
+ "desc": "TS boost, gate, Recto, dual-mic V30 cab and a 7-band post EQ.",
+ "factory": true,
+ "order": 153,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3",
+   "x": -144,
+   "y": 108,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "ib.ts9",
+   "x": -364,
+   "y": 105,
+   "params": {
+    "gain": 0,
+    "tone": 0.55,
+    "level": 0.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.gate",
+   "x": -584,
+   "y": 105,
+   "params": {
+    "threshold": 0.45,
+    "attack": 0.2,
+    "decay": 0.3,
+    "range": 0.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "amp.recto",
+   "x": -1086,
+   "y": 0,
+   "params": {
+    "gain": 0.65,
+    "treble": 0.55,
+    "mid": 0.4,
+    "bass": 0.6,
+    "presence": 0.55,
+    "master": 0.45,
+    "channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "cab.4x12v30",
+   "x": -1094,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 3,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "bx.ge7",
+   "x": -1310,
+   "y": 101,
+   "params": {
+    "b0": 1.5,
+    "b1": 0,
+    "b2": -2.4,
+    "b3": 0,
+    "b4": 1.5,
+    "b5": 0,
+    "b6": -1.5,
+    "level": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tz.vaulted",
+   "x": -1590,
+   "y": 108.5,
+   "params": {
+    "decay": 0.3,
+    "mix": 0.1
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b8",
+   "type": "tz.meter",
+   "x": -1790,
+   "y": 95,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2030,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c9",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

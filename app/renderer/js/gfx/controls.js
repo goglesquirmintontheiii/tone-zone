@@ -218,7 +218,7 @@ export function drawButton(parent, ctl, theme) {
   let ledHalo = null;
   if (ctl.led) {
     led = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 2, class: 'led', fill: '#3a1010' }, g);
-    ledHalo = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 6, fill: haloFill(ctl.ledColor || '#4aa8ff'), opacity: 0, 'pointer-events': 'none' }, g);
+    ledHalo = svg('circle', { cx: ctl.ledDx ?? 0, cy: ctl.ledDy ?? -(r + 6), r: 6, fill: haloFill(ctl.ledColor || '#4aa8ff'), 'fill-opacity': 0, 'pointer-events': 'none' }, g);
   }
   if (ctl.label) text(g, 0, ctl.labelPos === 'above' ? -r - 8 : r + 8, ctl.label, { size: ctl.labelSize || 5.6, fill: theme.text, weight: 700 });
   return {
@@ -226,9 +226,9 @@ export function drawButton(parent, ctl, theme) {
     set(on) {
       if (led) {
         setA(led, 'fill', on ? ctl.ledColor || '#4aa8ff' : '#151a22');
-        if (ledHalo) setA(ledHalo, 'opacity', on ? 0.9 : 0);
+        if (ledHalo) setA(ledHalo, 'fill-opacity', on ? 0.9 : 0); // fill-opacity: repaint only (opacity toggles rebuild the compositor's property trees)
       }
-      setA(capEl, 'opacity', on && !led ? 0.85 : 1);
+      setA(capEl, 'fill-opacity', on && !led ? 0.85 : 1);
     },
     press(p) {
       g.setAttribute('transform', `translate(${ctl.x},${ctl.y + (p ? 0.6 : 0)})`);
@@ -242,7 +242,7 @@ export function drawLed(parent, ctl) {
   const r = ctl.r || 3;
   svg('circle', { r: r + 1.3, fill: ctl.bezel || 'url(#g-chrome)' }, g);
   const lens = svg('circle', { r, class: 'led', fill: offColor(ctl.color || '#ff2a1a') }, g);
-  const halo = svg('circle', { r: r * 3.4, opacity: 0, 'pointer-events': 'none' }, g);
+  const halo = svg('circle', { r: r * 3.4, 'fill-opacity': 0, 'pointer-events': 'none' }, g);
   svg('circle', { r: r * 0.95, fill: 'url(#g-ledLens)' }, g);
   if (ctl.label) text(g, 0, -r - 6, ctl.label, { size: 5.5, fill: ctl.textColor || '#222', weight: 700 });
   let cur = null;
@@ -255,11 +255,11 @@ export function drawLed(parent, ctl) {
       cur = c;
       if (!c) {
         lens.setAttribute('fill', offColor(ctl.color || '#ff2a1a'));
-        halo.setAttribute('opacity', 0);
+        halo.setAttribute('fill-opacity', 0);
       } else {
         lens.setAttribute('fill', c);
         halo.setAttribute('fill', haloFill(c));
-        halo.setAttribute('opacity', 1);
+        halo.setAttribute('fill-opacity', 1);
       }
     },
   };
@@ -319,8 +319,10 @@ export function drawFoot(parent, ctl, theme) {
 // vertical slider (graphic EQ / looper levels)
 export function drawSlider(parent, ctl, theme) {
   const h = ctl.h || 44, w = ctl.w || 7;
-  const g = svg('g', { class: 'ctl slider', transform: `translate(${ctl.x},${ctl.y})` }, parent);
-  g.dataset.ctl = ctl.cid;
+  const outer = svg('g', { class: 'ctl slider', transform: `translate(${ctl.x},${ctl.y})` }, parent);
+  outer.dataset.ctl = ctl.cid;
+  // orient 'h': the same slider turned on its side (value grows to the right)
+  const g = ctl.orient === 'h' ? svg('g', { transform: 'rotate(90)' }, outer) : outer;
   svg('rect', { x: -9, y: -h / 2 - 6, width: 18, height: h + 12, fill: 'transparent' }, g);
   if (ctl.marks !== false)
     for (let i = 0; i <= 6; i++) {
@@ -335,11 +337,15 @@ export function drawSlider(parent, ctl, theme) {
   svg('line', { x1: -w / 2 + 0.6, x2: w / 2 - 0.6, y1: 0, y2: 0, stroke: ctl.lineColor || '#eee', 'stroke-width': 1 }, cap);
   let led = null;
   if (ctl.led) led = svg('rect', { x: -w / 2 + 1.2, y: -3.6, width: w - 2.4, height: 1.6, rx: 0.6, class: 'led', fill: '#0b1a2a' }, cap);
-  if (ctl.label) text(g, 0, h / 2 + 9, ctl.label, { size: ctl.labelSize || 5.4, fill: theme.text, weight: 700, ls: 0 });
+  if (ctl.label) {
+    if (ctl.orient === 'h') text(outer, 0, w + 11, ctl.label, { size: ctl.labelSize || 5.4, fill: theme.text, weight: 700, ls: 0 });
+    else text(g, 0, h / 2 + 9, ctl.label, { size: ctl.labelSize || 5.4, fill: theme.text, weight: 700, ls: 0 });
+  }
+  const flipH = 1; // rotate(90) maps cap y to -x, so the value already grows to the right
   return {
-    g,
+    g: outer,
     set(v01) {
-      cap.setAttribute('transform', `translate(0,${(h / 2) - h * clamp(v01, 0, 1)})`);
+      cap.setAttribute('transform', `translate(0,${flipH * ((h / 2) - h * clamp(v01, 0, 1))})`);
     },
     led(on) {
       if (led) {

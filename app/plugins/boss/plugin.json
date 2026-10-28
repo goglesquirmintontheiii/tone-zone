@@ -3,9 +3,10 @@
   "name": "BOSS",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by BOSS gear.",
+  "description": "Pedals inspired by BOSS gear: classic compact pedals, Waza Craft and X-series drives, 200 / 500-series multi-mode units, Space Echo, loopers, synths, acoustic preamps, tuners, line selector, footswitch and expression pedals, plus a compact multi-FX.",
   "kind": "brand",
   "brand": "BOSS",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#d81f2a"
 }

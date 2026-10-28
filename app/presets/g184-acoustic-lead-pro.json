@@ -1,0 +1,253 @@
+{
+ "version": 1,
+ "name": "Acoustic · Lead Pro",
+ "tags": [
+  "acoustic",
+  "clean",
+  "lead",
+  "complex"
+ ],
+ "desc": "Studio preamp, compressor, piezo enhancer, chorus, echo and plate.",
+ "factory": true,
+ "order": 284,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 25,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bh.tm300",
+   "x": -140,
+   "y": 9,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "gd.alix",
+   "x": -370,
+   "y": 11,
+   "params": {
+    "mute": 0,
+    "a.level": 4.8,
+    "vol": 1.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.featherweight",
+   "x": -590,
+   "y": 39.5,
+   "params": {
+    "sustain": 0.35,
+    "level": 0.55,
+    "blend": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.spruce",
+   "x": -810,
+   "y": 0.5,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "lrb.alignchorus",
+   "x": -1008,
+   "y": 28,
+   "params": {
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "fm.echoback",
+   "x": -1224,
+   "y": 6,
+   "params": {
+    "time": 424,
+    "feedback": 0.25,
+    "mix": 0.2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tz.steelplate",
+   "x": -1504,
+   "y": 41.5,
+   "params": {
+    "decay": 0.5,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b8",
+   "type": "tz.meter",
+   "x": -1704,
+   "y": 0,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1944,
+   "y": 25,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c9",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b8",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

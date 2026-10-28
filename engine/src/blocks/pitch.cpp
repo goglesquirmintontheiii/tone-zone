@@ -10,18 +10,18 @@ namespace
 class PitchBlock : public Block
 {
 public:
-  int pSemis1, pLevel1, pSemis2, pLevel2, pDry, pCents, pQuality, pExpr, pGlide, pVintage, pTone, pRangeLo;
+  int pSemis1, pLevel1, pSemis2, pLevel2, pSemis3, pLevel3, pDeg3, pDry, pCents, pQuality, pExpr, pGlide, pVintage, pTone, pRangeLo;
   int pKey, pScale, pDeg1, pDeg2;
   // intelligent (diatonic) harmony: light-weight YIN on a decimated copy of the input
   std::vector<float> dRing, yinD;
   int dPos = 0, dCount = 0, decim = 6, sinceYin = 0;
   OnePole decLp;
   int curNote = -1;
-  float semiH1 = 0, semiH2 = 0;
-  WsolaShifter sh[2][2]; // [voice][quality-set A/B]
+  float semiH1 = 0, semiH2 = 0, semiH3 = 0;
+  WsolaShifter sh[3][2]; // [voice][quality-set A/B]
   int curQ = -1;
   float sr = 48000;
-  Smoother sR1, sR2, sDry, sL1, sL2;
+  Smoother sR1, sR2, sR3, sDry, sL1, sL2, sL3;
   OnePole toneLp[2], preLp, envLp;
   // vintage divider
   float flip = 1.f, lastSign = 0, divEnv = 0;
@@ -38,6 +38,9 @@ public:
     pLevel1 = addParam("level1", o.value("level1", 1.f));
     pSemis2 = addParam("semis2", o.value("semis2", -12.f), -24, 24);
     pLevel2 = addParam("level2", o.value("level2", 0.f));
+    pSemis3 = addParam("semis3", o.value("semis3", 12.f), -24, 24); // optional third voice (POG / Hedra style)
+    pLevel3 = addParam("level3", o.value("level3", 0.f));
+    pDeg3 = addParam("deg3", o.value("deg3", 7.f), -14, 14);
     pDry = addParam("dry", o.value("dry", 0.f));
     pCents = addParam("cents", 0, -50, 50);
     pQuality = addParam("quality", 1, 0, 2); // 0 tight (10ms), 1 balanced (16ms), 2 studio (21ms)
@@ -63,7 +66,7 @@ public:
   {
     sr = float(c.sr);
     configure(1);
-    for (auto* s : {&sR1, &sR2, &sDry, &sL1, &sL2}) s->setTime(20, sr);
+    for (auto* s : {&sR1, &sR2, &sR3, &sDry, &sL1, &sL2, &sL3}) s->setTime(20, sr);
     preLp.lp(900, sr);
     envLp.lp(30, sr);
     decim = std::max(1, int(std::round(sr / 8000.f)));
@@ -121,6 +124,7 @@ public:
     const float glideMs = 2.f + 400.f * p(pGlide) * p(pGlide);
     sR1.setTime(glideMs, sr);
     sR2.setTime(glideMs, sr);
+    sR3.setTime(glideMs, sr);
     const float expr = p(pExpr);
     const float cents = p(pCents) / 100.f;
     const bool smart = p(pScale) > 0.5f;
@@ -141,11 +145,14 @@ public:
         {
           semiH1 = diatonicShift(curNote, int(std::round(p(pDeg1))));
           semiH2 = diatonicShift(curNote, int(std::round(p(pDeg2))));
+          semiH3 = diatonicShift(curNote, int(std::round(p(pDeg3))));
         }
       }
     }
     const float r1t = std::pow(2.f, ((smart ? semiH1 : p(pSemis1)) * expr + cents) / 12.f);
     const float r2t = std::pow(2.f, ((smart ? semiH2 : p(pSemis2)) * expr + cents) / 12.f);
+    const float r3t = std::pow(2.f, ((smart ? semiH3 : p(pSemis3)) * expr + cents) / 12.f);
+    const bool v3on = p(pLevel3) > 0.0001f || sL3.y > 0.0001f;
     const bool vintage = p(pVintage) > 0.5f;
     const float tone = p(pTone);
     for (auto& t : toneLp) t.lp(logMap(tone, 400, 20000), sr);
@@ -154,7 +161,8 @@ public:
       const float x = nIn > 1 ? 0.5f * (in[0][i] + in[1][i]) : in[0][i];
       const float r1 = sR1.next(r1t), r2 = sR2.next(r2t);
       const float l1 = sL1.next(p(pLevel1)), l2 = sL2.next(p(pLevel2)), dry = sDry.next(p(pDry));
-      float v1 = 0, v2 = 0;
+      const float r3 = sR3.next(r3t), l3 = sL3.next(p(pLevel3));
+      float v1 = 0, v2 = 0, v3 = 0;
       if (vintage)
       {
         // analog flip-flop octave divider driven by a low-passed version of the input
@@ -178,8 +186,13 @@ public:
         // keep the idle shifter of each voice fed so switching direction is seamless
         sh[0][r1 > 1.001f ? 0 : 1].process(x, 1.f);
         sh[1][r2 > 1.001f ? 0 : 1].process(x, 1.f);
+        if (v3on)
+        {
+          v3 = sh[2][r3 > 1.001f ? 1 : 0].process(x, r3);
+          sh[2][r3 > 1.001f ? 0 : 1].process(x, 1.f);
+        }
       }
-      const float wet = toneLp[0].processLP(v1 * l1 + v2 * l2);
+      const float wet = toneLp[0].processLP(v1 * l1 + v2 * l2 + v3 * l3);
       const float y = wet + x * dry;
       for (int c = 0; c < std::max(1, nOut); ++c) out[c][i] = y;
     }
@@ -187,7 +200,7 @@ public:
   void status(json& j) override
   {
     j["latencyMs"] = latencyMs.load();
-    if (p(pScale) > 0.5f) { j["note"] = curNote; j["h1"] = semiH1; j["h2"] = semiH2; }
+    if (p(pScale) > 0.5f) { j["note"] = curNote; j["h1"] = semiH1; j["h2"] = semiH2; j["h3"] = semiH3; }
   }
 };
 

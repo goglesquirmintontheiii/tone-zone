@@ -19,12 +19,18 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
 - **Board editor** – drag blocks from the browser, move them around, and patch them by dragging between the
   1/4" jacks. Cables sag like real ones, have plugs at both ends and can be recoloured (right-click). Inputs take one
   cable; drag a plugged input to move or unplug it, Shift-drag an output to pick up its cable.
-- **174 built-in blocks** – drives, distortions, fuzzes, boosts, 26 amps (guitar &amp; bass), preamps, 17 speaker
-  cabinets with draggable microphones, compressors, gates, EQs, wahs, filters, modulation, pitch, delays, reverbs,
-  loopers, utilities. Pedals that can be stereo come in **mono and stereo variants**.
-- **Real-pedal layouts** – blocks inspired by the BOSS, Ibanez, MXR, Dunlop, ProCo, TC Electronic, DigiTech, Line 6
-  and Strymon units you know, with the same knob / switch / footswitch / screen layout and similar colours, so
-  moving between the real pedal and the virtual one is seamless. LEDs, tap lights, tuner and looper displays are live.
+- **815 built-in blocks** – 413 pedals, 78 guitar &amp; bass amps, 106 preamps, 43 cabinets with up to four
+  draggable microphones each, multi-FX, wahs, wham and volume pedals, loopers, synths, acoustic preamps and DIs,
+  splitters / mergers / selectors and other utilities – plus 151 Tone Zone originals. Pedals that can be stereo come
+  in **mono and stereo variants**.
+- **Real-pedal layouts, as plugins** – blocks inspired by the units you know (BOSS, Ibanez, MXR, Dunlop, EHX, JHS,
+  EarthQuaker, Walrus, Strymon, Meris, TC Electronic, Fender, Marshall, Mesa/Boogie and 46 more brands), with the
+  same knob / switch / footswitch / screen layout and similar colours. Each brand is a built-in **plugin** you can
+  turn off; write your own with [docs/plugins.md](docs/plugins.md).
+- **Tone Match** – give it a song (file or YouTube link), optionally isolate the guitar / bass / other parts with an
+  AI model, and let it build a rig from your gear that sounds like the recording.
+- **Line 6 Helix** – connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
+  expression, external switches, USB audio).
 - **Low latency** – a native C++ realtime engine that runs as a PipeWire (JACK API) client. The board itself adds no
   latency (except pitch blocks); the round trip is whatever your PipeWire quantum gives you (64 frames @ 48 kHz ≈ 2.7 ms).
 - **DSP budget** – set a budget (share of each audio cycle), see per-block cost, optionally refuse blocks that would
@@ -41,7 +47,8 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
   10–21 ms latency options and no warble on chords.
 - **Precise tuners** – YIN + phase-regression refinement: sub-cent accuracy down to low B on 5/6-string bass and
   F# on 8-string guitar; polyphonic strum mode on the PolyTune-style tuner.
-- **Presets** – save / load / import / export, undo / redo, factory presets to get started.
+- **Presets** – a Presets tab with board thumbnails, tags and favourites; ~100 factory presets (rhythm and lead,
+  simple and complex, for 21 genres), undo / redo, import / export.
 
 ## Using it
 
@@ -51,7 +58,8 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
 | Press a footswitch / button | click (footswitches support hold actions where the real pedal does) |
 | Wah / volume / whammy treadle | drag; click without dragging = toe switch |
 | Cab microphone | drag the mic over the speaker (position / distance), click it to change the mic |
-| Patch | drag from a jack to a jack |
+| Patch | drag from a jack to a jack (only matching jack types connect: 1/4", TRS, XLR, headphone, MIDI…) |
+| Select several blocks | Shift- or Ctrl-drag on empty board |
 | Pan / zoom | drag empty board or middle-drag / mouse wheel |
 | Shortcuts | `Del` delete · `Ctrl+D` duplicate · `B` bypass · `F` fit · `Ctrl+Z`/`Ctrl+Shift+Z` undo/redo · `Ctrl+S` save |
 
@@ -75,8 +83,11 @@ Engine test mode: `engine/dist/tonezone-engine-v2 --offline graph.json in.wav ou
 
 - `engine/` – realtime DSP engine (C++20): PipeWire/JACK host, graph compiler, block library
   (`src/blocks/*`), NAM, convolution, tuner, looper.
-- `app/` – Electron UI: board editor, SVG pedal graphics (`renderer/js/gfx`), block catalog
-  (`renderer/js/catalog`), library / TONE3000 / settings pages.
+- `app/` – Electron UI: board editor, SVG pedal graphics (`renderer/js/gfx`), core block catalog
+  (`renderer/js/catalog`), pages (presets, library, Tone Match, plugins, settings), the plugin host
+  (`renderer/js/plugins.js`) and the built-in brand plugins (`app/plugins/*`).
+- `app/tools/separate.py` – AI stem separation (Demucs) used by Tone Match.
+- `docs/` – plugin authoring guide, engine block reference, release notes.
 
 See [THIRD_PARTY.md](THIRD_PARTY.md) for bundled components. Product names are trademarks of their owners and are
 used only to describe which hardware a layout follows; Tone Zone is not affiliated with them.

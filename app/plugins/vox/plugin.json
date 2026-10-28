@@ -3,9 +3,10 @@
   "name": "Vox",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Vox gear.",
+  "description": "Amps, preamps and cabs inspired by Vox: AC30 / AC15 Top Boost combos and the Night Train.",
   "kind": "brand",
   "brand": "Vox",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#7a4a2a"
 }

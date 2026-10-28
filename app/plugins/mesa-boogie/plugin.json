@@ -3,9 +3,10 @@
   "name": "Mesa/Boogie",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Mesa/Boogie gear.",
+  "description": "Amps, preamps and cabs inspired by Mesa/Boogie: Rectifier, Mark IIC+ / Mark V, Triple Crown, Lonestar and the Subway bass line.",
   "kind": "brand",
   "brand": "Mesa/Boogie",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#9ea4ab"
 }

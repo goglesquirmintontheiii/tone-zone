@@ -1,0 +1,12 @@
+{
+  "id": "universal-audio",
+  "name": "Universal Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amp pedals inspired by the UAFX amp emulator series: classic combos with speakers and effects in a stompbox.",
+  "kind": "brand",
+  "brand": "Universal Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2b2b2e"
+}

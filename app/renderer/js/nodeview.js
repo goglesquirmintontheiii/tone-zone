@@ -145,6 +145,7 @@ export class NodeView {
 
   ledColor(c, st, now) {
     const b = this.block;
+    if (c.sub) st = st?.[c.sub];
     const ui = uiParams(b);
     const bind = c.bind || 'on';
     const on = !b.bypass || this.def.alwaysOn;
@@ -152,8 +153,31 @@ export class NodeView {
     switch (parts[0]) {
       case 'on':
         return on && !(this.def.alwaysOn && b.bypass) ? true : null;
-      case 'param':
-        return ui[parts[1]] > 0.5 ? true : null;
+      case 'param': {
+        // param:x  · param:!x (inverted) · param:x:=2 / param:x:>0.3 / param:x:<0.3 · onparam requires the block on
+        const inv = parts[1].startsWith('!');
+        const v = ui[inv ? parts[1].slice(1) : parts[1]] ?? 0;
+        let hit;
+        const cmp = parts[2];
+        if (!cmp) hit = v > 0.5;
+        else if (cmp[0] === '=') hit = Math.round(v) === +cmp.slice(1);
+        else if (cmp[0] === '>') hit = v > +cmp.slice(1);
+        else if (cmp[0] === '<') hit = v < +cmp.slice(1);
+        else hit = v > 0.5;
+        if (inv) hit = !hit;
+        return hit ? true : null;
+      }
+      case 'onparam': {
+        const inv = parts[1].startsWith('!');
+        const v = (ui[inv ? parts[1].slice(1) : parts[1]] ?? 0) > 0.5;
+        return on && v !== inv ? true : null;
+      }
+      case 'fn': // def-supplied function: c.ledFn(ui, block, status, now) -> true | colour | null
+        try {
+          return c.ledFn ? c.ledFn(ui, b, st, now) || null : null;
+        } catch {
+          return null;
+        }
       case 'select': {
         const i = +parts[1];
         if ((ui.mode ?? 0) > 0.5) return ((ui.mask ?? 1) >> i) & 1 ? true : null;

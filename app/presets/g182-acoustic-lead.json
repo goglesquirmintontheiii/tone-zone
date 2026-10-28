@@ -1,0 +1,156 @@
+{
+ "version": 1,
+ "name": "Acoustic · Lead",
+ "tags": [
+  "acoustic",
+  "clean",
+  "lead",
+  "simple"
+ ],
+ "desc": "Platinum-style DI, chorus, echo and reverb for fingerstyle melodies.",
+ "factory": true,
+ "order": 282,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 19,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "fm.platpro",
+   "x": -252,
+   "y": 13,
+   "params": {
+    "mute": 0,
+    "boost": 0,
+    "gain": 3.6,
+    "vol": 1.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "fm.bluechorus",
+   "x": -468,
+   "y": 0,
+   "params": {
+    "rate": 0.3,
+    "depth": 0.3,
+    "mix": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "fm.echoback",
+   "x": -684,
+   "y": 0,
+   "params": {
+    "time": 424,
+    "feedback": 0.25,
+    "mix": 0.2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "lrb.alignreverb",
+   "x": -882,
+   "y": 22,
+   "params": {
+    "mix": 0.3,
+    "decay": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1122,
+   "y": 19,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c5",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#3498db"
+  }
+ ],
+ "view": null
+}

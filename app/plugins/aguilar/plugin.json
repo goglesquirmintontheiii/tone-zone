@@ -1,0 +1,12 @@
+{
+  "id": "aguilar",
+  "name": "Aguilar",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Bass amps, preamps and cabs inspired by Aguilar.",
+  "kind": "brand",
+  "brand": "Aguilar",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c0c4c8"
+}

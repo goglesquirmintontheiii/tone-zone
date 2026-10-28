@@ -1,0 +1,188 @@
+{
+ "version": 1,
+ "name": "Heavy Metal · Lead",
+ "tags": [
+  "heavy-metal",
+  "metal",
+  "high-gain",
+  "lead",
+  "simple"
+ ],
+ "desc": "SD-1 in front for tight sustain, plus delay and reverb.",
+ "factory": true,
+ "order": 162,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.sd1",
+   "x": -146,
+   "y": 101,
+   "params": {
+    "level": 0.75,
+    "tone": 0.55,
+    "gain": 0.1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "amp.5150",
+   "x": -684,
+   "y": 0,
+   "params": {
+    "gain": 0.72,
+    "bass": 0.55,
+    "mid": 0.5,
+    "treble": 0.6,
+    "master": 0.4,
+    "depth": 0.5,
+    "presence": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "cab.4x12t75",
+   "x": -670,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "level": 7
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "bx.dd3",
+   "x": -900,
+   "y": 101,
+   "params": {
+    "mix": 0.22,
+    "feedback": 0.294,
+    "dtime": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "bx.rv6",
+   "x": -1116,
+   "y": 101,
+   "params": {
+    "mix": 0.15,
+    "decay": 0.4
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1356,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null
+}

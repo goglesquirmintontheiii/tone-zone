@@ -1,0 +1,140 @@
+{
+ "version": 1,
+ "name": "Country Rock · Rhythm",
+ "tags": [
+  "country-rock",
+  "country",
+  "rock",
+  "rhythm",
+  "simple"
+ ],
+ "desc": "Blues Driver into a Hot Rod for gritty southern rhythm.",
+ "factory": true,
+ "order": 311,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.bd2",
+   "x": -146,
+   "y": 36,
+   "params": {
+    "level": 0.6,
+    "tone": 0.55,
+    "gain": 0.35
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "fender.amp-hotrod",
+   "x": -816,
+   "y": 0,
+   "params": {
+    "a.vol": 0.45,
+    "a.drv": 0.4,
+    "a.treble": 0.6,
+    "a.bass": 0.5,
+    "a.mid": 0.55,
+    "a.master": 0.5,
+    "r.mix": 0.15,
+    "a.channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "cab.1x12us",
+   "x": -1136,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "level": 4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1376,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c4",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c5",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  }
+ ],
+ "view": null
+}

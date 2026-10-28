@@ -82,7 +82,7 @@ Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle
 | `m1pos` | 0.3 | 0 … 1.3 |
 | `m1dist` | 0.15 | 0 … 1 |
 | `m1spk` | 0 | 0 … 7 |
-| `m1lvl` | 0 | -40 … 6 |
+| `m1lvl` | 0 | -40 … 12 |
 | `m1pan` | 0 | -1 … 1 |
 | `m1phase` | 0 | 0 … 1 |
 | `m1axis` | 0 | 0 … 1 |
@@ -91,7 +91,7 @@ Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle
 | `m2pos` | 0.5 | 0 … 1.3 |
 | `m2dist` | 0.15 | 0 … 1 |
 | `m2spk` | 0 | 0 … 7 |
-| `m2lvl` | 0 | -40 … 6 |
+| `m2lvl` | 0 | -40 … 12 |
 | `m2pan` | 0 | -1 … 1 |
 | `m2phase` | 0 | 0 … 1 |
 | `m2axis` | 0 | 0 … 1 |
@@ -100,7 +100,7 @@ Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle
 | `m3pos` | 0.5 | 0 … 1.3 |
 | `m3dist` | 0.15 | 0 … 1 |
 | `m3spk` | 0 | 0 … 7 |
-| `m3lvl` | 0 | -40 … 6 |
+| `m3lvl` | 0 | -40 … 12 |
 | `m3pan` | 0 | -1 … 1 |
 | `m3phase` | 0 | 0 … 1 |
 | `m3axis` | 0 | 0 … 1 |
@@ -109,7 +109,7 @@ Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle
 | `m4pos` | 0.5 | 0 … 1.3 |
 | `m4dist` | 0.15 | 0 … 1 |
 | `m4spk` | 0 | 0 … 7 |
-| `m4lvl` | 0 | -40 … 6 |
+| `m4lvl` | 0 | -40 … 12 |
 | `m4pan` | 0 | -1 … 1 |
 | `m4phase` | 0 | 0 … 1 |
 | `m4axis` | 0 | 0 … 1 |
@@ -244,7 +244,7 @@ Overdrive / distortion / fuzz / boost circuit model.
 | `treble` | 0.5 | 0 … 1 |
 | `midfreq` | 0.5 | 0 … 1 |
 | `blend` | 1 | 0 … 1 |
-| `mode` | 0 | 0 … 7 |
+| `mode` | 0 | 0 … 15 |
 | `bright` | 0 | 0 … 1 |
 | `himid` | 0.5 | 0 … 1 |
 | `sag` | 0 | 0 … 1 |
@@ -541,6 +541,9 @@ Polyphonic pitch shifter (WSOLA): drop tune, octaves, whammy, harmonies; `scale`
 | `level1` | 1 | 0 … 1 |
 | `semis2` | -12 | -24 … 24 |
 | `level2` | 0 | 0 … 1 |
+| `semis3` | 12 | -24 … 24 |
+| `level3` | 0 | 0 … 1 |
+| `deg3` | 7 | -14 … 14 |
 | `dry` | 0 | 0 … 1 |
 | `cents` | 0 | -50 … 50 |
 | `quality` | 1 | 0 … 2 |

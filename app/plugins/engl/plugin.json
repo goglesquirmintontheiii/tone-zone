@@ -1,0 +1,12 @@
+{
+  "id": "engl",
+  "name": "ENGL",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by ENGL: German high-gain heads and the Pro 4x12.",
+  "kind": "brand",
+  "brand": "ENGL",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b0b4ba"
+}

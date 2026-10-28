@@ -1,0 +1,12 @@
+{
+  "id": "trace-elliot",
+  "name": "Trace Elliot",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Bass amps, preamps and cabs inspired by Trace Elliot.",
+  "kind": "brand",
+  "brand": "Trace Elliot",
+  "main": "index.js",
+  "api": 1,
+  "color": "#3fbf73"
+}

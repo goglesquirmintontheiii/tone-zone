@@ -3,9 +3,10 @@
   "name": "Ibanez",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Ibanez gear.",
+  "description": "Pedals inspired by Ibanez gear: Tube Screamer family (808, 9-series, DX, Mini), 9-series modulation and delays, Tone-Lok 7-series, the Echo Shifter and a wah.",
   "kind": "brand",
   "brand": "Ibanez",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#2f8c46"
 }

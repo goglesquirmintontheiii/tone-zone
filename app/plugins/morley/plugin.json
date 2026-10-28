@@ -1,0 +1,12 @@
+{
+  "id": "morley",
+  "name": "Morley",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Switchless wah, volume pedal and an A/B/Y amp selector inspired by Morley gear.",
+  "kind": "brand",
+  "brand": "Morley",
+  "main": "index.js",
+  "api": 1,
+  "color": "#7a5cc8"
+}

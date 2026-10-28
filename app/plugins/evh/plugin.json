@@ -1,0 +1,12 @@
+{
+  "id": "evh",
+  "name": "EVH",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Striped signature pedals, a three-channel high-gain head and a matching 4x12 inspired by EVH gear (MXR / Dunlop signature pedals, 5150III-style amp and cab).",
+  "kind": "brand",
+  "brand": "EVH",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c8141c"
+}

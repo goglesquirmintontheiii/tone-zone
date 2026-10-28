@@ -3,9 +3,10 @@
   "name": "Tech 21",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Tech 21 gear.",
+  "description": "Preamps inspired by Tech 21: SansAmp Bass Driver / GT2, the Character Series and the Fly Rig.",
   "kind": "brand",
   "brand": "Tech 21",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#2b2b2d"
 }

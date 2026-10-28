@@ -3,9 +3,10 @@
   "name": "Hiwatt",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Hiwatt gear.",
+  "description": "Amps and preamps inspired by Hiwatt: DR103 and Custom 50.",
   "kind": "brand",
   "brand": "Hiwatt",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#3a3a3a"
 }

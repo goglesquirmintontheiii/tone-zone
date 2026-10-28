@@ -1,0 +1,12 @@
+{
+  "id": "nux",
+  "name": "NUX",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Core, Mini Core, Verdugo and Reissue series pedals, acoustic floor units, amp modelers and multi-effects inspired by NUX gear.",
+  "kind": "brand",
+  "brand": "NUX",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e2231a"
+}

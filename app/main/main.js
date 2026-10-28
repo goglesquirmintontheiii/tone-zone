@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const lib = require('./library');
 const plugins = require('./plugins');
+const tm = require('./tonematch');
 const { EngineHost, findEngine } = require('./engine-host');
 
 const APP_ROOT = path.join(__dirname, '..');
@@ -180,6 +181,40 @@ function setupIpc() {
     return out;
   });
 
+  // ---- tone match
+  tm.init({ dataRoot: lib.dataRoot(), appRoot: APP_ROOT, engineBin: () => (engine && engine.binPath) || findEngine(APP_ROOT, app.isPackaged), send: (ch, d) => win && !win.isDestroyed() && win.webContents.send(ch, d) });
+  const H = (name, fn) => ipcMain.handle('tm:' + name, async (_e, ...a) => fn(...a));
+  H('list', () => tm.listProjects());
+  H('get', (id) => tm.getProject(id));
+  H('new', (title) => tm.newProject(title));
+  H('save', (m) => tm.saveProject(m));
+  H('delete', (id) => tm.deleteProject(id));
+  H('pickFile', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Open a song or audio clip', properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm', 'aiff', 'aif'] }] });
+    return r.canceled ? null : tm.importFile(r.filePaths[0]);
+  });
+  H('importPath', (p) => tm.importFile(p));
+  H('readFile', (p) => tm.readFileBytes(p));
+  H('writeSource', (id, chans, sr) => tm.writeSource(id, chans, sr));
+  H('writeStem', (id, name, chans, sr) => tm.writeStem(id, name, chans, sr));
+  H('ytdlp', () => tm.ytdlpPath());
+  H('installYtdlp', () => tm.installYtdlp());
+  H('youtube', (url) => tm.fetchYoutube(url));
+  H('aiStatus', () => tm.aiStatus());
+  H('aiInstall', (kind) => tm.aiInstall(kind));
+  H('aiRemove', () => tm.aiRemove());
+  H('separate', (id, o) => tm.separate(id, o));
+  H('cancelSeparate', () => tm.cancelSeparation());
+  H('features', (files, t0, t1) => tm.stemsFeatures(files, t0, t1));
+  H('evalGraphs', (graphs, di) => tm.evalGraphs(graphs, di));
+  H('preview', (graph, di) => tm.renderPreview(graph, di));
+  H('defaultDI', () => tm.defaultDI());
+  H('saveRecording', (chans, sr) => {
+    const p = path.join(lib.dataRoot(), 'tools', `di-${Date.now()}.wav`);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    writeDI(p, chans, sr);
+    return p;
+  });
   // ---- plugins
   ipcMain.handle('plugins:list', () => plugins.list(APP_ROOT, lib.dataRoot(), settings.plugins || {}));
   ipcMain.handle('plugins:setEnabled', (_e, id, on) => {
@@ -225,6 +260,17 @@ function setupIpc() {
     await session.fromPartition(T3_PARTITION).clearStorageData();
     return true;
   });
+}
+
+function writeDI(p, chans, sr) {
+  const n = chans[0].length, ch = chans.length;
+  const buf = Buffer.alloc(44 + n * ch * 4);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * ch * 4, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
+  buf.writeUInt32LE(16, 16); buf.writeUInt16LE(3, 20); buf.writeUInt16LE(ch, 22); buf.writeUInt32LE(sr, 24);
+  buf.writeUInt32LE(sr * ch * 4, 28); buf.writeUInt16LE(ch * 4, 32); buf.writeUInt16LE(32, 34); buf.write('data', 36); buf.writeUInt32LE(n * ch * 4, 40);
+  let o = 44;
+  for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { buf.writeFloatLE(chans[c][i] || 0, o); o += 4; }
+  require('fs').writeFileSync(p, buf);
 }
 
 // ---------------------------------------------------------------- lifecycle

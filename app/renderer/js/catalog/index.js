@@ -1,5 +1,6 @@
 // Block catalog registry: core Tone Zone blocks + blocks registered by plugins + user NAM / IR packs.
 import { originals, ioDefs, coreGear, boxes, converters } from './originals.js';
+import { originals2 } from './originals2.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
 export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
@@ -10,11 +11,13 @@ let packDefs = [];
 
 function finalize(d) {
   d.controls.forEach((c, i) => (c.cid = c.cid ?? 'c' + i));
+  // baseForm: the generic shape a custom enclosure stands for ('amp', 'cab', …) – used for stacking, z-order, thumbnails
+  d.baseForm = d.baseForm || d.form;
   d.search = [d.name, d.ref, d.brand, d.cat, d.code, d.typeName, d.tags && d.tags.join(' ')].filter(Boolean).join(' ').toLowerCase();
   return d;
 }
 
-[...originals, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...originals2, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
 // ---- plugin registration
 export function registerPluginDefs(pluginId, defs, defaults = {}) {
@@ -138,7 +141,7 @@ export function portsFor(d, variant) {
   if (d.stereo === 'both' || d.stereo === 'stereo') {
     if (variant === 'stereo') {
       if (d.stereoPorts) return d.stereoPorts;
-      if (d.form === 'cab') return { ins: ['INPUT'], outs: ['MIC 1', 'MIC 2'] };
+      if (d.baseForm === 'cab') return { ins: ['INPUT'], outs: ['MIC 1', 'MIC 2'] };
       return d.ports.ins.length > 1 || d.ports.outs.length > 1 ? d.ports : STEREO;
     }
     return d.monoPorts || MONO;

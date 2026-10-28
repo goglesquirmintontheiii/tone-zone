@@ -85,7 +85,7 @@ export default function register(tz) {
     try {
       access = await tz.midi({ sysex: false });
     } catch (e) {
-      console.warn('helix: MIDI unavailable', e);
+      console.info('helix: MIDI unavailable', e?.message || e);
       return;
     }
     const scan = () => {

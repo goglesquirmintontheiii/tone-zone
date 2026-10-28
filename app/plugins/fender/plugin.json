@@ -3,9 +3,10 @@
   "name": "Fender",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals, amps and cabs inspired by Fender gear.",
+  "description": "Amps, preamps, cabs and pedals inspired by Fender: blackface and tweed combos, Hot Rod, Bassman and Rumble bass amps, the 2018+ pedal line and the Hammertone series.",
   "kind": "brand",
   "brand": "Fender",
   "main": "index.js",
-  "api": 1
+  "api": 1,
+  "color": "#c8102e"
 }

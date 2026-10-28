@@ -1,0 +1,12 @@
+{
+  "id": "victory",
+  "name": "Victory",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps and pedal preamps inspired by Victory Amplification: compact British heads and V4 valve preamp pedals.",
+  "kind": "brand",
+  "brand": "Victory",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b87333"
+}

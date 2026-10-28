@@ -1,0 +1,161 @@
+{
+ "version": 1,
+ "name": "Alt Rock · Lead",
+ "tags": [
+  "alt-rock",
+  "rock",
+  "lead",
+  "simple"
+ ],
+ "desc": "Big Muff sustain into the amp with a stereo delay.",
+ "factory": true,
+ "order": 202,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "ehx.bigmuff",
+   "x": -236,
+   "y": 70,
+   "params": {
+    "level": 0.55,
+    "tone": 0.55,
+    "gain": 0.7
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "amp.orange",
+   "x": -736,
+   "y": 0,
+   "params": {
+    "gain": 0.5,
+    "bass": 0.55,
+    "mid": 0.6,
+    "treble": 0.55,
+    "master": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "cab.4x12orange",
+   "x": -746,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "level": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "eqd.avalanche",
+   "x": -1024,
+   "y": 101,
+   "params": {
+    "d.time": 158.8656,
+    "d.feedback": 0.42,
+    "d.mix": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1264,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c5",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#3498db"
+  }
+ ],
+ "view": null
+}

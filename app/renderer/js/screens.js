@@ -23,6 +23,7 @@ export function drawScreen(s, nv, st, now) {
     s.view.content.innerHTML = '';
     fn.build(s, s.view.content, s.view.w, s.view.h, nv);
   }
+  s.ui = uiParams(nv.block); // current UI values (incl. defaults) for screens that show settings
   fn.update(s, st, nv, now);
 }
 
@@ -49,10 +50,10 @@ const SCREENS = {
           const sh = H / N;
           const db = -60 + (60 * (k + 0.5)) / N;
           const col = db > -3 ? '#ff4d5e' : db > -12 ? '#ffc24b' : '#37d6c2';
-          segs.push(svg('rect', { x: x + 1, y: bot - (k + 1) * sh + 0.6, width: bw - 2, height: sh - 1.2, rx: 0.8, fill: col, opacity: 0.08 }, g));
+          segs.push(svg('rect', { x: x + 1, y: bot - (k + 1) * sh + 0.6, width: bw - 2, height: sh - 1.2, rx: 0.8, fill: col, 'fill-opacity': 0.08 }, g));
         }
         const rms = svg('rect', { x: x + bw * 0.35, y: bot, width: bw * 0.3, height: 0, fill: '#ffffff', opacity: 0.55 }, g);
-        const hold = svg('rect', { x: x + 1, y: top, width: bw - 2, height: 1.6, fill: '#fff', opacity: 0 }, g);
+        const hold = svg('rect', { x: x + 1, y: top, width: bw - 2, height: 1.6, fill: '#fff', 'fill-opacity': 0 }, g);
         const clip = svg('rect', { x, y: 2, width: bw, height: 8, rx: 2, fill: '#3a1010' }, g);
         t(g, x + bw / 2, h - 7, nm, { size: 7, fill: '#9aa3b5', weight: 700 });
         s.bars.push({ segs, rms, hold, clip, pk: 0, rm: 0, holdDb: -60, holdT: 0, clipT: 0 });
@@ -69,12 +70,12 @@ const SCREENS = {
         if (b.pk >= b.holdDb || now - b.holdT > 1500) { b.holdDb = b.pk; b.holdT = now; }
         if (v[2] > 0) b.clipT = now;
         const lit = Math.round(((b.pk + 60) / 60) * b.segs.length);
-        b.segs.forEach((sg, k) => setA(sg, 'opacity', k < lit ? 1 : 0.08));
+        b.segs.forEach((sg, k) => setA(sg, 'fill-opacity', k < lit ? 1 : 0.08)); // fill-opacity: repaint only
         const rh = (s.H * (b.rm + 60)) / 60;
         setA(b.rms, 'y', (s.bot - rh).toFixed(1));
         setA(b.rms, 'height', rh.toFixed(1));
         setA(b.hold, 'y', (s.bot - (s.H * (b.holdDb + 60)) / 60).toFixed(1));
-        setA(b.hold, 'opacity', b.holdDb > -59 ? 0.9 : 0);
+        setA(b.hold, 'fill-opacity', b.holdDb > -59 ? 0.9 : 0);
         setA(b.clip, 'fill', now - b.clipT < 2500 ? '#ff2a1a' : '#3a1010');
       });
     },
@@ -355,7 +356,11 @@ export function screenPointer(s, nv, type, pt, e, editor) {
   const fn = SCREENS[s.ctl.kind];
   if (fn && fn.pointer) fn.pointer(s, nv, type, pt, e, editor);
 }
+const BUILTIN_SCREENS = new Set(Object.keys(SCREENS));
 export function registerScreen(kind, impl) {
-  if (SCREENS[kind] && !impl.override) throw new Error(`screen "${kind}" already exists`);
+  if (BUILTIN_SCREENS.has(kind) && !impl.override) throw new Error(`screen "${kind}" is built in`);
   SCREENS[kind] = impl;
+}
+export function unregisterScreen(kind) {
+  if (!BUILTIN_SCREENS.has(kind)) delete SCREENS[kind];
 }

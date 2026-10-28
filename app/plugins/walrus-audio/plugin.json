@@ -1,0 +1,12 @@
+{
+  "id": "walrus-audio",
+  "name": "Walrus Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Walrus Audio: etched-illustration enclosures in muted powder-coat colours with metallic ink. Chorus / vibrato, multi-texture reverbs, the Mako-style big-box delay / reverb / modulation / amp-sim series, five-state drives, harmonic tremolos, filter fuzz, bass preamp DI, compressor and texture machines.",
+  "kind": "brand",
+  "brand": "Walrus Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8a7a5a"
+}

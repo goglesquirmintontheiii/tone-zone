@@ -1,0 +1,12 @@
+{
+  "id": "radial",
+  "name": "Radial Engineering",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "DI boxes, re-amp box, A/B/Y switcher and a clean booster inspired by Radial Engineering and Tonebone gear.",
+  "kind": "brand",
+  "brand": "Radial Engineering",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2d5d9a"
+}
