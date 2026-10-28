@@ -43,8 +43,8 @@ const boss = [
     algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 14, preHp: 120, gainMinDb: 18, gainMaxDb: 56, tone: 'mt2', eqRangeDb: 15, bassF: 100, trebleF: 3500, midMin: 200, midMax: 5000, postLp: 7000, levelMaxDb: 6 },
     controls: [
       lvl(),
-      K('treble', 'HIGH', { display: (v) => db((v - 0.5) * 30) }), K('bass', 'LOW', { inner: 'treble' }),
-      K('mid', 'MIDDLE', { display: (v) => db((v - 0.5) * 30) }), K('midfreq', 'MID FREQ', { inner: 'mid', display: (v) => Math.round(200 * Math.pow(25, v)) + ' Hz' }),
+      K('treble', 'HIGH / LOW', { display: (v) => db((v - 0.5) * 30) }), K('bass', 'LOW', { inner: 'treble' }),
+      K('mid', 'MID / FREQ', { display: (v) => db((v - 0.5) * 30) }), K('midfreq', 'MID FREQ', { inner: 'mid', display: (v) => Math.round(200 * Math.pow(25, v)) + ' Hz' }),
       gain('DIST'),
     ],
     desc: 'Concentric EQ knobs: outer ring HIGH / MIDDLE, inner cap LOW / MID FREQ.',

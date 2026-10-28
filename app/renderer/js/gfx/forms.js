@@ -143,7 +143,13 @@ forms.compact = (ctx, def) => {
   const knobs = def.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && c.x === undefined && !c.inner);
   const n = knobs.length;
   const margin = n >= 4 ? 22 : 30;
-  autoRow(knobs, margin, w - margin, 52);
+  const lastSel = knobs.length && knobs[knobs.length - 1].t === 'sel' && knobs[knobs.length - 1].options.length > 4;
+  autoRow(knobs, margin - (lastSel ? 3 : 0), w - margin - (lastSel ? 9 : 0), 52);
+  if (lastSel) {
+    const sel = knobs[knobs.length - 1];
+    sel.labelRadius = sel.labelRadius ?? 7.5;
+    sel.optSize = Math.min(sel.optSize || 5, sel.options.length > 8 ? 3.7 : 4.2);
+  }
   knobs.forEach((k) => {
     k.r = k.r || (n >= 4 ? 11.5 : 12.5);
     k.labelPos = k.labelPos || 'above';
@@ -163,7 +169,7 @@ forms.compact = (ctx, def) => {
     if (c.t === 'screen' && c.x === undefined) Object.assign(c, { x: w / 2, y: 54, w: w - 36, h: 44 });
   });
   placeControls(ctx, def.controls, theme);
-  return { w, h, theme, jacks: jacksSide(def, w, { y0: 82, gap: 22, flip: ctx.flip }) };
+  return { w, h, theme, jacks: jacksSide(def, w, { y0: 92, gap: 20, flip: ctx.flip }) };
 };
 
 // MXR-style box
