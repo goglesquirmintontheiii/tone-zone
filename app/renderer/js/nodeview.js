@@ -1,7 +1,7 @@
 // A block on the board: graphic, control views, jacks, live LEDs and screens.
 import { svg, clamp, shade } from './util.js';
 import { renderForm } from './gfx/forms.js';
-import { getDef } from './catalog/index.js';
+import { getDef, rememberBlockSize } from './catalog/index.js';
 import { state, uiParams, nodePorts, engineParamsFor } from './state.js';
 import { drawScreen } from './screens.js';
 import { drawLed } from './gfx/controls.js';
@@ -35,6 +35,11 @@ export class NodeView {
     const d = this.def;
     const rdef = Object.create(d);
     rdef.ports = nodePorts(this.block);
+    if (d.missing) {
+      // size / jack count saved with the preset so the outline matches the real block
+      if (this.block._w) { rdef.missingW = this.block._w; rdef.missingH = this.block._h; }
+      if (this.block._ports) rdef.ports = { ins: [...Array(this.block._ports[0])].map((_, i) => 'IN ' + (i + 1)), outs: [...Array(this.block._ports[1])].map((_, i) => 'OUT ' + (i + 1)) };
+    }
     if (d.io && state.settings.io && state.settings.io[d.io]) {
       const labels = state.settings.io[d.io].map((c) => c.label);
       rdef.ports = d.io === 'in' ? { ins: [], outs: labels } : { ins: labels, outs: [] };
@@ -46,6 +51,12 @@ export class NodeView {
     const res = renderForm(ctx, rdef);
     this.w = res.w;
     this.h = res.h;
+    if (!d.missing) {
+      if (d.plugin) rememberBlockSize(d.id, res.w, res.h);
+      this.block._w = Math.round(res.w);
+      this.block._h = Math.round(res.h);
+      this.block._ports = [rdef.ports.ins.length, rdef.ports.outs.length];
+    }
     this.jacks = res.jacks;
     this.views = ctx.views;
     this.ioMeters = ctx.ioMeters;

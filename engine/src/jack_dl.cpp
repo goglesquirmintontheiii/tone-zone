@@ -58,6 +58,7 @@ bool JackApi::load(std::string& err)
   sym(port_register, "jack_port_register");
   sym(port_get_buffer, "jack_port_get_buffer");
   sym(port_name, "jack_port_name");
+  sym(port_unregister, "jack_port_unregister", false);
   sym(port_set_alias, "jack_port_set_alias", false);
   sym(connect, "jack_connect");
   sym(disconnect, "jack_disconnect");

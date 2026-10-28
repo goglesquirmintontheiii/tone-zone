@@ -197,6 +197,39 @@ void Engine::listPorts()
   send(ev);
 }
 
+// ------------------------------------------------------------------ host ports for device blocks
+void* Engine::registerPort(const std::string& name, bool input)
+{
+  if (!client || !jack->port_register) return nullptr;
+  return jack->port_register(client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, input ? JackPortIsInput : JackPortIsOutput, 0);
+}
+void Engine::unregisterPort(void* h)
+{
+  if (client && h && jack->port_unregister) jack->port_unregister(client, static_cast<jack_port_t*>(h));
+}
+float* Engine::portBuffer(void* h, int n)
+{
+  if (!h || !jackActive.load(std::memory_order_relaxed)) return nullptr;
+  return static_cast<float*>(jack->port_get_buffer(static_cast<jack_port_t*>(h), jack_nframes_t(n)));
+}
+int Engine::connectMatching(void* h, const std::string& pattern, int index, bool input)
+{
+  if (!client || !h) return -1;
+  // device capture ports feed our inputs; our outputs feed the device playback ports
+  const char** ports = jack->get_ports(client, pattern.c_str(), JACK_DEFAULT_AUDIO_TYPE, input ? JackPortIsOutput : JackPortIsInput);
+  if (!ports) return -1;
+  int count = 0;
+  while (ports[count]) ++count;
+  int r = -1;
+  if (index < count)
+  {
+    const char* me = jack->port_name(static_cast<jack_port_t*>(h));
+    r = input ? jack->connect(client, ports[index], me) : jack->connect(client, me, ports[index]);
+  }
+  jack->free(ports);
+  return r;
+}
+
 // ------------------------------------------------------------------ RT process
 static inline void flushDenormals()
 {
@@ -375,6 +408,7 @@ std::shared_ptr<CompiledGraph> Engine::compile(const json& gj, std::map<std::str
   ctx.quality = settings.quality;
   ctx.oversample = oversampleFor(settings.quality);
   ctx.dataDir = dataDir;
+  ctx.host = this;
 
   std::map<std::string, std::shared_ptr<Block>> next;
   std::vector<std::shared_ptr<Block>> order;

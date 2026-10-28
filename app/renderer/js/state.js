@@ -76,6 +76,7 @@ export function engineParamsFor(block) {
 export function nodePorts(block) {
   const d = getDef(block.type);
   if (!d) return { ins: [], outs: [] };
+  if (d.missing && block._ports) return { ins: [...Array(block._ports[0])].map((_, i) => 'IN ' + (i + 1)), outs: [...Array(block._ports[1])].map((_, i) => 'OUT ' + (i + 1)) };
   return portsFor(d, block.variant || defaultVariant(d));
 }
 

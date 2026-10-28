@@ -204,6 +204,44 @@ AmpModel makeModel(const std::string& id)
   return m;
 }
 
+// Plugins define new amps by starting from a built-in model ("base") and overriding any field:
+// {"base":"jcm800","stages":[[G,H,bias,lp,hp],...],"gainPos":1,"tsPos":3,"tsType":0,"stack":"marshall"|[R1,R2,R3,R4,C1,C2,C3],
+//  "tsMakeup":4,"brightHz":0,"brightDb":0,"power":1,"pwrH":2,"sag":.35,"presHz":3500,"depthHz":90,"nfb":.5,
+//  "otLp":7000,"otHp":55,"tight":0,"inHp":20,"baxBass":100,"baxMid":600,"baxTreble":3500,"baxRange":15,
+//  "drive":1.0 (scales every stage gain), "dark":0 (shifts all stage lows-pass filters down by this many octaves)}
+AmpModel modelFromJson(const json& j)
+{
+  AmpModel m = makeModel(j.value("base", std::string("plexi")));
+  if (j.contains("stages") && j["stages"].is_array())
+  {
+    m.st.clear();
+    for (auto& s : j["stages"])
+      if (s.is_array() && s.size() >= 5) m.st.push_back(S(s[0], s[1], s[2], s[3], s[4]));
+  }
+  auto f = [&](const char* k, float& v) { if (j.contains(k)) v = j[k].get<float>(); };
+  auto i = [&](const char* k, int& v) { if (j.contains(k)) v = j[k].get<int>(); };
+  i("gainPos", m.gainPos); i("tsPos", m.tsPos); i("tsType", m.tsType); i("power", m.power);
+  f("tsMakeup", m.tsMakeup); f("brightHz", m.brightHz); f("brightDb", m.brightDb); f("pwrH", m.pwrH); f("sag", m.sag);
+  f("presHz", m.presHz); f("depthHz", m.depthHz); f("nfb", m.nfb); f("otLp", m.otLp); f("otHp", m.otHp); f("tight", m.tight);
+  f("inHp", m.inHp); f("baxBass", m.baxBass); f("baxMid", m.baxMid); f("baxTreble", m.baxTreble); f("baxRange", m.baxRange);
+  if (j.contains("stack"))
+  {
+    const auto& t = j["stack"];
+    if (t.is_array() && t.size() >= 7) m.ts = ToneStackComponents{t[0], t[1], t[2], t[3], t[4], t[5], t[6]};
+    else if (t.is_string())
+    {
+      const std::string n = t.get<std::string>();
+      const char* names[] = {"deluxe", "bassman", "jcm800", "recto", "ac30", "orange", "5150"};
+      const char* alias[] = {"fender", "bassman", "marshall", "mesa", "vox", "orange", "peavey"};
+      for (int k = 0; k < 7; ++k) if (n == alias[k] || n == names[k]) m.ts = makeModel(names[k]).ts;
+    }
+  }
+  const float drive = j.value("drive", 1.f);
+  const float dark = j.value("dark", 0.f);
+  for (auto& s : m.st) { s.G *= drive; s.lp *= std::pow(2.f, -dark); }
+  return m;
+}
+
 struct AmpChannel
 {
   AmpModel m;
@@ -247,13 +285,14 @@ public:
     pUltraLo = addParam("ultralo", 0, 0, 1);
     pUltraHi = addParam("ultrahi", 0, 0, 1);
     preampOnly = o.value("preamp", false);
-    std::vector<std::string> models;
-    if (o.contains("models")) for (auto& m : o["models"]) models.push_back(m.get<std::string>());
+    std::vector<json> models;
+    if (o.contains("models")) for (auto& m : o["models"]) models.push_back(m);
+    else if (o.contains("voice")) models.push_back(o["voice"]);
     else models.push_back(o.value("model", "plexi"));
     for (auto& id : models)
     {
       AmpChannel c;
-      c.m = makeModel(id);
+      c.m = id.is_object() ? modelFromJson(id) : makeModel(id.get<std::string>());
       if (preampOnly) c.m.power = 0;
       chans.push_back(c);
     }

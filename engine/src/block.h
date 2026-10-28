@@ -15,8 +15,19 @@ namespace tz
 {
 using json = nlohmann::json;
 
+// Lets device blocks (e.g. a USB multi-effects unit) own extra audio ports on the host (PipeWire / JACK).
+struct HostPorts
+{
+  virtual ~HostPorts() = default;
+  virtual void* registerPort(const std::string& name, bool input) = 0;          // control thread
+  virtual void unregisterPort(void* h) = 0;                                     // control thread
+  virtual float* portBuffer(void* h, int n) = 0;                                 // RT thread
+  virtual int connectMatching(void* h, const std::string& pattern, int index, bool input) = 0; // control thread
+};
+
 struct PrepareCtx
 {
+  HostPorts* host = nullptr;
   double sr = 48000;
   int maxBlock = 4096;
   int hostBlock = 64;  // partition size for convolution

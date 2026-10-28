@@ -298,6 +298,52 @@ public:
   }
 };
 
+// output selector: stereo in -> one of N stereo output pairs (outs 2k, 2k+1); event 1 arg = index selects.
+// "mode" 0 = exclusive (A/B/C...), 1 = additive toggles (each output can be on independently, mask param).
+class SelectBlock : public Block
+{
+public:
+  int pSel, pMode, pMask, pFade;
+  float g[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+  float sr = 48000;
+  SelectBlock(const json&)
+  {
+    pSel = addParam("sel", 0, 0, 7);
+    pMode = addParam("mode", 0, 0, 1);
+    pMask = addParam("mask", 1, 0, 255);
+    pFade = addParam("fade", 12, 1, 200); // ms crossfade (no clicks / trails cut-off)
+    finalizeParams();
+  }
+  void prepare(const PrepareCtx& c) override { sr = float(c.sr); }
+  void process(const float* const* in, float* const* out, int n) override
+  {
+    const int pairs = std::max(1, nOut / 2);
+    const int sel = int(std::round(p(pSel)));
+    const int mask = int(std::round(p(pMask)));
+    const bool additive = p(pMode) > 0.5f;
+    const float step = 1.f / (p(pFade) * 0.001f * sr);
+    for (int k = 0; k < pairs && k < 8; ++k)
+    {
+      const float tgt = additive ? ((mask >> k) & 1 ? 1.f : 0.f) : (k == sel ? 1.f : 0.f);
+      for (int c = 0; c < 2; ++c)
+      {
+        const int oi = k * 2 + c;
+        if (oi >= nOut) break;
+        const float* x = nIn ? in[std::min(c, nIn - 1)] : nullptr;
+        float gg = g[k];
+        for (int i = 0; i < n; ++i)
+        {
+          gg += std::max(-step, std::min(step, tgt - gg));
+          out[oi][i] = x ? x[i] * gg : 0.f;
+        }
+        if (c == 1 || oi + 1 >= nOut) g[k] = gg;
+      }
+    }
+  }
+  void status(json& j) override { j["sel"] = int(std::round(p(pSel))); }
+};
+
+RegisterBlock r7("select", [](const json& o, int, int) { return std::make_unique<SelectBlock>(o); });
 RegisterBlock r1("thru", [](const json& o, int, int) { return std::make_unique<ThruBlock>(o); });
 RegisterBlock r2("split", [](const json& o, int, int) { return std::make_unique<SplitBlock>(o); });
 RegisterBlock r3("merge", [](const json& o, int, int) { return std::make_unique<MergeBlock>(o); });

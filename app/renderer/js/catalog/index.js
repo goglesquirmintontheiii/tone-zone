@@ -78,13 +78,20 @@ export function rememberPluginBlocks(pluginName, ids) {
   }
   if (changed) try { localStorage.setItem('tz.knownBlocks', JSON.stringify(knownBlocks)); } catch {}
 }
+export function rememberBlockSize(id, w, h) {
+  const k = knownBlocks[id];
+  if (!k || (k.w === w && k.h === h)) return;
+  k.w = Math.round(w); k.h = Math.round(h);
+  clearTimeout(rememberBlockSize.t);
+  rememberBlockSize.t = setTimeout(() => { try { localStorage.setItem('tz.knownBlocks', JSON.stringify(knownBlocks)); } catch {} }, 500);
+}
 const missingCache = new Map();
 function missingDef(id) {
   if (missingCache.has(id)) return missingCache.get(id);
   const k = knownBlocks[id] || {};
   const d = finalize(def({
     id, name: k.name ? k.name + ' (unavailable)' : 'Unavailable block', missing: true, missingType: id, missingName: k.name, missingPlugin: k.plugin,
-    cat: 'Utility', form: 'missing', algo: 'thru', color: '#15171c', hidden: true,
+    cat: 'Utility', form: 'missing', algo: 'thru', color: '#15171c', hidden: true, missingW: k.w, missingH: k.h,
     ports: k.ports || { ins: ['IN 1', 'IN 2'], outs: ['OUT 1', 'OUT 2'] }, stereo: k.stereo || 'mono', controls: [], cost: 0,
   }));
   missingCache.set(id, d);

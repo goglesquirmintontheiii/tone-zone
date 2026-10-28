@@ -11,6 +11,13 @@ class PitchBlock : public Block
 {
 public:
   int pSemis1, pLevel1, pSemis2, pLevel2, pDry, pCents, pQuality, pExpr, pGlide, pVintage, pTone, pRangeLo;
+  int pKey, pScale, pDeg1, pDeg2;
+  // intelligent (diatonic) harmony: light-weight YIN on a decimated copy of the input
+  std::vector<float> dRing, yinD;
+  int dPos = 0, dCount = 0, decim = 6, sinceYin = 0;
+  OnePole decLp;
+  int curNote = -1;
+  float semiH1 = 0, semiH2 = 0;
   WsolaShifter sh[2][2]; // [voice][quality-set A/B]
   int curQ = -1;
   float sr = 48000;
@@ -23,6 +30,10 @@ public:
   std::atomic<int> latencyMs{0};
   PitchBlock(const json& o)
   {
+    pKey = addParam("key", 0, 0, 11);
+    pScale = addParam("scale", o.value("scale", 0.f), 0, 7); // 0 chromatic (semis), 1 major, 2 minor, 3 dorian, 4 mixolydian, 5 harm. minor, 6 maj pent, 7 min pent
+    pDeg1 = addParam("deg1", o.value("deg1", 2.f), -14, 14);   // scale steps (2 = a third above, 4 = a fifth, -2 = third below)
+    pDeg2 = addParam("deg2", o.value("deg2", 4.f), -14, 14);
     pSemis1 = addParam("semis1", o.value("semis1", -2.f), -24, 24);
     pLevel1 = addParam("level1", o.value("level1", 1.f));
     pSemis2 = addParam("semis2", o.value("semis2", -12.f), -24, 24);
@@ -55,6 +66,53 @@ public:
     for (auto* s : {&sR1, &sR2, &sDry, &sL1, &sL2}) s->setTime(20, sr);
     preLp.lp(900, sr);
     envLp.lp(30, sr);
+    decim = std::max(1, int(std::round(sr / 8000.f)));
+    decLp.lp(1100, sr);
+    dRing.assign(1024, 0.f);
+    yinD.assign(160, 0.f);
+  }
+  // returns MIDI note (float) or -1
+  float detect()
+  {
+    const float dsr = sr / decim;
+    const int W = 512, tMin = int(dsr / 1000.f), tMax = std::min(150, int(dsr / 70.f));
+    float buf[1024];
+    for (int i = 0; i < 1024; ++i) buf[i] = dRing[(dPos + i) & 1023];
+    const float* x = buf + 1024 - W - tMax - 1;
+    double run = 0;
+    yinD[0] = 1;
+    int best = -1;
+    for (int t = 1; t <= tMax; ++t)
+    {
+      double d = 0;
+      for (int i = 0; i < W; ++i) { const float v = x[i] - x[i + t]; d += v * v; }
+      run += d;
+      yinD[t] = run > 0 ? float(d * t / run) : 1.f;
+      if (best < 0 && t > tMin + 1 && yinD[t - 1] < 0.18f && yinD[t - 1] <= yinD[t] && yinD[t - 1] <= yinD[t - 2]) best = t - 1;
+    }
+    if (best < 0) return -1;
+    const float a = yinD[best - 1], b = yinD[best], c = yinD[best + 1];
+    const float off = (a - 2 * b + c) != 0 ? 0.5f * (a - c) / (a - 2 * b + c) : 0.f;
+    const float f = dsr / (best + off);
+    return 69.f + 12.f * std::log2(f / 440.f);
+  }
+  float diatonicShift(int note, int deg)
+  {
+    static const int scales[8][8] = {{0}, {0, 2, 4, 5, 7, 9, 11}, {0, 2, 3, 5, 7, 8, 10}, {0, 2, 3, 5, 7, 9, 10}, {0, 2, 4, 5, 7, 9, 10}, {0, 2, 3, 5, 7, 8, 11}, {0, 2, 4, 7, 9}, {0, 3, 5, 7, 10}};
+    static const int len[8] = {1, 7, 7, 7, 7, 7, 5, 5};
+    const int sc = int(std::round(p(pScale)));
+    const int key = int(std::round(p(pKey)));
+    const int L = len[sc];
+    // nearest scale degree for the played note
+    const int rel = ((note - key) % 12 + 12) % 12;
+    int bestI = 0, bestD = 99;
+    for (int i = 0; i < L; ++i) { const int d = std::abs(scales[sc][i] - rel); if (d < bestD) { bestD = d; bestI = i; } }
+    const int oct = (note - key - rel) / 12;
+    const int idx = bestI + deg;
+    const int o2 = int(std::floor(float(idx) / L));
+    const int target = key + 12 * (oct + o2) + scales[sc][((idx % L) + L) % L];
+    const int played = key + 12 * oct + scales[sc][bestI];
+    return float(target - played) + float(played - note);
   }
   void process(const float* const* in, float* const* out, int n) override
   {
@@ -65,8 +123,29 @@ public:
     sR2.setTime(glideMs, sr);
     const float expr = p(pExpr);
     const float cents = p(pCents) / 100.f;
-    const float r1t = std::pow(2.f, (p(pSemis1) * expr + cents) / 12.f);
-    const float r2t = std::pow(2.f, (p(pSemis2) * expr + cents) / 12.f);
+    const bool smart = p(pScale) > 0.5f;
+    if (smart)
+    {
+      for (int i = 0; i < n; ++i)
+      {
+        const float xi = nIn > 1 ? 0.5f * (in[0][i] + in[1][i]) : in[0][i];
+        const float d = decLp.processLP(xi);
+        if (++dCount >= decim) { dCount = 0; dRing[dPos] = d; dPos = (dPos + 1) & 1023; ++sinceYin; }
+      }
+      if (sinceYin >= 256)
+      {
+        sinceYin = 0;
+        const float m = detect();
+        if (m > 0) curNote = int(std::round(m));
+        if (curNote >= 0)
+        {
+          semiH1 = diatonicShift(curNote, int(std::round(p(pDeg1))));
+          semiH2 = diatonicShift(curNote, int(std::round(p(pDeg2))));
+        }
+      }
+    }
+    const float r1t = std::pow(2.f, ((smart ? semiH1 : p(pSemis1)) * expr + cents) / 12.f);
+    const float r2t = std::pow(2.f, ((smart ? semiH2 : p(pSemis2)) * expr + cents) / 12.f);
     const bool vintage = p(pVintage) > 0.5f;
     const float tone = p(pTone);
     for (auto& t : toneLp) t.lp(logMap(tone, 400, 20000), sr);
@@ -105,7 +184,11 @@ public:
       for (int c = 0; c < std::max(1, nOut); ++c) out[c][i] = y;
     }
   }
-  void status(json& j) override { j["latencyMs"] = latencyMs.load(); }
+  void status(json& j) override
+  {
+    j["latencyMs"] = latencyMs.load();
+    if (p(pScale) > 0.5f) { j["note"] = curNote; j["h1"] = semiH1; j["h2"] = semiH2; }
+  }
 };
 
 RegisterBlock r1("pitch", [](const json& o, int, int) { return std::make_unique<PitchBlock>(o); });

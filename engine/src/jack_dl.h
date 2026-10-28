@@ -43,6 +43,7 @@ struct JackApi
   jack_port_t* (*port_register)(jack_client_t*, const char*, const char*, unsigned long, unsigned long) = nullptr;
   void* (*port_get_buffer)(jack_port_t*, jack_nframes_t) = nullptr;
   const char* (*port_name)(const jack_port_t*) = nullptr;
+  int (*port_unregister)(jack_client_t*, jack_port_t*) = nullptr;
   int (*port_set_alias)(jack_port_t*, const char*) = nullptr;
   int (*connect)(jack_client_t*, const char*, const char*) = nullptr;
   int (*disconnect)(jack_client_t*, const char*, const char*) = nullptr;

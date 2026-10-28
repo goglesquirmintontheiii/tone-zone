@@ -37,6 +37,7 @@
       "main/**",
       "renderer/**",
       "presets/**",
+      "plugins/**",
       "build/icon.png",
       "package.json",
       "!**/*.map"
@@ -84,7 +85,10 @@
     },
     "appImage": {
       "compression": "zstd"
-    }
+    },
+    "asarUnpack": [
+      "plugins/**"
+    ]
   },
   "desktopName": "tone-zone.desktop"
 }

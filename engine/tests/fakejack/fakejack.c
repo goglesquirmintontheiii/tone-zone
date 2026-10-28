@@ -93,3 +93,5 @@ int jack_set_buffer_size(void* c, jack_nframes_t n) { bufsize = n; return 0; }
 float jack_cpu_load(void* c) { return 0; }
 void jack_port_get_latency_range(void* p, int m, jack_nframes_t* r) { r[0] = r[1] = bufsize; }
 const char* jack_get_client_name(void* c) { return "Tone Zone"; }
+
+int jack_port_unregister(void* c, void* p) { return 0; }

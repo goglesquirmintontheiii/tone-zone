@@ -710,16 +710,14 @@ export function hasForm(name) {
 // building blocks for custom enclosures (see docs/plugins.md)
 export const formKit = { body, screw, tzBadge, placeControls, drawScreenFrame, jacksSide, jacksTop, autoRow, callForm: (name, ctx, def) => forms[name](ctx, def) };
 
-// placeholder for blocks whose plugin is disabled or missing: dashed outline, passes audio through
+// placeholder for blocks whose plugin is disabled or missing: an empty gray outline the size of the real
+// block (remembered from the last time it was drawn); audio passes straight through
 forms.missing = (ctx, def) => {
-  const w = 150, h = 190, g = ctx.g;
-  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 10, fill: '#15171c', stroke: '#ff4d5e', 'stroke-width': 1.6, 'stroke-dasharray': '6 5' }, g);
-  svg('path', { d: `M${w / 2} 40 l16 28 h-32 z`, fill: 'none', stroke: '#ffc24b', 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, g);
-  label(g, w / 2, 61, '!', { size: 14, fill: '#ffc24b', weight: 800 });
-  label(g, w / 2, 92, 'PLUGIN OFF', { size: 9, fill: '#ff8a95', weight: 800, ls: 1 });
-  const nm = (def.missingName || def.missingType || '').slice(0, 24);
-  label(g, w / 2, 110, nm, { size: 7, fill: '#c7ccd6', weight: 700 });
-  label(g, w / 2, 124, def.missingPlugin ? `needs “${def.missingPlugin}”` : 'unknown block', { size: 6.2, fill: '#8c94a6', weight: 600 });
-  label(g, w / 2, 160, 'audio passes through', { size: 5.8, fill: '#6b7385', weight: 600 });
-  return { w, h, theme: { text: '#ddd' }, jacks: jacksSide(def, w, { flip: ctx.flip, y0: 40, gap: 30 }) };
+  const w = def.missingW || 150, h = def.missingH || 190, g = ctx.g;
+  svg('rect', { x: 0, y: 0, width: w, height: h, rx: 10, fill: 'rgba(120,128,142,0.06)', stroke: '#6b7385', 'stroke-width': 1.6, 'stroke-dasharray': '7 6' }, g);
+  const cy = h / 2;
+  label(g, w / 2, cy - 8, (def.missingName || 'Unavailable block').slice(0, 26), { size: Math.min(9, w / 16), fill: '#8c94a6', weight: 700 });
+  label(g, w / 2, cy + 8, def.missingPlugin ? `enable the “${def.missingPlugin}” plugin` : 'plugin not installed', { size: Math.min(6.4, w / 22), fill: '#6b7385', weight: 600 });
+  return { w, h, theme: { text: '#8c94a6', jackText: '#6b7385' }, jacks: jacksSide(def, w, { flip: ctx.flip, y0: Math.min(54, h * 0.3), gap: Math.min(28, (h * 0.6) / Math.max(1, Math.max(def.ports.ins.length, def.ports.outs.length))) }) };
+};
 };

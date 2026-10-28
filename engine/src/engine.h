@@ -47,9 +47,13 @@ struct Settings
   int requestedBuffer = 64;
 };
 
-class Engine
+class Engine : public HostPorts
 {
 public:
+  void* registerPort(const std::string& name, bool input) override;
+  void unregisterPort(void* h) override;
+  float* portBuffer(void* h, int n) override;
+  int connectMatching(void* h, const std::string& pattern, int index, bool input) override;
   Engine();
   ~Engine();
 
