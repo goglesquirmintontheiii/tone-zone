@@ -150,7 +150,8 @@ export class NodeView {
   ledColor(c, st, now) {
     const b = this.block;
     if (c.sub) st = st?.[c.sub];
-    const ui = uiParams(b);
+    // params are only built when an LED needs them, once per LED pass
+    const U = () => this._ledUi || (this._ledUi = uiParams(b));
     const bind = c.bind || 'on';
     const on = !b.bypass || this.def.alwaysOn;
     const parts = bind.split(':');
@@ -160,7 +161,7 @@ export class NodeView {
       case 'param': {
         // param:x  · param:!x (inverted) · param:x:=2 / param:x:>0.3 / param:x:<0.3 · onparam requires the block on
         const inv = parts[1].startsWith('!');
-        const v = ui[inv ? parts[1].slice(1) : parts[1]] ?? 0;
+        const v = U()[inv ? parts[1].slice(1) : parts[1]] ?? 0;
         let hit;
         const cmp = parts[2];
         if (!cmp) hit = v > 0.5;
@@ -173,22 +174,22 @@ export class NodeView {
       }
       case 'onparam': {
         const inv = parts[1].startsWith('!');
-        const v = (ui[inv ? parts[1].slice(1) : parts[1]] ?? 0) > 0.5;
+        const v = (U()[inv ? parts[1].slice(1) : parts[1]] ?? 0) > 0.5;
         return on && v !== inv ? true : null;
       }
       case 'fn': // def-supplied function: c.ledFn(ui, block, status, now) -> true | colour | null
         try {
-          return c.ledFn ? c.ledFn(ui, b, st, now) || null : null;
+          return c.ledFn ? c.ledFn(U(), b, st, now) || null : null;
         } catch {
           return null;
         }
       case 'select': {
         const i = +parts[1];
-        if ((ui.mode ?? 0) > 0.5) return ((ui.mask ?? 1) >> i) & 1 ? true : null;
-        return (ui.sel ?? 0) === i ? true : null;
+        if ((U().mode ?? 0) > 0.5) return ((U().mask ?? 1) >> i) & 1 ? true : null;
+        return (U().sel ?? 0) === i ? true : null;
       }
       case 'fav':
-        return state.ui[b.id]?.favActive ? true : null;
+        return state.U()[b.id]?.favActive ? true : null;
       case 'tunerOk': {
         const t = st?.tuner;
         if (b.bypass || !t || !t.note) return null;
@@ -200,18 +201,18 @@ export class NodeView {
         return now % msv < Math.min(70, msv * 0.4) ? true : null;
       }
       case 'rate': {
-        const enabled = parts[1] === 'on' ? on : ui[parts[1]] > 0.5;
+        const enabled = parts[1] === 'on' ? on : U()[parts[1]] > 0.5;
         if (!enabled) return null;
         let hz;
-        if (parts[2] === 'speedlex') hz = ui.speed > 0.5 ? 6.7 : 0.83;
-        else hz = 0.4 * Math.pow(35, ui[parts[2]] ?? 0.5);
+        if (parts[2] === 'speedlex') hz = U().speed > 0.5 ? 6.7 : 0.83;
+        else hz = 0.4 * Math.pow(35, U()[parts[2]] ?? 0.5);
         return ((now / 1000) * hz) % 1 < 0.5 ? true : null;
       }
       case 'looper': {
         const L = st?.looper;
         if (!L) return null;
-        const cur = state.ui[b.id]?.current ?? 0;
-        const layer = state.ui[b.id]?.layer ?? 0;
+        const cur = state.U()[b.id]?.current ?? 0;
+        const layer = state.U()[b.id]?.layer ?? 0;
         if (parts[1] === 'rhythm') return L.rhythm ? true : null;
         if (parts[1] === 'any') return L.tracks.some((t) => t.state === 2 || t.state === 3) ? true : null;
         if (parts[1] === 'layer') return layer ? '#ff2a1a' : '#ffffff';
@@ -234,6 +235,7 @@ export class NodeView {
 
   updateLeds(now = performance.now()) {
     const st = state.status.blocks[this.block.id];
+    this._ledUi = null;
     for (const [, { ctl: c, view }] of this.views) {
       if (c.t === 'led') view.set(this.ledColor(c, st, now));
       else if (c.t === 'button' && c.led && c.bind) view.set(!!this.ledColor(c, st, now));
@@ -246,7 +248,7 @@ export class NodeView {
     this.updateLeds(now);
     for (const s of this.screens) drawScreen(s, this, st, now);
     // load badge: 2 Hz is plenty (text changes are comparatively expensive to repaint)
-    if (now - (this._badgeT || 0) > 500) {
+    if (now - (this._badgeT || 0) > 1000) {
       this._badgeT = now;
       setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false && this.def.cost !== 0 ? (st.load * 100).toFixed(1) + '%' : '');
     }
@@ -260,7 +262,9 @@ export class NodeView {
         setA(el, 'fill-opacity', v.toFixed(2));
       });
     }
-    if (this.ioMeters) {
+    // panel meters are decorative: half rate is plenty
+    if (this.ioMeters && now - (this._ioT || 0) > 85) {
+      this._ioT = now;
       const peaks = this.def.io === 'in' ? state.status.inPeak : state.status.outPeak;
       if (peaks)
         this.ioMeters.forEach((segs, i) => {
