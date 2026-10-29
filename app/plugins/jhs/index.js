@@ -757,7 +757,7 @@ export default function register(tz) {
       algo: 'crusher', controls: [vk('mix', 'MIX', { def: 0.8 }), vk('bits', 'BITS', { def: 0.45 }), vk('rate', 'SAMPLE', { def: 0.35 }), TOG('hard', 'MODE', ['SOFT', 'HARD'], { virtual: true })],
       derive: (p) => (p.hard ? { bits: (p.bits ?? 0.45) * 0.6 } : {}) }),
     T3({ id: 'jhs.3ringmod', name: 'Trio Ring Mod', ref: 'JHS 3 Series Ring Modulator', cat: 'Synth', kind: 'Pedal', typeName: 'Ring modulator', color: '#f1f0eb', text: '#151515', logo: 'ring mod', logoSize: 20,
-      algo: 'ringmod', controls: [vk('mix', 'MIX', { def: 0.35 }), vk('freq', 'FREQ', { def: 0.4 }), vk('fine', 'FINE', { def: 0.5 }), TOG('range', 'RANGE', ['LO', 'HI'], { virtual: true })],
+      algo: 'ringmod', controls: [vk('mix', 'MIX', { def: 0.3 }), vk('freq', 'FREQ', { def: 0.4 }), vk('fine', 'FINE', { def: 0.5 }), TOG('range', 'RANGE', ['LO', 'HI'], { virtual: true })],
       derive: (p) => ({ freq: (p.range ? 0.5 : 0) + (p.freq ?? 0.4) * 0.5 }) }),
   ]);
 }

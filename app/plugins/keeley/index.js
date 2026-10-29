@@ -239,7 +239,7 @@ export default function register(tz) {
     KY({
       id: 'kly.neutrino', name: 'Quark Envelope Filter', ref: 'Keeley Neutrino V2', code: 'QUARK', logo: 'Quark', typeName: 'Envelope filter', cat: 'Wah', color: '#3fb6c9', text: '#10262b',
       algo: 'wah', opts: { mode: 2 }, fixed: { mode: 2 },
-      controls: [k('level', 'LEVEL', { def: 0.4 }), k('sens', 'SENS', { def: 0.55 }), k('q', 'Q', { def: 0.6 }), k('range', 'RANGE', { def: 0.5 }),
+      controls: [k('level', 'LEVEL', { def: 0.35 }), k('sens', 'SENS', { def: 0.55 }), k('q', 'Q', { def: 0.6 }), k('range', 'RANGE', { def: 0.5 }),
         TOG('direction', 'SWEEP', ['up', 'down']), TOG('filter', 'FILTER', ['lp', 'bp', 'hp'], { def: 1 })],
       desc: 'Funky auto-wah that follows your picking. Pick the sweep direction and low, band or high pass filter.',
     }),
@@ -252,7 +252,7 @@ export default function register(tz) {
       desc: 'Lush stereo chorus that also does pitch vibrato. VOICE picks a darker or brighter sound.',
     }),
     KY({
-      id: 'kly.noblescreamer', name: 'Royal Screamer', ref: 'Keeley Noble Screamer', code: 'ROYAL', logo: 'Royal Screamer', logoSize: 10, typeName: 'Dual-mode overdrive', cat: 'Overdrive', color: '#2c3f7a', led: '#3d8bff',
+      id: 'kly.noblescreamer', name: 'Royal Screamer', ref: 'Keeley Noble Screamer', code: 'ROYAL', logo: 'Royal', typeName: 'Dual-mode overdrive', cat: 'Overdrive', color: '#2c3f7a', led: '#3d8bff',
       algo: 'drive', opts: { tone: 'lp', toneLo: 900, toneHi: 7500, levelMaxDb: 8, preHp: 70, modes: [
         { clip: 'ts', cleanSum: true, clipHp: 720, gainMaxDb: 40 }, { clip: 'ts', cleanSum: true, clipHp: 720, gainMaxDb: 40, bias: 0.2 }, { clip: 'clean', cleanSum: true, clipHp: 720, gainMaxDb: 26 },
         { clip: 'ge', cleanSum: true, cleanMix: 0.5, gainMaxDb: 36 }, { clip: 'ge', cleanSum: true, cleanMix: 0.5, gainMaxDb: 36, bias: 0.2 }, { clip: 'clean', cleanSum: true, cleanMix: 0.5, gainMaxDb: 26 },

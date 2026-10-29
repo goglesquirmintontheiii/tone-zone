@@ -724,7 +724,7 @@ export default function register(tz) {
       algo: 'drive', opts: { tone: 'ts', toneLo: 600, gainMinDb: 6, gainMaxDb: 40, levelMaxDb: 6, preHp: 25, clipHp: 200, postLp: 7000, cleanSum: true, cleanMix: 0,
         modes: [{ clip: 'led', bias: 0.3 }, { clip: 'clean', gainMaxDb: 30 }, { clip: 'si' }] },
       controls: [K('level', 'LEVEL', { def: 0.5 }), K('tone', 'TONE', { def: 0.5 }), K('gain', 'GAIN', { def: 0.5 }), K('blend', 'BLEND', { def: 0.8 }), TOG('mode', 'MODE', ['1', '2', '3'])],
-      rows: [2, 2],
+      rows: [4],
       desc: 'Bass-friendly take on the small signal shredder with a clean BLEND to keep the low end.',
     }),
     EQ({

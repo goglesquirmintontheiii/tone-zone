@@ -154,7 +154,7 @@ export default function register(tz) {
     C({
       id: 'cb.sabbracadabra', name: 'Abra Sabra', ref: 'Catalinbread Sabbra Cadabra', logo: 'Abra Sabra', tagline: 'SUPERGROUP OVERDRIVE', cat: 'Overdrive', typeName: 'Doom-era British drive',
       color: '#1d1a1f', ink: '#e9dcc0', gold: '#a8323a', nameColor: '#e9dcc0', emblem: 'bat', rows: [2, 3], knob: 'cream', h: 256,
-      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 10, bias: 0.3, preHp: 70, gainMinDb: 8, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 700, trebleF: 2600, postLp: 7000, levelMaxDb: 0 },
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 10, bias: 0.3, preHp: 70, gainMinDb: 8, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 700, trebleF: 2600, postLp: 7000, levelMaxDb: -3 },
       controls: [K('level', 'VOLUME', { def: 0.5, display: ten }), K('gain', 'GAIN', { def: 0.55, display: ten }), K('treble', 'TREBLE', { def: 0.55, display: ten }), K('mid', 'MIDDLE', { def: 0.6, display: ten }), K('bass', 'BASS', { def: 0.5, display: ten })],
       desc: 'Thick, mid-heavy British crunch of an early doom-rock amp, cranked.',
     }),
