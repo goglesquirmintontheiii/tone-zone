@@ -3,7 +3,7 @@
   "name": "Walrus Audio",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Walrus Audio: chorus / vibrato, reverbs, the big Mako-style boxes, drives, tremolos, filter fuzz, a bass preamp DI, a compressor, texture machines and the slider-based Fundamental series.",
+  "description": "Pedals inspired by Walrus Audio: chorus / vibrato, reverbs, the big Mako-style boxes, drives, tremolos, filter fuzz, a bass preamp DI, a compressor, texture machines, the slider-based Fundamental series and the Canvas utility boxes (a colour screen tuner and a DI / line isolator).",
   "kind": "brand",
   "brand": "Walrus Audio",
   "main": "index.js",

@@ -110,7 +110,7 @@
     "_m2x": 0.3037383177570093,
     "_m2y": 0.5,
     "m2lvl": -3,
-    "level": -3.5
+    "level": -9.8
    },
    "bypass": false,
    "variant": "mono"
@@ -141,7 +141,7 @@
     "m1dist": 0.15,
     "_m1x": 0.31299999999999994,
     "_m1y": 0.5,
-    "level": -3.5
+    "level": -9.8
    },
    "bypass": false,
    "variant": "mono"

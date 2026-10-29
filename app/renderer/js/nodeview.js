@@ -23,6 +23,24 @@ export function knobValue(c, pos) {
 
 const LOOPER_COLORS = { 0: '#2f6bff', 1: '#ff2a1a', 2: '#3ddc84', 3: '#ffd21f', 4: '#ffffff' };
 
+// block rotation in 90 degree steps. The rotated block keeps its top-left corner at block.x / y.
+export const rotOf = (b) => ((((b && b.rot) || 0) % 360) + 360) % 360;
+export function rotTransform(r, w, h) {
+  return r === 90 ? `translate(${h},0) rotate(90)` : r === 180 ? `translate(${w},${h}) rotate(180)` : r === 270 ? `translate(0,${w}) rotate(270)` : '';
+}
+export function rotPoint(r, w, h, x, y) {
+  return r === 90 ? [h - y, x] : r === 180 ? [w - x, h - y] : r === 270 ? [y, w - x] : [x, y];
+}
+const SIDES = ['left', 'top', 'right', 'bottom'];
+export function rotSide(side, r) {
+  const i = SIDES.indexOf(side);
+  return i < 0 ? side : SIDES[(i + r / 90) % 4];
+}
+function rotJack(j, r, w, h) {
+  const [x, y] = rotPoint(r, w, h, j.x, j.y);
+  return { ...j, x, y, side: rotSide(j.side, r) };
+}
+
 export class NodeView {
   constructor(block, layer) {
     this.block = block;
@@ -48,10 +66,12 @@ export class NodeView {
     }
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
     this.g.dataset.node = this.block.id;
-    const content = svg('g', {}, this.g);
+    // rotation lives on an inner group so the outer one is just the position
+    this.rg = svg('g', {}, this.g);
+    const content = svg('g', {}, this.rg);
     this.content = content;
-    // level of detail: show a bitmap of the block instead of the live SVG when zoomed out or moving
-    this.lodImg = svg('image', { display: 'none', 'pointer-events': 'none', preserveAspectRatio: 'none' }, this.g);
+    // level of detail: show a bitmap of the block instead of the live SVG when zoomed out
+    this.lodImg = svg('image', { display: 'none', 'pointer-events': 'none', preserveAspectRatio: 'none' }, this.rg);
     if (this._lodUrl) URL.revokeObjectURL(this._lodUrl);
     this._lodUrl = null;
     this._lodScale = 0;
@@ -62,15 +82,20 @@ export class NodeView {
     if (d.coupler && state.preset) for (const c of state.preset.cables) { if (c.from.node === this.block.id) connected.add('o' + c.from.port); if (c.to.node === this.block.id) connected.add('i' + c.to.port); }
     const ctx = { g: content, views: new Map(), flip: !!state.settings.flowLeftToRight, block: this.block, connected };
     const res = renderForm(ctx, rdef);
-    this.w = res.w;
-    this.h = res.h;
+    this.fw = res.w;
+    this.fh = res.h;
+    this.rot = rotOf(this.block);
+    const sw = this.rot === 90 || this.rot === 270;
+    this.w = sw ? res.h : res.w;
+    this.h = sw ? res.w : res.h;
+    if (this.rot) this.rg.setAttribute('transform', rotTransform(this.rot, res.w, res.h));
     if (!d.missing) {
       if (d.plugin) rememberBlockSize(d.id, res.w, res.h);
       this.block._w = Math.round(res.w);
       this.block._h = Math.round(res.h);
       this.block._ports = [rdef.ports.ins.length, rdef.ports.outs.length];
     }
-    this.jacks = res.jacks;
+    this.jacks = this.rot ? res.jacks.map((j) => rotJack(j, this.rot, res.w, res.h)) : res.jacks;
     this.views = ctx.views;
     this.ioMeters = ctx.ioMeters;
     this.tubeGlows = ctx.tubeGlows;
@@ -100,7 +125,7 @@ export class NodeView {
 
   // switch between the live graphic and its bitmap (only if the bitmap exists)
   setLOD(on) {
-    on = on && !!this._lodUrl;
+    on = on && !!this._lodUrl && this._lodShown === this._lodUrl;
     if (on === this.lodOn) return;
     this.lodOn = on;
     this.content.setAttribute('display', on ? 'none' : 'inline');
@@ -125,8 +150,16 @@ export class NodeView {
       this._lodScale = scale;
       const im = this.lodImg;
       im.setAttribute('x', snap.x); im.setAttribute('y', snap.y); im.setAttribute('width', snap.w); im.setAttribute('height', snap.h);
-      im.setAttribute('href', snap.url);
-      return true;
+      // only swap once the bitmap has really loaded, so a block never goes blank
+      await new Promise((res) => {
+        const done = (ok) => { im.removeEventListener('load', onL); im.removeEventListener('error', onE); if (ok) this._lodShown = snap.url; res(); };
+        const onL = () => done(true), onE = () => done(false);
+        im.addEventListener('load', onL);
+        im.addEventListener('error', onE);
+        im.setAttribute('href', snap.url);
+        setTimeout(() => done(false), 3000);
+      });
+      return this._lodShown === snap.url;
     } finally {
       this._lodBusy = false;
     }
@@ -302,8 +335,8 @@ export class NodeView {
       const off = this.block.bypass;
       const lvl = Math.min(1, Math.max(...(state.status.inPeak || [0]).slice(0, 2)) * 2.5);
       this.tubeGlows.forEach((el, i) => {
-        const v = off ? 0.18 : 0.62 + 0.22 * lvl + 0.08 * Math.sin(now / (380 + i * 57) + i * 1.7) + 0.04 * (Math.random() - 0.5);
-        setA(el, 'fill-opacity', v.toFixed(2));
+        const v = off ? 0.12 : 0.86 + 0.14 * lvl + 0.07 * Math.sin(now / (380 + i * 57) + i * 1.7) + 0.04 * (Math.random() - 0.5);
+        setA(el, 'fill-opacity', Math.min(1, v * (el._k ?? 1)).toFixed(2));
       });
     }
     // panel meters are just for looks, half rate is enough

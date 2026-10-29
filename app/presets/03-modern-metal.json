@@ -40,7 +40,9 @@
       "type": "cab.4x12v30",
       "x": -923,
       "y": 94,
-      "params": {},
+      "params": {
+        "level": -1.8
+      },
       "bypass": false,
       "variant": "stereo"
     },

@@ -87,8 +87,19 @@
   },
   {
    "id": "b7",
+   "type": "ut.width",
+   "x": -1502,
+   "y": 36,
+   "params": {
+    "level": -2.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
    "type": "tz.meter",
-   "x": -1514,
+   "x": -1702,
    "y": 0,
    "params": {},
    "bypass": false,
@@ -97,14 +108,14 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1754,
+   "x": -1942,
    "y": 25,
    "params": {}
   }
  ],
  "cables": [
   {
-   "id": "c8",
+   "id": "c9",
    "from": {
     "node": "__in",
     "port": 0
@@ -116,7 +127,7 @@
    "color": "#e8473d"
   },
   {
-   "id": "c9",
+   "id": "c10",
    "from": {
     "node": "b1",
     "port": 0
@@ -128,7 +139,7 @@
    "color": "#f39c12"
   },
   {
-   "id": "c10",
+   "id": "c11",
    "from": {
     "node": "b2",
     "port": 0
@@ -140,7 +151,7 @@
    "color": "#f1c40f"
   },
   {
-   "id": "c11",
+   "id": "c12",
    "from": {
     "node": "b3",
     "port": 0
@@ -152,7 +163,7 @@
    "color": "#2ecc71"
   },
   {
-   "id": "c12",
+   "id": "c13",
    "from": {
     "node": "b4",
     "port": 0
@@ -164,7 +175,7 @@
    "color": "#3498db"
   },
   {
-   "id": "c13",
+   "id": "c14",
    "from": {
     "node": "b5",
     "port": 0
@@ -176,7 +187,7 @@
    "color": "#6c5ce7"
   },
   {
-   "id": "c14",
+   "id": "c15",
    "from": {
     "node": "b6",
     "port": 0
@@ -188,7 +199,7 @@
    "color": "#e84393"
   },
   {
-   "id": "c15",
+   "id": "c16",
    "from": {
     "node": "b6",
     "port": 1
@@ -200,28 +211,52 @@
    "color": "#1abc9c"
   },
   {
-   "id": "c16",
+   "id": "c17",
    "from": {
     "node": "b7",
     "port": 0
    },
    "to": {
-    "node": "__out",
+    "node": "b8",
     "port": 0
    },
    "color": "#ecf0f1"
   },
   {
-   "id": "c17",
+   "id": "c18",
    "from": {
     "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 1
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b8",
     "port": 1
    },
    "to": {
     "node": "__out",
     "port": 1
    },
-   "color": "#e8473d"
+   "color": "#f1c40f"
   }
  ],
  "view": null

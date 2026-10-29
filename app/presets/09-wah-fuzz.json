@@ -3,7 +3,7 @@
   "name": "Wah into Fuzz",
   "blocks": [
     {
-      "id": "b92",
+      "id": "b95",
       "type": "dn.gcb95",
       "x": -152,
       "y": 80,
@@ -12,7 +12,7 @@
       "variant": "mono"
     },
     {
-      "id": "b93",
+      "id": "b96",
       "type": "tz.fuzzface",
       "x": -392,
       "y": 120,
@@ -21,7 +21,7 @@
       "variant": "mono"
     },
     {
-      "id": "b94",
+      "id": "b97",
       "type": "mx.m169",
       "x": -610,
       "y": 120,
@@ -30,7 +30,7 @@
       "variant": "mono"
     },
     {
-      "id": "b95",
+      "id": "b98",
       "type": "amp.twin",
       "x": -1170,
       "y": 0,
@@ -41,11 +41,13 @@
       "variant": "mono"
     },
     {
-      "id": "b96",
+      "id": "b99",
       "type": "cab.2x12twin",
       "x": -1640,
       "y": 120,
-      "params": {},
+      "params": {
+        "level": -3.3
+      },
       "bypass": false,
       "variant": "mono"
     },
@@ -66,52 +68,16 @@
   ],
   "cables": [
     {
-      "id": "c97",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b92",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c98",
-      "from": {
-        "node": "b92",
-        "port": 0
-      },
-      "to": {
-        "node": "b93",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c99",
-      "from": {
-        "node": "b93",
-        "port": 0
-      },
-      "to": {
-        "node": "b94",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
       "id": "c100",
       "from": {
-        "node": "b94",
+        "node": "__in",
         "port": 0
       },
       "to": {
         "node": "b95",
         "port": 0
       },
-      "color": "#2ecc71"
+      "color": "#e8473d"
     },
     {
       "id": "c101",
@@ -123,12 +89,48 @@
         "node": "b96",
         "port": 0
       },
-      "color": "#3498db"
+      "color": "#f39c12"
     },
     {
       "id": "c102",
       "from": {
         "node": "b96",
+        "port": 0
+      },
+      "to": {
+        "node": "b97",
+        "port": 0
+      },
+      "color": "#f1c40f"
+    },
+    {
+      "id": "c103",
+      "from": {
+        "node": "b97",
+        "port": 0
+      },
+      "to": {
+        "node": "b98",
+        "port": 0
+      },
+      "color": "#2ecc71"
+    },
+    {
+      "id": "c104",
+      "from": {
+        "node": "b98",
+        "port": 0
+      },
+      "to": {
+        "node": "b99",
+        "port": 0
+      },
+      "color": "#3498db"
+    },
+    {
+      "id": "c105",
+      "from": {
+        "node": "b99",
         "port": 0
       },
       "to": {
@@ -138,9 +140,9 @@
       "color": "#6c5ce7"
     },
     {
-      "id": "c103",
+      "id": "c106",
       "from": {
-        "node": "b96",
+        "node": "b99",
         "port": 0
       },
       "to": {

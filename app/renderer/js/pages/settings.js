@@ -5,6 +5,20 @@ import { captureSettingsPanel } from './capture.js';
 
 let portsData = null;
 
+// App theme: only UI colours change (CSS variables in app.css). Popped out panels follow it too.
+export const THEMES = [['dark', 'Dark'], ['light', 'White'], ['mono', 'Monochrome']];
+export function applyTheme(t = state.settings.theme) {
+  const theme = THEMES.some(([v]) => v === t) ? t : 'dark';
+  const docs = new Set([document]);
+  for (const id of ['browser', 'inspector']) {
+    const p = themedPanels[id] || (themedPanels[id] = document.getElementById(id));
+    if (p) docs.add(p.ownerDocument);
+  }
+  for (const d of docs) if (d && d.documentElement) d.documentElement.dataset.theme = theme;
+}
+const themedPanels = {};
+bus.on('panelDock', () => applyTheme());
+
 export async function applySettings(s) {
   state.settings = Object.assign(state.settings, s);
   await window.tz.settings.set(s);
@@ -130,6 +144,7 @@ export function renderSettings() {
   const bd = el('div', { class: 'panel' }, grid);
   el('h3', {}, bd, '<i class="ic ic-board"></i>Board');
   el('p', {}, bd).textContent = 'How the pedalboard looks and works.';
+  srow(bd, 'App theme', 'Changes the app colours only. Pedals, amps and cables keep their look.', seg(THEMES, s.theme || 'dark', (t) => { applyTheme(t); applySettings({ theme: t }); }));
   srow(bd, 'Signal flow', 'Real pedals take their input on the right. Pick Left to right to flip every jack.', seg([[false, 'Realistic (right to left)'], [true, 'Left to right']], !!s.flowLeftToRight, (x) => { applySettings({ flowLeftToRight: x }); bus.emit('rebuildBoard'); }));
   srow(bd, 'Snap to grid', '', toggle(s.snap !== false, (x) => applySettings({ snap: x })));
   srow(bd, 'Show DSP load on each block', '', toggle(s.showLoad !== false, (x) => applySettings({ showLoad: x })));

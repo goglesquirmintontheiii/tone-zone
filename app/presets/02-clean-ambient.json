@@ -27,7 +27,9 @@
       "type": "cab.1x12us",
       "x": -1016,
       "y": 60,
-      "params": {},
+      "params": {
+        "level": -2.7
+      },
       "bypass": false,
       "variant": "mono"
     },

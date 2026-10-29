@@ -3,7 +3,7 @@
   "name": "Boutique Board",
   "blocks": [
     {
-      "id": "b77",
+      "id": "b80",
       "type": "sy.fairfax",
       "x": -128,
       "y": 120,
@@ -12,7 +12,7 @@
       "variant": "mono"
     },
     {
-      "id": "b78",
+      "id": "b81",
       "type": "sy.riverside",
       "x": -422,
       "y": 120,
@@ -21,7 +21,7 @@
       "variant": "mono"
     },
     {
-      "id": "b79",
+      "id": "b82",
       "type": "amp.ac30",
       "x": -952,
       "y": 0,
@@ -30,16 +30,18 @@
       "variant": "mono"
     },
     {
-      "id": "b80",
+      "id": "b83",
       "type": "cab.2x12blue",
       "x": -1422,
       "y": 120,
-      "params": {},
+      "params": {
+        "level": -3.2
+      },
       "bypass": false,
       "variant": "mono"
     },
     {
-      "id": "b81",
+      "id": "b84",
       "type": "sy.elcap",
       "x": -1716,
       "y": 120,
@@ -48,7 +50,7 @@
       "variant": "stereo"
     },
     {
-      "id": "b82",
+      "id": "b85",
       "type": "sy.bluesky",
       "x": -2010,
       "y": 120,
@@ -73,52 +75,16 @@
   ],
   "cables": [
     {
-      "id": "c83",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b77",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c84",
-      "from": {
-        "node": "b77",
-        "port": 0
-      },
-      "to": {
-        "node": "b78",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c85",
-      "from": {
-        "node": "b78",
-        "port": 0
-      },
-      "to": {
-        "node": "b79",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
       "id": "c86",
       "from": {
-        "node": "b79",
+        "node": "__in",
         "port": 0
       },
       "to": {
         "node": "b80",
         "port": 0
       },
-      "color": "#2ecc71"
+      "color": "#e8473d"
     },
     {
       "id": "c87",
@@ -130,7 +96,7 @@
         "node": "b81",
         "port": 0
       },
-      "color": "#3498db"
+      "color": "#f39c12"
     },
     {
       "id": "c88",
@@ -142,24 +108,60 @@
         "node": "b82",
         "port": 0
       },
-      "color": "#6c5ce7"
+      "color": "#f1c40f"
     },
     {
       "id": "c89",
       "from": {
-        "node": "b81",
+        "node": "b82",
+        "port": 0
+      },
+      "to": {
+        "node": "b83",
+        "port": 0
+      },
+      "color": "#2ecc71"
+    },
+    {
+      "id": "c90",
+      "from": {
+        "node": "b83",
+        "port": 0
+      },
+      "to": {
+        "node": "b84",
+        "port": 0
+      },
+      "color": "#3498db"
+    },
+    {
+      "id": "c91",
+      "from": {
+        "node": "b84",
+        "port": 0
+      },
+      "to": {
+        "node": "b85",
+        "port": 0
+      },
+      "color": "#6c5ce7"
+    },
+    {
+      "id": "c92",
+      "from": {
+        "node": "b84",
         "port": 1
       },
       "to": {
-        "node": "b82",
+        "node": "b85",
         "port": 1
       },
       "color": "#6c5ce7"
     },
     {
-      "id": "c90",
+      "id": "c93",
       "from": {
-        "node": "b82",
+        "node": "b85",
         "port": 0
       },
       "to": {
@@ -169,9 +171,9 @@
       "color": "#e84393"
     },
     {
-      "id": "c91",
+      "id": "c94",
       "from": {
-        "node": "b82",
+        "node": "b85",
         "port": 1
       },
       "to": {

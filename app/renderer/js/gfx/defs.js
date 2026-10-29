@@ -129,5 +129,5 @@ export function installDefs(defs) {
   lin(defs, 'g-tubePlate', [[0, '#25272b'], [0.28, '#6e737b'], [0.5, '#3b3e44'], [0.76, '#868c94'], [1, '#26282c']], 0, 0, 1, 0);
   lin(defs, 'g-tubeGetter', [[0, '#e3e7ec'], [0.35, '#8c939b'], [0.7, '#3d4147', 0.85], [1, '#3d4147', 0]]);
   lin(defs, 'g-tubeBase', [[0, '#120d0a'], [0.3, '#4d3d2e'], [0.55, '#2b221b'], [1, '#100b08']], 0, 0, 1, 0);
-  rad(defs, 'g-tubeHalo', [[0, '#ffb35e', 0.6], [0.55, '#ff7a26', 0.18], [1, '#ff6a1a', 0]]);
+  rad(defs, 'g-tubeHalo', [[0, '#ffd78a', 0.95], [0.45, '#ff9636', 0.5], [1, '#ff6a1a', 0]]);
 }

@@ -1,6 +1,6 @@
 // Builds the factory presets from the specs in scripts/preset-specs.js inside the running app, so block sizes,
 // port counts and knob ranges come from the real catalog (plugin blocks included).
-// usage: node scripts/build-presets.js [--only file-prefix] [--check]
+// usage: node scripts/build-presets.js [--only file-prefix] [--check] [--levels levels.json [--target LUFS]]
 //
 // Spec:
 //   { file, name, tags, desc,
@@ -17,17 +17,20 @@ const fs = require('fs');
 (async () => {
   const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
   const check = process.argv.includes('--check');
-  // level matching: measured levels (from preset-check.js) → trim each rig's cab mics towards a common loudness
+  // level matching: measured loudness (LUFS, from preset-check.js levels.json) → per-preset output trims (dB) so
+  // every preset plays at the same loudness. Trims go on the cab level; what doesn't fit (or rigs without a cab)
+  // goes on a gain block at the end of the chain. make-presets.js reads the same trims file for 01-09.
+  const TARGET = process.argv.includes('--target') ? +process.argv[process.argv.indexOf('--target') + 1] : -14;
   const lvPath = process.argv.includes('--levels') ? process.argv[process.argv.indexOf('--levels') + 1] : null;
   const measured = lvPath ? JSON.parse(fs.readFileSync(lvPath, 'utf8')) : {};
   const prevTrim = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'preset-trims.json'), 'utf8')); } catch { return {}; } })();
   const trims = Object.assign({}, prevTrim);
   for (const [f, lv] of Object.entries(measured)) {
-    if (!/^[gsxmrta]\d/.test(f)) continue;
-    const target = /lead/.test(f) ? -13 : -15;
-    trims[f] = Math.max(-12, Math.min(12, Math.round(((prevTrim[f] || 0) + (target - lv)) * 2) / 2));
+    const t = Math.max(-30, Math.min(24, Math.round(((prevTrim[f] || 0) + (TARGET - lv)) * 10) / 10));
+    if (t) trims[f] = t;
+    else delete trims[f];
   }
-  fs.writeFileSync(path.join(__dirname, 'preset-trims.json'), JSON.stringify(trims, null, 1));
+  if (lvPath) fs.writeFileSync(path.join(__dirname, 'preset-trims.json'), JSON.stringify(Object.fromEntries(Object.entries(trims).sort()), null, 1));
   const specs = require('./preset-specs.js').filter((s) => !only || s.file.startsWith(only));
   const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'] });
   const win = await app.firstWindow();
@@ -79,12 +82,23 @@ const fs = require('fs');
       };
       const edges = [];
       let rows;
+      // output trim: on the cab level (0 dB by default, range -24..12); the rest on a gain block at the end
+      const isCab = (it) => { const d = C.getDef(Array.isArray(it) ? it[0] : it); return !!(d && d.cabMics); };
+      const hasCab = spec.chain ? spec.chain.some(isCab) : Object.values(spec.nodes).some(isCab);
+      const cabTrim = hasCab ? Math.max(-24, Math.min(12, spec.trimDb || 0)) : 0;
+      const restTrim = +((spec.trimDb || 0) - cabTrim).toFixed(1);
+      if (restTrim && !spec.chain) problems.push(`${spec.file}: no place for ${restTrim} dB trim`);
       if (spec.chain) {
-        const keys = spec.chain.map((it, i) => add('n' + i, it));
+        const items = spec.chain.slice();
+        // the gain block goes before a level meter at the end, so the meter shows the final level
+        if (restTrim) items.splice([].concat(items[items.length - 1])[0] === 'tz.meter' ? items.length - 1 : items.length, 0, ['@trim']);
+        const keys = [];
         // stereo once a block outputs stereo; 'both' blocks downstream follow
         let st = false;
         let prev = 'in';
-        for (const k of keys) {
+        for (const it of items) {
+          const k = add('n' + keys.length, [].concat(it)[0] !== '@trim' ? it : [st ? 'ut.width' : 'ut.gain', { '=level': restTrim }]);
+          keys.push(k);
           const N = nodes[k];
           if (N.d && N.d.stereo === 'both' && !N.o.variant) N.b.variant = st && N.d.baseForm !== 'cab' && !/^(Amp|Bass Amp|Preamp|Overdrive|Distortion|Fuzz|Boost|Wah|Dynamics)$/.test(N.d.cat) ? 'stereo' : N.o.stereo ? 'stereo' : 'mono';
           edges.push([prev, k]);
@@ -175,17 +189,7 @@ const fs = require('fs');
         const k = Math.max(1, Math.min(outs, ins));
         for (let p = 0; p < k; p++) cables.push({ id: 'c' + ++n, from: { node: id(a), port: p }, to: { node: id(b), port: p }, color: p ? COLORS[ci++ % COLORS.length] : color });
       }
-      if (spec.trimDb) {
-        let applied = false;
-        for (const k of order) {
-          const N = nodes[k];
-          if (N.d && N.d.cabMics) {
-            N.b.params.level = Math.max(-24, Math.min(12, +((N.b.params.level || 0) + spec.trimDb).toFixed(1)));
-            applied = true;
-          }
-        }
-        if (!applied) problems.push(`${spec.file}: no cab to apply ${spec.trimDb} dB trim`);
-      }
+      if (cabTrim) for (const k of order) if (nodes[k].d && nodes[k].d.cabMics) nodes[k].b.params.level = Math.max(-24, Math.min(12, +((nodes[k].b.params.level || 0) + cabTrim).toFixed(1)));
       return { version: 1, name: spec.name, tags: spec.tags || [], desc: spec.desc || '', factory: true, order: spec.order || 0, blocks, cables, view: null };
     };
     const res = specs.map((s) => ({ file: s.file, preset: build(s) }));

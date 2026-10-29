@@ -33,6 +33,11 @@ export class Editor {
     this.tip = document.createElement('div');
     this.tip.id = 'valueTip';
     document.body.appendChild(this.tip);
+    // never leave a value tip behind (lost pointerup, tab switch, window change)
+    const dropTip = () => { if (!this.drag || this.drag.kind !== 'ctl') this.hideTip(); };
+    bus.on('tab', () => this.hideTip());
+    window.addEventListener('blur', () => this.hideTip());
+    document.addEventListener('visibilitychange', () => this.hideTip());
     this.bind();
     bus.on('preset:changed', ({ keepView }) => this.rebuild(keepView));
     bus.on('block:added', (b) => this.addView(b, true));
@@ -45,6 +50,7 @@ export class Editor {
     bus.on('bypass', ({ id }) => this.views.get(id)?.setBypassVisual());
     bus.on('selection', () => this.views.forEach((v) => v.updateSelection()));
     this.boardView = document.getElementById('view-board');
+    this.board.addEventListener('pointerleave', dropTip);
     // a timer, not rAF: a rAF loop that never stops forces a BeginMainFrame every vsync
     setInterval(() => this.frame(), 45); // ~22 Hz, so LEDs, screens and meters repaint in the same frame
   }
@@ -72,6 +78,7 @@ export class Editor {
       this.committed = { x, y, z };
     }
     document.getElementById('zoomVal').textContent = Math.round(z * 100) + '%';
+    if (this._tipAt && !(this.drag && this.drag.kind === 'ctl') && performance.now() - this._tipAt > 80) this.hideTip();
     const grid = Math.max(4, 40 * z);
     const gEl = this.gridEl || (this.gridEl = document.getElementById('boardGrid'));
     if (gEl) {
@@ -92,8 +99,13 @@ export class Editor {
   // ------------------------------------------------------------ level of detail
   // Big boards: when zoomed out (or while moving), each block is drawn as one bitmap instead of
   // hundreds of SVG shapes, so panning and zooming don't re-rasterise the whole board.
+  // bitmaps only below 50% (as shown in the zoom box); at 50% and up it's always live SVG
   lodWanted() {
-    return this.view.z < 0.5 || (this._moving && this.views.size >= 12);
+    return Math.round(this.view.z * 100) < 50;
+  }
+  boardShown() {
+    const r = this.board.getBoundingClientRect();
+    return r.width >= 50 && r.height >= 50;
   }
   lodScale() {
     const t = this.view.z * Math.min(2, window.devicePixelRatio || 1);
@@ -107,7 +119,7 @@ export class Editor {
     // cable shadows are big soft strokes, skip them when zoomed far out
     const farOut = this.view.z < 0.45;
     if (this._shadowsOff !== farOut) { this._shadowsOff = farOut; this.layerShadows.style.display = farOut ? 'none' : ''; }
-    const prewarm = this.views.size >= 12; // so a pan can switch to bitmaps right away
+    const prewarm = this.views.size >= 12 && this.view.z < 0.6; // so zooming out can switch right away
     for (const v of this.views.values()) {
       if (want) v.setLOD(true); // shows the bitmap if there is one, even if slightly stale
       else v.setLOD(false);
@@ -121,6 +133,8 @@ export class Editor {
     const step = async () => {
       // don't compete with an active drag; visible blocks first
       if (this.drag && this.drag.kind === 'node') { setTimeout(step, 120); return; }
+      // a hidden board (other tab open) snapshots as blank, so wait until it's shown again
+      if (!this.boardShown()) { this._lodPumping = false; return; }
       const scale = this.lodScale(), want = this.lodWanted();
       const r = this._vr || this.board.getBoundingClientRect();
       const { x, y, z } = this.view;
@@ -209,6 +223,7 @@ export class Editor {
       return;
     }
     this._pendingView = false;
+    this._lodKey = null; // bitmaps were put off while hidden
     const sv = state.preset.view;
     if (sv && this.viewShowsContent(sv, r)) {
       this.view = { ...sv };
@@ -238,6 +253,24 @@ export class Editor {
       v.g.classList.add('appear');
       setTimeout(() => v.g.classList.remove('appear'), 450);
     }
+  }
+  // turn blocks 90 degrees around their own centre
+  rotateBlocks(ids, delta = 90) {
+    ids = ids.filter((id) => !id.startsWith('__') && this.views.has(id));
+    if (!ids.length) return;
+    commitNow();
+    for (const id of ids) {
+      const v = this.views.get(id), b = v.block;
+      const cx = b.x + v.w / 2, cy = b.y + v.h / 2;
+      b.rot = ((((b.rot || 0) + delta) % 360) + 360) % 360;
+      if (!b.rot) delete b.rot;
+      v.render();
+      v.setBypassVisual();
+      v.setPosition(Math.round(cx - v.w / 2), Math.round(cy - v.h / 2));
+    }
+    this.coupleAfterMove(ids);
+    this.drawCables();
+    markDirty();
   }
   rerenderNode(id) {
     const v = this.views.get(id);
@@ -377,40 +410,66 @@ export class Editor {
   }
 
   // ------------------------------------------------------------ male couplers
-  // every open plug end of a male coupler and every free side jack it could plug into
+  // every open plug end of a male coupler and every free side jack it could plug into.
+  // A pair whose sides don't face each other gets `rot`: how far the coupler would have to turn.
   couplePairs(moved) {
     const busy = new Set();
     for (const c of state.preset.cables) { busy.add(c.from.node + ':o' + c.from.port); busy.add(c.to.node + ':i' + c.to.port); }
     const ends = [], jacks = [];
     for (const v of this.views.values()) {
       for (const j of v.jacks || []) {
-        if (j.side !== 'left' && j.side !== 'right') continue;
+        const n = SIDE_N[j.side];
+        if (!n) continue;
         if (/^[io]c/.test(j.key)) continue;
         const kind = j.kind || jackKindOf(v.def, j.key);
         if (!kindsCompatible(kind, 'inst')) continue;
-        const rec = { v, j, x: v.block.x + j.x, y: v.block.y + j.y, n: j.side === 'left' ? -1 : 1, busy: busy.has(v.block.id + ':' + j.key) };
+        const rec = { v, j, x: v.block.x + j.x, y: v.block.y + j.y, n, busy: busy.has(v.block.id + ':' + j.key) };
         (j.male ? ends : jacks).push(rec);
       }
     }
     const pairs = [];
     for (const e of ends)
       for (const k of jacks) {
-        if (k.v === e.v || k.n !== -e.n || k.j.key[0] === e.j.key[0]) continue;
+        if (k.v === e.v || k.j.key[0] === e.j.key[0]) continue;
         const em = moved.has(e.v.block.id), km = moved.has(k.v.block.id);
         if (em === km && moved.size) continue;
-        const tx = k.x + k.n * 6; // where a plug's collar meets the jack
-        pairs.push({ e, k, em, dx: tx - e.x, dy: k.y - e.y });
+        const tx = k.x + k.n[0] * SEAT, ty = k.y + k.n[1] * SEAT; // the coupler's end sits against the jack nut
+        const facing = k.n[0] === -e.n[0] && k.n[1] === -e.n[1];
+        const rot = facing ? 0 : ((angOf([-k.n[0], -k.n[1]]) - angOf(e.n)) % 360 + 360) % 360;
+        pairs.push({ e, k, em, rot, dx: tx - e.x, dy: ty - e.y });
       }
     return pairs;
   }
-  coupleSnap(moved) {
+  // can this coupler be turned to fit? only if it isn't held in place by its other end
+  coupleCanTurn(e, moved) {
+    const id = e.v.block.id;
+    if (moved.has(id)) return moved.size === 1;
+    return !state.preset.cables.some((c) => c.direct && (c.from.node === id || c.to.node === id));
+  }
+  coupleSnap(moved, turn = true) {
     let best = null;
     for (const p of this.couplePairs(moved)) {
       if (p.e.busy || p.k.busy) continue;
-      const d = Math.hypot(p.dx, p.dy);
-      if (d < 28 && (!best || d < best.d)) best = { d, ox: p.em ? p.dx : -p.dx, oy: p.em ? p.dy : -p.dy };
+      if (p.rot && (!turn || !this.coupleCanTurn(p.e, moved))) continue;
+      const d = Math.hypot(p.dx, p.dy) - (p.rot ? 0 : 6); // prefer ends that already face the jack
+      if (Math.hypot(p.dx, p.dy) < 28 && (!best || d < best.d)) best = { d, p, ox: p.em ? p.dx : -p.dx, oy: p.em ? p.dy : -p.dy };
+    }
+    if (best && best.p.rot) {
+      // turn the coupler around the end that's being plugged in, then measure again
+      const v = best.p.e.v, b = v.block, j0 = best.p.e;
+      b.rot = (((b.rot || 0) + best.p.rot) % 360 + 360) % 360;
+      if (!b.rot) delete b.rot;
+      v.render();
+      const j1 = v.jack(j0.j.key);
+      v.setPosition(Math.round(j0.x - j1.x), Math.round(j0.y - j1.y));
+      this.drawCables();
+      return this.coupleSnap(moved, false);
     }
     return best;
+  }
+  // couplers always draw above pedals so their plugs look pushed into the jacks
+  raiseCouplers() {
+    for (const v of this.views.values()) if (v.def.coupler) this.layerNodes.appendChild(v.g);
   }
   // after a move: link ends that touch a jack, unlink ones that were pulled apart
   coupleLinks(moved) {
@@ -422,13 +481,13 @@ export class Editor {
       const ja = a.jack('o' + c.from.port), jb = b.jack('i' + c.to.port);
       if (!ja || !jb) return false;
       const male = ja.male ? { v: a, j: ja } : { v: b, j: jb }, fem = ja.male ? { v: b, j: jb } : { v: a, j: ja };
-      const n = fem.j.side === 'left' ? -1 : 1;
-      return Math.hypot(fem.v.block.x + fem.j.x + n * 6 - (male.v.block.x + male.j.x), fem.v.block.y + fem.j.y - (male.v.block.y + male.j.y)) < 1.5;
+      const n = SIDE_N[fem.j.side] || [0, 0];
+      return Math.hypot(fem.v.block.x + fem.j.x + n[0] * SEAT - (male.v.block.x + male.j.x), fem.v.block.y + fem.j.y + n[1] * SEAT - (male.v.block.y + male.j.y)) < 1.5;
     };
     const keep = state.preset.cables.filter((c) => !c.direct || (!moved.has(c.from.node) && !moved.has(c.to.node)) || aligned(c));
     if (keep.length !== state.preset.cables.length) { state.preset.cables = keep; changed = true; }
     for (const p of this.couplePairs(moved)) {
-      if (p.e.busy || p.k.busy || Math.hypot(p.dx, p.dy) > 1.5) continue;
+      if (p.rot || p.e.busy || p.k.busy || Math.hypot(p.dx, p.dy) > 1.5) continue;
       const out = p.e.j.key[0] === 'o' ? p.e : p.k, inn = out === p.e ? p.k : p.e;
       state.preset.cables.push({ id: 'cd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), from: { node: out.v.block.id, port: +out.j.key.slice(1) }, to: { node: inn.v.block.id, port: +inn.j.key.slice(1) }, color: '#2d3436', direct: true });
       p.e.busy = p.k.busy = true;
@@ -436,9 +495,17 @@ export class Editor {
     }
     if (!changed) return;
     for (const v of this.views.values()) if (v.def.coupler) this.rerenderNode(v.block.id);
+    this.raiseCouplers();
     this.drawCables();
     bus.emit('cables');
     import('./state.js').then((m) => m.syncGraph());
+  }
+  // after blocks were rotated or moved by code: snap and relink couplers
+  coupleAfterMove(ids) {
+    const moved = new Set(ids);
+    const hit = this.coupleSnap(moved);
+    if (hit) for (const id of ids) { const v = this.views.get(id); if (v) v.setPosition(v.block.x + hit.ox, v.block.y + hit.oy); }
+    this.coupleLinks(moved);
   }
   addNear(type) {
     // find a free spot near the centre of the view so the new block doesn't land on top of another
@@ -498,12 +565,13 @@ export class Editor {
       if (!state.selection.has(id)) this.select([id], e.shiftKey || e.ctrlKey);
       const ids = [...state.selection];
       const starts = ids.map((i) => ({ id: i, x: blockById(i).x, y: blockById(i).y }));
-      this.drag = { kind: 'node', sx: w.x, sy: w.y, starts, moved: false };
+      this.drag = { kind: 'node', sx: w.x, sy: w.y, starts, moved: false, grab: id };
       // raise
       for (const i of ids) {
         const v = this.views.get(i);
         if (v) this.layerNodes.appendChild(v.g);
       }
+      this.raiseCouplers();
       return;
     }
     if (cableEl) {
@@ -1010,14 +1078,17 @@ export class Editor {
     this.tip.style.left = e.clientX + 'px';
     this.tip.style.top = e.clientY + 'px';
     this.tip.classList.add('show');
+    this._tipAt = performance.now();
   }
   tipText(e, s) {
     this.tip.textContent = s;
     this.tip.style.left = e.clientX + 'px';
     this.tip.style.top = e.clientY + 'px';
     this.tip.classList.add('show');
+    this._tipAt = performance.now();
   }
   hideTip() {
+    this._tipAt = 0;
     this.tip.classList.remove('show');
   }
 
@@ -1034,10 +1105,13 @@ export class Editor {
       if (!d.moved && Math.hypot(dx, dy) < 2) return;
       if (!d.moved) commitNow();
       d.moved = true;
+      // snap the grabbed block to the grid and move the rest by the same amount, so a group keeps its spacing
       const snap = state.settings.snap !== false ? 10 : 1;
+      const s0 = d.starts.find((s) => s.id === d.grab) || d.starts[0];
+      const sdx = Math.round((s0.x + dx) / snap) * snap - s0.x, sdy = Math.round((s0.y + dy) / snap) * snap - s0.y;
       for (const s of d.starts) {
         const v = this.views.get(s.id);
-        if (v) v.setPosition(Math.round((s.x + dx) / snap) * snap, Math.round((s.y + dy) / snap) * snap);
+        if (v) v.setPosition(s.x + sdx, s.y + sdy);
       }
       // couplers: pull the dragged blocks onto a nearby open plug end
       const hit = this.coupleSnap(new Set(d.starts.map((s) => s.id)));
@@ -1186,6 +1260,8 @@ export class Editor {
       const nb = duplicateBlocks([...state.selection]);
       this.select(nb.map((b) => b.id));
       e.preventDefault();
+    } else if (k === 'r' && !(e.ctrlKey || e.metaKey)) {
+      this.rotateBlocks([...state.selection], e.shiftKey ? -90 : 90);
     } else if (k === 'b') {
       for (const id of state.selection) {
         const b = blockById(id);
@@ -1216,6 +1292,7 @@ export class Editor {
   // ------------------------------------------------------------ animation loop for LEDs and screens
   frame() {
     const now = performance.now();
+    if (this._tipAt && now - this._tipAt > 1500 && !(this.drag && this.drag.kind === 'ctl')) this.hideTip();
     if (this.onTick) this.onTick(now);
     this._tickN = (this._tickN || 0) + 1;
     // plugin hooks (ramps, timers…) run for every block, on or off screen, on any tab
@@ -1243,7 +1320,7 @@ export class Editor {
       v.updateStatus(now);
     }
     // refresh stale bitmaps now and then (a knob or bypass changed)
-    if (now - (this._lodCheckT || 0) > 700 && (this.lodWanted() || this.views.size >= 12)) {
+    if (now - (this._lodCheckT || 0) > 700 && (this.lodWanted() || (this.views.size >= 12 && this.view.z < 0.6))) {
       this._lodCheckT = now;
       const sc = this.lodScale();
       for (const v of this.views.values()) if (!v.lodReady(sc)) this._lodQueue.add(v);
@@ -1278,12 +1355,17 @@ function altVal(p, pos) {
   return pos;
 }
 
+const SIDE_N = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
+const angOf = (n) => (Math.atan2(n[1], n[0]) * 180) / Math.PI;
+const SEAT = 3; // a plug end pushed in stops against the jack's nut, 3 units out
+
 function zOrder(b) {
   const d = getDef(b.type);
   if (!d) return 0;
   if (d.baseForm === 'cab') return 0;
   if (d.baseForm === 'amp') return 1;
   if (d.form === 'io') return 3;
+  if (d.coupler) return 4;
   return 2;
 }
 

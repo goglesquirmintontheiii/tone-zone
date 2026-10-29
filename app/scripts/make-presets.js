@@ -1,8 +1,9 @@
 // Generates the factory presets shipped with Tone Zone.
 const fs = require('fs');
 const path = require('path');
-const W = { compact: 146, nine: 150, mxr: 128, mxrw: 196, strymon: 204, strymonS: 128, amp: 440, combo: 440, cab4: 364, cab2: 380, cab1: 250, cab810: 270, rc500: 300, rc600: 620, tz: 150, rat: 150, pod: 184, treadle: 152, poly: 144, drop: 146, rack: 440, io: 150 };
+const W = { compact: 146, nine: 150, mxr: 128, mxrw: 196, strymon: 204, strymonS: 128, amp: 440, combo: 440, cab4: 364, cab2: 380, cab1: 250, cab810: 270, rc500: 300, rc600: 620, tz: 150, rat: 150, pod: 184, treadle: 152, poly: 144, drop: 146, rack: 440, io: 150, util: 118 };
 let n = 0;
+const lazy = (name, items, opts) => ({ name, items, opts });
 function chain(name, items, opts = {}) {
   // items: [{type, w, params, variant, stereo:true}], laid out right-to-left like a real pedalboard
   const blocks = [];
@@ -41,35 +42,35 @@ function chain(name, items, opts = {}) {
   return { version: 1, name, blocks, cables, view: null, factory: true, ...opts.extra };
 }
 const P = [];
-P.push(['01-welcome', chain('Welcome · Brit Crunch', [
+P.push(['01-welcome', lazy('Welcome · Brit Crunch', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'ib.ts9', w: W.nine, params: { gain: 0.3, tone: 0.55, level: 0.7 } },
   { type: 'amp.jcm800', w: 440, y: -120, params: { gain: 0.55, master: 0.5 } },
   { type: 'cab.4x12gb', w: 440, stack: true },
   { type: 'bx.rv6', w: W.compact, stereo: true, ins: 1, params: { mix: 0.3, decay: 0.45 } },
 ])]);
-P.push(['02-clean-ambient', chain('Clean Ambient Shimmer', [
+P.push(['02-clean-ambient', lazy('Clean Ambient Shimmer', [
   { type: 'bx.cs3', w: W.compact },
   { type: 'amp.deluxe', w: 440, tall: true, y: 0, params: { gain: 0.35 } },
   { type: 'cab.1x12us', w: W.cab1, y: 60 },
   { type: 'bx.ch1', w: W.compact, outs: 2 },
   { type: 'sy.cloudburst', w: W.strymonS, stereo: true, params: { mix: 0.45, decay: 0.7, ens: 1 } },
 ])]);
-P.push(['03-modern-metal', chain('Modern Metal (gated)', [
+P.push(['03-modern-metal', lazy('Modern Metal (gated)', [
   { type: 'bx.ns2', w: W.compact },
   { type: 'bx.mt2', w: W.compact, params: { gain: 0.35, level: 0.6 }, bypass: true },
   { type: 'amp.5150', w: 462, y: -120, params: { gain: 0.7, master: 0.45 } },
   { type: 'cab.4x12v30', w: 440, stack: true, stereo: true, outs: 2 },
 ])]);
-P.push(['04-bass-rig', chain('Bass · Grind & Fridge', [
+P.push(['04-bass-rig', lazy('Bass · Grind & Fridge', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'mx.m102', w: W.mxr },
   { type: 'pre.sansamp', w: W.tz, params: { gain: 0.35, blend: 0.65 } },
   { type: 'amp.svt', w: 506, y: -200 },
   { type: 'cab.8x10svt', w: 270, stack: true },
 ])]);
-P.push(['05-rig-x', chain('Rig X Express', [{ type: 'l6.podexpress', w: W.pod, outs: 2, params: { dist: 0.4, ampsel: 5, mod: 0.12, dly: 0.35, rev: 0.4 } }])]);
-P.push(['06-looper-jam', chain('Looper Jam', [
+P.push(['05-rig-x', lazy('Rig X Express', [{ type: 'l6.podexpress', w: W.pod, outs: 2, params: { dist: 0.4, ampsel: 5, mod: 0.12, dly: 0.35, rev: 0.4 } }])]);
+P.push(['06-looper-jam', lazy('Looper Jam', [
   { type: 'bx.tu3', w: W.compact },
   { type: 'bx.bd2', w: W.compact, params: { gain: 0.45 } },
   { type: 'amp.plexi', w: 470, y: -60 },
@@ -77,13 +78,13 @@ P.push(['06-looper-jam', chain('Looper Jam', [
   { type: 'bx.dd8', w: W.compact, stereo: true, ins: 1 },
   { type: 'bx.rc500', w: W.rc500, stereo: true },
 ])]);
-P.push(['07-drop-tune', chain('Drop Tune Chug', [
+P.push(['07-drop-tune', lazy('Drop Tune Chug', [
   { type: 'dt.drop', w: W.drop, params: { dsel: 1 } },
   { type: 'pc.rat2', w: W.rat, params: { gain: 0.55, tone: 0.45, level: 0.55 } },
   { type: 'amp.recto', w: 462, y: -120, params: { channel: 1, gain: 0.6 } },
   { type: 'cab.4x12v30', w: 440, stack: true },
 ])]);
-P.push(['08-boutique', chain('Boutique Board', [
+P.push(['08-boutique', lazy('Boutique Board', [
   { type: 'sy.fairfax', w: W.strymonS },
   { type: 'sy.riverside', w: W.strymon },
   { type: 'amp.ac30', w: 440, tall: true, y: 0 },
@@ -91,14 +92,30 @@ P.push(['08-boutique', chain('Boutique Board', [
   { type: 'sy.elcap', w: W.strymon, stereo: true, ins: 1 },
   { type: 'sy.bluesky', w: W.strymon, stereo: true },
 ])]);
-P.push(['09-wah-fuzz', chain('Wah into Fuzz', [
+P.push(['09-wah-fuzz', lazy('Wah into Fuzz', [
   { type: 'dn.gcb95', w: W.treadle, y: 80 },
   { type: 'tz.fuzzface', w: W.tz },
   { type: 'mx.m169', w: W.mxr },
   { type: 'amp.twin', w: 470, tall: true, y: 0, params: { gain: 0.4 } },
   { type: 'cab.2x12twin', w: W.cab2 },
 ])]);
+// loudness match (trims from build-presets.js --levels): on the cab level, or a gain block at the end of the chain
+const trims = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'preset-trims.json'), 'utf8')); } catch { return {}; } })();
+for (const e of P) {
+  const t = trims[e[0]] || 0;
+  if (!t) continue;
+  const items = e[1].items;
+  const cabs = items.filter((it) => it.type.startsWith('cab.'));
+  const onCab = cabs.length ? Math.max(-24, Math.min(12, t)) : 0;
+  for (const it of cabs) it.params = Object.assign({}, it.params, { level: onCab });
+  const rest = +(t - onCab).toFixed(1);
+  if (rest) {
+    const last = items[items.length - 1];
+    const st = last.stereo || last.outs === 2;
+    items.push(st ? { type: 'ut.width', w: W.util, stereo: true, params: { level: rest } } : { type: 'ut.gain', w: W.util, params: { level: rest } });
+  }
+}
 const dir = path.join(__dirname, '..', 'presets');
 fs.mkdirSync(dir, { recursive: true });
-for (const [f, p] of P) fs.writeFileSync(path.join(dir, f + '.json'), JSON.stringify(p, null, 2));
+for (const [f, c] of P) fs.writeFileSync(path.join(dir, f + '.json'), JSON.stringify(chain(c.name, c.items, c.opts), null, 2));
 console.log('wrote', P.length);

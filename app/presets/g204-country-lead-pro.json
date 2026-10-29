@@ -94,7 +94,8 @@
     "m2dist": 0.2,
     "_m2x": 0.645,
     "_m2y": 0.5,
-    "m2lvl": -3
+    "m2lvl": -3,
+    "level": -6.7
    },
    "bypass": false,
    "variant": "mono"

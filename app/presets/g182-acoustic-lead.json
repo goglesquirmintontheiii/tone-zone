@@ -70,16 +70,27 @@
    "variant": "mono"
   },
   {
+   "id": "b5",
+   "type": "ut.gain",
+   "x": -1070,
+   "y": 52,
+   "params": {
+    "level": -4.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
    "id": "__out",
    "type": "__out",
-   "x": -1122,
+   "x": -1310,
    "y": 19,
    "params": {}
   }
  ],
  "cables": [
   {
-   "id": "c5",
+   "id": "c6",
    "from": {
     "node": "__in",
     "port": 0
@@ -91,7 +102,7 @@
    "color": "#e8473d"
   },
   {
-   "id": "c6",
+   "id": "c7",
    "from": {
     "node": "b1",
     "port": 0
@@ -103,7 +114,7 @@
    "color": "#f39c12"
   },
   {
-   "id": "c7",
+   "id": "c8",
    "from": {
     "node": "b2",
     "port": 0
@@ -115,7 +126,7 @@
    "color": "#f1c40f"
   },
   {
-   "id": "c8",
+   "id": "c9",
    "from": {
     "node": "b3",
     "port": 0
@@ -127,28 +138,40 @@
    "color": "#2ecc71"
   },
   {
-   "id": "c9",
-   "from": {
-    "node": "b4",
-    "port": 0
-   },
-   "to": {
-    "node": "__out",
-    "port": 0
-   },
-   "color": "#3498db"
-  },
-  {
    "id": "c10",
    "from": {
     "node": "b4",
     "port": 0
    },
    "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
     "node": "__out",
     "port": 1
    },
-   "color": "#3498db"
+   "color": "#6c5ce7"
   }
  ],
  "view": null

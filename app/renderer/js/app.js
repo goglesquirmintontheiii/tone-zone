@@ -12,7 +12,7 @@ import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlock
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu } from './menus.js';
 import { refreshPacks, renderLibrary, importDialog } from './pages/library.js';
-import { renderSettings, sendEngineSettings, onPorts } from './pages/settings.js';
+import { renderSettings, sendEngineSettings, onPorts, applyTheme } from './pages/settings.js';
 import { renderCapture } from './pages/capture.js';
 import { renderPresets } from './pages/presets.js';
 import { refreshPresetList, openPreset, savePreset, step, updateTitle, showPresetMenu, localStorageSafeGet } from './presets.js';
@@ -21,6 +21,7 @@ let editor;
 
 async function boot() {
   state.settings = await window.tz.settings.get();
+  applyTheme();
   const info = await window.tz.app.info();
   state.appVersion = info.version;
   // thumbnail cache key: app version when packaged, session start in dev (art changes often)
@@ -79,6 +80,7 @@ function initTabs() {
     if (name === 'settings') renderSettings();
     if (name === 'capture') renderCapture();
     if (name === 'pi') import('./pages/pi.js').then((m) => m.renderPi()).catch((e) => console.error(e));
+    if (name === 'factory') import('./pages/factory.js').then((m) => m.renderFactory()).catch((e) => console.error(e));
     if (name === 'board') document.getElementById('board').focus({ preventScroll: true });
   };
   tabs.querySelectorAll('button').forEach((b) => (b.onclick = () => show(b.dataset.tab)));
@@ -339,6 +341,8 @@ function initNodeMenu() {
       if (!d.alwaysOn) items.push({ label: b.bypass ? 'Enable' : 'Bypass', icon: 'power', kbd: 'B', onClick: () => setBypass(id, !b.bypass) });
       if (canSwitchVariant(d)) items.push({ label: (b.variant || 'mono') === 'stereo' ? 'Switch to mono' : 'Switch to stereo', icon: 'cable', onClick: () => { setVariant(id, (b.variant || 'mono') === 'stereo' ? 'mono' : 'stereo'); editor.rerenderNode(id); } });
       if (d.recolor) items.push({ title: 'Colour' }, { swatches: CABLE_COLORS, onPick: (c) => setParam(id, 'jacket', c) }, { sep: true });
+      items.push({ label: 'Rotate right', icon: 'redo', kbd: 'R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], 90) });
+      items.push({ label: 'Rotate left', icon: 'undo', kbd: 'Shift+R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], -90) });
       items.push({ label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', onClick: () => editor.select(duplicateBlocks([...state.selection]).map((n) => n.id)) });
       items.push({ label: isFavorite(b.type) ? 'Remove from favourites' : 'Add to favourites', icon: 'star', onClick: () => toggleFavorite(b.type) });
       if (d.cabMics) items.push({ label: 'Add microphone', icon: 'mic', onClick: () => { import('./inspector.js').then((m) => { m.addMic(b); editor.select([id]); }); } });

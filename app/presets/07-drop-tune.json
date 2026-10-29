@@ -3,7 +3,7 @@
   "name": "Drop Tune Chug",
   "blocks": [
     {
-      "id": "b67",
+      "id": "b70",
       "type": "dt.drop",
       "x": -146,
       "y": 120,
@@ -14,7 +14,7 @@
       "variant": "mono"
     },
     {
-      "id": "b68",
+      "id": "b71",
       "type": "pc.rat2",
       "x": -386,
       "y": 120,
@@ -27,7 +27,7 @@
       "variant": "mono"
     },
     {
-      "id": "b69",
+      "id": "b72",
       "type": "amp.recto",
       "x": -938,
       "y": -120,
@@ -39,11 +39,13 @@
       "variant": "mono"
     },
     {
-      "id": "b70",
+      "id": "b73",
       "type": "cab.4x12v30",
       "x": -927,
       "y": 94,
-      "params": {},
+      "params": {
+        "level": -2.7
+      },
       "bypass": false,
       "variant": "mono"
     },
@@ -64,57 +66,57 @@
   ],
   "cables": [
     {
-      "id": "c71",
+      "id": "c74",
       "from": {
         "node": "__in",
         "port": 0
       },
       "to": {
-        "node": "b67",
+        "node": "b70",
         "port": 0
       },
       "color": "#e8473d"
     },
     {
-      "id": "c72",
+      "id": "c75",
       "from": {
-        "node": "b67",
+        "node": "b70",
         "port": 0
       },
       "to": {
-        "node": "b68",
+        "node": "b71",
         "port": 0
       },
       "color": "#f39c12"
     },
     {
-      "id": "c73",
+      "id": "c76",
       "from": {
-        "node": "b68",
+        "node": "b71",
         "port": 0
       },
       "to": {
-        "node": "b69",
+        "node": "b72",
         "port": 0
       },
       "color": "#f1c40f"
     },
     {
-      "id": "c74",
+      "id": "c77",
       "from": {
-        "node": "b69",
+        "node": "b72",
         "port": 0
       },
       "to": {
-        "node": "b70",
+        "node": "b73",
         "port": 0
       },
       "color": "#2ecc71"
     },
     {
-      "id": "c75",
+      "id": "c78",
       "from": {
-        "node": "b70",
+        "node": "b73",
         "port": 0
       },
       "to": {
@@ -124,9 +126,9 @@
       "color": "#3498db"
     },
     {
-      "id": "c76",
+      "id": "c79",
       "from": {
-        "node": "b70",
+        "node": "b73",
         "port": 0
       },
       "to": {

@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; script-src 'self'; connect-src 'self'" />
   <title>Tone Zone</title>
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/factory.css" />
 </head>
 <body>
     <!-- shared gradients and patterns, kept in their own svg so every tab can use them -->
@@ -25,6 +26,7 @@
         <button data-tab="board" class="active" title="Board"><i class="ic ic-board"></i><span>Board</span></button>
         <button data-tab="presets" title="Presets"><i class="ic ic-list"></i><span>Presets</span></button>
         <button data-tab="library" title="Library"><i class="ic ic-lib"></i><span>Library</span></button>
+        <button data-tab="factory" title="Pedal Factory"><i class="ic ic-factory"></i><span>Factory</span></button>
         <button data-tab="capture" title="Capture"><i class="ic ic-mic"></i><span>Capture</span></button>
         <button data-tab="pi" title="Raspberry Pi"><i class="ic ic-pi"></i><span>Pi</span></button>
         <button data-tab="plugins" title="Plugins"><i class="ic ic-plug"></i><span>Plugins</span></button>
@@ -107,6 +109,7 @@
       <section class="view" id="view-plugins"></section>
       <!-- LIBRARY -->
       <section class="view" id="view-library"></section>
+      <section class="view" id="view-factory"></section>
       <!-- RASPBERRY PI -->
       <section class="view" id="view-pi"></section>
       <!-- CAPTURE -->

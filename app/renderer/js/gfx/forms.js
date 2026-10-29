@@ -501,7 +501,9 @@ function drawTubes(ctx, groups) {
       const cx = start + i * (tw + D.gap) + tw / 2, r = tw / 2;
       // chrome socket ring and a warm reflection of the glow on it
       svg('rect', { x: cx - r - 1.6, y: -2.6, width: tw + 3.2, height: 3.4, rx: 1.1, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.3 }, g);
-      svg('ellipse', { cx, cy: -1.6, rx: r * 0.9, ry: 0.9, fill: '#ff8a2a', 'fill-opacity': 0.35 }, g);
+      const refl = svg('ellipse', { cx, cy: -1.6, rx: r * 1.1, ry: 1.2, fill: '#ffa040', 'fill-opacity': 0.6 }, g);
+      refl._k = 0.7;
+      ctx.tubeGlows.push(refl);
       const base = power ? -9.5 : -3.6;
       if (power) {
         // octal bakelite base with its key ridge
@@ -512,8 +514,12 @@ function drawTubes(ctx, groups) {
       const bottle = power
         ? `M${cx - r} ${base} L${cx - r} ${top + r * 2.6} C${cx - r} ${top + r * 1.15} ${cx - r * 0.66} ${top + r * 0.55} ${cx - r * 0.5} ${top + r * 0.12} Q${cx} ${top - 1.6} ${cx + r * 0.5} ${top + r * 0.12} C${cx + r * 0.66} ${top + r * 0.55} ${cx + r} ${top + r * 1.15} ${cx + r} ${top + r * 2.6} L${cx + r} ${base} Z`
         : `M${cx - r} ${base} L${cx - r} ${top + r} A${r} ${r} 0 0 1 ${cx + r} ${top + r} L${cx + r} ${base} Z`;
-      // warm haze inside the glass
-      svg('ellipse', { cx, cy: top + th * 0.6, rx: r * 1.05, ry: th * 0.34, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.5 }, g);
+      // bloom around the bottle and warm haze inside the glass (both flicker with the heater)
+      const bloom = svg('ellipse', { cx, cy: top + th * 0.55, rx: r * 2.6, ry: th * 0.72, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.55 }, g);
+      bloom._k = 0.85;
+      const haze = svg('ellipse', { cx, cy: top + th * 0.58, rx: r * 1.02, ry: th * 0.4, fill: 'url(#g-tubeHalo)', 'fill-opacity': 1 }, g);
+      haze._k = 1;
+      ctx.tubeGlows.push(bloom, haze);
       const py = top + th * (power ? 0.36 : 0.32), ph = th * (power ? 0.4 : 0.44);
       // support rods running through the micas
       svg('path', { d: `M${cx - r * 0.5} ${py - 3} V${py + ph + 2.5} M${cx + r * 0.5} ${py - 3} V${py + ph + 2.5}`, stroke: '#9aa1aa', 'stroke-width': 0.35, 'stroke-opacity': 0.8 }, g);
@@ -522,10 +528,12 @@ function drawTubes(ctx, groups) {
       for (const [px, pw] of plates) {
         svg('rect', { x: cx + px, y: py, width: pw, height: ph, rx: 0.5, fill: 'url(#g-tubePlate)', stroke: '#141518', 'stroke-width': 0.25 }, g);
         svg('rect', { x: cx + px + pw * 0.37, y: py + ph * 0.1, width: pw * 0.26, height: ph * 0.8, fill: '#0b0c0e' }, g);
-        const glow = svg('rect', { x: cx + px + pw * 0.42, y: py + ph * 0.18, width: pw * 0.16, height: ph * 0.64, rx: pw * 0.08, fill: '#ff9a3a', 'fill-opacity': 0.8 }, g);
-        ctx.tubeGlows.push(glow);
+        const glow = svg('rect', { x: cx + px + pw * 0.36, y: py + ph * 0.12, width: pw * 0.28, height: ph * 0.76, rx: pw * 0.12, fill: '#ffae4a', 'fill-opacity': 1 }, g);
+        glow._k = 1;
         // hottest spot of the filament
-        svg('rect', { x: cx + px + pw * 0.45, y: py + ph * 0.42, width: pw * 0.1, height: ph * 0.18, rx: pw * 0.05, fill: '#ffe2a8', 'fill-opacity': 0.75 }, g);
+        const hot = svg('rect', { x: cx + px + pw * 0.43, y: py + ph * 0.3, width: pw * 0.14, height: ph * 0.4, rx: pw * 0.07, fill: '#fff1c8', 'fill-opacity': 1 }, g);
+        hot._k = 1;
+        ctx.tubeGlows.push(glow, hot);
       }
       // silvered getter at the top
       const gd = power
@@ -534,6 +542,10 @@ function drawTubes(ctx, groups) {
       svg('path', { d: gd, fill: 'url(#g-tubeGetter)' }, g);
       // glass, exhaust tip and highlights
       svg('path', { d: bottle, fill: 'url(#g-tubeGlass)', stroke: '#e3ecf5', 'stroke-opacity': 0.5, 'stroke-width': 0.45 }, g);
+      // heater light showing through the glass
+      const shine = svg('ellipse', { cx, cy: top + th * 0.56, rx: r * 0.95, ry: th * 0.36, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.7 }, g);
+      shine._k = 0.75;
+      ctx.tubeGlows.push(shine);
       if (!power) svg('path', { d: `M${cx - 0.7} ${top + 0.2} L${cx} ${top - 1.5} L${cx + 0.7} ${top + 0.2} Z`, fill: '#cfd9e4', 'fill-opacity': 0.6 }, g);
       svg('path', { d: `M${cx - r * 0.58} ${top + r * (power ? 2.3 : 1.4)} L${cx - r * 0.58} ${base - 1.5}`, stroke: '#fff', 'stroke-opacity': 0.62, 'stroke-width': power ? 1 : 0.75, 'stroke-linecap': 'round', fill: 'none' }, g);
       svg('path', { d: `M${cx + r * 0.72} ${top + r * (power ? 2.6 : 1.6)} L${cx + r * 0.72} ${base - 2}`, stroke: '#fff', 'stroke-opacity': 0.22, 'stroke-width': 0.5, 'stroke-linecap': 'round', fill: 'none' }, g);

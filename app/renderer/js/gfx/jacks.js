@@ -6,8 +6,8 @@ import { label as text } from './controls.js';
 
 export const JACK_TIP = { inst: 6, trs: 6, phones: 6, ctrl: 6, mini: 4, xlr: 4, usb: 3, midi: 3 };
 export const PLUG_LENS = { inst: 44, trs: 44, phones: 30, ctrl: 40, mini: 22, xlr: 50, usb: 22, midi: 30 };
-// length of the metal sleeve that disappears into a jack when the plug is pushed in
-export const SLEEVE = { inst: 10, trs: 10, ctrl: 10, phones: 10 };
+// how far a plug sinks in when plugged: the 10 unit sleeve plus the jack's 3 unit threaded bushing
+export const SLEEVE = { inst: 13, trs: 13, ctrl: 13, phones: 13 };
 export const CABLE_WIDTH = { inst: 5.6, trs: 4.8, phones: 3.4, ctrl: 4.4, mini: 3.4, xlr: 7.8, usb: 4.2, midi: 5.2 };
 
 // side → transform mapping local frame (outward = -x, light from local -y) into board space
@@ -141,6 +141,12 @@ export function drawJack(parent, j, theme) {
   return g;
 }
 
+// the last bit of sleeve going into the jack's hole, so the plug reads as pushed in rather than floating
+function sleeveIn(g, S, r, fill) {
+  svg('rect', { x: S - 1.8, y: -r, width: 11.3 - S + 1.8, height: r * 2, fill, stroke: '#2b2f34', 'stroke-width': 0.3 }, g);
+  svg('rect', { x: S - 1.8, y: -r, width: 1.4, height: r * 2, fill: '#000', opacity: 0.45 }, g);
+}
+
 // ------------------------------------------------------------------ plugs (local frame: +x = outward from the jack)
 export function drawPlug(parent, j, color, kind = 'inst') {
   const ang = (Math.atan2(j.dy, j.dx) * 180) / Math.PI;
@@ -181,7 +187,7 @@ export function drawPlug(parent, j, color, kind = 'inst') {
       if (!S) {
         svg('rect', { x: 0, y: -3, width: 10, height: 6, rx: 1, fill: 'url(#g-plugGold)', stroke: '#2b2f34', 'stroke-width': 0.3 }, g);
         for (const x of [2.8, 5.6]) svg('rect', { x, y: -3, width: 0.8, height: 6, fill: '#111' }, g);
-      }
+      } else sleeveIn(g, S, 3, 'url(#g-plugGold)');
       svg('rect', { x: 9.5, y: -4.6, width: 12, height: 9.2, rx: 2.4, fill: '#25272c', stroke: '#0e0f11', 'stroke-width': 0.35 }, g);
       svg('rect', { x: 10, y: -4.1, width: 11, height: 2.6, rx: 1.3, fill: '#fff', opacity: 0.16 }, g);
       svg('rect', { x: 18.5, y: -4.6, width: 2, height: 9.2, fill: color }, g);
@@ -222,8 +228,11 @@ export function drawPlug(parent, j, color, kind = 'inst') {
         svg('rect', { x: 0, y: -3.9, width: 10, height: 7.8, rx: 1.2, fill: tip, stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
         svg('rect', { x: 3.2, y: -3.9, width: 1, height: 7.8, fill: '#000', opacity: 0.55 }, g);
         if (kind === 'trs' || kind === 'ctrl') svg('rect', { x: 6.4, y: -3.9, width: 0.9, height: 7.8, fill: '#000', opacity: 0.55 }, g);
-      }
-      svg('rect', { x: 9.5, y: -5.4, width: 3.2, height: 10.8, rx: 0.8, fill: '#5d636b', stroke: '#24272b', 'stroke-width': 0.35 }, g);
+      } else sleeveIn(g, S, 3.9, tip);
+      // collar: a bright flange where the sleeve meets the barrel
+      svg('rect', { x: 9.5, y: -5.4, width: 3.2, height: 10.8, rx: 1.2, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.35 }, g);
+      svg('rect', { x: 10.1, y: -5.4, width: 0.8, height: 10.8, fill: '#fff', opacity: 0.35 }, g);
+      svg('rect', { x: 11.9, y: -5.4, width: 0.6, height: 10.8, fill: '#000', opacity: 0.3 }, g);
       svg('rect', { x: 12.4, y: -5.9, width: 16, height: 11.8, rx: 1.6, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
       svg('rect', { x: 12.9, y: -5.4, width: 15, height: 3.2, rx: 1.2, fill: '#fff', opacity: 0.3 }, g);
       for (let x = 14; x < 27.5; x += 1.5) svg('rect', { x, y: -5.9, width: 0.55, height: 11.8, fill: '#000', opacity: 0.22 }, g);

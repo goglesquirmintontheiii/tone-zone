@@ -6,7 +6,7 @@
 // picture in metallic or flat ink. Per-block art params: `color` (body), `ink` (gold | silver | copper | #hex), `scene` (illustration),
 // `size` (n = 125B, w = wide, x = big Mako-style box, b = small).
 export default function register(tz) {
-  const { K, SEL, TOG, FOOT, LED, SLIDER, def, ten, db, ms, MONO, STEREO } = tz.helpers;
+  const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, def, ten, db, ms, MONO, STEREO } = tz.helpers;
   const { svg, label, shade, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ helpers
@@ -389,6 +389,142 @@ export default function register(tz) {
   const FU = (o) => def(Object.assign({ form: 'walrus-fund', brand: 'Walrus Audio', cost: 0.6 }, o, { controls: [...o.controls, FOOT(), LED({ color: '#ff3a24' })] }));
   const sl = (p, title, o = {}) => SLIDER(p, '', Object.assign({ title }, o));
 
+  // ------------------------------------------------------------------ Canvas utility series: black box with a band of
+  // 70s stripes. The tuner has a big colour screen and three small buttons along the right edge.
+  const STRIPES = ['#f1c453', '#e9892f', '#cf5a2c', '#8c3b2a'];
+  const canvasOwned = new WeakSet();
+  tz.addForm('walrus-canvas', (ctx, def) => {
+    const g = ctx.g, tuner = def.canvas === 'tuner';
+    const W = 112, H = tuner ? 206 : 150;
+    const txt = '#efe9dc';
+    formKit.body(g, W, H, '#161617', { rx: 6 });
+    const id = 'wac' + ++seq;
+    noisePattern(svg('defs', {}, g), id + 'n', 40, 64, [255, 255, 255], 0, 0.07, 0);
+    svg('rect', { width: W, height: H, rx: 6, fill: `url(#${id}n)` }, g);
+    def.controls.forEach((c) => { if (c.x === undefined && !c.hidden) canvasOwned.add(c); });
+    const own = def.controls.filter((c) => canvasOwned.has(c));
+    const band = (y) => STRIPES.forEach((col, i) => svg('rect', { x: 0, y: y + i * 3.4, width: W, height: 2.6, fill: col }, g));
+    if (tuner) {
+      own.filter((c) => c.t === 'screen').forEach((c) => Object.assign(c, { x: 50, y: 48, w: 78, h: 60, bezel: '#050505', bg: '#000' }));
+      own.filter((c) => c.t === 'button').forEach((c, i) => Object.assign(c, { x: W - 11, y: 31 + i * 22, r: 4, shape: 'rect', w: 7, h: 9, labelSize: 4.4, labelPos: 'above', color: '#2a2a2d' }));
+      own.filter((c) => c.t === 'foot').forEach((c) => Object.assign(c, { x: W / 2, y: H - 36, r: 12, style: 'stomp' }));
+      label(g, W / 2, 98, def.logo || def.name, { size: 14, fill: txt, font: "'Oswald', sans-serif", weight: 500, ls: 3 });
+      if (def.tagline) label(g, W / 2, 110, def.tagline, { size: 4.6, fill: STRIPES[0], weight: 700, ls: 1.6 });
+      band(118);
+      formKit.tzBadge(g, W / 2, H - 9, '#9b968c', 3.8);
+    } else {
+      const tg = own.filter((c) => c.t === 'toggle');
+      tg.forEach((c, i) => Object.assign(c, { x: W / 2 + (i - (tg.length - 1) / 2) * 32, y: 92, orient: 'v' }));
+      label(g, W / 2, 24, def.logo || def.name, { size: 14, fill: txt, font: "'Oswald', sans-serif", weight: 500, ls: 3 });
+      if (def.tagline) label(g, W / 2, 36, def.tagline, { size: 4.6, fill: STRIPES[0], weight: 700, ls: 1.4 });
+      band(44);
+      formKit.tzBadge(g, W / 2, H - 10, '#9b968c', 3.8);
+    }
+    const theme = { text: txt, knob: 'strymon', labelSize: 5.4, labelFont: "'Barlow Condensed', sans-serif", labelLs: 0.6, toggleTitles: true };
+    formKit.placeControls(ctx, def.controls, theme);
+    return { w: W, h: H, theme, jacks: tuner ? formKit.jacksTop(def, W, { flip: ctx.flip }) : formKit.jacksSide(def, W, { flip: ctx.flip, y0: 70, gap: 30 }) };
+  });
+
+  // colour themes for the tuner screen: background, text, accent
+  const CV_THEMES = [
+    ['CLASSIC', '#0b0b0d', '#f4efe4', '#e9a23b'], ['SUNSET', '#190d08', '#ffd7a3', '#ff6a2a'], ['OCEAN', '#06121b', '#cdeeff', '#3fb6ff'],
+    ['FOREST', '#0a130b', '#dff5d8', '#7bd36a'], ['ROSE', '#190a11', '#ffd9e6', '#ff5c93'], ['MONO', '#000000', '#ffffff', '#a8a8a8'],
+    ['AMBER', '#110b00', '#ffb000', '#ffb000'], ['DAYLIGHT', '#ebe5d8', '#1d1b19', '#c0502a'],
+  ];
+  const OK = '#3ddc84';
+  const { setA, setText } = tz.gfx;
+  tz.addScreen('canvas-tft', {
+    build(s, g, w, h) {
+      const T = (x, y, str, o = {}) => svg('text', { x, y, 'font-family': o.font || "'Barlow Condensed', sans-serif", 'font-size': o.size || 6, 'font-weight': o.weight || 700, 'text-anchor': o.anchor || 'middle', 'dominant-baseline': 'central' }, g, str);
+      s.bg = svg('rect', { width: w, height: h }, g);
+      s.frame = svg('rect', { x: 1.2, y: 1.2, width: w - 2.4, height: h - 2.4, rx: 2, fill: 'none', 'stroke-width': 1 }, g);
+      s.ref = T(5, 7, '', { anchor: 'start', size: 5 });
+      s.mode = T(w - 5, 7, '', { anchor: 'end', size: 5 });
+      s.note = T(w / 2 - 2, 26, '', { size: 22, font: "'Oswald', sans-serif", weight: 500 });
+      s.oct = T(w / 2 + 12, 32, '', { size: 6, anchor: 'start' });
+      s.flat = svg('path', { d: `M8 26 l7 -5 v10z` }, g);
+      s.sharp = svg('path', { d: `M${w - 8} 26 l-7 -5 v10z` }, g);
+      // needle scale: -50 to +50 cents
+      s.x0 = 8; s.x1 = w - 8;
+      s.scale = svg('g', {}, g);
+      for (let c = -50; c <= 50; c += 10) {
+        const x = s.x0 + ((c + 50) / 100) * (s.x1 - s.x0);
+        svg('rect', { x: x - 0.4, y: c === 0 ? 40 : c % 50 === 0 ? 41.5 : 42.5, width: 0.8, height: c === 0 ? 8 : c % 50 === 0 ? 5 : 3, class: 'tick' }, s.scale);
+      }
+      s.ptr = svg('path', { d: 'M0 39 l-2.6 -4 h5.2z M-0.7 39 h1.4 v9 h-1.4z' }, g);
+      // strobe band
+      s.strobe = svg('g', {}, g);
+      s.bars = [...Array(8)].map(() => svg('rect', { y: 40, width: 3.6, height: 8, rx: 0.6 }, s.strobe));
+      s.cents = T(w / 2, 54, '', { size: 5.4 });
+      // standby screen
+      s.idle = svg('g', {}, g);
+      STRIPES.forEach((col, i) => svg('rect', { x: 0, y: h / 2 + 4 + i * 3, width: w, height: 2.2, fill: col }, s.idle));
+      s.idleT = svg('text', { x: w / 2, y: h / 2 - 8, 'font-family': "'Oswald', sans-serif", 'font-size': 11, 'font-weight': 500, 'letter-spacing': 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, s.idle, 'EASEL');
+      s.idleS = svg('text', { x: w / 2, y: h - 8, 'font-family': "'Barlow Condensed', sans-serif", 'font-size': 5, 'font-weight': 700, 'letter-spacing': 1, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, s.idle, 'STANDBY');
+      s.live = [s.frame, s.ref, s.mode, s.note, s.oct, s.flat, s.sharp, s.scale, s.ptr, s.strobe, s.cents];
+      s.w = w;
+    },
+    update(s, st, nv, now) {
+      const ui = s.ui || {};
+      const [, bg, fg, ac] = CV_THEMES[ui.theme | 0] || CV_THEMES[0];
+      const dim = shade(fg, -0.55);
+      setA(s.bg, 'fill', bg);
+      const engaged = !nv.block.bypass;
+      setA(s.idle, 'opacity', engaged ? 0 : 1);
+      s.live.forEach((e) => setA(e, 'opacity', engaged ? 1 : 0));
+      if (!engaged) { setA(s.idleT, 'fill', fg); setA(s.idleS, 'fill', dim); return; }
+      const strobe = (ui.strobe ?? 0) > 0.5;
+      setText(s.ref, `A=${Math.round(ui.calib ?? 440)}`);
+      setText(s.mode, strobe ? 'STROBE' : 'NEEDLE');
+      [s.ref, s.mode].forEach((e) => setA(e, 'fill', dim));
+      setA(s.scale, 'opacity', strobe ? 0 : 1);
+      setA(s.strobe, 'opacity', strobe ? 1 : 0);
+      s.scale.querySelectorAll('.tick').forEach((e) => setA(e, 'fill', dim));
+      const tu = st.tuner || {};
+      if (!tu.note) {
+        setText(s.note, '-'); setA(s.note, 'fill', dim); setText(s.oct, ''); setText(s.cents, 'PLAY A NOTE'); setA(s.cents, 'fill', dim);
+        setA(s.ptr, 'opacity', 0); setA(s.flat, 'fill', 'none'); setA(s.sharp, 'fill', 'none');
+        setA(s.frame, 'stroke', shade(ac, -0.5));
+        s.bars.forEach((b) => setA(b, 'fill', 'none'));
+        return;
+      }
+      const c = tu.cents, ok = Math.abs(c) < 1.5, col = ok ? OK : ac;
+      setText(s.note, tu.note); setA(s.note, 'fill', ok ? OK : fg);
+      setText(s.oct, tu.octave ?? ''); setA(s.oct, 'fill', dim);
+      setText(s.cents, `${c >= 0 ? '+' : ''}${c.toFixed(1)} CENTS`); setA(s.cents, 'fill', col);
+      setA(s.flat, 'fill', c < -1.5 ? ac : shade(ac, -0.7));
+      setA(s.sharp, 'fill', c > 1.5 ? ac : shade(ac, -0.7));
+      if (strobe) {
+        setA(s.ptr, 'opacity', 0);
+        s.phase = ((s.phase || 0) + c * 0.004) % 8;
+        const span = s.x1 - s.x0;
+        s.bars.forEach((b, i) => {
+          const x = s.x0 + ((((i + s.phase) % 8) + 8) % 8) * ((span - 3.6) / 8);
+          setA(b, 'x', x.toFixed(1)); setA(b, 'fill', col);
+        });
+      } else {
+        const x = s.x0 + ((Math.max(-50, Math.min(50, c)) + 50) / 100) * (s.x1 - s.x0);
+        setA(s.ptr, 'opacity', 1); setA(s.ptr, 'transform', `translate(${x.toFixed(1)},0)`); setA(s.ptr, 'fill', col);
+      }
+      // tune assist: the border lights up (and blinks) once in tune
+      const assist = (ui.assist ?? 1) > 0.5;
+      setA(s.frame, 'stroke', assist && ok ? (now % 600 < 400 ? OK : shade(OK, -0.5)) : shade(ac, -0.5));
+    },
+  });
+  // UP / DOWN side buttons step the reference pitch (they flip a flag, the hook turns each change into a step)
+  const lastStep = new WeakMap();
+  tz.blockHooks('wa.canvastuner', {
+    status(view) {
+      const b = view.block, ui = tz.app.ui(b);
+      const cur = [ui._up ?? 0, ui._dn ?? 0];
+      const prev = lastStep.get(b);
+      lastStep.set(b, cur);
+      if (!prev) return;
+      const d = (cur[0] !== prev[0] ? 1 : 0) - (cur[1] !== prev[1] ? 1 : 0);
+      if (d) tz.app.setParam(b.id, 'calib', Math.max(435, Math.min(445, Math.round(ui.calib ?? 440) + d)));
+    },
+  });
+
   // ------------------------------------------------------------------ block builder
   const WA = (o) => def(Object.assign({ form: 'walrus-etch', brand: 'Walrus Audio', cost: 0.8 }, o, {
     controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff3a24' })])],
@@ -725,6 +861,40 @@ export default function register(tz) {
       ],
       derive: (p) => ({ 'r.mode': [0, 1, 6][p.rmode ?? 1] }),
       alwaysOn: true, initParams: { 'd.on': 1, 'r.on': 1 },
+    }),
+    // ---------------- Canvas utility series
+    def({
+      id: 'wa.canvastuner', name: 'Easel Tuner', ref: 'Walrus Audio Canvas Tuner', logo: 'EASEL', tagline: 'CHROMATIC TUNER', brand: 'Walrus Audio',
+      cat: 'Utility', kind: 'Utility', typeName: 'Colour screen tuner', form: 'walrus-canvas', canvas: 'tuner', cost: 0.2, noStd: true,
+      algo: 'tuner', opts: { mute: 1 }, ports: { ins: ['INPUT'], outs: ['OUTPUT'] },
+      controls: [
+        SEL('strobe', 'DISPLAY', ['NEEDLE', 'STROBE'], { virtual: true, hidden: true }),
+        SEL('theme', 'COLOR', CV_THEMES.map((t) => t[0]), { virtual: true, hidden: true }),
+        SEL('byp', 'BYPASS', ['TRUE', 'BUFFERED', 'MONITOR'], { virtual: true, hidden: true }),
+        TOG('assist', 'TUNE ASSIST', ['off', 'on'], { virtual: true, hidden: true, def: 1 }),
+        SEL('range', 'RANGE', ['GUITAR', 'BASS', 'AUTO'], { hidden: true, def: 2 }),
+        K('calib', 'REFERENCE', { min: 435, max: 445, def: 440, step: 1, hidden: true, display: (v) => Math.round(v) + ' Hz' }),
+        SCREEN('canvas-tft'),
+        BTN('MENU', { p: 'strobe', toggle: true, virtual: true, noInspector: true }),
+        BTN('UP', { p: '_up', toggle: true, virtual: true, noInspector: true }),
+        BTN('DOWN', { p: '_dn', toggle: true, virtual: true, noInspector: true }),
+        FOOT(),
+      ],
+      derive: (p) => ({ mute: (p.byp | 0) === 2 ? 0 : 1, mode: 0 }),
+      defaultBypass: true, tunerBlock: true,
+      desc: 'Press the switch to tune (the output mutes, or stays live in MONITOR bypass). MENU swaps the needle and strobe views, UP / DOWN set the reference pitch (435 to 445 Hz). Colour theme, bypass mode, range and tune assist (the screen border blinks once in tune) are in the inspector.',
+    }),
+    def({
+      id: 'wa.canvasmono', name: 'Easel Mono DI', ref: 'Walrus Audio Canvas Mono', logo: 'EASEL MONO', tagline: 'LINE ISOLATOR / D.I.', brand: 'Walrus Audio',
+      cat: 'Utility', kind: 'Utility', typeName: 'Passive DI / line isolator', form: 'walrus-canvas', canvas: 'di', cost: 0.05, alwaysOn: true, tags: ['di', 'isolator'],
+      algo: 'di', ports: { ins: ['INPUT'], outs: ['XLR OUT', 'THRU'] }, jackKinds: { o0: 'xlr' },
+      controls: [
+        TOG('pad', 'PAD', ['0', '-15'], { virtual: true }),
+        TOG('dimode', 'MODE', ['DI', 'LI'], { virtual: true }),
+        TOG('lift', 'GROUND', ['GND', 'LIFT']),
+      ],
+      derive: (p) => ({ pad: 0, level: (p.dimode ? 6 : 0) - (p.pad ? 15 : 0) }),
+      desc: 'Passive transformer box. DI mode takes an instrument to a balanced mic-level XLR; LI (line isolator) mode keeps line-level sources at full level. PAD drops 15 dB more for hot signals, GROUND lifts pin 1 against hum. THRU passes the input to your amp.',
     }),
     // ---------------- Fundamental series
     FU({ id: 'wa.fdrive', name: 'Basic Drive', ref: 'Walrus Audio Fundamental Drive', logo: 'BASIC', tagline: 'DRIVE', cat: 'Overdrive', accent: '#e58a3a',

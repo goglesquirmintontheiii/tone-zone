@@ -29,10 +29,11 @@ async function thumbPNG(layout) {
     cx.fillText('empty board', W / 2, H / 2);
     return c.toDataURL('image/png');
   }
-  const boxes = bl.map(([type, x, y, byp]) => {
+  const boxes = bl.map(([type, x, y, byp, rot]) => {
     const d = getDef(type);
     const sz = d ? sizeOf(d) : [120, 200];
-    return { d, x, y, w: sz[0], h: sz[1], byp };
+    const r = (((rot || 0) % 360) + 360) % 360, sw = r === 90 || r === 270;
+    return { d, x, y, w: sw ? sz[1] : sz[0], h: sw ? sz[0] : sz[1], fw: sz[0], fh: sz[1], byp, r };
   });
   const minX = Math.min(...boxes.map((b) => b.x)) - 30, minY = Math.min(...boxes.map((b) => b.y)) - 30;
   const maxX = Math.max(...boxes.map((b) => b.x + b.w)) + 30, maxY = Math.max(...boxes.map((b) => b.y + b.h)) + 30;
@@ -65,7 +66,14 @@ async function thumbPNG(layout) {
     }
     const url = await thumbURL(b.d, px);
     const im = url && (await loadImg(url));
-    if (im) cx.drawImage(im, X(b.x - 10), Y(b.y - 10), (b.w + 20) * sc, (b.h + 20) * sc);
+    if (im && b.r) {
+      // draw around the block's centre, rotated
+      cx.save();
+      cx.translate(X(b.x + b.w / 2), Y(b.y + b.h / 2));
+      cx.rotate((b.r * Math.PI) / 180);
+      cx.drawImage(im, (-b.fw / 2 - 10) * sc, (-b.fh / 2 - 10) * sc, (b.fw + 20) * sc, (b.fh + 20) * sc);
+      cx.restore();
+    } else if (im) cx.drawImage(im, X(b.x - 10), Y(b.y - 10), (b.w + 20) * sc, (b.h + 20) * sc);
     else { cx.fillStyle = b.d.color || '#444'; cx.fillRect(X(b.x), Y(b.y), b.w * sc, b.h * sc); }
   }
   cx.globalAlpha = 1;

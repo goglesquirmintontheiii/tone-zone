@@ -292,7 +292,7 @@ function listPresets() {
           saved: j.saved || 0,
           desc: j.desc || '',
           // compact layout for preset thumbnails
-          layout: { b: bl.map((b) => [b.type, Math.round(b.x), Math.round(b.y), b.bypass ? 1 : 0]), c: (j.cables || []).map((c) => [idx.has(c.from.node) ? idx.get(c.from.node) : -1, idx.has(c.to.node) ? idx.get(c.to.node) : -1]) },
+          layout: { b: bl.map((b) => [b.type, Math.round(b.x), Math.round(b.y), b.bypass ? 1 : 0, b.rot || 0]), c: (j.cables || []).map((c) => [idx.has(c.from.node) ? idx.get(c.from.node) : -1, idx.has(c.to.node) ? idx.get(c.to.node) : -1]) },
           types: [...new Set(bl.map((b) => b.type))],
         };
       } catch (_) {}

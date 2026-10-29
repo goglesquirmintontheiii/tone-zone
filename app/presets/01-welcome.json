@@ -41,7 +41,9 @@
       "type": "cab.4x12gb",
       "x": -916,
       "y": 94,
-      "params": {},
+      "params": {
+        "level": -3.2
+      },
       "bypass": false,
       "variant": "mono"
     },

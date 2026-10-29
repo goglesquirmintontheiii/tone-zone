@@ -46,7 +46,9 @@
       "type": "cab.8x10svt",
       "x": -1082,
       "y": 14,
-      "params": {},
+      "params": {
+        "level": 2.6
+      },
       "bypass": false,
       "variant": "mono"
     },
