@@ -186,7 +186,8 @@ public:
       for (int c = 0; c < C; ++c)
         for (int i = 0; i < n; ++i) bufA[c][i] = dry[c][i] * (1.f - m) + bufA[c][i] * m;
     }
-    for (int c = 0; c < nOut; ++c) std::memcpy(out[c], bufA[std::min(c, C - 1)].data(), sizeof(float) * n);
+    // extra outputs (XLR, phones, second pair) repeat the L/R pattern
+    for (int c = 0; c < nOut; ++c) std::memcpy(out[c], bufA[c % C].data(), sizeof(float) * n);
   }
   void controlTick() override
   {
