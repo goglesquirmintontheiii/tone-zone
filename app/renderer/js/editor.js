@@ -29,6 +29,7 @@ export class Editor {
     this.views = new Map();
     this.cableEls = new Map();
     this.view = { x: 0, y: 0, z: 0.8 };
+    this._lodQueue = new Set();
     this.tip = document.createElement('div');
     this.tip.id = 'valueTip';
     document.body.appendChild(this.tip);
@@ -80,6 +81,64 @@ export class Editor {
     }
     // don't save a view computed while the board was hidden
     if (state.preset && !this._pendingView) state.preset.view = { ...this.view };
+    if (fast) {
+      this._moving = true;
+      clearTimeout(this._moveEndT);
+      this._moveEndT = setTimeout(() => { this._moving = false; this.updateLOD(); }, 180);
+    }
+    this.updateLOD();
+  }
+
+  // ------------------------------------------------------------ level of detail
+  // Big boards: when zoomed out (or while the view moves) every block is drawn as one bitmap of itself instead of
+  // hundreds of live SVG shapes, so panning / zooming doesn't re-rasterise the whole board.
+  lodWanted() {
+    return this.view.z < 0.5 || (this._moving && this.views.size >= 12);
+  }
+  lodScale() {
+    const t = this.view.z * Math.min(2, window.devicePixelRatio || 1);
+    return t <= 0.3 ? 0.3 : t <= 0.5 ? 0.5 : t <= 0.75 ? 0.75 : 1;
+  }
+  updateLOD(force = false) {
+    const want = this.lodWanted(), scale = this.lodScale();
+    const key = want + ':' + scale + ':' + this.views.size;
+    if (!force && key === this._lodKey) return;
+    this._lodKey = key;
+    // cable shadows are big soft strokes: skip them when far out
+    const farOut = this.view.z < 0.45;
+    if (this._shadowsOff !== farOut) { this._shadowsOff = farOut; this.layerShadows.style.display = farOut ? 'none' : ''; }
+    const prewarm = this.views.size >= 12; // so a pan can switch to bitmaps right away
+    for (const v of this.views.values()) {
+      if (want) v.setLOD(true); // shows the bitmap if there is one (even if a little out of date)
+      else v.setLOD(false);
+      if ((want || prewarm) && !v.lodReady(scale)) this._lodQueue.add(v);
+    }
+    this.pumpLOD();
+  }
+  pumpLOD() {
+    if (this._lodPumping || !this._lodQueue.size) return;
+    this._lodPumping = true;
+    const step = async () => {
+      // don't compete with an active drag; visible blocks first
+      if (this.drag && this.drag.kind === 'node') { setTimeout(step, 120); return; }
+      const scale = this.lodScale(), want = this.lodWanted();
+      const r = this._vr || this.board.getBoundingClientRect();
+      const { x, y, z } = this.view;
+      const vis = (v) => v.block.x * z + x < r.width && (v.block.x + v.w) * z + x > 0 && v.block.y * z + y < r.height && (v.block.y + v.h) * z + y > 0;
+      let next = null;
+      for (const v of this._lodQueue) {
+        if (!this.views.has(v.block.id) || this.views.get(v.block.id) !== v || v.lodReady(scale)) { this._lodQueue.delete(v); continue; }
+        if (!next || (vis(v) && !vis(next))) next = v;
+        if (vis(v)) break;
+      }
+      if (!next) { this._lodPumping = false; return; }
+      this._lodQueue.delete(next);
+      await next.makeLOD(scale);
+      if (this.lodWanted()) next.setLOD(true);
+      const idle = window.requestIdleCallback || ((f) => setTimeout(f, 16));
+      idle(step, { timeout: 200 });
+    };
+    step();
   }
   toWorld(cx, cy) {
     const r = this.board.getBoundingClientRect();
@@ -135,6 +194,7 @@ export class Editor {
       this._pendingView = true;
       this.restoreView();
     }
+    this.updateLOD(true);
   }
   // Show the preset's saved view, or fit the board. While the board is hidden (preset loaded from another tab)
   // it has no size, so wait until it's visible again.
@@ -1178,8 +1238,16 @@ export class Editor {
     if (this._tickN % every) return;
     for (const v of this.views.values()) {
       const b = v.block;
+      if (v.lodOn) continue; // shown as a bitmap: nothing to animate
       if (b.x > wx1 || b.y > wy1 || b.x + (v.w || 200) < wx0 || b.y + (v.h || 200) < wy0) continue;
       v.updateStatus(now);
+    }
+    // refresh out-of-date bitmaps now and then (a knob or bypass changed)
+    if (now - (this._lodCheckT || 0) > 700 && (this.lodWanted() || this.views.size >= 12)) {
+      this._lodCheckT = now;
+      const sc = this.lodScale();
+      for (const v of this.views.values()) if (!v.lodReady(sc)) this._lodQueue.add(v);
+      this.pumpLOD();
     }
   }
 }

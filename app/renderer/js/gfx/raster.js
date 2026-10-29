@@ -55,7 +55,7 @@ export async function cacheSet(key, val) {
   if (!d) return;
   try { d.transaction('t', 'readwrite').objectStore('t').put(val, key); } catch {}
 }
-const VER = '4'; // bump to invalidate every cached thumbnail
+const VER = '5'; // bump to invalidate every cached thumbnail
 const waiting = new Map(); // key -> Promise
 const queue = [];
 let busy = 0;
@@ -91,13 +91,14 @@ function svgFor(d) {
   s.setAttribute('viewBox', vb.join(' '));
   let body = new XMLSerializer().serializeToString(g);
   const defs = collectDefs(body);
-  const css = "<style>text{font-family:'Inter','Barlow Condensed',sans-serif}</style>";
-  const svgText = `<svg xmlns="${SVGNS}" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${vb.join(' ')}" width="${vb[2]}" height="${vb[3]}">${css}<defs>${[...defs.values()].join('')}</defs>${body}</svg>`;
-  return { svgText, w: vb[2], h: vb[3] };
+  return { body, defs, vb };
 }
 
 async function rasterise(d, size) {
-  const { svgText, w, h } = svgFor(d);
+  const { body, defs, vb } = svgFor(d);
+  const fonts = await fontsFor(body);
+  const svgText = `<svg xmlns="${SVGNS}" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${vb.join(' ')}" width="${vb[2]}" height="${vb[3]}" font-family="Inter, sans-serif"><style>${fonts}</style><defs>${[...defs.values()].join('')}</defs>${body}</svg>`;
+  const w = vb[2], h = vb[3];
   const img = new Image();
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
   await img.decode();
@@ -178,4 +179,58 @@ export async function svgElementToURL(svgEl, w, h, scale = 1) {
   c.height = Math.round(h * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/png');
+}
+
+// ------------------------------------------------------------------ embedded fonts
+// An SVG drawn as an image can't see the page's @font-face fonts, so the ones a graphic uses are inlined.
+const FONT_FILES = {
+  Inter: [[400, 'inter-latin-400-normal'], [500, 'inter-latin-500-normal'], [600, 'inter-latin-600-normal'], [700, 'inter-latin-700-normal']],
+  'Barlow Condensed': [[500, 'barlow-condensed-latin-500-normal'], [700, 'barlow-condensed-latin-700-normal'], [800, 'barlow-condensed-latin-800-normal']],
+  Oswald: [[600, 'oswald-latin-600-normal'], [700, 'oswald-latin-700-normal']],
+  'Dancing Script': [[700, 'dancing-script-latin-700-normal']],
+  'Share Tech Mono': [[400, 'share-tech-mono-latin-400-normal']],
+};
+const fontCss = new Map(); // family -> Promise<css>
+function familyCss(fam) {
+  if (!fontCss.has(fam))
+    fontCss.set(fam, Promise.all(FONT_FILES[fam].map(async ([w, f]) => {
+      try {
+        const buf = await (await fetch(`fonts/${f}.woff2`)).arrayBuffer();
+        let bin = '';
+        const u8 = new Uint8Array(buf);
+        for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+        return `@font-face{font-family:'${fam}';font-weight:${w};src:url(data:font/woff2;base64,${btoa(bin)}) format('woff2')}`;
+      } catch { return ''; }
+    })).then((a) => a.join('')));
+  return fontCss.get(fam);
+}
+// the font families an SVG string refers to (Inter is the default for unstyled text)
+export async function fontsFor(svgText) {
+  const fams = ['Inter'];
+  for (const f of Object.keys(FONT_FILES)) if (f !== 'Inter' && svgText.includes(f)) fams.push(f);
+  return (await Promise.all(fams.map(familyCss))).join('');
+}
+
+// ------------------------------------------------------------------ live snapshots (board level of detail)
+// Draws a block's current graphic (its content group) to a bitmap and returns a blob URL plus the area it covers.
+export async function snapshotNode(content, scale) {
+  const bb = content.getBBox();
+  const pad = 2;
+  const x = Math.floor(bb.x - pad), y = Math.floor(bb.y - pad), w = Math.ceil(bb.width + pad * 2), h = Math.ceil(bb.height + pad * 2);
+  if (!(w > 0 && h > 0)) return null;
+  const body = new XMLSerializer().serializeToString(content);
+  const defs = collectDefs(body);
+  const fonts = await fontsFor(body);
+  const text = `<svg xmlns="${SVGNS}" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}" font-family="Inter, sans-serif"><style>${fonts}</style><defs>${[...defs.values()].join('')}</defs>${body}</svg>`;
+  const img = new Image();
+  img.src = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml' }));
+  try { await img.decode(); } finally { URL.revokeObjectURL(img.src); }
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * scale));
+  c.height = Math.max(1, Math.round(h * scale));
+  const cx = c.getContext('2d');
+  cx.imageSmoothingQuality = 'high';
+  cx.drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  return blob ? { url: URL.createObjectURL(blob), x, y, w, h } : null;
 }

@@ -6,6 +6,7 @@ import { state, uiParams, nodePorts, engineParamsFor } from './state.js';
 import { drawScreen } from './screens.js';
 import { drawLed } from './gfx/controls.js';
 import { setA, setText } from './gfx/fx.js';
+import { snapshotNode } from './gfx/raster.js';
 
 export function knobPos(c, v) {
   const min = c.min ?? 0, max = c.max ?? 1;
@@ -48,6 +49,14 @@ export class NodeView {
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
     this.g.dataset.node = this.block.id;
     const content = svg('g', {}, this.g);
+    this.content = content;
+    // level of detail: a bitmap of this block shown instead of the live vector graphic when zoomed out / moving
+    this.lodImg = svg('image', { display: 'none', 'pointer-events': 'none', preserveAspectRatio: 'none' }, this.g);
+    if (this._lodUrl) URL.revokeObjectURL(this._lodUrl);
+    this._lodUrl = null;
+    this._lodScale = 0;
+    this._lodDirty = true;
+    this.lodOn = false;
     // jack keys with something plugged in (couplers draw their plug tips only when free)
     const connected = new Set();
     if (d.coupler && state.preset) for (const c of state.preset.cables) { if (c.from.node === this.block.id) connected.add('o' + c.from.port); if (c.to.node === this.block.id) connected.add('i' + c.to.port); }
@@ -89,6 +98,40 @@ export class NodeView {
     this.setBypassVisual();
   }
 
+  // switch between the live graphic and its bitmap (only if the bitmap exists)
+  setLOD(on) {
+    on = on && !!this._lodUrl;
+    if (on === this.lodOn) return;
+    this.lodOn = on;
+    this.content.setAttribute('display', on ? 'none' : 'inline');
+    this.lodImg.setAttribute('display', on ? 'inline' : 'none');
+  }
+  lodReady(scale) {
+    return !!this._lodUrl && !this._lodDirty && this._lodScale >= scale - 1e-6;
+  }
+  async makeLOD(scale) {
+    if (this._lodBusy) return false;
+    this._lodBusy = true;
+    const wasOn = this.lodOn;
+    try {
+      // snapshot the live graphic (it must be displayed to measure it)
+      if (wasOn) this.content.setAttribute('display', 'inline');
+      this._lodDirty = false;
+      const snap = await snapshotNode(this.content, scale).catch(() => null);
+      if (wasOn && this.lodOn) this.content.setAttribute('display', 'none');
+      if (!snap) return false;
+      if (this._lodUrl) URL.revokeObjectURL(this._lodUrl);
+      this._lodUrl = snap.url;
+      this._lodScale = scale;
+      const im = this.lodImg;
+      im.setAttribute('x', snap.x); im.setAttribute('y', snap.y); im.setAttribute('width', snap.w); im.setAttribute('height', snap.h);
+      im.setAttribute('href', snap.url);
+      return true;
+    } finally {
+      this._lodBusy = false;
+    }
+  }
+
   setPosition(x, y) {
     this.block.x = x;
     this.block.y = y;
@@ -110,6 +153,7 @@ export class NodeView {
 
   // visual state of all controls from block params
   updateControls() {
+    this._lodDirty = true;
     const ui = uiParams(this.block);
     const alt = state.ui[this.block.id]?.alt;
     for (const [, { ctl: c, view }] of this.views) {
@@ -189,7 +233,7 @@ export class NodeView {
         return (U().sel ?? 0) === i ? true : null;
       }
       case 'fav':
-        return state.U()[b.id]?.favActive ? true : null;
+        return state.ui[b.id]?.favActive ? true : null;
       case 'tunerOk': {
         const t = st?.tuner;
         if (b.bypass || !t || !t.note) return null;
@@ -211,8 +255,8 @@ export class NodeView {
       case 'looper': {
         const L = st?.looper;
         if (!L) return null;
-        const cur = state.U()[b.id]?.current ?? 0;
-        const layer = state.U()[b.id]?.layer ?? 0;
+        const cur = state.ui[b.id]?.current ?? 0;
+        const layer = state.ui[b.id]?.layer ?? 0;
         if (parts[1] === 'rhythm') return L.rhythm ? true : null;
         if (parts[1] === 'any') return L.tracks.some((t) => t.state === 2 || t.state === 3) ? true : null;
         if (parts[1] === 'layer') return layer ? '#ff2a1a' : '#ffffff';
@@ -281,6 +325,7 @@ export class NodeView {
   }
 
   setBypassVisual() {
+    this._lodDirty = true;
     this.updateLeds();
     if (this.dim) setA(this.dim, 'opacity', this.block.bypass && !this.def.alwaysOn && !this.def.tunerBlock ? 0.1 : 0);
   }
