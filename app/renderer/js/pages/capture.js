@@ -134,7 +134,11 @@ function defaultName() {
   const chain = serialChain(p);
   if (S.part === 'part' && chain) {
     const a = p.blocks.find((b) => b.id === S.from), z = p.blocks.find((b) => b.id === S.to);
-    if (a && z) n += a === z ? ` (${blockName(a)})` : ` (${blockName(a)} to ${blockName(z)})`;
+    if (a && z) {
+      const full = n + (a === z ? ` (${blockName(a)})` : ` (${blockName(a)} to ${blockName(z)})`);
+      const count = chain.indexOf(S.to) - chain.indexOf(S.from) + 1;
+      n = full.length <= 60 ? full : `${n} (${count} block${count === 1 ? '' : 's'})`;
+    }
   }
   return n.slice(0, 60);
 }
