@@ -35,7 +35,7 @@ Tube / solid-state amplifier (or preamp with `opts.preamp: true`).
 
 **opts:** `opts.model` = one of the built-in models: deluxe twin bassman ac30 dc30 plexi jcm800 jubilee recto markiic 5150 slo dumble orange uber vh4 friedman hiwatt jc120 svt b15 gk800 ad200 markbass acoustic.
 `opts.models: [...]` = several channels (switch with the `channel` param); entries may be model names or voice objects.
-`opts.voice` = a new amp built from a base model: `{base, stages:[[gain,headroom,bias,lpHz,hpHz],...], gainPos, tsPos, tsType (0 FMV, 1 Baxandall, 2 top-boost, 3 bass/James), stack: "fender"|"bassman"|"marshall"|"mesa"|"vox"|"orange"|"peavey"|[R1,R2,R3,R4,C1,C2,C3], tsMakeup, brightHz, brightDb, power (0 none, 1 push-pull, 2 class A, 3 solid state), pwrH, sag, presHz, depthHz, nfb, otLp, otHp, tight, inHp, baxBass, baxMid, baxTreble, baxRange, drive (scales all stage gains), dark (octaves to darken the stage filters)}`. The block self-calibrates its output level.
+`opts.voice` = a new amp built from a base model: `{base, stages:[[gain,headroom,bias,lpHz,hpHz],...], gainPos, tsPos, tsType (0 FMV, 1 Baxandall, 2 top-boost, 3 bass/James), stack: "fender"|"bassman"|"marshall"|"mesa"|"vox"|"orange"|"peavey"|[R1,R2,R3,R4,C1,C2,C3], tsMakeup, brightHz, brightDb, power (0 none, 1 push-pull, 2 class A, 3 solid state), pwrH, sag, presHz, depthHz, nfb, otLp, otHp, tight, inHp, baxBass, baxMid, baxTreble, baxRange, drive (scales all stage gains), dark (octaves to darken the stage filters)}`. The block sets its own output level.
 
 | param | default | range |
 |---|---|---|
@@ -70,7 +70,7 @@ Clean / treble / mid boost.
 
 ## `cab`
 
-Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle, level, pan, polarity) – mixed into one IR per output, so extra mics cost no CPU.
+Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle, level, pan, polarity). The mics are mixed into one IR per output, so extra mics cost no CPU.
 
 **opts:** `opts.model` = built-in cab: 1x12us 2x12twin 4x10tweed 2x12blue 4x12gb 4x12v30 4x12t75 4x12uber 2x12cream 1x12open 4x12orange 2x12jc 8x10svt 4x10bass 1x15bass 2x10horn 4x12bass.
 `opts.cab` = a new cab voicing: `{hp, hpQ, resDb (low resonance), lp (cone break-up Hz), lpQ, open (open back), peaks: [[f, q, db], ...], seed (speaker detail), detail (dB of fine ripple)}`; `opts.cabs: [...]` several (param `model`). Mic params are `m1on m1type m1pos m1dist m1spk m1lvl m1pan m1phase m1axis` … `m4*` (the CAB builder maps the draggable mics to these).
@@ -548,7 +548,7 @@ Neural Amp Modeler (A1 / A2 / LSTM) player.
 
 ## `phaser`
 
-Phaser (2–12 stages, script / block logo modes).
+Phaser (2 to 12 stages, script / block logo modes).
 
 **opts:** `opts.stages`, `opts.style`.
 
@@ -753,7 +753,7 @@ Talk box (vowel formant filter, treadle or picking dynamics).
 
 ## `thru`
 
-Plain pass-through (placeholder for unavailable blocks; adapters).
+Plain pass-through (stands in for unavailable blocks, also used for adapters).
 
 | param | default | range |
 |---|---|---|

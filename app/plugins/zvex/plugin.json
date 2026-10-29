@@ -3,7 +3,7 @@
   "name": "ZVEX Effects",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by ZVEX Effects: hand-painted enclosures splashed with bright brush strokes and drips. A gated, sputtering five-knob fuzz, a dual distortion + boost, a gnarly bass fuzz with pinch control and a one-knob clean boost.",
+  "description": "Pedals inspired by ZVEX Effects: a gated five-knob fuzz, a distortion with boost, a bass fuzz and a one-knob clean boost.",
   "kind": "brand",
   "brand": "ZVEX",
   "main": "index.js",

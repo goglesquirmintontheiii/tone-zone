@@ -3,7 +3,7 @@
   "name": "Montreal Assembly",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Inspired by Montreal Assembly's buffer-mangling delay / sampler: three read heads with independent speed and direction, granular slices, a multi-head looper mode and a soft-switch hold (approximated with pitch, reverse delay, slicer and freeze blocks).",
+  "description": "Inspired by Montreal Assembly's buffer-mangling delay / sampler: three read heads with their own speed and direction, slices, a looper mode and a hold switch.",
   "kind": "brand",
   "brand": "Montreal Assembly",
   "main": "index.js",

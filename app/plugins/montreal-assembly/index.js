@@ -1,18 +1,15 @@
 // Built-in Tone Zone plugin: Montreal Assembly.
-// A block inspired by Montreal Assembly's buffer-mangling delay / sampler. Name and artwork are Tone Zone
-// originals; the control set (three read-head DIR knobs, LEN B / LEN S, FBK, RAND, MIX, M / Q / E switches, soft
-// switch) follows the real unit. The DSP is an approximation: pitch voices stand in for the read heads, a
-// reversible delay for the buffer (mode 1), a slicer for the granular slices (mode 2), a multi-head tape delay for
-// the looper (mode 3) and a freeze block for the soft-switch hold.
+// A block inspired by Montreal Assembly's buffer-mangling delay / sampler. Name and artwork are ours; the
+// controls follow the real unit. The DSP is a rough stand-in: pitch voices for the read heads, a reversible
+// delay (mode 1), a slicer (mode 2), a multi-head tape delay (mode 3) and a freeze block for the hold.
 // Custom "mta-count" enclosure: bone white, a row of bold Bauhaus-style counting blocks and tiny numerals.
 export default function register(tz) {
   const { K, TOG, FOOT, LED, def, ms, STEREO, MONO } = tz.helpers;
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once on shared control objects, so every control placed here is kept in `owned` and
+  // laid out again on each call. Art only goes in the gap between the last control row and the LEDs.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -63,8 +60,7 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher so the lever never hits them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -147,6 +143,6 @@ export default function register(tz) {
       else Object.assign(o, { 'd.mode': 2, 'd.heads': heads, 'p.on': 1, 'p.semis2': s2, 'p.semis3': s3, 'p.level1': 0.7, 'p.level2': heads > 1 ? 0.5 : 0, 'p.level3': heads > 3 ? 0.5 : 0 });
       return o;
     },
-    desc: 'M1: fixed-length buffer played back at DIR 1 speed / direction (centre = stop, left = reverse). M2: granular slices (LEN S, RAND). M3: multi-head looper with up to three read heads (E), each with its own DIR. Q quantises the speeds (chromatic / octaves & fifths / free). Hold SOFT to freeze. Approximation of the real buffer engine.',
+    desc: 'M1 plays a buffer at the DIR 1 speed (centre stops it, left reverses). M2 cuts it into slices (LEN S, RAND). M3 is a looper with up to three read heads (E), each with its own DIR. Q snaps the speeds to steps, and holding SOFT freezes the sound.',
   }));
 }

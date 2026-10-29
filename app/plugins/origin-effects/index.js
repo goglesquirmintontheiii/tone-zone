@@ -6,8 +6,8 @@ export default function register(tz) {
   const { K, TOG, FOOT, LED, def, ten } = tz.helpers;
   const { svg, label, formKit, noisePattern, shade } = tz.gfx;
   // ------------------------------------------------------------------ layout kit
-  // Forms run more than once and control objects are shared: every control a form places is remembered in `owned`
-  // and laid out again on each call.
+  // Forms run more than once on shared control objects, so every placed control is kept in `owned` and
+  // laid out again on each call.
   const owned = new WeakSet();
   let seq = 0;
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
@@ -60,7 +60,7 @@ export default function register(tz) {
     if (lack > 0) { H += Math.ceil(lack); L = layout(d, W, H, o); }
     return { L, H };
   }
-  // toggle titles printed by the form, a bit higher than the core does, so the lever never touches them
+  // the form prints toggle titles itself, a bit higher so the lever never hits them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }

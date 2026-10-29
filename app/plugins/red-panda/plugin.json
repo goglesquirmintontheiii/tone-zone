@@ -3,7 +3,7 @@
   "name": "Red Panda",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Red Panda's digital lab: a granular delay / pitch shifter with eight modes and a tape-speed / reverse / stretch time warper. Clean powder-coat boxes with halftone particle fields and warped tensor grids.",
+  "description": "Pedals inspired by Red Panda: an eight-mode granular delay / pitch shifter and a tape-speed, reverse and stretch looper.",
   "kind": "brand",
   "brand": "Red Panda",
   "main": "index.js",

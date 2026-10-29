@@ -87,7 +87,7 @@ export default function register(tz) {
         o['f.tone'] = 0.55;
         return o;
       },
-      desc: 'Two pedals in one: a screamer-style overdrive (SCREAM = volume, TONE, GAIN) and a thick, sustaining fuzz (SHOUT = volume, ATTACK = input gain), each on its own footswitch. The U / NO U switch flips the order: U = overdrive into fuzz, NO U = fuzz into overdrive.',
+      desc: 'Two pedals in one, each on its own footswitch: a screamer-style overdrive (SCREAM is its volume) and a thick fuzz (SHOUT is its volume, ATTACK its gain). U / NO U flips the order.',
     }),
   ]);
 }

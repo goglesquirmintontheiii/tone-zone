@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Strymon.
 // Blocks inspired by Strymon gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { BOSS, NINE, MXRD, lvl, tone, gain, S, onFoot, onLed, k, AMP, CAB, preampPair, marshallKnobs, fenderKnobs } = tz.builders;
@@ -357,7 +357,7 @@ function registerWorkstations(tz) {
       }
       return o;
     },
-    desc: 'Two reverb engines in series (TYPE A → TYPE B). A / B blends their wet levels; PARAM drives each machine’s character. C holds an infinite wash.',
+    desc: 'Two reverb engines in series (TYPE A → TYPE B). A / B blends their wet levels; PARAM sets the character of each machine. C holds an infinite wash.',
   }));
 
   // ---- delay workstation
@@ -490,7 +490,7 @@ function registerWorkstations(tz) {
       if (p.mode === 2) o['d.feedback'] = Math.max(p['d.feedback'] ?? 0.4, 0.75);
       return o;
     },
-    desc: 'Approximation: multi-head tape echo with spring reverb (the looper is not modelled — hold TAP for infinite repeats instead).',
+    desc: 'Approximation: multi-head tape echo with spring reverb (no looper; hold TAP for infinite repeats instead).',
   });
 
   tz.addDefs([

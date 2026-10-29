@@ -1,8 +1,8 @@
 # Writing Tone Zone plugins
 
-Plugins add blocks (pedals, amps, preamps, cabs, utilities, devices), enclosure renderers ("forms"), live
-screens, control behaviour and even whole pages. Every "inspired by" brand in Tone Zone ships as a built-in
-plugin (`app/plugins/<id>/`), so those are the best examples to copy from.
+Plugins can add blocks (pedals, amps, preamps, cabs, utilities, devices), enclosure renderers ("forms"), live
+screens, control behaviour and whole pages. Every "inspired by" brand in Tone Zone is a built-in plugin
+(`app/plugins/<id>/`), so those are the best examples to copy.
 
 * Built-in plugins: `app/plugins/<id>/` (bundled in the AppImage, can be disabled in the **Plugins** tab).
 * Your plugins: `~/.local/share/tone-zone/plugins/<id>/` (or install a `.zip` / folder from the Plugins tab).
@@ -14,7 +14,7 @@ plugin (`app/plugins/<id>/`), so those are the best examples to copy from.
 my-plugin/
   plugin.json
   index.js        ES module, default export register(tz)
-  assets/…        optional (images, fonts) – use tz.asset('assets/x.png')
+  assets/…        optional (images, fonts), load with tz.asset('assets/x.png')
 ```
 
 `plugin.json`
@@ -25,7 +25,7 @@ my-plugin/
 ```
 
 * `id`: lowercase, `[a-z0-9._-]`, unique. `kind`: `brand` | `device` | `originals` | `utility` | anything.
-* `brand` is copied onto every block that does not set its own (`d.brand`) – it drives the browser's
+* `brand` is copied onto every block that does not set its own (`d.brand`). It drives the browser's
   "Inspired by brand" filter.
 
 `index.js`
@@ -44,11 +44,11 @@ export default function register(tz) {
 
 ## Naming and look (important)
 
-* `name` / `code` / `logo` are **Tone Zone originals** – never the real product name, logo text or trademark.
-  Use a recognisable-but-different name (e.g. "DX-1 Distortion" for a BOSS DS-1, "Weep Baby" for a Cry Baby).
-* `ref` is the real unit the block is inspired by ("BOSS DS-1") – shown as "Inspired by …".
-* Copy the real unit's **layout, control labels, colours and enclosure shape** closely so users feel at home.
-  Boutique pedals with artistic enclosures deserve custom forms (hand-drawn art, textures, odd shapes).
+* `name` / `code` / `logo` are **Tone Zone originals**: never the real product name, logo text or trademark.
+  Use a name that is recognisable but different (e.g. "DX-1 Distortion" for a BOSS DS-1, "Weep Baby" for a Cry Baby).
+* `ref` is the real unit the block is inspired by ("BOSS DS-1"), shown as "Inspired by …".
+* Copy the real unit's **layout, control labels, colours and enclosure shape** closely so it feels familiar.
+  Boutique pedals with artistic enclosures are worth a custom form (hand-drawn art, textures, odd shapes).
 
 ## Block definition reference
 
@@ -63,7 +63,7 @@ export default function register(tz) {
 | `form` | enclosure renderer (see Forms) |
 | `baseForm` | for a custom enclosure that stands in for an amp or cab: `'amp'` / `'cab'` (amp heads stack on cabs in presets, z-order, stereo mic ports, thumbnails) |
 | `color`, `text`, `accent`, `knob`, `labelBg`, `labelText`, `codeColor`, `plate`, `plateText`, `tolex`, `panel`, `panelText`, `grille`, `piping`, `wide`, `small`, `rows`, `tagline` | look; which ones matter depends on the form |
-| `algo`, `opts` | engine algorithm and creation options – see `docs/engine-blocks.md` |
+| `algo`, `opts` | engine algorithm and creation options, see `docs/engine-blocks.md` |
 | `controls` | knobs, switches, footswitches, LEDs, screens (see Controls) |
 | `fixed` | engine params forced to constant values |
 | `derive(ui) → {param: value}` | compute engine params from the UI params (e.g. one knob drives several engine params) |
@@ -71,7 +71,7 @@ export default function register(tz) {
 | `ports` | `{ ins: [labels], outs: [labels] }` (default `MONO`), `STEREO`, `MONO_TO_ST` |
 | `stereo` | `'mono'` (default), `'both'` (user can switch mono/stereo), `'stereo'` (stereo by default, switchable) |
 | `monoPorts`, `stereoPorts` | port sets for the two variants of a `'both'` block |
-| `jackKinds` | `{ i0: 'xlr', o1: 'phones', … }` – jack / cable type: `inst` (1/4" TS, default), `trs` (1/4" stereo), `phones` (headphone, stereo), `mini` (3.5 mm stereo), `xlr`, `usb`, `midi`, `any`. Stereo kinds carry two audio channels on one cable. |
+| `jackKinds` | `{ i0: 'xlr', o1: 'phones', … }`, the jack / cable type: `inst` (1/4" TS, default), `trs` (1/4" stereo), `phones` (headphone, stereo), `mini` (3.5 mm stereo), `xlr`, `usb`, `midi`, `any`. Stereo kinds carry two audio channels on one cable. |
 | `ctrl` | control jacks: `{ ins: [{ label, param, min, max, curve, invert } \| { label, action: 'bypass'\|'tap' } \| { label, action: 'event', event: {type, arg}, release } \| { label, hook: true }], outs: [{ label, source: 'param:<p>' \| 'foot' }] }` |
 | `cost` | DSP cost estimate (≈ % of one core at 64 frames; drive 0.5, amp 2.5, NAM 12) |
 | `alwaysOn`, `defaultBypass`, `noBypassClick`, `tunerBlock`, `tapFoot`, `momentaryWhen(ui)`, `holdWhen(ui)` | behaviour flags |
@@ -79,37 +79,37 @@ export default function register(tz) {
 
 ### Controls
 
-All controls take `x`, `y` (optional – forms auto-place controls without coordinates), `label`, `labelPos`
+All controls take `x`, `y` (optional: forms place controls without coordinates for you), `label`, `labelPos`
 (`above` / `below` / `none`), `labelSize`, `r` (radius) and map to an engine param with `p`.
 
-* `K(p, label, {min, max, def, curve:'log', step, display: fn|ten|db|ms|pct, unit, style, cap, scale:10, ticks, invert, virtual, alt})` – knob. Knob `style`: boss, mxr, nine, chicken, vox, marshall, fender, chrome, mesa, strymon, white, red, cream, rat. `virtual` = UI only (use `derive`).
-* `SEL(p, label, options, {sweep, values, printLabels, ring, optSize, labelRadius})` – rotary selector; `values` maps positions to engine values.
-* `TOG(p, label, options, {values, orient:'h'|'v'})` – 2/3-way mini toggle.
-* `BTN(label, {p, toggle, event: {type, value, arg}, action, led, ledColor, shape:'rect', w, h})` – push button.
-* `FOOT({action, label, style, idx, hold, tapTarget})` – footswitch. `action`: `bypass` (default), `tap`, `ctrl` (control output `idx`), `select` (output selector), plus `hold: {ms, event, release, action}`. `style`: stomp, soft, plate, ts, rc. Tap options: `tapTarget` (param that
+* `K(p, label, {min, max, def, curve:'log', step, display: fn|ten|db|ms|pct, unit, style, cap, scale:10, ticks, invert, virtual, alt})`: knob. Knob `style`: boss, mxr, nine, chicken, vox, marshall, fender, chrome, mesa, strymon, white, red, cream, rat. `virtual` = UI only (use `derive`).
+* `SEL(p, label, options, {sweep, values, printLabels, ring, optSize, labelRadius})`: rotary selector; `values` maps positions to engine values.
+* `TOG(p, label, options, {values, orient:'h'|'v'})`: 2 or 3-way mini toggle.
+* `BTN(label, {p, toggle, event: {type, value, arg}, action, led, ledColor, shape:'rect', w, h})`: push button.
+* `FOOT({action, label, style, idx, hold, tapTarget})`: footswitch. `action`: `bypass` (default), `tap`, `ctrl` (control output `idx`), `select` (output selector), plus `hold: {ms, event, release, action}`. `style`: stomp, soft, plate, ts, rc. Tap options: `tapTarget` (param that
   mirrors the tapped time, default `time`), `tapHz: true` (target is a rate in Hz → 1000/ms × `tapMul`), `tapSub: i`
   (send the tap to sub-block `i` of a chain).
-* `LED({bind, color, r, label})` – `bind`: `on` (bypass state, default), `param:<p>`, `param:!<p>` (inverted),
+* `LED({bind, color, r, label})`: `bind` is `on` (bypass state, default), `param:<p>`, `param:!<p>` (inverted),
   `param:<p>:=2` / `param:<p>:>0.3` / `param:<p>:<0.3` (compare), `onparam:<p>` (block on **and** param set),
   `fn` with `ledFn(ui, block, status, now) → true | '#colour' | null` for anything derived, `tap:<param ms>`,
   `rate:on:<p>`, `tunerOk`, `select:<i>`, `looper:…`, `fav`. Add `sub: '<prefix>'` to read a chain sub-block's status
   (e.g. a looper inside a `chain`).
-* `SLIDER(p, label, {h, w, orient: 'h' for horizontal, led, capColor})`, `TREADLE(p, {…})` (wah / volume / whammy), `SCREEN(kind, {w, h, interactive})` – live displays (tu3, polytune, strobe, looper500, looper600, looperMini, ring, modelName, meter, or one you register).
+* `SLIDER(p, label, {h, w, orient: 'h' for horizontal, led, capColor})`, `TREADLE(p, {…})` (wah / volume / whammy), `SCREEN(kind, {w, h, interactive})`: live displays (tu3, polytune, strobe, looper500, looper600, looperMini, ring, modelName, meter, or one you register).
 
 ### Chains (several engine blocks in one pedal)
 
-`algo: 'chain', opts: { chain: [{ algo, prefix, opts, params, on, group, ch, lvl }], mix }` – sub-blocks run in
+`algo: 'chain', opts: { chain: [{ algo, prefix, opts, params, on, group, ch, lvl }], mix }`. Sub-blocks run in
 series; every sub param is exposed as `<prefix>.<param>` plus `<prefix>.on`.
 
-* `group: n` – consecutive subs with the same group number run **in parallel** from the same input and are summed
-  (each gets a `<prefix>.lvl` gain, 0–2). Turning every lane off passes the dry signal.
-* `ch: 0 | 1` – the sub only processes that channel (per-input EQ on a two-channel DI, for example).
-* `lvl: true` – adds `<prefix>.lvl` to a series sub.
-* `mix: true` (chain option) – adds a chain-level `mix` param (dry/wet of the whole chain, e.g. a bass DI blend after
+* `group: n`: consecutive subs with the same group number run **in parallel** from the same input and are summed
+  (each gets a `<prefix>.lvl` gain, 0 to 2). Turning every lane off passes the dry signal.
+* `ch: 0 | 1`: the sub only processes that channel (per-input EQ on a two-channel DI, for example).
+* `lvl: true`: adds `<prefix>.lvl` to a series sub.
+* `mix: true` (chain option): adds a chain-level `mix` param (dry/wet of the whole chain, e.g. a bass DI blend after
   the speaker sim).
 * Events: footswitch events reach sub-block `i` with `arg = i * 100 + innerArg` (tap tempo on the 3rd sub = `arg: 200`).
 
-Engine ranges worth knowing: drive `mode` 0–15 (16 voicings via `opts.modes`), pitch has three voices
+Engine ranges worth knowing: drive `mode` 0 to 15 (16 voicings via `opts.modes`), pitch has three voices
 (`semis1..3` / `level1..3`, diatonic `deg1..3`), `outTrim` in `opts` is a linear gain (not dB), cab `open` is boolean.
 
 ## Forms (enclosures)
@@ -117,9 +117,9 @@ Engine ranges worth knowing: drive `mode` 0–15 (16 voicings via `opts.modes`),
 | form | look | auto-layout |
 |---|---|---|
 | `compact` | BOSS-style compact with pedal plate | up to 4 knobs in a row (+ concentric `inner` knobs), LED "CHECK", name label (`typeName` + `code`) |
-| `mxr` | MXR box (`wide` for 196 px) | 1–3 knobs in a row or 2 rows, script logo, stomp + LED |
-| `nine` | Ibanez 9-series | 2–3 knobs, chrome name plate, big switch |
-| `strymon` | brushed medium (or `small`) | 3+3 knobs (`rows: [n, m]`), toggles, 1–2 footswitches, jacks on top |
+| `mxr` | MXR box (`wide` for 196 px) | 1 to 3 knobs in a row or 2 rows, script logo, stomp + LED |
+| `nine` | Ibanez 9-series | 2 or 3 knobs, chrome name plate, big switch |
+| `strymon` | brushed medium (or `small`) | 3+3 knobs (`rows: [n, m]`), toggles, 1 or 2 footswitches, jacks on top |
 | `tz` | generic stomp (any brand) | rows of 3 (or 4) knobs, toggles row, logo + type, stomp + LED |
 | `rat`, `polytune`, `drop`, `pod`, `rc500`, `rc600` | special shapes used by built-ins |
 | `treadle` | wah / volume / whammy | treadle fills the top, jacks low on the sides |
@@ -145,12 +145,12 @@ tz.addForm('acme-wedge', (ctx, def) => {
 ```
 
 * **Forms run more than once** (re-renders, zoom, variants) and the control objects are shared, so positions you
-  assign stick. Don't decide layout with `c.x === undefined` alone – mark what you placed (e.g. `c._auto = true`)
+  set stick. Don't decide layout from `c.x === undefined` alone. Mark what you placed (e.g. `c._auto = true`)
   and lay those out again on every call.
 * `ctx.g` is the SVG group; `ctx.flip` is true when the user chose left→right signal flow (inputs on the left).
 * Return `{ w, h, theme, jacks }`. A jack is `{ key: 'i0'|'o0'|'ic0'|'oc0', dir, port, label, side: 'left'|'right'|'top'|'bottom'|'face', x, y, kind }`.
-* Performance rule: **no SVG `filter`s** (blur, turbulence…) – use `tz.gfx.softShadow`, `noisePattern`, gradients and
-  `haloFill` (LED glow) instead. Repaints are cheap only without filters.
+* Performance rule: **no SVG `filter`s** (blur, turbulence…). Use `tz.gfx.softShadow`, `noisePattern`, gradients and
+  `haloFill` (LED glow) instead. Repaints are only cheap without filters.
 * Fonts available: Inter, Barlow Condensed, Oswald, Dancing Script, Share Tech Mono (or load your own with `addStyles`).
 
 ## API (`tz`)
@@ -183,5 +183,6 @@ NODE_PATH=$(npm root -g) LD_LIBRARY_PATH=../engine/tests/fakejack xvfb-run -a -s
   node scripts/plugin-check.js <pluginId> /tmp/check
 ```
 
-renders every block (gallery + close-ups), loads them all into the engine, and reports each block's output level
-on a guitar riff (flags silent / too loud / clipping voicings).
+This renders every block (gallery + close-ups), loads them all into the engine and reports each block's output
+level on a guitar riff. It flags voicings that are silent, too loud or clipping. Add `--no-shots` to skip the
+screenshots.

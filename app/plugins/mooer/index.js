@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Mooer.
 // Blocks inspired by Mooer gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 import { registerGE300 } from './ge300.js';
 
 export default function register(tz) {

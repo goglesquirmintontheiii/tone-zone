@@ -1,11 +1,11 @@
 // Built-in Tone Zone plugin: Supro.
 // Blocks inspired by Supro gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, stomp } = tz.builders;
   // ---- amp helpers (same pattern in every amp-brand plugin)
-  // ampFit: explicit panel layout so mini toggles never collide with the knob row / power LED.
+  // ampFit: fixed panel layout so mini toggles don't overlap the knob row or power LED.
   // AMPX: amp + matching rack preamp; controls named 'r.*' / 't.*' add an onboard spring reverb / tremolo (chain).
   const isFx = (c) => typeof c.p === 'string' && /^[rt]\./.test(c.p);
   function ampFit(a) {
@@ -69,8 +69,8 @@ export default function register(tz) {
 // Supro's pedal line: navy boxes, cream knobs.
 function registerPedals(tz) {
   const { K, TOG, FOOT, LED, SLIDER, def, ten, db, ms } = tz.helpers;
-  // plain stomp box for this brand: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
-  // Jacks sit below the controls so their labels never cover a knob.
+  // plain stomp box: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
+  // Jacks go below the controls so their labels don't cover a knob.
   tz.addForm('supro-stomp', (ctx, d) => {
     const { svg, label, formKit, shade } = tz.gfx;
     const g = ctx.g;

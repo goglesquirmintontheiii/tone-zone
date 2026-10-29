@@ -78,7 +78,7 @@ export default function register(tz) {
         const b = p.blend ?? 0.5, wet = p.wet ?? 0.5, rg = 0.15 + 0.8 * (p.regen ?? 0.55);
         return { 'f1.mix': wet * (1 - b) * 1.6 > 1 ? 1 : wet * (1 - b) * 1.6, 'f2.mix': Math.min(1, wet * b * 1.6), 'f1.regen': rg, 'f2.regen': rg, 'q.highgain': 9 * (p.highs ?? 0.3) };
       },
-      desc: 'Two flangers with independent MANUAL / DEPTH / RATE (LFO 1 and LFO 2), MIX 1·2 balances them, REGEN, added HIGHS and global DRY/WET. (The two flangers run in series here; on the original they run in parallel.)',
+      desc: 'Two flangers, each with its own MANUAL / DEPTH / RATE. MIX 1·2 balances them; REGEN, HIGHS and DRY/WET apply to both. Here they run in series, not in parallel like the original.',
     }),
     P({
       id: 'prs.horsemeat', name: 'Horse Feathers', ref: 'PRS Horsemeat', cat: 'Overdrive', logo: 'Horse Feathers', logoSize: 12, tagline: 'TRANSPARENT OVERDRIVE', typeName: 'Transparent overdrive',

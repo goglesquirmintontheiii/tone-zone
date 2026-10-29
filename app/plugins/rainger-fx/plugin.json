@@ -3,7 +3,7 @@
   "name": "Rainger FX",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Rainger FX's oddball micro boxes: the Minibar liquid analyser (pour in a drink – the drink sets the fuzz), the Reverb-X distorted micro reverb and Dr Freakenstein's Dwarf overtone fuzz.",
+  "description": "Pedals inspired by Rainger FX's oddball micro boxes: the Minibar liquid analyser (the drink you pour in sets the fuzz), the Reverb-X distorted micro reverb and Dr Freakenstein's Dwarf overtone fuzz.",
   "kind": "brand",
   "brand": "Rainger FX",
   "main": "index.js",

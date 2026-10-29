@@ -1,8 +1,7 @@
 // Built-in Tone Zone plugin: Neural DSP.
-// "Quad Neuron" - inspired by the Neural DSP Quad Cortex: a 7" touchscreen with the 4-row × 8-block grid (rows 1A/1B
-// form path 1, rows 2A/2B path 2; two rows of the same path run in parallel), tap-to-edit blocks, a model picker
-// (category column + model list), parameter strip with drag sliders, preset browser, settings, gig view and tuner,
-// plus eleven footswitches with LED rings and labels (PRESET / SCENE / STOMP modes, bank ▲▼, MODE / TUNER).
+// "Quad Neuron", inspired by the Neural DSP Quad Cortex: touchscreen with a 4 x 8 block grid (rows 1A/1B are
+// path 1, 2A/2B path 2, rows of one path run in parallel), model picker, sliders, presets, settings, gig view,
+// tuner and eleven footswitches with LED rings (PRESET / SCENE / STOMP modes, bank, MODE / TUNER).
 // Names and artwork are Tone Zone originals.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';
 

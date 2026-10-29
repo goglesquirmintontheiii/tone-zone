@@ -1,11 +1,11 @@
 // Built-in Tone Zone plugin: Two-Rock.
 // Blocks inspired by Two-Rock gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, preampPair, stomp } = tz.builders;
   // ---- amp helpers (same pattern in every amp-brand plugin)
-  // ampFit: explicit panel layout so mini toggles never collide with the knob row / power LED.
+  // ampFit: fixed panel layout so mini toggles don't overlap the knob row or power LED.
   // AMPX: amp + matching rack preamp; controls named 'r.*' / 't.*' add an onboard spring reverb / tremolo (chain).
   const isFx = (c) => typeof c.p === 'string' && /^[rt]\./.test(c.p);
   function ampFit(a) {

@@ -3,7 +3,7 @@
   "name": "TC-Helicon",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Vocal processors inspired by TC-Helicon gear: single-effect vocal stomps, two-switch vocal pedals, mini vocal pedals (harmony, doubling, mic looper, talkbox), floor vocal and guitar processors and mic-stand units. XLR mic inputs and outputs, built for singers.",
+  "description": "Vocal effects inspired by TC-Helicon gear: single-effect stomps, two-switch and mini vocal pedals, floor vocal and guitar processors and mic-stand units, all with XLR mic in and out.",
   "kind": "brand",
   "brand": "TC-Helicon",
   "main": "index.js",

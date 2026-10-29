@@ -1,12 +1,12 @@
 // Built-in Tone Zone plugin: TC Electronic.
 // Blocks inspired by TC Electronic gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 //
 // Custom forms:
-//  * `tc-stomp` – rounded die-cast TC box in four sizes (def.tcSize): `std` (TonePrint standard, side jacks),
+//  * `tc-stomp`: rounded die-cast TC box in four sizes (def.tcSize): `std` (TonePrint standard, side jacks),
 //    `mini` (mini series, top jacks), `budget` (newer 3-knob line, top jacks), `wide` (2-footswitch looper).
 //    Per-block artwork via def.art (printed graphic behind the name) and the small "TP" mini button (tp: true).
-//  * `tc-x5` – five-slot multi pedal (one display, knob and footswitch per slot).
+//  * `tc-x5`: five-slot multi pedal (one display, knob and footswitch per slot).
 import { registerMore } from './more.js';
 
 export default function register(tz) {
@@ -648,7 +648,7 @@ export default function register(tz) {
         k('c.sustain', 'SUSTAIN', { slot: 0, def: 0.45 }), k('m.mix', 'FX LEVEL', { slot: 1, def: 0.5 }), k('f.mix', 'FX LEVEL', { slot: 2, def: 0.5 }), k('d.mix', 'FX LEVEL', { slot: 3, def: 0.3 }), k('r.mix', 'LEVEL', { slot: 4, def: 0.3 }),
         ...['c', 'm', 'f', 'd', 'r'].flatMap((x, i) => [FOOT({ action: 'toggle', p: x + '.on', slot: i, def: [1, 0, 0, 1, 1][i] }), LED({ bind: 'param:' + x + '.on', slot: i, color: '#ff2a1a' })]),
       ],
-      desc: 'Five effect slots on one board: compressor, chorus, flanger, delay and hall reverb – each footswitch turns its slot on / off.',
+      desc: 'Five effect slots on one board: compressor, chorus, flanger, delay and hall reverb. Each footswitch turns its slot on or off.',
     }),
 
     // ---------------------------------------------------------------- utilities

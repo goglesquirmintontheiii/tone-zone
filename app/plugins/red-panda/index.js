@@ -8,9 +8,8 @@ export default function register(tz) {
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once on shared control objects, so every control placed here is kept in `owned` and
+  // laid out again on each call. Art only goes in the gap between the last control row and the LEDs.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +60,7 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher so the lever never hits them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -156,7 +154,7 @@ export default function register(tz) {
         ][m];
         return { 'p.on': T.p, 'p.semis1': st, 's.on': T.s, 's.pattern': T.pat ?? 1, 's.time': 40 + 460 * c, 's.smooth': 0.15 + 0.5 * (1 - c), 'd.mode': T.d, 'd.moddepth': 0.15 * c, 'd.mix': 0.65 };
       },
-      desc: 'Eight modes of chopped-up, reversed, pitch-shifted and smeared repeats: DLY, REV(erse), PIT(ch), PRV (pitch + reverse), DNS (dense grains), SPR (sparse grains), WRP (warp) and SHM (shimmer). CHUNK sets the grain size. Hold the footswitch to freeze the repeats. Granular behaviour is approximated with slicer + delay + pitch blocks.',
+      desc: 'Eight modes of chopped, reversed, pitch-shifted and smeared repeats (delay, reverse, pitch, pitch + reverse, dense, sparse, warp, shimmer). CHUNK sets the grain size and holding the footswitch freezes the repeats.',
     }),
     R({
       id: 'rpd.tensor', name: 'Strain Time Warper', ref: 'Red Panda Tensor', logo: 'strain', tagline: 'TIME WARPER', cat: 'Delay', typeName: 'Tape-speed / reverse / stretch looper',
@@ -182,7 +180,7 @@ export default function register(tz) {
           'd.mode': dir === 2 ? 7 : rev ? 5 : 0, 's.on': rd > 0.02 ? 1 : 0, 's.depth': rd, 's.pattern': rd > 0.6 ? 15 : rd > 0.3 ? 11 : 6, 's.time': 60 + 300 * (1 - rd),
           'f.layer': (p.hmode ?? 0) === 1 ? 1 : 0, 'f.speed': (p.hmode ?? 0) === 2 ? 0.7 : 0.25 };
       },
-      desc: 'Tape-speed playback in both directions (SPEED: centre = stopped, right = forward faster, left = reverse), pitch shift, time stretch and randomised slicing. HOLD captures and sustains the sound (OVR layers on top). Approximated with pitch + reverse delay + slicer + freeze blocks.',
+      desc: 'Plays your sound like tape at any speed: SPEED centre stops it, right plays forward faster, left plays in reverse. Also does pitch shift, time stretch and random slicing. HOLD grabs and sustains the sound, OVR layers on top.',
     }),
   ]);
 }

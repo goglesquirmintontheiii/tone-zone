@@ -168,7 +168,7 @@ export default function register(tz) {
         at(LED({ bind: 'param:dl.on', color: '#3ddc84', r: 2.8 }), 214, 180), at(LED({ bind: 'param:rv.on', color: '#b98cff', r: 2.8 }), 292, 180),
       ],
       initParams: { 'a.on': 1, 'ch.on': 0, 'dl.on': 0, 'rv.on': 1 },
-      desc: 'Acoustic floor processor: acoustic SIM (electric → acoustic), PIEZO enhancer or plain PREamp with body types, EQ, notch; chorus, delay, reverb and a 60 s looper (LOOP: press = rec / play / overdub, hold = stop, hold again = clear).',
+      desc: 'Acoustic floor unit: make an electric sound acoustic (SIM), improve a piezo (PIEZO) or use it as a preamp, plus EQ, notch, chorus, delay, reverb and a 60 s looper. LOOP: press to record / play / overdub, hold to stop, hold again to clear.',
     }),
     N({
       id: 'nux.optimaair', name: 'Optima Breeze', ref: 'NUX Optima Air', style: 'core', cat: 'Acoustic', logo: 'OPTIMA', logoSize: 14, header: 'BREEZE', tagline: 'ACOUSTIC IR · PREAMP', typeName: 'Acoustic simulator / IR',
@@ -217,7 +217,7 @@ export default function register(tz) {
         ...STD2(88, 198, 176, '#4aa8ff'),
       ],
       derive: modDerive,
-      desc: 'Eight modulation models (chorus, phaser, flanger, U-vibe, tremolo, vibrato, rotary, auto-pan) with RATE / DEPTH / MIX / TONE; TONE is the colour / feedback / waveform control of the selected model.',
+      desc: 'Eight modulation models (chorus, phaser, flanger, U-vibe, tremolo, vibrato, rotary, auto-pan). TONE changes with the model: colour, feedback or wave shape.',
     }),
     N({
       id: 'nux.atlantic', name: 'Pacific Echo & Verb', ref: 'NUX Atlantic Delay & Reverb', style: 'verdugo', cat: 'Delay', logo: 'Pacific', tagline: 'DELAY & REVERB', typeName: 'Delay + reverb',

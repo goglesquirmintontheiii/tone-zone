@@ -6,8 +6,8 @@ export default function register(tz) {
   const at = (c, x, y, o = {}) => Object.assign(c, { x, y }, o);
   const hz = (v) => Math.round(v) + ' Hz';
 
-  // ---------------------------------------------------------------- enclosure: 14-gauge steel "I-beam" box –
-  // a painted shell slid into thick book-end caps (left / right), recessed switches, bold italic logo.
+  // ---------------------------------------------------------------- enclosure
+  // steel "I-beam" box: painted shell between thick end caps, recessed switches, bold italic logo
   tz.addForm('rd-box', (ctx, d) => {
     const { svg, label, formKit, shade } = tz.gfx;
     const g = ctx.g, w = d.fw || 130, h = d.fh || 160;
@@ -90,7 +90,7 @@ export default function register(tz) {
       ],
       initParams: { ab: 0, y: 0 },
       derive: (p) => ({ m1: !p.y && p.ab ? 1 : 0, m2: !p.y && !p.ab ? 1 : 0 }),
-      desc: 'Route one guitar to amp A, amp B (A/B footswitch, LED lit = B) or both (Y). B output has a polarity switch; ISO = isolation transformer on B (kills ground hum; sonically transparent here).',
+      desc: 'Route one guitar to amp A, amp B (A/B footswitch, LED lit = B) or both (Y). B output has a polarity switch; ISO adds an isolation transformer on B to kill ground hum (it does not colour the sound here).',
     }),
     R({
       id: 'rd.cherrybomb', name: 'Cherry Blast', ref: 'Radial Tonebone Cherry Bomb', logo: 'CHERRY', logoSize: 17, tagline: 'CLEAN BOOST', typeName: 'Clean / treble booster', color: '#b3122a', stripe: '#ffd6d6',

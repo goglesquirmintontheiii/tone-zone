@@ -185,7 +185,7 @@ export default function register(tz) {
         if (sc === 2) { o['p.semis1'] = Math.round(p['p.deg1'] ?? 2); o['p.semis2'] = Math.round(p['p.deg2'] ?? 4); }
         return o;
       },
-      desc: 'Diatonic harmonizer: KEY + SCALE make PITCH 1 / 2 follow the scale (chromatic = semitones). TIME / FEEDBACK set a delay in front of the voices. Two harmony voices (the real unit has three).',
+      desc: 'Harmonizer with two voices: KEY and SCALE keep PITCH 1 / 2 in key (chromatic = plain semitones). TIME and FEEDBACK add a delay before the voices.',
     }),
     M({
       id: 'mrs.ottobit', name: 'Nonobit Jr.', ref: 'Meris Ottobit Jr.', code: 'NONOBIT', logo: 'nonobit jr.', logoSize: 15, typeName: 'Bit crusher & sequencer', cat: 'Filter',

@@ -8,9 +8,8 @@ export default function register(tz) {
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once on shared control objects, so every control placed here is kept in `owned` and
+  // laid out again on each call. Art only goes in the gap between the last control row and the LEDs.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +60,7 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher so the lever never hits them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -152,7 +150,7 @@ export default function register(tz) {
         return { 'ph.stages': (p.voice ?? 0) ? 8 : 4, 'ph.feedback': 0.15 + 0.75 * rg, 'ph.mix': mx,
           'dl.time': 18 + 600 * st * st, 'dl.feedback': 0.7 * rg, 'dl.mix': mx * (0.1 + 0.4 * st), 'dl.moddepth': [0.1, 0.2, 0.45][sh], 'dl.modrate': [0.3, 0.45, 0.8][sh] };
       },
-      desc: 'Phaser whose stages are stretched into short delays: low STRETCH is a lush phaser, high STRETCH turns it into phased, pitch-warped repeats. SHAPE RND is approximated with heavier, faster delay wobble.',
+      desc: 'Phaser whose stages are stretched into short delays: low STRETCH is a lush phaser, high STRETCH turns it into phased, pitch-warped repeats. SHAPE RND is approximated.',
     }),
     O({
       id: 'obne.excess', name: 'Surplus Distorting Modulator', ref: 'Old Blood Noise Endeavors Excess V2', logo: 'surplus', tagline: 'DISTORTING MODULATOR', cat: 'Multi-FX', kind: 'Pedal', typeName: 'Distortion + chorus / delay / fifth',
@@ -181,7 +179,7 @@ export default function register(tz) {
         for (const k in dist) { o['d1.' + k] = dist[k]; o['d2.' + k] = dist[k]; }
         return o;
       },
-      desc: 'Op-amp distortion (top row) and a chorus / delay / fifth-harmony delay (bottom row) on their own footswitches. ROUTE puts the modulation before or after the distortion. The 5TH mode is approximated with a fifth-up voice feeding the delay.',
+      desc: 'Op-amp distortion (top row) and a chorus / delay / fifth-harmony delay (bottom row) on their own footswitches. ROUTE puts the modulation before or after the distortion.',
     }),
     O({
       id: 'obne.blackfountain', name: 'Ink Spring Oil Can Delay', ref: 'Old Blood Noise Endeavors Black Fountain V3', logo: 'ink spring', tagline: 'OIL CAN DELAY', cat: 'Delay', typeName: 'Oil-can style delay',
@@ -220,7 +218,7 @@ export default function register(tz) {
         return { 'f.mode': (p.range ?? 0) * 8 + Math.round((p.bias ?? 0.3) * 7), 'f.blend': 1 - 0.65 * (p.enh ?? 0.2), 'g.threshold': 0.6 * (p.gate ?? 0),
           'e.highcut': m === 0 ? 20000 : m === 1 ? 1500 + 14000 * lp * lp : 1200 + 9000 * lp * lp, 'e.mid2freq': 1200 + 6000 * lp * lp, 'e.mid2gain': m === 2 ? 6 : 0, 'e.mid2q': 3 };
       },
-      desc: 'Flexible silicon fuzz: FUZZ / RANGE for the gain, BIAS from smooth to splatty, ENHANCE blends clean signal back in, GATE tames the hiss, and a low-pass filter (mode 2 adds a resonant peak) plus a three-band slider EQ shape the result.',
+      desc: 'Very adjustable silicon fuzz. FUZZ and RANGE set the gain, BIAS goes from smooth to splatty, ENHANCE blends in clean signal and GATE cuts hiss. A low-pass filter and a three-band slider EQ shape the tone.',
     }),
   ]);
 }

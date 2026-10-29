@@ -3,7 +3,7 @@
   "name": "Neural DSP",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Floor modelers inspired by Neural DSP hardware: a touchscreen grid (4 rows × 8 blocks, two parallel paths) you edit by tapping, a model picker, scene / stomp / preset modes and eleven footswitches with LED rings and labels.",
+  "description": "Floor modeler inspired by Neural DSP hardware: a touchscreen block grid with two paths, a model picker, scene / stomp / preset modes and eleven footswitches.",
   "kind": "brand",
   "brand": "Neural DSP",
   "main": "index.js",

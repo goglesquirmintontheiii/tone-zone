@@ -13,8 +13,8 @@ DESC = {
   'boost': ('Clean / treble / mid boost.', '`mode` param picks the voicing (0 clean, 1 treble, 2 mid, 3 fat).'),
   'amp': ('Tube / solid-state amplifier (or preamp with `opts.preamp: true`).', '''`opts.model` = one of the built-in models: deluxe twin bassman ac30 dc30 plexi jcm800 jubilee recto markiic 5150 slo dumble orange uber vh4 friedman hiwatt jc120 svt b15 gk800 ad200 markbass acoustic.
 `opts.models: [...]` = several channels (switch with the `channel` param); entries may be model names or voice objects.
-`opts.voice` = a new amp built from a base model: `{base, stages:[[gain,headroom,bias,lpHz,hpHz],...], gainPos, tsPos, tsType (0 FMV, 1 Baxandall, 2 top-boost, 3 bass/James), stack: "fender"|"bassman"|"marshall"|"mesa"|"vox"|"orange"|"peavey"|[R1,R2,R3,R4,C1,C2,C3], tsMakeup, brightHz, brightDb, power (0 none, 1 push-pull, 2 class A, 3 solid state), pwrH, sag, presHz, depthHz, nfb, otLp, otHp, tight, inHp, baxBass, baxMid, baxTreble, baxRange, drive (scales all stage gains), dark (octaves to darken the stage filters)}`. The block self-calibrates its output level.'''),
-  'cab': ('Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle, level, pan, polarity) – mixed into one IR per output, so extra mics cost no CPU.', '''`opts.model` = built-in cab: 1x12us 2x12twin 4x10tweed 2x12blue 4x12gb 4x12v30 4x12t75 4x12uber 2x12cream 1x12open 4x12orange 2x12jc 8x10svt 4x10bass 1x15bass 2x10horn 4x12bass.
+`opts.voice` = a new amp built from a base model: `{base, stages:[[gain,headroom,bias,lpHz,hpHz],...], gainPos, tsPos, tsType (0 FMV, 1 Baxandall, 2 top-boost, 3 bass/James), stack: "fender"|"bassman"|"marshall"|"mesa"|"vox"|"orange"|"peavey"|[R1,R2,R3,R4,C1,C2,C3], tsMakeup, brightHz, brightDb, power (0 none, 1 push-pull, 2 class A, 3 solid state), pwrH, sag, presHz, depthHz, nfb, otLp, otHp, tight, inHp, baxBass, baxMid, baxTreble, baxRange, drive (scales all stage gains), dark (octaves to darken the stage filters)}`. The block sets its own output level.'''),
+  'cab': ('Speaker cabinet with up to 4 microphones (any speaker, position, distance, angle, level, pan, polarity). The mics are mixed into one IR per output, so extra mics cost no CPU.', '''`opts.model` = built-in cab: 1x12us 2x12twin 4x10tweed 2x12blue 4x12gb 4x12v30 4x12t75 4x12uber 2x12cream 1x12open 4x12orange 2x12jc 8x10svt 4x10bass 1x15bass 2x10horn 4x12bass.
 `opts.cab` = a new cab voicing: `{hp, hpQ, resDb (low resonance), lp (cone break-up Hz), lpQ, open (open back), peaks: [[f, q, db], ...], seed (speaker detail), detail (dB of fine ripple)}`; `opts.cabs: [...]` several (param `model`). Mic params are `m1on m1type m1pos m1dist m1spk m1lvl m1pan m1phase m1axis` … `m4*` (the CAB builder maps the draggable mics to these).'''),
   'ir': ('Impulse-response loader (user IR packs).', '`opts.files: [paths]`, `model` param selects.'),
   'nam': ('Neural Amp Modeler (A1 / A2 / LSTM) player.', '`opts.files: [paths]`.'),
@@ -26,7 +26,7 @@ DESC = {
   'utility': ('Small mixer utilities.', '`opts.kind` = split | merge | gain | pan | width | sum.'),
   'chorus': ('Chorus / vibrato / ensemble / dimension.', '`mode` 0 chorus, 1 vibrato, 2 3-voice ensemble, 3 dimension; `opts.baseMs`, `opts.depthMs`, `opts.invertR`.'),
   'flanger': ('Flanger (standard / ultra / gate / through-zero).', ''),
-  'phaser': ('Phaser (2–12 stages, script / block logo modes).', '`opts.stages`, `opts.style`.'),
+  'phaser': ('Phaser (2 to 12 stages, script / block logo modes).', '`opts.stages`, `opts.style`.'),
   'tremolo': ('Tremolo: opto / harmonic / bias, optional stereo auto-pan.', ''),
   'vibe': ('Uni-vibe style photocell phaser (chorus / vibrato).', ''),
   'rotary': ('Rotary speaker (horn + drum, slow / fast with acceleration).', ''),
@@ -57,7 +57,7 @@ DESC = {
   'meter': ('Pass-through stereo level meter (status `meter`: [[peak, rms, clip], …]).', ''),
   'stereo': ('Stereo tool: 0 M/S width, 1 Haas, 2 dual-voice widener, 3 auto-pan, 4 mono sum, 5 swap, 6 balance / pan; optional mono bass.', ''),
   'di': ('DI box (instrument → mic level, pad, polarity, low cut, speaker sim) or re-amp box (`opts.reamp: true`).', ''),
-  'thru': ('Plain pass-through (placeholder for unavailable blocks; adapters).', ''),
+  'thru': ('Plain pass-through (stands in for unavailable blocks, also used for adapters).', ''),
   'extio': ('External device I/O: block inputs go to new PipeWire ports `<name>_to_k`, block outputs come from `<name>_from_k`; auto-connected to device ports matching `opts.capture` / `opts.playback` (regex).', '`opts: {name, capture, playback}`'),
 }
 out = ['# Engine blocks (algorithms)', '', 'Generated from `tonezone-engine --list` by `scripts/gen-engine-doc.py`. A block definition picks an algorithm with `algo`, sets creation options with `opts`, and maps its controls to the parameters below (knob `p` = parameter name; knob `min`/`max` = engine units).', '']

@@ -5,8 +5,8 @@
 // "rainger" form: the tiny top-jacked boxes (no side sockets, Igor socket on the top panel).
 //   finish: 'mirror' (polished chrome, carnival lid colours) | 'leather' (black leatherette paint) | 'paint'
 //   Controls carry their own x / y (the boxes are too small for auto layout).
-// "rainger-cup" screen: the Minibar's watertight cup seen from above – the liquid's colour, fizz and froth come
-//   from the selected drink, a green "analysing" light glows under the fluid while you play.
+// "rainger-cup" screen: the Minibar's cup seen from above. Colour, fizz and froth come from the selected drink,
+//   and a green "analysing" light glows under the fluid while you play.
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SCREEN, def, ten, MONO } = tz.helpers;
   const { svg, label, formKit, softShadow, noisePattern, haloFill, setA, setText } = tz.gfx;
@@ -200,7 +200,7 @@ export default function register(tz) {
         const di = Math.max(0, Math.min(DRINKS.length - 1, (u.drink ?? 1) | 0));
         return { 'f.mode': di, 'f.gain': DRINK_GAIN[di] };
       },
-      desc: 'There is no gain or tone knob: the drink in the cup is the circuit. Click the cup (or pick DRINK in the inspector) to pour something else – water gives a treble-booster push, beer and cola fizz into fuzz, whisky is thick Fuzz-Face gain, energy drink is a ragged burn, dark drinks sound darker, and olive oil barely conducts at all. The green light under the fluid pulses as it "analyses" your playing.',
+      desc: 'No gain or tone knob: the drink in the cup is the circuit. Click the cup (or pick DRINK in the inspector) to pour something else. Water gives a treble boost, beer and cola fizz into fuzz, whisky is thick fuzz, dark drinks sound darker and olive oil barely passes any signal.',
     }),
     def({
       id: 'rainger.reverbx', name: 'Reverb-Z', code: 'REVERB-Z', ref: 'Rainger FX Reverb-X', brand: 'Rainger FX',
@@ -238,7 +238,7 @@ export default function register(tz) {
         Object.assign(o, { 'w.s.level': send, 'w.v.decay': 0.2 + size * 0.78, 'w.v.size': 0.3 + size * 0.7, 'w.v.tone': dark ? 0.3 : 0.75, 'w.v.predelay': dark ? 60 : 5 });
         return o;
       },
-      desc: 'Micro reverb with a DISTN control that distorts only the reverb (the dry stays clean), INPT / OUT gain staging (red LED = input overload), DARK (darker with pre-delay) and a noise GATE before or after the effect. The IGOR socket takes a pressure pad: pressed = reverb, released = dry with the tails decaying.',
+      desc: 'Tiny reverb where DISTN distorts only the reverb, not the dry sound. The red LED shows input overload, DARK adds pre-delay and darkens it, and GATE can sit before or after the effect. An IGOR pressure pad switches the reverb in while pressed.',
     }),
     def({
       id: 'rainger.dwarf', name: "Dr. Fiendstein's Imp", code: 'IMP', ref: "Rainger FX Dr. Freakenstein's Dwarf", brand: 'Rainger FX',
@@ -265,7 +265,7 @@ export default function register(tz) {
           'o.on': lo && t > 0.45 ? 1 : 0, 'o.level1': lo ? Math.min(0.8, (t - 0.45) * 1.6) : 0,
         };
       },
-      desc: 'Gated fuzz with a resonant "overtone" whose pitch follows the big TONE knob (or the IGOR pressure pad). HI/LO picks the flavour – LO is woollier and brings in a lower octave at higher TONE settings. The noise gate is always on.',
+      desc: 'Gated fuzz with a resonant "overtone" whose pitch follows the big TONE knob (or the IGOR pressure pad). HI/LO picks the flavour: LO is woollier and adds a lower octave at higher TONE settings. The noise gate is always on.',
     }),
   ]);
 }

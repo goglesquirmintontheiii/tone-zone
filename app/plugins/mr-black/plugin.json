@@ -3,7 +3,7 @@
   "name": "Mr. Black",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Mr. Black: sparkly metal-flake boxes with big flat cartoon emblems. A swaying modulated ambient reverb and a gilded octave shimmer reverb with near-endless tails.",
+  "description": "Pedals inspired by Mr. Black: a modulated ambient reverb and an octave shimmer reverb with very long tails.",
   "kind": "brand",
   "brand": "Mr. Black",
   "main": "index.js",

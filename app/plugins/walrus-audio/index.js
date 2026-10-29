@@ -2,9 +2,8 @@
 // Blocks inspired by Walrus Audio pedals. Names and artwork are Tone Zone originals; control layouts, colours and
 // footswitch / LED arrangements follow the real units (see each block's `ref`).
 //
-// One custom enclosure ("walrus-etch") serves the whole family: a matte powder-coat body in a muted colour, a thin
-// double frame and an engraved / woodcut-style illustration printed in metallic ink (gold, silver, copper) or a
-// flat ink. Per-block art parameters: `color` (body), `ink` (gold | silver | copper | #hex), `scene` (illustration),
+// One enclosure ("walrus-etch") for the whole family: matte body, thin double frame and an engraved-style
+// picture in metallic or flat ink. Per-block art params: `color` (body), `ink` (gold | silver | copper | #hex), `scene` (illustration),
 // `size` (n = 125B, w = wide, x = big Mako-style box, b = small).
 export default function register(tz) {
   const { K, SEL, TOG, FOOT, LED, SLIDER, def, ten, db, ms, MONO, STEREO } = tz.helpers;

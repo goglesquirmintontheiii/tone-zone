@@ -136,7 +136,7 @@ export default function register(tz) {
         const gate = p.gate ?? 1, comp = p.comp ?? 0.8, drive = p.drive ?? 0.75, stab = p.stab ?? 1;
         return { 'f.gain': Math.min(1, drive * 0.75 + comp * 0.25), 'f.sag': (1 - comp) * 0.9 + (1 - stab) * 0.4, 'f.tone': 0.25 + 0.75 * stab, 'g.threshold': 0.62 * (1 - gate) };
       },
-      desc: 'Five interactive controls: DRIVE and COMP set the saturation, GATE (counter-clockwise) chokes the decay into sputter, STAB below max starves and darkens the circuit. The real unit\'s squeals and self-oscillation are approximated with sag and gating.',
+      desc: 'Five interactive controls: DRIVE and COMP set the saturation, GATE (counter-clockwise) chokes the decay into sputter, STAB below max starves and darkens the circuit.',
     }),
     Z({
       id: 'zvex.boxofrock', name: 'Crate of Stone', ref: 'ZVEX Box of Rock', logo: 'CRATE OF STONE', tagline: 'DISTORTION + BOOST', cat: 'Distortion', typeName: 'Plexi-style distortion + boost',
