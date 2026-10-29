@@ -1,5 +1,5 @@
-// Interactive screen for the Tone Zone parametric EQ: draggable band handles over a live spectrum analyser,
-// HPF / LPF handles, band listen (solo) region, pre/post analyser toggle.
+// Screen for the Tone Zone parametric EQ: drag band handles over a live spectrum,
+// plus HPF/LPF handles, band solo (listen) and a pre/post analyser switch.
 import { svg } from './util.js';
 import { registerScreen } from './screens.js';
 import { setA, setText } from './gfx/fx.js';
@@ -11,7 +11,7 @@ const TYPES = ['PEAK', 'LOW SHELF', 'HIGH SHELF', 'NOTCH', 'BAND PASS', 'TILT'];
 const SR = 48000;
 const F0 = 20, F1 = 20000, GMAX = 18;
 
-// ---- RBJ biquad magnitude (dB) – mirrors the engine's filters
+// ---- RBJ biquad magnitude in dB, matches the engine's filters
 function biquad(type, f0, q, g) {
   const A = Math.pow(10, g / 40), w0 = (2 * Math.PI * f0) / SR, cw = Math.cos(w0), sw = Math.sin(w0), al = sw / (2 * q);
   let b0, b1, b2, a0, a1, a2;

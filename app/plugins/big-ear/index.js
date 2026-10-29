@@ -456,7 +456,7 @@ export default function register(tz) {
       desc: 'The bread-loaf silicon fuzz with a real-wood (walnut / cedar) facia, same circuit as the cream one.',
     }),
     BE({
-      id: 'be.loaflow', name: 'Crumb Fuzz Deep Bake', ref: 'BIG EAR pedals LOAF Fuzz – Matt Hoopes Low-End Enhanced Edition', code: 'CRUMB', logo: 'CRUMB', typeName: 'Low-end enhanced fuzz', cat: 'Fuzz',
+      id: 'be.loaflow', name: 'Crumb Fuzz Deep Bake', ref: 'BIG EAR pedals LOAF Fuzz, Matt Hoopes Low-End Enhanced Edition', code: 'CRUMB', logo: 'CRUMB', typeName: 'Low-end enhanced fuzz', cat: 'Fuzz',
       color: '#f1ead8', ink: '#22303d', logoColor: '#22303d', logoStroke: '#fbf7ec', art: 'notes', seed: 9, knob: 'chrome', led: '#3a8bff',
       palette: { ink: '#22303d' },
       algo: 'drive', opts: loafV({ preEq: [{ type: 'ls', f: 110, q: 0.7, db: 6 }, { type: 'hs', f: 3000, q: 0.7, db: -3 }], postLp: 5200, toneHi: 4400, outTrim: 0.42 }),
@@ -469,7 +469,7 @@ export default function register(tz) {
       color: '#1d1d1f', finish: 'wrinkle', ink: '#f0ede4', logoColor: '#f0ede4', logoStroke: '#000000', art: 'axe', seed: 7,
       algo: 'drive', opts: ratV,
       controls: [k('gain', 'DISTORTION', { def: 0.5, style: 'mxr' }), k('tone', 'FILTER', { def: 0.4, style: 'white' }), k('level', 'VOLUME', { def: 0.4, style: 'mxr' })],
-      desc: 'Homage to a 308-loaded late-80s Kalamazoo distortion: gritty, moderately compressed, tight low end. FILTER is reverse-acting like the original (clockwise = darker). Low-gain overdrive to fuzzy distortion.',
+      desc: 'Gritty late-80s style distortion with a tight low end, from mild overdrive to fuzzy distortion. FILTER works backwards like the original: clockwise is darker.',
     }),
     BE({
       id: 'be.frank', name: 'Igor Overdrive', ref: 'BIG EAR pedals FRANK Overdrive', code: 'IGOR', logo: 'IGOR', typeName: 'Low-gain overdrive', cat: 'Overdrive',
@@ -477,7 +477,7 @@ export default function register(tz) {
       algo: 'drive', opts: { clip: 'led', slew: 0.15, preHp: 60, gainMinDb: 2, gainMaxDb: 30, tone: 'eq3', eqRangeDb: 10, bassF: 120, midF: 800, trebleF: 2600, postLp: 11000, cleanSum: true, cleanMix: 0.25, levelMaxDb: 8 },
       fixed: { mid: 0.5 },
       controls: [k('level', 'VOLUME', { def: 0.5 }), k('gain', 'GAIN', { def: 0.4 }), k('treble', 'TONE', { def: 0.55 }), k('bass', 'BODY', { def: 0.5, trim: true })],
-      desc: 'Transparent low / mid-gain drive (Burr-Brown op-amp, LED clipping): clean boost to natural break-up. BODY is the internal trim that sets the low-end voicing for your amp.',
+      desc: 'Transparent low to mid gain drive, from clean boost to natural break-up. BODY is the internal trim that sets how much low end you get.',
     }),
     // ---------------------------------------------------------------- fuzzes
     BE({
@@ -495,7 +495,7 @@ export default function register(tz) {
       initParams: { oct: 0 },
       fixed: { 'o.semis1': 12, 'o.quality': 0 },
       derive: (p) => ({ 'o.on': p.oct ? 1 : 0 }),
-      desc: 'Harmonically rich three-transistor silicon fuzz (chords and chugs) with an octave-up on its own footswitch for single-note leads – think Tone-Machine-style ring.',
+      desc: 'Rich three-transistor silicon fuzz for chords and chugs. The octave-up has its own footswitch for single-note leads, with a Tone Machine style ring.',
     }),
     BE({
       id: 'be.bettywhite', name: 'Dottie White Fuzz', ref: 'BIG EAR pedals BETTY WHITE Fuzz', code: 'DOTTIE', logo: 'DOTTIE', typeName: 'One-knob fuzz', cat: 'Fuzz', size: 'mini',
@@ -509,7 +509,7 @@ export default function register(tz) {
       color: '#1b1b1d', finish: 'sparkle', ink: '#f2f2f2', logoColor: '#1b1b1d', logoStroke: '#f2f2f2', art: 'dots', seed: 8, knob: 'chrome', palette: { art: '#f2f2f2', artInk: '#000' },
       algo: 'drive', opts: bettyV, fixed: { gain: 0.95, mid: 0.5, treble: 0.55 },
       controls: [k('level', 'VOLUME', { def: 0.5 }), k('bass', 'BASS', { def: 0.55, trim: true })],
-      desc: 'The black version of the one-knob dimed fuzz – same PCB, transistors and values as the white one.',
+      desc: 'The black version of the one-knob dimed fuzz. Same circuit as the white one.',
     }),
     BE({
       id: 'be.slicepep', name: 'Deep Dish Fuzz Pepperoni', ref: 'BIG EAR pedals x The Tone Mob SLICE OF PIE Fuzz (pepperoni)', code: 'DEEP DISH', logo: 'DEEP DISH', typeName: 'Pizza fuzz · pepperoni', cat: 'Fuzz',
@@ -523,7 +523,7 @@ export default function register(tz) {
       size: 'pie', topping: 'cheese', seed: 27, knob: 'chrome', color: '#f4b73c',
       algo: 'drive', opts: pieV,
       controls: [k('gain', 'GAIN', { def: 0.6 }), k('tone', 'TONE', { def: 0.5 }), k('level', 'VOLUME', { def: 0.5 })],
-      desc: 'The plain cheese slice – same fuzz circuit as the pepperoni one, only the toppings differ.',
+      desc: 'The plain cheese slice. Same fuzz circuit as the pepperoni one, only the toppings differ.',
     }),
     // ---------------------------------------------------------------- boosts / utility
     BE({
@@ -542,7 +542,7 @@ export default function register(tz) {
         ...['m1', 'm2', 'm3'].flatMap((p) => [FOOT({ action: 'toggle', p, virtual: true }), LED({ bind: 'param:' + p, color: '#ff2a1a' })])],
       initParams: { m1: 1, m2: 0, m3: 0 },
       derive: (p) => ({ 'a.on': p.m1 ? 1 : 0, 'b.on': p.m2 ? 1 : 0, 'c.on': p.m3 ? 1 : 0, 'v.level': -12 * (p.drop ?? 0) }),
-      desc: 'Three clean boosts in one box (inspired by a famous Texas beard’s rig): use any one alone or stack them like a preamp. Each MORE knob sets its stage; DROP trims the output for volume drops.',
+      desc: 'Three clean boosts in one box. Use one alone or stack them like a preamp. Each MORE knob sets its boost and DROP turns the output down.',
     }),
     BE({
       id: 'be.buffdaddy', name: 'Swole Buffer', ref: 'BIG EAR n.y.c. BUFF DADDY Buffer', code: 'SWOLE', logo: 'SWOLE', typeName: 'Transistor buffer', cat: 'Utility', kind: 'Utility', size: 'mini', noStd: true,
@@ -565,7 +565,7 @@ export default function register(tz) {
         const gainDb = n * 3, outDb = n * 1.3 - gainDb;
         return { gain: gainDb / 27, level: (outDb + 30) / 36, bright: Math.min(1, n / 9) };
       },
-      desc: 'No knobs, nine footswitches: every switch engages one more cascaded boost. 1–3 add sparkle, four is a clear boost, all nine is a moderate low-gain overdrive. Stomp at random (a mallet is recommended).',
+      desc: 'No knobs, nine footswitches, and each one adds another boost stage. One to three add sparkle, four is a clear boost, all nine is a mild overdrive. A mallet is recommended.',
     }),
     // ---------------------------------------------------------------- time / modulation
     BE({
@@ -574,7 +574,7 @@ export default function register(tz) {
       palette: { art: '#7ad0ff' },
       algo: 'delay', opts: { maxMs: 600, defaultMs: 300 }, fixed: { mode: 1, tone: 0.42, modrate: 0.3, moddepth: 0.14, age: 0.35 },
       controls: [K('time', 'TIME', { min: 50, max: 550, def: 300, curve: 'log', display: (v) => Math.round(v) + ' ms' }), k('feedback', 'REPEATS', { def: 0.4, max: 1.05 }), k('mix', 'MIX', { def: 0.35 })],
-      desc: 'Simple 50–550 ms delay with an analog signal path and repeats voiced like a BBD: tape-like decay and a slight modulation.',
+      desc: 'Simple 50 to 550 ms delay with analog-style repeats that fade like tape, with a slight wobble.',
     }),
     BE({
       id: 'be.elle', name: 'Nell Reverb', ref: 'BIG EAR pedals ELLE Reverb', code: 'NELL', logo: 'NELL', typeName: 'Modulated reverb', cat: 'Reverb',
@@ -583,7 +583,7 @@ export default function register(tz) {
       algo: 'reverb', fixed: { mode: 6, mod: 0.28, size: 0.7, predelay: 18, lowcut: 0.15 },
       controls: [k('tone', 'COLOR', { def: 0.55 }), K('decay', 'DWELL', { def: 0.5, display: ten }), K('mix', 'BLEND', { def: 0.32, max: 0.65, display: ten })],
       derive: (p) => ({ decay: (p.decay ?? 0.5) > 0.97 ? 1 : (p.decay ?? 0.5) * 0.97, highdamp: 0.75 - 0.5 * (p.tone ?? 0.55) }),
-      desc: 'Ever-so-slightly modulated reverb: COLOR goes from dark to sweet, DWELL from spring-like slap to a huge shimmering hall (fully up rings out forever), BLEND never removes the dry signal.',
+      desc: 'Reverb with a little movement. COLOR goes from dark to sweet, DWELL from spring slap to a huge hall (fully up rings forever). BLEND always keeps the dry signal.',
     }),
     BE({
       id: 'be.albie', name: 'Ollie Ambient Modulator', ref: 'BIG EAR pedals ALBIE Ambient Modulator', code: 'OLLIE', logo: 'OLLIE', typeName: 'Ambient modulator', cat: 'Modulation', noStd: true, ledRow: true,

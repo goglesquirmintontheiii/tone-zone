@@ -1,8 +1,7 @@
-// Tone Zone originals, third generation: one character enclosure per classic core original (Drive Lab, VU comp,
-// tape echo, cathedral reverb, radio ring mod, cracked-glass crusher, rotary horn, rack-ear DI …).
-// Same family as forms-tz.js (engraved type, TONE ZONE badge, chrome hardware) but every pedal gets its own
-// silhouette, material and illustration. Performance: gradients, cached noise patterns, clip paths and a few
-// dozen paths per pedal – no SVG filters.
+// Tone Zone originals, third generation: a unique enclosure for each core original (Drive Lab, VU comp,
+// tape echo, cathedral reverb, radio ring mod, cracked-glass crusher, rotary horn, rack-ear DI…).
+// Same family as forms-tz.js (engraved type, TONE ZONE badge, chrome hardware), but each pedal has its own
+// shape, material and art. For speed: gradients, cached noise, clip paths and a few dozen paths, no SVG filters.
 import { svg, shade, luminance } from '../util.js';
 import { softShadow, noisePattern, haloFill } from './fx.js';
 import { label } from './controls.js';
@@ -424,7 +423,7 @@ function gate(ctx, def) {
   return finish(ctx, def, w, h, T(txt, { knob: 'mxr', toggleTitles: false }), 96, 30);
 }
 
-// Parametric EQ: console channel strip – four colour-coded band columns under a printed response curve
+// Parametric EQ: console channel strip with four colour-coded band columns under a printed response curve
 function consoleStrip(ctx, def) {
   const g = ctx.g, w = 206, h = 282;
   const col = def.color || '#20242d', txt = def.text || '#e9ecf3';
@@ -530,7 +529,7 @@ function vortex(ctx, def) {
   return finish(ctx, def, w, h, T(txt, { knob: 'mxr' }), 113, 28);
 }
 
-// Harmonic Trem: 50s appliance capsule – seafoam enamel, chrome belt line, AM-envelope scope, script logo
+// Harmonic Trem: 50s appliance capsule with seafoam enamel, chrome belt line, AM-envelope scope and script logo
 function capsule(ctx, def) {
   const g = ctx.g, w = 162, h = 256;
   const col = def.color || '#1f5d4a', acc = def.accent || '#9be7c8', txt = def.text || '#eaf6f1';
@@ -599,7 +598,7 @@ function leslie(ctx, def) {
   return finish(ctx, def, w, h, T(txt, { knob: 'chicken' }), 122);
 }
 
-// Ring Thing: purple bakelite cathedral radio – fan dial, tuning knob, grille cloth with the footswitch
+// Ring Thing: purple bakelite cathedral radio with fan dial, tuning knob and grille cloth around the footswitch
 function radio(ctx, def) {
   const g = ctx.g, w = 162, h = 256;
   const col = def.color || '#6b2d8f', acc = def.accent || '#ffcf7a', txt = def.text || '#f2e8f8';
@@ -744,7 +743,7 @@ function bubble(ctx, def) {
   return finish(ctx, def, w, h, T(txt, { knob: 'white' }), 104);
 }
 
-// Multi Delay: navy hammertone tape-echo unit – tape loop around capstan, heads and a serpentine bin
+// Multi Delay: navy hammertone tape echo with a tape loop around the capstan, heads and a serpentine bin
 function echo(ctx, def) {
   const g = ctx.g, w = 216, h = 270;
   const col = def.color || '#1f3347', acc = def.accent || '#ff7a2f', txt = def.text || '#e9f1fb';
@@ -1110,7 +1109,7 @@ function xformer(ctx, def) {
   return finish(ctx, def, w, h, T(txt, { knob: 'chrome' }), 100);
 }
 
-// Headphone Amp: the headphones are the panel – headband arc, a knob in each ear cup
+// Headphone Amp: the headphones are the panel, with a headband arc and a knob in each ear cup
 function phones(ctx, def) {
   const g = ctx.g, w = 158, h = 240;
   const col = def.color || '#222630', acc = def.accent || '#ff7a2f', txt = def.text || '#e9ecf3';

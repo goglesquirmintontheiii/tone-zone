@@ -709,7 +709,7 @@ export default function register(tz) {
         const sp = p.speed ?? 0.35, len = p.length ?? 0.45, brk = p.brk ? 1 : 0;
         return { 'p.on': sp > 0.02 ? 1 : 0, 'p.rate': sp, 'r.decay': 0.1 + len * 0.9, 'r.size': 0.25 + len * 0.75, 'r.predelay': 5 + len * 120, 'k.on': brk, 'b.on': brk };
       },
-      desc: 'Reverb into a vintage 4-stage phaser, blended with your dry signal by MIX. SPEED sets the phaser rate (fully down = reverb only), LENGTH sets the decay and pre-delay together. BREAK puts an asymmetric bitcrusher with analog-style clipping in front for broken, fuzzy washes.' }),
+      desc: 'Reverb into a vintage phaser, mixed with your dry signal by MIX. SPEED sets the phaser rate (fully down is reverb only), LENGTH sets the decay. BREAK adds a bitcrusher in front for broken, fuzzy washes.' }),
     J({
       id: 'jhs.charliebrown', name: 'Good Grief', ref: 'JHS Charlie Brown V4', cat: 'Overdrive', typeName: 'British crunch',
       color: '#7a4a2a', text: '#f6eccf', kstyle: 'cream', art: { kind: 'zigzag', ink: '#1d120a', fill: '#f2c230' },

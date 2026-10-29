@@ -49,7 +49,7 @@ export function rgbToHex([r, g, b]) {
   return '#' + [r, g, b].map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
 }
 export function shade(hex, amt) {
-  // amt -1..1 : darken / lighten
+  // amt from -1 (darker) to 1 (lighter)
   const [r, g, b] = hexToRgb(hex);
   if (amt >= 0) return rgbToHex([r + (255 - r) * amt, g + (255 - g) * amt, b + (255 - b) * amt]);
   return rgbToHex([r * (1 + amt), g * (1 + amt), b * (1 + amt)]);
@@ -80,7 +80,7 @@ export function toast(msg, kind = 'info', ms = 3600) {
 }
 
 export function fmt(v, unit = '', digits = 2) {
-  if (typeof v !== 'number' || !isFinite(v)) return '–';
+  if (typeof v !== 'number' || !isFinite(v)) return '-';
   const a = Math.abs(v);
   let s;
   if (unit === 'ms' && a >= 1000) return (v / 1000).toFixed(2) + ' s';

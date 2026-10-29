@@ -1,4 +1,4 @@
-// Library page: imported NAM model packs and IR packs, import flow (multi-file, folders, .zip).
+// Library page: imported NAM and IR packs, plus the import flow (files, folders, .zip).
 import { el, esc, bus, toast } from '../util.js';
 import { modal, confirmDlg } from '../menus.js';
 import { setPacks, getPackDefs } from '../catalog/index.js';
@@ -25,7 +25,7 @@ export function importDialog(info, opts = {}) {
   return new Promise((resolve) => {
     if (!info || (!info.items.length && !info.errors.length)) return resolve([]);
     if (!info.items.length) {
-      toast('Nothing importable found: ' + info.errors.join('; '), 'err', 6000);
+      toast('Nothing to import: ' + info.errors.join('; '), 'err', 6000);
       window.tz.lib.discard(info.stagingId);
       return resolve([]);
     }
@@ -58,7 +58,7 @@ export function importDialog(info, opts = {}) {
       };
     }
     const summary = el('p', { style: { color: 'var(--muted)', margin: '14px 0 0' } }, wrap);
-    summary.textContent = `${nams.length} NAM model${nams.length === 1 ? '' : 's'}${irs.length ? `, ${irs.length} IR${irs.length === 1 ? '' : 's'}` : ''} → ${nams.length > 1 || irs.length > 1 ? 'one block with selectable configurations' : 'one block'}.`;
+    summary.textContent = `${nams.length} NAM model${nams.length === 1 ? '' : 's'}${irs.length ? `, ${irs.length} IR${irs.length === 1 ? '' : 's'}` : ''} → ${nams.length > 1 || irs.length > 1 ? 'one block you can switch between them' : 'one block'}.`;
     const list = el('div', { class: 'model-list' }, wrap);
     for (const it of info.items) {
       const r = el('div', { class: 'mrow' }, list);
@@ -74,7 +74,7 @@ export function importDialog(info, opts = {}) {
     let committed = false;
     modal({
       title: opts.title || 'Import into Tone Zone',
-      subtitle: info.origin === 'tone3000' ? 'Downloaded from TONE3000' : 'Multiple models become one block with a model selector',
+      subtitle: info.origin === 'tone3000' ? 'Downloaded from TONE3000' : 'Several models become one block with a model picker',
       body: wrap,
       width: '760px',
       buttons: [
@@ -86,7 +86,7 @@ export function importDialog(info, opts = {}) {
             const packs = await window.tz.lib.commit({ stagingId: info.stagingId, name: name.value.trim() || 'Imported', category, color, items: info.items, origin: info.origin });
             committed = true;
             await refreshPacks();
-            toast(`Imported “${name.value.trim()}” – find it under Imported in the block browser`, 'ok', 4000);
+            toast(`Imported “${name.value.trim()}”. You'll find it under Imported in the block list.`, 'ok', 4000);
             resolve(packs);
           },
         },
@@ -112,14 +112,14 @@ export function renderLibrary() {
   v.innerHTML = '';
   const page = el('div', { class: 'page' }, v);
   const head = el('div', { class: 'page-head' }, page);
-  el('div', {}, head, '<h1>Library</h1><p>Your NAM captures and impulse responses. Several models in one pack become a single block with a configuration selector.</p>');
+  el('div', {}, head, '<h1>Library</h1><p>Your NAM models and impulse responses (IRs). A pack with several models becomes one block where you pick the model.</p>');
   const act = el('div', { class: 'actions' }, head);
   el('button', { class: 'btn', onclick: () => window.tz.lib.openFolder() }, act, '<i class="ic ic-folder"></i>Open folder');
   el('button', { class: 'btn', onclick: async () => { const i = await window.tz.lib.pickFolder(); if (i) importDialog(i); } }, act, '<i class="ic ic-folder"></i>Import folder');
   el('button', { class: 'btn btn-accent', onclick: () => importFiles() }, act, '<i class="ic ic-import"></i>Import .nam / .wav / .zip');
   const packs = getPackDefs();
   if (!packs.length) {
-    el('div', { class: 'empty-state' }, page, '<i class="ic ic-lib big"></i><h3>No models yet</h3><p>Import NAM models (A1, A2 / slimmable, LSTM…) or IRs, drop files anywhere on the window,.</p>');
+    el('div', { class: 'empty-state' }, page, '<i class="ic ic-lib big"></i><h3>No models yet</h3><p>Import NAM models (A1, A2, LSTM…) or IRs, or drop files anywhere on the window.</p>');
     return;
   }
   for (const kind of ['nam', 'ir']) {

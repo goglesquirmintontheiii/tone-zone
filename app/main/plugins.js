@@ -1,6 +1,6 @@
-// Plugin discovery / install / removal. A plugin is a folder with plugin.json + an ES module (index.js by default)
-// whose default export receives the Tone Zone plugin API. Built-in plugins ship inside the app (and can be
-// disabled); user plugins live in ~/.local/share/tone-zone/plugins.
+// Finding, installing and removing plugins. A plugin is a folder with plugin.json and an ES module
+// (index.js by default) whose default export gets the plugin API. Built-in plugins ship with the app
+// and can be turned off; user plugins live in ~/.local/share/tone-zone/plugins.
 'use strict';
 const fs = require('fs');
 const path = require('path');

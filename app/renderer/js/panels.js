@@ -1,5 +1,5 @@
-// Dockable side panels: drag the inner edge to resize, pop out into their own window (e.g. a second
-// monitor) and pop back in. The live DOM node is moved between documents, so all state and listeners stay.
+// Dockable side panels: drag the inner edge to resize, or pop them out into their own window.
+// The live DOM node moves between documents, so state and listeners are kept.
 import { el, bus } from './util.js';
 
 const LS = (k, v) => {
@@ -16,7 +16,7 @@ export function makeDockable(panel, { id, side, title, min = 220, max = 640, too
   const saved = LS('tz.panel.' + id);
   if (saved && saved.w) panel.style.width = saved.w + 'px';
   // resize handle on the edge facing the board
-  const grip = el('div', { class: 'panel-resizer', title: 'Drag to resize · double-click to reset' }, panel);
+  const grip = el('div', { class: 'panel-resizer', title: 'Drag to resize, double-click to reset' }, panel);
   grip.addEventListener('pointerdown', (e) => {
     if (panel.classList.contains('popped')) return;
     e.preventDefault();
@@ -42,7 +42,7 @@ export function makeDockable(panel, { id, side, title, min = 220, max = 640, too
     panel.style.width = '';
     LS('tz.panel.' + id, {});
   });
-  // pop-out / dock button
+  // pop out / dock button
   const btn = el('button', { class: 'icon-btn panel-pop', title: 'Pop out into its own window' }, toolHost || panel, '<i class="ic ic-popout"></i>');
   let win = null, placeholder = null;
   const popIn = () => {
@@ -65,7 +65,7 @@ export function makeDockable(panel, { id, side, title, min = 220, max = 640, too
     d.open();
     d.write('<!doctype html><html><head><meta charset="utf-8"></head><body class="popout-body"></body></html>');
     d.close();
-    d.title = `Tone Zone — ${title}`;
+    d.title = `Tone Zone - ${title}`;
     for (const n of document.querySelectorAll('link[rel=stylesheet], style')) {
       const c = n.cloneNode(true);
       if (n.href) c.href = n.href;

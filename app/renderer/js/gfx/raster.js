@@ -1,7 +1,6 @@
-// Raster thumbnails: draws a block's enclosure once, serialises it to a stand-alone SVG (with the gradients /
-// patterns it references copied in), rasterises it to a small PNG and caches it. Lists then show <img> elements –
-// one paint item each instead of hundreds of live SVG nodes, which is what made scrolling the block list and the
-// presets tab expensive.
+// Raster thumbnails: draw a block once, save it as a standalone SVG (with the gradients and patterns it uses),
+// turn that into a small PNG and cache it. Lists then show one <img> each instead of hundreds of live SVG
+// nodes, which made scrolling the block list and presets tab slow.
 import { renderForm } from './forms.js';
 import { portsFor, defaultVariant } from '../catalog/index.js';
 import { SVGNS } from '../util.js';

@@ -8,9 +8,9 @@ export default function register(tz) {
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once and controls are shared, so every control this form places goes in `owned` and is
+  // laid out again on each call. Labels sit above the knobs; art only goes in the gap above the LEDs so it never
+  // overlaps text.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +61,8 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher than the core, so the lever
+  // tip doesn't hit them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -77,7 +77,7 @@ export default function register(tz) {
     formKit.body(g, W, H, d.color, { rx: 6 });
     svg('rect', { width: W, height: H, rx: 6, fill: `url(#${id}n)` }, g);
     const L = layout(d, W, H, { kr: 10.5, top: 22, pad: 10 });
-    // channel stripes: left = yellow (row 1), right... the rows carry the side colour as a small dot before them
+    // channel stripes: yellow next to the first knob row, red next to the second
     const rows = d.controls.filter((c) => c.t === 'knob');
     [[rows[0], '#f2c230'], [rows[3], '#d8372b']].forEach(([c, col]) => c && svg('rect', { x: 4, y: c.y - 14, width: 3, height: 26, rx: 1.5, fill: col }, g));
     const name = d.logo || d.name, tag = d.tagline;
@@ -113,6 +113,6 @@ export default function register(tz) {
       LED({ bind: 'onparam:y.on', color: '#ffc21a' }), LED({ bind: 'onparam:r.on', color: '#ff2a1a' }),
     ],
     initParams: { 'y.on': 1, 'r.on': 0 },
-    desc: 'Two transparent, amp-like overdrives in one box; the yellow side feeds the red side for stacked gain. Each side has its own clean-boost / overdrive / distortion mode (internal DIP switches on the real unit).',
+    desc: 'Two transparent, amp-like overdrives in one box. The yellow side feeds the red side for more gain, and each side has its own clean boost / overdrive / distortion switch.',
   }));
 }

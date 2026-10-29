@@ -1,4 +1,4 @@
-// "Rig X Express" - inspired by the Line 6 POD Express (guitar).
+// "Rig X Express", inspired by the Line 6 POD Express (guitar).
 // AMP knob with a ring of model LEDs, DIST / MOD / DELAY / REVERB knobs (each sweeps four types, fully left = off),
 // VOLUME, ALT (knobs become GAIN / MID / BASS / TREBLE / CH VOL), two footswitches and the built-in looper:
 // press both switches to enter or leave looper mode.

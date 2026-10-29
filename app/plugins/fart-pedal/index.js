@@ -76,7 +76,7 @@ export default function register(tz) {
       derive: (u) => (u.wet
         ? { shift: 0.62, breath: 0.08, drive: 0.15, tone: 0.55, glide: 0.1, vibrato: 0.15, attack: 0.05, release: 0.2, sens: 0.5 }   // DRY: short, crisp, squeaky
         : { shift: 0.38, breath: 0.45, drive: 0.55, tone: 0.42, glide: 0.35, vibrato: 0.5, attack: 0.12, release: 0.55, sens: 0.55 }), // WET: low, flappy, long
-      desc: 'Replaces your guitar with a pitch-following whoopee cushion: every note you play comes out as a toot that sags in pitch. WET is low, long and flappy; DRY is short and squeaky. OUTPUT sets the volume. Play single notes for the most convincing results.',
+      desc: 'Turns your guitar into a whoopee cushion that follows your pitch. WET is low, long and flappy, DRY is short and squeaky. OUTPUT sets the volume. Single notes work best.',
     }),
   ]);
 }

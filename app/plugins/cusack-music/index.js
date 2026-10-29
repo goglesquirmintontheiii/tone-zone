@@ -109,7 +109,7 @@ export default function register(tz) {
         if (u._purr) Object.assign(o, PURR, { 'v.mix': Math.min(1, (u.vol ?? 0.6) * 1.6), 'v.dry': 0 });
         return o;
       },
-      desc: 'Every note you play comes back as a cat. Three knobs, all labelled MEOW: the left one is meow-volume, the middle one picks the voicing (1 Staccato Kitten, 2 Staccato Cat, 3 Staccato Sad Cat, 4 Mad Cat Synth, 5 Acid Kitty Synth, 6 Kitty Scream Synth, 7 Little Mew, 8 Randomized) and the right one is the whisker intensity (dry guitar → full cat). Hold the footswitch for a purr.',
+      desc: 'Every note you play comes back as a cat. All three knobs say MEOW: left is volume, middle picks one of eight cat voices and right goes from dry guitar to full cat. Hold the footswitch for a purr.',
     }),
   ]);
 

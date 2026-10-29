@@ -1,4 +1,4 @@
-// Spawns and supervises the native realtime DSP engine (a PipeWire/JACK client).
+// Starts and watches the native DSP engine (a PipeWire/JACK client).
 'use strict';
 const { spawn } = require('child_process');
 const fs = require('fs');

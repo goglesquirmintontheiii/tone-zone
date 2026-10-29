@@ -1,18 +1,16 @@
 // Built-in Tone Zone plugin: Hologram Electronics.
 // Blocks inspired by Hologram Electronics' sampling / texture machines. Names and artwork are Tone Zone originals;
-// control sets follow the real units (see each block's `ref`). Both real units are far deeper than one engine
-// block, so each is an approximation built as a chain (pitch, slicer, delay, reverb, drive, modulation, lo-fi …)
-// whose sub-blocks are switched and voiced by the algorithm / module selectors.
-// One custom "holo-prism" enclosure: dark anodised body with an iridescent prism band, concentric light rings
-// and thin hairline lettering.
+// control sets follow the real units (see each block's `ref`). The real units do far more than one engine block,
+// so each one is a chain (pitch, slicer, delay, reverb, drive, mod, lo-fi …) switched by the selectors.
+// "holo-prism" enclosure: dark anodised body, iridescent prism band, light rings and thin lettering.
 export default function register(tz) {
   const { K, SEL, FOOT, LED, def, ms, STEREO, MONO } = tz.helpers;
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once and controls are shared, so every control this form places goes in `owned` and is
+  // laid out again on each call. Labels sit above the knobs; art only goes in the gap above the LEDs so it never
+  // overlaps text.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -63,8 +61,8 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher than the core, so the lever
+  // tip doesn't hit them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -135,7 +133,7 @@ export default function register(tz) {
           's.on': T.s ? 1 : 0, 's.pattern': T.s || 1, 's.depth': 0.4 + 0.6 * act, 's.smooth': T.sm ?? 0.05 + 0.6 * sh, 's.time': Math.max(30, (p['d.time'] ?? 450) / 4),
           'd.mode': T.d, 'd.moddepth': T.md ?? 0.1 + 0.3 * sh, 'r.mode': T.r ?? 5, 'r.decay': 0.5 + 0.35 * act };
       },
-      desc: 'Eleven algorithms of granular, sequenced, glitched and smeared delays (MOSaic, SEQuence, GLiDe, HAZe, TUNnel, STRum, BLocKs, INTerrupt, ARPeggio, PATtern, WaRP). ACTIVITY drives the grains / pitch voices, SHAPE softens the envelopes, SPACE adds reverb. Hold TAP to freeze. Approximation: the real unit\'s per-algorithm variations and looper are not modelled.',
+      desc: 'Eleven kinds of grainy, stepped, glitchy and smeared delays. ACTIVITY drives the grains and pitch voices, SHAPE softens them, SPACE adds reverb. Hold TAP to freeze. The real unit\'s variations and looper are not included.',
     }),
     HG({
       id: 'holo.chroma', name: 'Hue Console', ref: 'Hologram Electronics Chroma Console', logo: 'HUE CONSOLE', tagline: 'MULTI-TEXTURE PROCESSOR', cat: 'Multi-FX', kind: 'Pedal', typeName: 'Four-module texture multi-effect',
@@ -180,7 +178,7 @@ export default function register(tz) {
         };
         return o;
       },
-      desc: 'Four modules in series – CHARACTER (drive / sweeten / fuzz / howl / swell), MOVEMENT (doubler / vibrato / phaser / tremolo / pitch), DIFFUSION (cascade / reels / space / collage / reverse) and TEXTURE (filter / squash / cassette / broken / interference) – each with its own amount knob and effect selector, plus a tilt EQ. Approximation of the real unit (no gesture recorder, presets or capture).',
+      desc: 'Four effects in a row (CHARACTER, MOVEMENT, DIFFUSION, TEXTURE), each with its own type selector and amount knob, plus a tilt EQ. No gesture recorder, presets or capture.',
     }),
   ]);
 }

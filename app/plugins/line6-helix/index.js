@@ -103,9 +103,9 @@ export default function register(tz) {
     scan();
   }
   // ------------------------------------------------------------------ bindings: Helix controls → other pedals
-  // Each Helix block keeps `bindings` (saved with the preset): [{ src, msg: {t:'cc'|'note', n, ch}, target: {block, cid},
-  // mode: 'momentary' | 'press' }]. Messages are learned from the unit (set the Helix footswitch / EXP pedal to send a
-  // MIDI CC or note in Command Center), then drive the target pedal's footswitch or knob / treadle.
+  // `bindings` (saved with the preset): [{ src, msg: {t:'cc'|'note', n, ch}, target: {block, cid}, mode: 'momentary' | 'press' }].
+  // The message is learned from the unit (set the footswitch / EXP to send a CC or note in Command Center) and then
+  // drives the target pedal's footswitch, knob or treadle.
   let learning = null; // { blk, binding, onDone }
   const msgText = (m) => (m ? `${m.t === 'note' ? 'Note' : 'CC'} ${m.n} · ch ${m.ch + 1}` : 'not learned');
   function dispatchBinding(t, n, chn, val) {
@@ -210,13 +210,13 @@ export default function register(tz) {
   const fsCtl = [...Array(12)].flatMap((_, i) => [FOOT({ action: 'helix', idx: i, style: 'soft' }), LED({ bind: `param:_fs${i}`, color: FS_COLORS[i] })]);
   tz.addDefs([
     def({
-      id: 'l6x.helix', name: 'Line 6 Helix (USB device)', ref: 'Line 6 Helix / HX family – your own unit over USB', brand: 'Line 6', code: 'HELIX',
+      id: 'l6x.helix', name: 'Line 6 Helix (USB device)', ref: 'Line 6 Helix / HX family (your own unit over USB)', brand: 'Line 6', code: 'HELIX',
       cat: 'Device', kind: 'Multi-FX', typeName: 'USB audio + MIDI device', form: 'helix', color: '#141416', algo: 'extio', alwaysOn: true, cost: 0.1,
       opts: { name: 'helix', capture: '(Helix|HX Stomp|HX Effects|Line ?6|POD Go)[^:]*:capture', playback: '(Helix|HX Stomp|HX Effects|Line ?6|POD Go)[^:]*:playback' },
       ports: { ins: ['USB 1', 'USB 2', 'USB 3', 'USB 4', 'USB 5', 'USB 6', 'USB 7', 'USB 8'], outs: ['USB 1 L', 'USB 2 R', 'USB 3', 'USB 4', 'USB 5', 'USB 6', 'USB 7 DI', 'USB 8 DI'] },
       ctrl: { ins: [{ label: 'EXP 2', hook: true, role: 'exp2' }, { label: 'EXP 3', hook: true, role: 'exp3' }, { label: 'EXT FS 1', hook: true, role: 'fs1' }, { label: 'EXT FS 2', hook: true, role: 'fs2' }] },
       initParams: { hxModel: 0, hxPreset: 0, hxSetlist: 0, hxSnap: 0, hxSend: 1, hxFollow: 0, hxCh: 1, exp: 0, expSel: 0 },
-      desc: 'Plug your Helix / HX in over USB. The jacks on top are its USB audio channels (USB 1/2 = main out); presets / snapshots set in the inspector are recalled with this Tone Zone preset; click the footswitches to press them on the unit. Patch TZ Footswitch / Expression blocks into EXP / EXT FS.',
+      desc: 'Use your Helix / HX over USB. The jacks on top are its USB audio channels (USB 1/2 is the main out). The preset and snapshot set in the inspector load with this Tone Zone preset, and clicking a footswitch presses it on the unit.',
       controls: [
         SCREEN('helix', { w: 300, h: 120 }),
         ...fsCtl,
@@ -224,7 +224,7 @@ export default function register(tz) {
         SEL('hxModel', 'Graphic', ['Auto-detect', 'Helix Floor', 'Helix LT', 'HX Stomp', 'HX Stomp XL', 'Helix Rack', 'HX Effects'], { virtual: true, hidden: true, noInspector: true }),
         K('hxPreset', 'Helix preset', { min: 0, max: 127, step: 1, def: 0, virtual: true, hidden: true, noInspector: true, display: (v) => presetName(v | 0) + ` (PC ${v | 0})` }),
         SEL('hxSetlist', 'Setlist', ['1', '2', '3', '4', '5', '6', '7', '8'], { virtual: true, hidden: true, noInspector: true }),
-        SEL('hxSnap', 'Snapshot', ['—', '1', '2', '3', '4', '5', '6', '7', '8'], { virtual: true, hidden: true, noInspector: true }),
+        SEL('hxSnap', 'Snapshot', ['Off', '1', '2', '3', '4', '5', '6', '7', '8'], { virtual: true, hidden: true, noInspector: true }),
         TOG('hxSend', 'Recall on load', ['OFF', 'ON'], { def: 1, virtual: true, hidden: true, noInspector: true }),
         TOG('hxFollow', 'Follow Helix', ['OFF', 'ON'], { def: 0, virtual: true, hidden: true, noInspector: true }),
         K('hxCh', 'MIDI channel', { min: 1, max: 16, step: 1, def: 1, virtual: true, hidden: true, noInspector: true, display: (v) => String(v | 0) }),
@@ -349,7 +349,7 @@ export default function register(tz) {
       const mk = effModel(nv.block);
       setText(s.model, dev.product || MODELS[mk].name);
       const audioOk = st && st.connected > 0;
-      setText(s.stat, `${dev.usb ? 'USB ✓' : 'USB –'}  ${dev.midiOut ? 'MIDI ✓' : 'MIDI –'}  ${audioOk ? 'AUDIO ✓' : 'AUDIO –'}${dev.bpm ? '  ' + dev.bpm + ' BPM' : ''}`);
+      setText(s.stat, `${dev.usb ? 'USB ✓' : 'USB ✗'}  ${dev.midiOut ? 'MIDI ✓' : 'MIDI ✗'}  ${audioOk ? 'AUDIO ✓' : 'AUDIO ✗'}${dev.bpm ? '  ' + dev.bpm + ' BPM' : ''}`);
       setA(s.stat, 'fill', dev.usb && dev.midiOut ? '#3ddc84' : '#ff9f0a');
       const pc = dev.lastPc ?? (u.hxPreset | 0);
       const on = dev.usb || dev.midiOut;
@@ -385,7 +385,7 @@ export default function register(tz) {
         if (n != null) cc(blk, n, down ? 127 : 0);
         if (down) tz.app.setParam(blk.id, key, (tz.app.ui(blk)[key] ?? 0) > 0.5 ? 0 : 1);
       }
-      if (!dev.midiOut && down) tz.ui.toast('No Helix MIDI port found – plug the unit in over USB', 'warn', 2200);
+      if (!dev.midiOut && down) tz.ui.toast('No Helix MIDI port found. Plug the unit in over USB.', 'warn', 2200);
       return true;
     },
     ctrl(blk, idx, value, kind, inp) {
@@ -401,7 +401,7 @@ export default function register(tz) {
     inspector(sec, blk, api) {
       const { el } = tz.ui;
       el('h5', {}, sec).textContent = 'Helix device';
-      el('p', { class: 'hint' }, sec).textContent = dev.usb || dev.midiOut ? `Connected: ${dev.product || dev.midiOut?.name}` : 'No Helix / HX found on USB yet – it appears here automatically when plugged in.';
+      el('p', { class: 'hint' }, sec).textContent = dev.usb || dev.midiOut ? `Connected: ${dev.product || dev.midiOut?.name}` : 'No Helix / HX found on USB yet. It shows up here when you plug it in.';
       for (const p of ['hxModel', 'hxSetlist', 'hxPreset', 'hxSnap', 'hxSend', 'hxFollow', 'hxCh']) {
         const c = def0().controls.find((x) => x.p === p);
         api.rowFor(Object.assign({}, c, { hidden: false, noInspector: false }));
@@ -428,7 +428,7 @@ export default function register(tz) {
         const inp = el('input', { class: 'io-label', value: labels[i] || '', placeholder: 'label', maxlength: 12 }, r);
         inp.onchange = () => { labels[i] = inp.value.trim(); tz.storage.set('labels_' + mk, labels); tz.bus.emit('rebuildBoard'); };
       });
-      el('p', { class: 'hint' }, sec).textContent = 'MIDI map: Helix factory defaults (FS1–5 = CC49–53, FS7–11 = CC54–58, EXP 1–3 = CC1–3, toe = CC59, tap = CC64, tuner = CC68, snapshot = CC69, looper = CC60–66). The unit\'s MIDI channel must match.';
+      el('p', { class: 'hint' }, sec).textContent = 'MIDI map: Helix factory defaults (FS1-5 = CC49-53, FS7-11 = CC54-58, EXP 1-3 = CC1-3, toe = CC59, tap = CC64, tuner = CC68, snapshot = CC69, looper = CC60-66). The unit\'s MIDI channel must match.';
     },
   });
   const def0 = () => tz.app.getDef('l6x.helix');
@@ -447,7 +447,7 @@ export default function register(tz) {
         const row = el('div', { class: 'hx-bind' }, list);
         const src = el('select', {}, row, sources.map((x) => `<option${x === bd.src ? ' selected' : ''}>${x}</option>`).join(''));
         src.onchange = () => { bd.src = src.value; tz.app.markDirty(); };
-        const tb = el('select', {}, row, '<option value="">– pedal –</option>' + others.map((b) => `<option value="${b.id}"${bd.target && bd.target.block === b.id ? ' selected' : ''}>${tz.ui.esc((tz.app.getDef(b.type) || {}).name || b.type)}</option>`).join(''));
+        const tb = el('select', {}, row, '<option value="">Pick a pedal</option>' + others.map((b) => `<option value="${b.id}"${bd.target && bd.target.block === b.id ? ' selected' : ''}>${tz.ui.esc((tz.app.getDef(b.type) || {}).name || b.type)}</option>`).join(''));
         const tc = el('select', {}, row);
         const fillCtl = () => {
           const b = others.find((x) => x.id === tb.value);
@@ -466,7 +466,7 @@ export default function register(tz) {
         lab.textContent = msgText(bd.msg);
         const lb = el('button', { class: 'btn small' }, lr, 'Learn');
         lb.onclick = () => {
-          if (!dev.midiIn) return toast('No Helix MIDI input found – plug the unit in over USB', 'warn', 2400);
+          if (!dev.midiIn) return toast('No Helix MIDI input found. Plug the unit in over USB.', 'warn', 2400);
           learning = { blk, binding: bd, onDone: () => { lab.textContent = msgText(bd.msg); lb.textContent = 'Learn'; } };
           lb.textContent = 'Move it…';
         };

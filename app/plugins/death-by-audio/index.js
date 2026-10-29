@@ -8,9 +8,9 @@ export default function register(tz) {
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once and controls are shared, so every control this form places goes in `owned` and is
+  // laid out again on each call. Labels sit above the knobs; art only goes in the gap above the LEDs so it never
+  // overlaps text.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +61,8 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher than the core, so the lever
+  // tip doesn't hit them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -175,7 +175,7 @@ export default function register(tz) {
           'd.mix': dry ? (p.dmix ?? 0.45) * 0.6 : 1, 'd.level': 0.25 + 0.6 * (p.mstr ?? 0.6), 'd.age': (p.shape ?? 0) ? 0.75 : 0.25, 'd.sat': 0.2 + 0.5 * fz,
         };
       },
-      desc: 'Fuzz into a modulated digital delay. DRY OFF gives repeats only; SHAPE switches the modulation from a smooth sine to a choppier, warbly wave (approximated with heavier wow & flutter).',
+      desc: 'Fuzz into a wobbly digital delay. DRY OFF gives repeats only, SHAPE switches from a smooth wobble to a choppier one (approximated).',
     }),
     D({
       id: 'dba.reverbmachine', name: 'Reverb Engine of Doom', ref: 'Death By Audio Reverberation Machine', logo: 'REVERB ENGINE', tagline: 'OF DOOM', cat: 'Reverb', typeName: 'Distorted reverb',

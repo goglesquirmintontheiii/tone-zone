@@ -1,5 +1,5 @@
-// Catalog building helpers. A block definition describes: the DSP algorithm and its voicing, the enclosure
-// form and colours, and the controls (knobs, switches, footswitches, LEDs, screens) mapped to engine params.
+// Catalog helpers. A block definition gives the DSP algorithm and voicing, the enclosure and colours,
+// and the controls (knobs, switches, footswitches, LEDs, screens) mapped to engine params.
 
 // knob: p = engine param, min/max = engine range mapped over the knob sweep
 export const K = (p, label, o = {}) => Object.assign({ t: 'knob', p, label, min: 0, max: 1, def: 0.5 }, o);
@@ -26,7 +26,7 @@ export const MONO = { ins: ['INPUT'], outs: ['OUTPUT'] };
 export const STEREO = { ins: ['INPUT A (MONO)', 'INPUT B'], outs: ['OUTPUT A (MONO)', 'OUTPUT B'] };
 export const MONO_TO_ST = { ins: ['INPUT'], outs: ['OUTPUT A (MONO)', 'OUTPUT B'] };
 
-// Standard bypass footswitch + status LED for single-switch pedals
+// standard bypass footswitch and LED for single-switch pedals
 export const STD = (ledColor = '#ff2a1a') => [FOOT(), LED({ color: ledColor })];
 
 export function def(o) {

@@ -137,7 +137,7 @@ export const originals5 = [
     art: { shape: 'pot', w: 250, artH: 94, padTop: 30, mat: 'anod', motif: 'gauge', jy: 160, cols: 3, logo: { font: 'inter', size: 14, ls: 3, weight: 800 } },
     algo: 'comp', opts: { type: 'vca' },
     controls: [K('sustain', 'PRESSURE'), K('ratio', 'RATIO'), K('knee', 'KNEE'), K('attack', 'ATTACK'), K('release', 'RELEASE'), K('level', 'MAKEUP', { def: 0.36 }), ...STD('#ff3b30')],
-    desc: 'A clean VCA compressor with every control on the lid: threshold (PRESSURE), ratio, knee, attack, release and makeup gain.' }),
+    desc: 'A clean VCA compressor with every control on top: threshold (PRESSURE), ratio, knee, attack, release and makeup gain.' }),
   O({ id: 'tz.librarian', name: 'Librarian', cat: 'Dynamics', color: '#2d4a2f', accent: '#d9b45a', text: '#f2e6c4', logoColor: '#e3c26a', typeName: 'Noise gate', knob: 'cream', cost: 0.2,
     art: { shape: 'rect', rx: 6, w: 200, artH: 84, mat: 'leather', motif: 'book', cols: 3, logo: { font: 'script', size: 24, ls: 0.4 } },
     algo: 'gate',
@@ -455,7 +455,7 @@ export const originals5 = [
       FOOT({ label: 'ON' }), FOOT({ action: 'none', label: 'HOLD', hold: { ms: 1, event: { type: 1, arg: 100 }, release: { type: 2, arg: 100 } } }),
       FOOT({ action: 'event', label: 'LAYER', event: { type: 1, arg: 100 }, hold: { ms: 600, event: { type: 2, arg: 100 } } }), LED({ color: '#ffcf6a' })],
     derive: (p) => { const s = p.swell ?? 0; return { 'sw.on': s > 0.02 ? 1 : 0, 'sw.attack': s }; },
-    desc: 'Hold a chord forever. HOLD sustains while your foot is down, LAYER captures and stacks a new chord on every press (hold LAYER to clear). RISE fades the held sound in, DECAY lets it fade out (FOREVER keeps it), OCT DOWN / OCT UP add octave layers and SWELL fades your playing in. CAPTURE AUTO grabs every new chord by itself.' }),
+    desc: 'Hold a chord forever. HOLD sustains while your foot is down and LAYER stacks a new chord on every press (hold LAYER to clear). RISE and DECAY fade the held sound in and out, OCT DOWN / OCT UP add octaves, and CAPTURE AUTO grabs each new chord by itself.' }),
   O({ id: 'tz.monastery', name: 'Monastery', cat: 'Reverb', color: '#a87a3a', accent: '#ffe6a8', text: '#2a1a08', typeName: 'Auto drone · hall', knob: 'chicken', cost: 1.8, stereo: 'both', tags: ['ambient', 'drone'],
     art: { shape: 'bell', w: 236, artH: 96, padTop: 26, mat: 'brass', motif: 'bell', padBot: 22, cols: 3, logo: { font: 'oswald', size: 19, ls: 5 } },
     algo: 'chain', opts: { chain: [

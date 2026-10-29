@@ -1,5 +1,5 @@
-// Live displays drawn inside pedal screens: tuners (needle / stream / strobe / polyphonic), looper LCDs,
-// loop ring and model-name readouts. Elements are created once and updated per status frame.
+// Live pedal screens: tuners, looper LCDs, the loop ring and model name readouts.
+// Elements are made once and updated on each status frame.
 import { svg, clamp, shade } from './util.js';
 import { setA, setText } from './gfx/fx.js';
 import { state, uiParams } from './state.js';
@@ -23,7 +23,7 @@ export function drawScreen(s, nv, st, now) {
     s.view.content.innerHTML = '';
     fn.build(s, s.view.content, s.view.w, s.view.h, nv);
   }
-  s.ui = uiParams(nv.block); // current UI values (incl. defaults) for screens that show settings
+  s.ui = uiParams(nv.block); // current UI values (with defaults) for screens that show settings
   fn.update(s, st, nv, now);
 }
 
@@ -70,7 +70,7 @@ const SCREENS = {
         if (b.pk >= b.holdDb || now - b.holdT > 1500) { b.holdDb = b.pk; b.holdT = now; }
         if (v[2] > 0) b.clipT = now;
         const lit = Math.round(((b.pk + 60) / 60) * b.segs.length);
-        b.segs.forEach((sg, k) => setA(sg, 'fill-opacity', k < lit ? 1 : 0.08)); // fill-opacity: repaint only
+        b.segs.forEach((sg, k) => setA(sg, 'fill-opacity', k < lit ? 1 : 0.08)); // fill-opacity only needs a repaint
         const rh = (s.H * (b.rm + 60)) / 60;
         setA(b.rms, 'y', (s.bot - rh).toFixed(1));
         setA(b.rms, 'height', rh.toFixed(1));
@@ -102,7 +102,7 @@ const SCREENS = {
       const ui = state.ui[nv.block.id] || {};
       if (!engaged || !tu.note) {
         s.segs.forEach((r) => setA(r, 'fill', '#1a0d0d'));
-        setText(s.note, engaged ? '–' : '');
+        setText(s.note, engaged ? '-' : '');
         setText(s.sub, engaged ? `${uiParams(nv.block).calib ?? 440}Hz` : '');
         setA(s.arrowL, 'fill', '#1a0d0d');
         setA(s.arrowR, 'fill', '#1a0d0d');
@@ -211,7 +211,7 @@ const SCREENS = {
     update(s, st, nv) {
       const tu = st.tuner || {};
       if (nv.block.bypass || !tu.note) {
-        setText(s.note, nv.block.bypass ? 'OFF' : '–');
+        setText(s.note, nv.block.bypass ? 'OFF' : '-');
         setText(s.cents, '');
         return;
       }

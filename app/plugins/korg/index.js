@@ -115,7 +115,7 @@ export default function register(tz) {
         for (const k in p) o['v.' + k] = p[k];
         return o;
       },
-      desc: 'Play single notes and a synthetic diva sings them back (monophonic, tracks E2 to E6). The selector picks the syllable pattern: two random "mi-ku" / gibberish lyrics, scat, Looh, Lahh, Ahh, Pahh, a cat-like Nyan and three phrases. PEAK lights when your input is too hot. Mute unused strings, it tracks one note at a time.',
+      desc: 'Play single notes and a synth voice sings them back (E2 to E6). The selector picks what it sings: random syllables, scat, Looh, Lahh, Ahh, Pahh, a cat-like Nyan or three phrases. PEAK lights when your input is too loud. Mute unused strings, it follows one note at a time.',
     }),
   ]);
 

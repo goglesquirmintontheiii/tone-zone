@@ -1,16 +1,15 @@
 // Built-in Tone Zone plugin: Gamechanger Audio.
 // Blocks inspired by Gamechanger Audio's "impossible" pedals (Riga). Names and artwork are Tone Zone originals;
-// control sets follow the real units (see each block's `ref`). One custom "gca-steel" enclosure: heavy black steel
-// chassis with crisp white industrial type, in two variants – a box with a chrome piano sustain pedal attached
-// (the pedal is the footswitch) and a box with a glass gas-discharge tube window across the middle.
+// control sets follow the real units (see each block's `ref`). "gca-steel" enclosure: black steel with white
+// type, either with a chrome piano sustain pedal attached (the pedal is the footswitch) or with a glass tube window.
 export default function register(tz) {
   const { K, TOG, FOOT, LED, def, ten } = tz.helpers;
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once and controls are shared, so every control this form places goes in `owned` and is
+  // laid out again on each call. Labels sit above the knobs; art only goes in the gap above the LEDs so it never
+  // overlaps text.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +60,8 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher than the core, so the lever
+  // tip doesn't hit them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -141,7 +140,7 @@ export default function register(tz) {
         const grp = (p.group ?? 0) === 1, s = p.sus ?? 0.5, t = p.tail ?? 0.6;
         return { mode: 1, speed: 0.05 + 0.9 * (1 - (p.rise ?? 0.3)), decay: t > 0.97 ? 1 : 0.6 + 0.39 * t, layer: grp ? 1 : 0, tone: grp ? 0.85 : 1 - 0.7 * s, dry: (p.split ?? 0) ? 0 : 1, level: grp ? -1 - 2 * s : 0 };
       },
-      desc: 'Press the piano pedal to sustain what you are playing, like a piano\'s damper pedal: RISE is how fast the sustain fades in, TAIL how long it rings after release (max = forever). GROUP layers successive presses, SINGLE holds one sound (SUSTAIN darkens it). SPLIT outputs the wet signal only.',
+      desc: 'Press the piano pedal to hold what you are playing. RISE sets how fast the sustain fades in, TAIL how long it rings after you let go (max is forever). GROUP stacks presses, SINGLE holds one sound, SPLIT outputs only the effect.',
     }),
     G({
       id: 'gca.plasma', name: 'Arc Tube Distortion', ref: 'Gamechanger Audio Plasma Pedal', logo: 'ARC TUBE', tagline: 'HIGH VOLTAGE DISTORTION', cat: 'Distortion', typeName: 'Gas-discharge distortion', rows: [3, 2], h: 292, cost: 1,
@@ -160,7 +159,7 @@ export default function register(tz) {
         const ce = (p.ceq ?? 0) === 1, lo = p.lo ?? 0.5, hi = p.hi ?? 0.5;
         return ce ? { 'd.bass': 0.5, 'd.treble': 0.5, 'e.on': 1, 'e.lowgain': (lo - 0.5) * 24, 'e.highgain': (hi - 0.5) * 24 } : { 'd.bass': lo, 'd.treble': hi, 'e.on': 0 };
       },
-      desc: 'Distortion made by a high-voltage spark jumping across a xenon tube: brutally square, gated and fizzy. BLEND mixes the clean signal back in; CLEAN EQ applies LOW / HIGH to the clean signal too.',
+      desc: 'Distortion from a high-voltage spark in a xenon tube: square, gated and fizzy. BLEND mixes the clean signal back in, CLEAN EQ applies LOW / HIGH to it too.',
     }),
   ]);
 }

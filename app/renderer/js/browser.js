@@ -1,5 +1,4 @@
-// Block browser sidebar: search, filters (type / category / brand / channels / source / favourites),
-// favourites pinned to the top of each group, lazily-rendered thumbnails and pointer-based drag-to-board.
+// Block list sidebar: search, filters, favourites at the top of each group, and drag to board.
 import { el, svg, esc, bus, toast } from './util.js';
 import { allDefs, getPackDefs, CATEGORIES, portsFor, defaultVariant, kindOf, KINDS, isOriginal, brandOf } from './catalog/index.js';
 import { renderForm } from './gfx/forms.js';
@@ -93,7 +92,7 @@ export function initBrowser(editor) {
   listEl = document.getElementById('blockList');
   chips.innerHTML = '';
   chips.className = 'filter-bar';
-  // quick row: favourites + filter toggle + kind chips
+  // top row: favourites, filter toggle and kind chips
   const row = el('div', { class: 'filter-row' }, chips);
   const favBtn = el('button', { class: 'chip fav' + (F.favOnly ? ' on' : ''), title: 'Show favourites only' }, row, '<i class="ic ic-star"></i>Favourites');
   favBtn.onclick = () => { F.favOnly = !F.favOnly; favBtn.classList.toggle('on', F.favOnly); changed(); };
@@ -186,7 +185,7 @@ export function initBrowser(editor) {
     renderCats();
     renderBrands();
     renderActive();
-    // keep the segmented sections in sync after "clear"
+    // keep the chip sections in sync after "clear"
     panel.querySelectorAll('.fsec').forEach((s) => {
       const title = s.querySelector('h5').textContent;
       const key = title === 'Channels' ? 'channels' : title === 'Source' ? 'source' : null;
@@ -208,9 +207,9 @@ export function initBrowser(editor) {
   changed();
 }
 
-// ------------------------------------------------------------------ virtualised list
-// Only the rows in view exist in the DOM (plus a margin); thumbnails are cached PNGs (gfx/raster.js). With ~1000
-// blocks a fully built list of live SVG pedals made every frame of the app expensive.
+// ------------------------------------------------------------------ virtual list
+// Only rows near the view are in the DOM and thumbnails are cached PNGs. A full list of ~1000
+// live SVG pedals made every frame slow.
 const ROW_H = 58, HEAD_H = 36, COUNT_H = 24, OVERSCAN = 6;
 let rows = []; // { type: 'count' | 'head' | 'item', y, h, d?, k? }
 let totalH = 0;
@@ -237,7 +236,7 @@ function makeItem(d, favs) {
     e.stopPropagation();
     toggleFavorite(d.id);
   };
-  // docked: pointer drag (instant); popped out into another window: native drag-and-drop across windows
+  // docked: pointer drag (instant). Popped out: native drag and drop between windows
   item.addEventListener('pointerdown', (e) => item.ownerDocument === document && startDrag(e, d, item));
   item.draggable = true;
   item.addEventListener('dragstart', (e) => {
@@ -254,7 +253,7 @@ function drawWindow() {
   const list = listEl;
   if (!list || !layer) return;
   const top = list.scrollTop, bot = top + (list.clientHeight || 800);
-  // binary search the first visible row
+  // binary search for the first visible row
   let lo = 0, hi = rows.length - 1;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
@@ -336,8 +335,8 @@ export function renderList() {
   drawWindow();
 }
 
-// ------------------------------------------------------------------ pointer drag (no OS drag-and-drop:
-// GTK's DnD adds a noticeable delay between releasing the mouse and the drop event)
+// ------------------------------------------------------------------ pointer drag
+// (not OS drag and drop: GTK adds a noticeable delay before the drop event)
 function startDrag(e, d, item) {
   if (e.button !== 0) return;
   const sx = e.clientX, sy = e.clientY;

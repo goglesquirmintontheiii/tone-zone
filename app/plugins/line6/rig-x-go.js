@@ -1,4 +1,4 @@
-// "Rig X Go" - inspired by the Line 6 POD Go.
+// "Rig X Go", inspired by the Line 6 POD Go.
 // 4.3" colour screen with the fixed POD-style signal flow (Wah, Volume, FX 1, Amp, Cab, EQ, FX 2-4), nav encoder,
 // six knobs under the screen (parameter pages), < PAGE / PAGE >, ACTION, HOME buttons, VOLUME knob, built-in
 // expression treadle with toe switch (wah ↔ volume), footswitches A-D + MODE + TAP and BANK ▼ / ▲.

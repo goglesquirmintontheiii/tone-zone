@@ -1,5 +1,5 @@
-// Plugins tab: a card per plugin (built-in brands, devices, ones you installed). Click a card for details and
-// a gallery of its blocks; click a block to try it out in a little sandbox that isn't connected to anything.
+// Plugins tab: one card per plugin. A card opens details and its blocks; a block opens
+// a small sandbox to play with that isn't connected to anything.
 import { el, esc, bus, toast, svg, clamp } from '../util.js';
 import { pluginInfo, setPluginEnabled, reloadPlugins } from '../plugins.js';
 import { pluginDefIds, getDef, kindOf } from '../catalog/index.js';
@@ -114,7 +114,7 @@ export async function renderPlugins() {
   el('button', { class: 'btn small', onclick: () => bulkSet(true) }, bulk, 'Turn all on');
   el('button', { class: 'btn small', onclick: () => bulkSet(false) }, bulk, 'Turn brands off');
   const grid = el('div', { class: 'plugin-grid' }, page);
-  el('p', { class: 'hint pl-warn' }, page).textContent = 'Plugins run inside Tone Zone with the same access as the app, so only install ones from people you trust. Presets keep blocks from plugins that are off or removed as gray placeholders that pass audio through.';
+  el('p', { class: 'hint pl-warn' }, page).textContent = 'Plugins run inside Tone Zone with the same access as the app, so only install ones from people you trust. If a plugin is off or removed, its blocks in presets become gray placeholders that pass the sound through.';
 
   async function bulkSet(on) {
     for (const p of [...pluginInfo().values()]) {
@@ -172,7 +172,7 @@ export async function renderPlugins() {
 async function removePlugin(p) {
   const m = p.info.manifest, id = p.info.id;
   const msg = p.info.builtin
-    ? `Remove “${m.name || id}”? Its blocks disappear from the browser and become placeholders in presets. You can bring it back with “Restore removed”.`
+    ? `Remove “${m.name || id}”? Its blocks leave the block list and become placeholders in presets. You can bring it back with “Restore removed”.`
     : `Remove “${m.name || id}”? This deletes the plugin's files. Its blocks become placeholders in presets.`;
   if (!(await confirmDlg('Remove plugin', msg, 'Remove', true))) return false;
   if (p.info.builtin) await window.tz.plugins.removeBuiltin(id);

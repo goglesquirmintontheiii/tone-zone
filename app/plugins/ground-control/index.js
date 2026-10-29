@@ -1,11 +1,10 @@
 // Built-in Tone Zone plugin: Ground Control Audio.
 // Inspired by Ground Control Audio's UwU Virtual Pet Buffer. Name, logo and artwork are Tone Zone originals;
-// the feature set follows the real unit: a unity op-amp buffer (always on) with a pixel pet on a mono OLED
-// that reacts to your playing, gains XP (x2 / x4 / x8 multiplier for steady practice), levels up through 30
-// stages, gets hungry and sleepy, plus A / B buttons, SENS and HARDCORE (level timer) settings.
+// features follow the real unit: an always-on buffer with a pixel pet on an OLED that reacts to your playing,
+// earns XP, levels up through 30 stages and gets hungry and sleepy. A / B buttons, SENS and HARDCORE settings.
 //
-// "gca-pet" screen: the pet lives in the screen object; its progress (level, XP, hunger, mood) is kept per
-// block with tz.storage, so it survives restarts. Input level comes from the block's own meter status.
+// "gca-pet" screen: pet progress (level, XP, hunger, mood) is saved per block with tz.storage. Input level comes
+// from the block's meter status.
 export default function register(tz) {
   const { TOG, BTN, LED, SCREEN, def, MONO } = tz.helpers;
   const { svg, label, formKit, softShadow, noisePattern, setA, setText } = tz.gfx;
@@ -166,7 +165,7 @@ export default function register(tz) {
         TOG('hard', 'HARDCORE', ['OFF', 'ON'], { x: 102, y: 168, def: 0, virtual: true, orient: 'h' }),
         LED({ x: 62, y: 144, r: 2.2, color: '#7dff9a' }),
       ],
-      desc: 'A clean unity-gain buffer (always on) with a pixel pet living on its OLED. Play and it dances and earns XP – keep practising for x2 / x4 / x8 multipliers – and it evolves from kitten to cat to crowned cat over 30 levels. A feeds it, B plays with it; ignore it and it gets hungry, sad, and falls asleep after 20 s of silence. SENS sets how loud you must play for it to notice, HARDCORE gives you 10 minutes per level or it is back to level 1. Progress is saved per pedal.',
+      desc: 'A clean, always-on buffer with a pixel pet on its screen. Play and it dances, earns XP and grows from kitten to crowned cat over 30 levels. A feeds it, B plays with it. SENS sets how loud you must play, HARDCORE gives you 10 minutes per level or it goes back to level 1.',
     }),
   ]);
 }

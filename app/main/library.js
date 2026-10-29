@@ -1,4 +1,4 @@
-// User library: NAM model packs and IR packs, presets and settings stored under ~/.local/share/tone-zone
+// User library: NAM and IR packs, presets and settings, all under ~/.local/share/tone-zone
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -82,7 +82,7 @@ function guessCategory(metas) {
   return 'amp';
 }
 
-// Strip the common prefix/suffix of names so configurations get short labels ("Gain 3", "Gain 7")
+// strip the shared prefix/suffix from names so models get short labels ("Gain 3", "Gain 7")
 function shortNames(names) {
   if (names.length < 2) return names.map((n) => n.slice(0, 28));
   let pre = names[0];
@@ -107,7 +107,7 @@ function walk(dir, out) {
   return out;
 }
 
-// Stage a set of user files (.nam/.wav/.zip): extracts archives, reads metadata. Returns a description for the UI.
+// Stage user files (.nam/.wav/.zip): unpack archives and read metadata. Returns a summary for the UI.
 function inspect(paths, origin) {
   const root = ensureDirs();
   const id = uid();
@@ -186,7 +186,7 @@ function inspect(paths, origin) {
   };
 }
 
-// Create the pack(s) from staged files
+// create the pack(s) from staged files
 function commit(req) {
   const root = ensureDirs();
   const stage = path.join(root, 'staging', req.stagingId);
@@ -327,11 +327,11 @@ function duplicatePreset(file) {
 function deletePreset(file) {
   fs.rmSync(path.join(presetDir(), path.basename(file)), { force: true });
 }
-// Factory presets: copied into the user's preset folder. The marker (.factory-installed) remembers every factory
-// file the user received with a hash of the content they got, so:
-//  * presets added in a later version arrive after an update,
+// Factory presets are copied into the user's preset folder. The .factory-installed marker keeps a hash of
+// each factory file the user got, so:
+//  * new presets from an update get added,
 //  * presets the user deleted stay deleted (until "Restore built-in presets"),
-//  * presets the user never changed are updated to the new version (the favourite star is kept),
+//  * presets the user never changed get updated (the favourite star is kept),
 //  * presets the user edited (saved, renamed, re-tagged) are left alone.
 const FACTORY_MARKER = () => path.join(dataRoot(), '.factory-installed');
 // content hash that ignores formatting and the favourite flag

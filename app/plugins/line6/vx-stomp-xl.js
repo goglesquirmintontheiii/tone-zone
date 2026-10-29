@@ -1,9 +1,8 @@
-// "VX Stomp XL" - inspired by the Line 6 HX Stomp XL.
-// Colour LCD with the signal-chain view (8 block slots, optional A/B split), UPPER / LOWER push encoders,
-// knobs 1-3 under the screen editing the selected block page by page, HOME/VIEW, ACTION, < PAGE, PAGE > buttons,
-// 8 capacitive footswitches with LED rings + scribble strips (STOMP / SNAPSHOT / PRESET / LOOPER modes, MODE
-// switch, TAP / hold = TUNER), EXP 1 / EXP 2 jacks. Menus: slot → category → model; ACTION menu (move / copy /
-// paste / clear / bypass / path); hold HOME = MENU → Global Settings submenu, tempo, tuner.
+// "VX Stomp XL", inspired by the Line 6 HX Stomp XL.
+// Colour LCD with the chain view (8 slots, optional A/B split), UPPER / LOWER push encoders, knobs 1-3 for the
+// selected block, HOME/VIEW, ACTION and PAGE buttons, 8 footswitches with LED rings and scribble strips
+// (STOMP / SNAPSHOT / PRESET / LOOPER, MODE, TAP / hold = TUNER), EXP 1 / EXP 2 jacks.
+// Menus: slot → category → model, ACTION (move / copy / paste / clear / bypass / path), hold HOME for settings.
 import { CATS, modelsIn, pText } from './mfx-kit.js';
 
 export function registerVX(tz, kit) {

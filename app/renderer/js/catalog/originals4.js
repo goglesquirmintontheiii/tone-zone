@@ -584,7 +584,7 @@ export const originals4 = [
       LED({ bind: 'param:toe', r: 2, color: '#ff3b30', role: 'toeled' }),
     ],
     derive: atlasDerive,
-    desc: 'Flagship floor modeler: two paths of six slots with 80 models, scenes, presets, a looper, a tuner and two expression treadles. Use the joystick buttons to pick a slot and a model, and the six knobs to edit it.' }),
+    desc: 'Flagship floor modeler: two paths of six slots with 80 models, plus scenes, presets, a looper, a tuner and two expression treadles. Pick a slot and a model with the joystick buttons, then edit it with the six knobs.' }),
 
   // ------------------------------------------------------------------ 2. AURORA DESK
   TZ({ id: 'tz.aurora', name: 'Aurora Desk', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-aurora', color: '#1b1f2a', accent: '#7dffb0', logo: 'AURORA', noStd: true,
@@ -614,7 +614,7 @@ export const originals4 = [
       PF('fz', { label: 'FREEZE', role: 'ffz', style: 'stomp' }),
     ],
     derive: auroraDerive,
-    desc: 'Ambient desk unit with pitch, modulation, echo and reverb. Four macro knobs, six programs, and two snapshots (A and B) you can morph between with a knob, a pedal or the A/B switch.' }),
+    desc: 'Ambient desk unit with pitch, modulation, echo and reverb. Four macro knobs, six programs and two snapshots (A and B) you can morph between with a knob, a pedal or the A/B switch.' }),
 
   // ------------------------------------------------------------------ 3. PIXEL QUEST
   TZ({ id: 'tz.pixelquest', name: 'Pixel Quest', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-console', color: '#c9c3d6', accent: '#ff3f7f', logo: 'PIXEL QUEST', noStd: true,
@@ -645,7 +645,7 @@ export const originals4 = [
       PF('pw', { label: 'POWER-UP (HOLD)', role: 'fpw' }),
     ],
     derive: pqDerive,
-    desc: 'A game console that is secretly a synth: each character is a synth voice and each level is an effects chain. Use the D-pad, A/B and START to play through the menus.' }),
+    desc: 'A game console that is secretly a synth: each character is a voice and each level is an effects chain. Use the D-pad, A/B and START to move through the menus.' }),
 
   // ------------------------------------------------------------------ 4. LOW FOUNDRY (bass)
   TZ({ id: 'tz.foundry', name: 'Low Foundry', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-foundry', color: '#2b2622', accent: '#ffb02e', logo: 'LOW FOUNDRY', noStd: true,
@@ -666,5 +666,5 @@ export const originals4 = [
       LED({ bind: 'param:_tuner', color: '#3ddc84', role: 'l4' }), LED({ bind: 'on', color: '#ff2a1a', role: 'l5' }),
     ],
     derive: lfDerive,
-    desc: 'Bass floor unit with compressor, octave, drive, tube preamp, 4-band EQ and cab sim. The VU meter shows the output (or cents when tuning), the segment display shows programs and values.' }),
+    desc: 'Bass floor unit with compressor, octave, drive, tube preamp, 4-band EQ and cab sim. The VU meter shows the output (or cents when tuning) and the display shows programs and values.' }),
 ];

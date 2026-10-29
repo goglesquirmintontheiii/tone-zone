@@ -159,7 +159,7 @@ export function drawToggle(parent, ctl, theme) {
   svg('path', { d: 'M-1.9,0.6 L-1.25,-10.6 Q0,-11.6 1.25,-10.6 L1.9,0.6 Q0,1.6 -1.9,0.6 Z', fill: 'url(#g-chrome)', stroke: '#3a3d42', 'stroke-width': 0.45 }, lever);
   svg('path', { d: 'M-0.55,-0.4 L-0.35,-9.8', stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 0.6, 'stroke-linecap': 'round', fill: 'none' }, lever);
   svg('circle', { cx: 0, cy: -11, r: 2.5, fill: 'url(#g-chromeDome)', stroke: '#3a3d42', 'stroke-width': 0.4 }, lever);
-  // centre position of a 3-way vertical toggle: the lever points at you – show its tip on top of the bushing
+  // middle position of a 3-way toggle: the lever points at you, so show its tip on top of the bushing
   const mid = svg('circle', { r: 2.5, fill: 'url(#g-chromeDome)', stroke: '#3a3d42', 'stroke-width': 0.4, 'fill-opacity': 0, 'stroke-opacity': 0 }, g);
   const labels = [];
   ctl.options.forEach((o, i) => {

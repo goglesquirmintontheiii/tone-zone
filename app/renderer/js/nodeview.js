@@ -50,7 +50,7 @@ export class NodeView {
     this.g.dataset.node = this.block.id;
     const content = svg('g', {}, this.g);
     this.content = content;
-    // level of detail: a bitmap of this block shown instead of the live vector graphic when zoomed out / moving
+    // level of detail: show a bitmap of the block instead of the live SVG when zoomed out or moving
     this.lodImg = svg('image', { display: 'none', 'pointer-events': 'none', preserveAspectRatio: 'none' }, this.g);
     if (this._lodUrl) URL.revokeObjectURL(this._lodUrl);
     this._lodUrl = null;
@@ -77,7 +77,7 @@ export class NodeView {
     this.theme = res.theme;
     this.screens = [];
     for (const [cid, v] of this.views) if (v.ctl.t === 'screen') this.screens.push({ ctl: v.ctl, view: v.view, state: {} });
-    // Drop-style position LEDs around the selector
+    // position LEDs around the selector, like on a Drop
     if (d.dropLeds) {
       const sel = d.controls.find((c) => c.p === 'dsel');
       this.dropLeds = sel.options.map((_, i) => {
@@ -87,7 +87,7 @@ export class NodeView {
         return drawLed(content, { x: sel.x + Math.sin(a) * rr, y: sel.y - Math.cos(a) * rr, r: 1.9, color: '#ff2a1a', bezel: '#222' });
       });
     }
-    // selection ring + load badge
+    // selection ring and load badge
     svg('rect', { class: 'sel-ring', x: -5, y: -5, width: this.w + 10, height: this.h + 10, rx: 14 }, this.g);
     this.dim = svg('rect', { x: 0, y: 0, width: this.w, height: this.h, rx: 8, fill: '#05070a', opacity: 0, 'pointer-events': 'none' }, this.g);
     this.badge = svg('text', { class: 'load-badge', x: this.w - 2, y: this.h + 14, 'text-anchor': 'end', fill: '#8c94a6' }, this.g);
@@ -291,12 +291,12 @@ export class NodeView {
     const st = state.status.blocks[this.block.id] || {};
     this.updateLeds(now);
     for (const s of this.screens) drawScreen(s, this, st, now);
-    // load badge: 2 Hz is plenty (text changes are comparatively expensive to repaint)
+    // load badge: 2 Hz is enough (text changes are costly to repaint)
     if (now - (this._badgeT || 0) > 1000) {
       this._badgeT = now;
       setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false && this.def.cost !== 0 ? (st.load * 100).toFixed(1) + '%' : '');
     }
-    // tube heaters: slow, small flicker that brightens with the input level (low rate keeps it cheap)
+    // tube glow: a slow, small flicker that brightens with input level (low rate keeps it cheap)
     if (this.tubeGlows && now - (this._tubeT || 0) > 150) {
       this._tubeT = now;
       const off = this.block.bypass;
@@ -306,7 +306,7 @@ export class NodeView {
         setA(el, 'fill-opacity', v.toFixed(2));
       });
     }
-    // panel meters are decorative: half rate is plenty
+    // panel meters are just for looks, half rate is enough
     if (this.ioMeters && now - (this._ioT || 0) > 85) {
       this._ioT = now;
       const peaks = this.def.io === 'in' ? state.status.inPeak : state.status.outPeak;

@@ -1,4 +1,4 @@
-// Presets tab: searchable / sortable grid of preset cards with board thumbnails, favourites, tags and actions.
+// Presets tab: a searchable grid of preset cards with thumbnails, favourites and tags.
 import { el, svg, esc, bus, toast } from '../util.js';
 import { state, loadPreset, newPreset, markDirty, serialize } from '../state.js';
 import { getDef, portsFor, defaultVariant } from '../catalog/index.js';
@@ -10,8 +10,8 @@ import { prompt, confirmDlg, showMenu, modal } from '../menus.js';
 const V = { q: '', sort: 'name', filter: 'All', tags: new Set(), tagMode: 'any', selecting: false, sel: new Set() };
 export const GENRE_TAGS = ['rhythm', 'lead', 'clean', 'crunch', 'high-gain', 'ambient', 'simple', 'complex', 'jazz', 'worship', 'contemporary-worship', 'gospel', 'rock', 'classic-rock', 'alt-rock', 'metal', 'heavy-metal', 'classic-metal', 'deathcore', 'metalcore', 'punk', 'pop-punk', 'pop', 'experimental', 'jazz-fusion', 'edm', 'acoustic', 'country', 'country-rock', 'blues', 'funk', 'bass'];
 
-// Preset thumbnails: the board's real pedals (cached raster images) composited into one PNG per preset.
-// One <img> per card keeps the tab cheap to scroll and repaint.
+// Each preset thumbnail is one PNG built from the cached pedal images.
+// One <img> per card keeps scrolling and repainting cheap.
 const thumbCache = new Map(); // file|mtime -> dataURL
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 async function thumbPNG(layout) {
@@ -53,7 +53,7 @@ async function thumbPNG(layout) {
     cx.stroke();
   }
   const raw = Math.max(...boxes.map((b) => Math.max(b.w, b.h))) * sc * dpr;
-  const px = raw < 80 ? 64 : raw < 112 ? 96 : 128; // a few fixed sizes so pedals are shared between presets
+  const px = raw < 80 ? 64 : raw < 112 ? 96 : 128; // fixed sizes so presets can share pedal images
   for (const b of boxes) {
     cx.globalAlpha = b.byp ? 0.5 : 1;
     if (!b.d || b.d.missing) {
@@ -86,7 +86,7 @@ function thumb(p) {
   return im;
 }
 const sizeCache = new Map();
-// real rendered size of a block (measured once by drawing its enclosure off-screen), table fallback
+// a block's real size, measured once by drawing it off-screen (falls back to a guess)
 export function sizeOf(d) {
   if (!d) return [120, 200];
   if (sizeCache.has(d.id)) return sizeCache.get(d.id);
@@ -118,7 +118,7 @@ export async function renderPresets() {
   const v = document.getElementById('view-presets');
   v.innerHTML = '';
   const page = el('div', { class: 'page presets-page' }, v);
-  const head = el('div', { class: 'page-head' }, page, '<div><h1>Presets</h1><p>Click a preset to load it · double-click to load and jump to the board.</p></div>');
+  const head = el('div', { class: 'page-head' }, page, '<div><h1>Presets</h1><p>Click a preset to load it. Double-click to load it and go to the board.</p></div>');
   const acts = el('div', { class: 'page-actions' }, head);
   el('button', { class: 'btn', onclick: newPresetAction }, acts, '<i class="ic ic-plus"></i>New');
   el('button', { class: 'btn', onclick: () => savePreset(true).then(renderPresets) }, acts, '<i class="ic ic-save"></i>Save current as…');
@@ -143,7 +143,7 @@ export async function renderPresets() {
     const b = el('button', { class: 'chip' + (V.filter === f ? ' on' : '') + (f === 'Favourites' ? ' fav' : '') }, chips, f === 'Favourites' ? '★ Favourites' : esc(f));
     b.onclick = () => { V.filter = f; draw(); chips.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b)); };
   }
-  // tag filter: multi-select, match any / all
+  // tag filter: pick several, match any or all
   const counts = new Map();
   for (const p of list) for (const t of p.tags || []) counts.set(t, (counts.get(t) || 0) + 1);
   const tags = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
@@ -153,7 +153,7 @@ export async function renderPresets() {
     tagRow.innerHTML = '';
     if (!tags.length) return;
     el('span', { class: 'pp-tags-l' }, tagRow, '<i class="ic ic-filter"></i>Tags');
-    const mode = el('button', { class: 'chip sm', title: 'Show presets with any / all of the selected tags' }, tagRow, V.tagMode === 'any' ? 'match any' : 'match all');
+    const mode = el('button', { class: 'chip sm', title: 'Show presets with any or all of the selected tags' }, tagRow, V.tagMode === 'any' ? 'match any' : 'match all');
     mode.onclick = () => { V.tagMode = V.tagMode === 'any' ? 'all' : 'any'; drawTags(); draw(); };
     for (const t of tags) {
       const b = el('button', { class: 'chip sm' + (V.tags.has(t) ? ' on' : '') }, tagRow, `#${esc(t)}<em>${counts.get(t)}</em>`);
@@ -297,7 +297,7 @@ export async function renderPresets() {
   draw();
 }
 
-// chip-based tag editor with suggestions (genres + tags used elsewhere)
+// tag editor with suggestions (genres plus tags used on other presets)
 export function editTags(name, current, known = []) {
   return new Promise((resolve) => {
     const tags = [...current];
@@ -347,7 +347,7 @@ export function editTags(name, current, known = []) {
 }
 
 async function newPresetAction() {
-  if (state.dirty && !(await confirmDlg('Unsaved changes', 'Discard current changes?', 'Discard', true))) return;
+  if (state.dirty && !(await confirmDlg('Unsaved changes', 'Throw away your current changes?', 'Discard', true))) return;
   loadPreset(newPreset(), null);
   updateTitle();
   markDirty(false);

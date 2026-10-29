@@ -1,5 +1,5 @@
 // Built-in Tone Zone plugin: Headrush.
-// "Rush Five" - inspired by the Headrush MX5: 4" touchscreen rig view (seven block slots), VALUE push knob,
+// "Rush Five", inspired by the Headrush MX5: 4" touchscreen rig view (seven block slots), VALUE push knob,
 // BACK button, four footswitches (RIG / STOMP / HYBRID / LOOPER modes) and a built-in expression pedal.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';
 

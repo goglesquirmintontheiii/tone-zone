@@ -1,4 +1,4 @@
-// "GX-1000 Core" - inspired by the BOSS GT-1000CORE.
+// "GX-1000 Core", inspired by the BOSS GT-1000CORE.
 // Small black box with a monochrome LCD, knobs 1-3 + MASTER, cursor / ENTER / EXIT / MENU buttons and three
 // footswitches (memory down, memory up, CTL). Fixed BOSS-style chain: COMP, DIST, AMP, EQ, FX1, FX2, DELAY, REVERB.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';

@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Dunlop.
 // Blocks inspired by Dunlop gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 
 // Treadle enclosure with an optional side pod for knobs / switches (wahs, volume pedals, vibe controllers).
 // def: tw / th (size), panel: { w, y, h, title } (side pod on the input side), art(g, w, h, tz) for printed artwork.

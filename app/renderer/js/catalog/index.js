@@ -1,4 +1,4 @@
-// Block catalog registry: core Tone Zone blocks + blocks registered by plugins + user NAM / IR packs.
+// Block catalog: core blocks, blocks from plugins, and the user's NAM and IR packs.
 import { originals, ioDefs, coreGear, boxes, converters } from './originals.js';
 import { originals2 } from './originals2.js';
 import { originals3 } from './originals3.js';
@@ -28,7 +28,7 @@ function finalize(d) {
     const t = TUBES_TOP[d.id] || (amp !== d.id && TUBES_TOP[amp] ? [Math.min(3, TUBES_TOP[amp][0]), 0] : null);
     if (t) d.tubesTop = t;
   }
-  // baseForm: the generic shape a custom enclosure stands for ('amp', 'cab', …) – used for stacking, z-order, thumbnails
+  // baseForm: the generic shape a custom enclosure stands for ('amp', 'cab', …), used for stacking, z-order and thumbnails
   d.baseForm = d.baseForm || d.form;
   d.search = [d.name, d.ref, d.brand, d.cat, d.code, d.typeName, d.tags && d.tags.join(' ')].filter(Boolean).join(' ').toLowerCase();
   return d;
@@ -45,7 +45,7 @@ export function registerPluginDefs(pluginId, defs, defaults = {}) {
   for (const d of flat) {
     if (!d.id) throw new Error('block without id');
     if (registry.has(d.id) && !set.has(d.id)) {
-      console.warn(`plugin ${pluginId}: block id ${d.id} already registered – skipped`);
+      console.warn(`plugin ${pluginId}: block id ${d.id} already registered, skipped`);
       continue;
     }
     d.plugin = pluginId;
@@ -110,7 +110,7 @@ export function brandOf(d) {
   return d.ref ? d.ref.split(' ')[0] : null;
 }
 
-// remembered block → plugin names so a disabled plugin's blocks can say what they need
+// remember which plugin each block came from, so a disabled plugin's blocks can say what they need
 let knownBlocks = {};
 try { knownBlocks = JSON.parse(localStorage.getItem('tz.knownBlocks') || '{}'); } catch {}
 export function rememberPluginBlocks(pluginName, ids) {

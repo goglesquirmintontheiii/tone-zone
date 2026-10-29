@@ -62,7 +62,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0, boost: 0 },
       derive: (p) => ({ 'm.level': p.mute ? -60 : (p.vol ?? 0) + (p.boost ? 6 : 0) }),
-      desc: 'Two independent inputs (e.g. pickup + internal mic) with their own GAIN, polarity and mute, mixed into a shared master EQ (bass / sweepable mid / treble, notch, low cut) and a +6 dB footswitchable boost. Note: the EQ is shared by both channels (per-channel EQ needs dual-lane chains).',
+      desc: 'Two inputs (say a pickup and a mic), each with its own GAIN, polarity and mute, into one shared EQ with notch and low cut, plus a +6 dB boost footswitch.',
     }),
     G({
       id: 'gd.alix', name: 'Ali-X Acoustic Pre', ref: 'Grace Design ALiX', logo: 'Ali-X', tagline: 'ACOUSTIC PREAMP · DI', typeName: 'Acoustic preamp / DI',

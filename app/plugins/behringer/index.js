@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Behringer.
 // Blocks inspired by Behringer gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 //
 // Custom form `bh-stomp`: the shiny moulded-plastic compact: narrow knob deck, a pedal flap with a rounded lower
 // edge, the printed model code, a glossy highlight streak and the ridged battery door at the toe. One or two knob
@@ -237,7 +237,7 @@ export default function register(tz) {
         const m = p.mic ?? 0;
         return { 'a.gain': r[0] + (r[1] - r[0]) * (p.drv ?? 0.5), 'a.mid': 0.5, 'a.bright': p.mod === 2 ? 0.6 : 0, 'c.model': p['a.channel'] ?? 1, 'c.m1pos': [0.45, 0.1, 0.7][m], 'c.m1axis': m === 2 ? 1 : 0 };
       },
-      desc: 'Analog-style amp + speaker simulator DI: three amp voicings (TW tweed, BR british, CA californian), three gain modes and three mic positions (classic, centre, off-axis).',
+      desc: 'Amp and speaker simulator DI with three amp sounds (TW tweed, BR british, CA californian), three gain modes and three mic positions.',
     }),
     BH({
       id: 'bh.bdi21', name: 'BX21 Bass Driver DI', ref: 'Behringer V-Tone BDI21', code: 'BX21', typeName: 'Bass Driver DI', cat: 'Preamp', color: '#8a8f96', text: '#0f1114', tags: ['bass'],

@@ -1,8 +1,7 @@
 // Built-in Tone Zone plugin: Fractal Audio.
-// "Axis M3" - inspired by the Fractal Audio FM3: blue-and-black display with the 4 × 6 routing grid (blocks in
-// the same columns on different rows run as parallel rows), A-E knobs, VALUE wheel, nav pad + ENTER, HOME /
-// LAYOUT / EDIT / EXIT / TEMPO / STORE / PAGE buttons, three footswitches with mini displays + LED rings and
-// footswitch layouts (SCENES / EFFECTS / PRESETS / LOOPER). Names and artwork are Tone Zone originals.
+// "Axis M3", inspired by the Fractal Audio FM3: display with the 4 × 6 routing grid (blocks in the same column on
+// different rows run in parallel), A-E knobs, VALUE wheel, nav pad, the usual buttons and three footswitches with
+// mini displays and LED rings (SCENES / EFFECTS / PRESETS / LOOPER layouts). Names and artwork are Tone Zone originals.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';
 
 export default function register(tz) {

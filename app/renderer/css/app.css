@@ -565,8 +565,8 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .pc-thumb:not([src]), .thumb-img:not([src]) { visibility: hidden; }
 .meter-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .vu { position: relative; }
-/* Composited scrolling: at device-pixel-ratio 1 Chromium won't composite a transparent scroller (to keep LCD text
-   antialiasing) and repaints + re-rasterises everything visible on every scroll frame instead – that was most of
+/* Composited scrolling: at DPR 1 Chromium won't composite a transparent scroller (to keep LCD text
+   antialiasing), so it re-rasterised everything visible on every scroll frame. That was most of
    the GPU load when scrolling the presets tab and the block list. */
 .page, .block-list, .insp-body, .modal .body, .preset-menu .pm-list, .port-list, .brand-list, .pp-list, .tag-sug { will-change: scroll-position; }
 .ic-check { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E"); }

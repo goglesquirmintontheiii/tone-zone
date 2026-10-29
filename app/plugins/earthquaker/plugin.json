@@ -3,7 +3,7 @@
   "name": "EarthQuaker Devices",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by EarthQuaker Devices: hand-drawn, screen-printed enclosures with cartoon lettering and bold colour pairs. Overdrives, fuzzes, power amp distortion, boosters, otherworldly reverbs, delays, vibrato, pitch-shifting modulation, PLL / octave synths, envelope filter, harmonic tremolo, phaser, chorus, stereo flanger, organ emulator and a pedalboard reconciler.",
+  "description": "Pedals inspired by EarthQuaker Devices, with hand-drawn, screen-printed art and cartoon lettering. Overdrives, fuzzes, boosts, strange reverbs, delays, modulation, octave synths, filters, tremolo, an organ effect and a pedalboard utility.",
   "kind": "brand",
   "brand": "EarthQuaker Devices",
   "main": "index.js",

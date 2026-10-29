@@ -856,7 +856,7 @@ export default function register(tz) {
       controls: [K('speed', 'SPEED', { def: 0.35 }), K('layer', 'GLISS', { def: 0.2 }), K('dry', 'DRY', { def: 1 }), K('mix', 'EFFECT', { def: 0.7 }),
         TOG('smode', '', ['LATCH', 'MOM', 'AUTO'], { orient: 'h', virtual: true })],
       derive: (p) => ({ mode: [0, 1, 2][p.smode ?? 0] }),
-      desc: 'LATCH: press to freeze / layer, MOMENTARY: hold to sustain, AUTO: every new note is captured (footswitch = bypass). GLISS is approximated by the layering crossfade.',
+      desc: 'LATCH: press to freeze and layer. MOMENTARY: hold to sustain. AUTO: every new note is held (the footswitch is bypass). GLISS is only approximated.',
     }),
 
     // ---------------------------------------------------------------- overdrives / boosts

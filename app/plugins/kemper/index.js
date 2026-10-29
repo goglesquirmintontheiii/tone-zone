@@ -1,5 +1,5 @@
 // Built-in Tone Zone plugin: Kemper.
-// "Capture Player" - inspired by the Kemper Profiler Player: rigs made of an amp + cab profile with stomp A,
+// "Capture Player", inspired by the Kemper Profiler Player: rigs made of an amp + cab profile with stomp A,
 // stomp B, MOD, DELAY and REVERB slots. Eight knobs (FX1, FX2, GAIN, BASS, MID, TREBLE, RIG VOL, MASTER),
 // BANK + rig buttons 1-5, a small display and three footswitches with LED rings.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';

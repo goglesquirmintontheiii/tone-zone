@@ -90,7 +90,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0, boost: 0 },
       derive: (p) => Object.assign({ 'q.level': p.gain ?? 0 }, outStage(p)),
-      desc: 'Five-band acoustic preamp / DI: GAIN, BASS, LO MID (220 Hz), MID, HI MID (3.2 kHz), TREBLE, sweepable NOTCH (fully left = off), PRESENCE, PHASE and a footswitchable BOOST. MUTE silences both outputs (tune silently).',
+      desc: 'Five-band acoustic preamp / DI with a sweepable NOTCH (fully left is off), PRESENCE, PHASE and a BOOST footswitch. MUTE silences both outputs so you can tune quietly.',
     }),
     // ---------------------------------------------------------------- Session DI
     B({
@@ -120,7 +120,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0 },
       derive: (p) => ({ 'm.level': p.mute ? -60 : (p.vol ?? -5) - (p.pad ? 15 : 0) }),
-      desc: 'Studio-voiced acoustic DI: SATURATE adds tube-style harmonic density, COMP evens out the dynamics; three-band EQ plus presence and notch. SESSION footswitch bypasses the whole processor.',
+      desc: 'Studio-sounding acoustic DI. SATURATE adds tube-style warmth, COMP evens out your playing, plus a 3-band EQ, presence and notch. The SESSION footswitch bypasses it all.',
     }),
     // ---------------------------------------------------------------- Para Acoustic DI
     B({
@@ -172,7 +172,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0 },
       derive: (p) => ({ 'm.level': p.mute ? -60 : p.vol ?? 0 }),
-      desc: 'Body-imaging DI: rebuilds the resonance of the guitar body that an under-saddle pickup misses (approximated with the piezo-enhance engine and a stronger body). VOICE picks one of three stored body prints, BLEND mixes it with the raw pickup, NOTCH enables automatic feedback notches.',
+      desc: 'Acoustic DI that adds back the body sound an under-saddle pickup misses (approximated). VOICE picks one of three body sounds, BLEND mixes it with the raw pickup, NOTCH adds automatic feedback notches.',
     }),
     // ---------------------------------------------------------------- Align series
     B({

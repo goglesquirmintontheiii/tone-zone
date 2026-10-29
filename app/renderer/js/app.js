@@ -23,7 +23,7 @@ async function boot() {
   state.settings = await window.tz.settings.get();
   const info = await window.tz.app.info();
   state.appVersion = info.version;
-  // thumbnail cache key: the app version (packaged) or the session start (development, art changes often)
+  // thumbnail cache key: app version when packaged, session start in dev (art changes often)
   window.__tzAppVersion = info.packaged ? info.version : 'dev-' + Date.now();
   await loadPlugins();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
@@ -40,7 +40,7 @@ async function boot() {
   initGlobalKeys();
   initFileDrop();
   initNodeMenu();
-  // engine param registry (for the inspector's advanced section)
+  // engine param list, used by the inspector's advanced section
   window.tz.engine.list().then((reg) => (state.engineParams = reg || {}));
   await refreshPacks();
   const presets = await refreshPresetList();
@@ -55,7 +55,7 @@ async function boot() {
   window.__tz.ready = true;
   setTimeout(() => {
     const h = document.getElementById('boardHint');
-    h.textContent = 'Drag pedals from the left · drag between 1/4" jacks to patch · scroll to zoom';
+    h.textContent = 'Drag pedals in from the left · drag between jacks to connect them · scroll to zoom';
     h.classList.add('show');
     setTimeout(() => h.classList.remove('show'), 6000);
   }, 800);
@@ -130,8 +130,8 @@ function mset(key, fn, v) {
   meterCache[key] = v;
   fn(v);
 }
-// Top-bar meters are drawn on canvases: canvas updates don't invalidate the page's paint, whereas changing a DOM
-// element every frame made Chromium re-layerize the whole page (board included) ~20× a second.
+// Top-bar meters draw on canvases. Updating DOM elements every frame made Chromium re-layerize
+// the whole page (board included) about 20 times a second; canvas updates don't.
 function meterCanvas(host, key) {
   let m = meterEls[key];
   if (!m || !m.c.isConnected) {
@@ -169,7 +169,7 @@ function updateMeters(st) {
   if (Date.now() - (meterCache.txtT || 0) > 250) {
     meterCache.txtT = Date.now();
     mset('dspVal', (v) => ($('dspVal', '#dspVal').textContent = v), Math.round(load * 100) + '%');
-    mset('lat', (v) => ($('lat', '#latVal').textContent = v), st.running ? st.latencyMs.toFixed(1) + ' ms' : '–');
+    mset('lat', (v) => ($('lat', '#latVal').textContent = v), st.running ? st.latencyMs.toFixed(1) + ' ms' : '-');
   }
   const toW = (p) => clamp((20 * Math.log10(Math.max(p, 1e-6)) + 60) / 60, 0, 1);
   const inP = Math.max(...(st.inPeak || [0]).slice(0, 2)), outP = Math.max(...(st.outPeak || [0]).slice(0, 2));
@@ -186,7 +186,7 @@ function updateMeters(st) {
   }
 }
 
-// ------------------------------------------------------------ automatic quality scaling (DSP budget)
+// ------------------------------------------------------------ auto quality (DSP budget)
 let overSince = 0;
 function autoQuality(st) {
   const s = state.settings;
@@ -198,7 +198,7 @@ function autoQuality(st) {
     overSince = 0;
     const q = (s.quality ?? 1) - 1;
     import('./pages/settings.js').then((m) => m.applySettings({ quality: q }));
-    toast(`Over DSP budget – quality lowered to ${['Eco', 'Standard', 'High', 'Ultra'][q]}`, 'warn', 4000);
+    toast(`Over DSP budget, so quality was lowered to ${['Eco', 'Standard', 'High', 'Ultra'][q]}`, 'warn', 4000);
   }
 }
 
@@ -217,18 +217,18 @@ function initEngineEvents() {
     switch (ev.ev) {
       case 'status':
         state.status = ev;
-        // the top-bar meters are applied in the board's tick so all repaints land in one frame
+        // meters are drawn in the board's tick so all repaints land in one frame
         pendingMeters = ev;
         autoQuality(ev);
-        // warn only when the load stays high (one-off spikes happen while a big preset is being swapped in)
+        // only warn if the load stays high (loading a big preset causes short spikes)
         overCount = ev.load > (state.settings.budget ?? 0.75) && Date.now() - (state.graphSentAt || 0) > 2500 ? overCount + 1 : 0;
         if (overCount >= 12 && Date.now() - overBudgetWarned > 20000) {
           overBudgetWarned = Date.now();
-          toast(`DSP load ${Math.round(ev.load * 100)}% is over your budget – lower the quality, raise the buffer or remove blocks.`, 'warn', 5000);
+          toast(`DSP load is ${Math.round(ev.load * 100)}%, over your budget. Lower the quality, raise the buffer or remove some blocks.`, 'warn', 5000);
         }
         break;
       case 'ready':
-        // (re)send the full current board – the engine may have been restarted
+        // resend the whole board, the engine may have restarted
         import('./state.js').then((m) => { m.syncGraph(); sendEngineSettings(); });
         if (state.settings.autoConnect !== false && !state._autoConnected) {
           state._autoConnected = true;
@@ -241,7 +241,7 @@ function initEngineEvents() {
         document.getElementById('engineDot').className = 'engine-dot err';
         break;
       case 'engineExit':
-        toast('Audio engine stopped – restarting…', 'warn');
+        toast('Audio engine stopped. Restarting…', 'warn');
         break;
       case 'blockError':
         toast(`${getDef(blockById(ev.id)?.type || '')?.name || 'Block'}: ${ev.error}`, 'err', 7000);
@@ -323,7 +323,7 @@ function initFileDrop() {
       const info = await window.tz.lib.inspectPaths(media, 'file');
       await importDialog(info);
     }
-    if (presets.length) toast('Use the preset menu → Import to add presets', 'info');
+    if (presets.length) toast('To add presets, use Import in the preset menu', 'info');
   });
 }
 
@@ -350,7 +350,7 @@ function initNodeMenu() {
   });
 }
 
-// ------------------------------------------------------------ tidy: lay the signal chain out like a pedalboard
+// ------------------------------------------------------------ tidy: lay the chain out like a pedalboard
 function tidyLayout() {
   commitNow();
   const blocks = state.preset.blocks;
@@ -359,7 +359,7 @@ function tidyLayout() {
     if (!out.has(c.from.node)) out.set(c.from.node, []);
     out.get(c.from.node).push(c.to.node);
   }
-  // BFS depth from the input
+  // depth of each block from the input (BFS)
   const depth = new Map([['__in', 0]]);
   const q = ['__in'];
   while (q.length) {

@@ -86,7 +86,7 @@ export const originals = [
     algo: 'looper', opts: { tracks: 1, maxSec: 120 }, stereo: 'both', alwaysOn: true, loopTracks: 1,
     controls: [SCREEN('looperMini', { w: 120, h: 40, y: 44 }), K('level1', 'LOOP LVL', { def: 0.8, y: 100 }), K('dubLevel', 'DUB FB', { def: 1, y: 100 }),
       FOOT({ action: 'event', event: { type: 1, arg: 0 }, hold: { ms: 900, event: { type: 2, arg: 0 } }, doubleHold: { event: { type: 3, arg: 0 } } }), LED({ bind: 'looper:track:0' })],
-    desc: 'Press: record → overdub/play. Hold: stop. Hold again while stopped: clear.' }),
+    desc: 'Press to record, then press to switch between overdub and play. Hold to stop. Hold again while stopped to clear.' }),
   UT({ id: 'ut.split', name: 'A/B/Y Splitter', logo: 'A/B/Y', algo: 'utility', opts: { kind: 'split' }, ports: { ins: ['IN'], outs: ['A', 'B'] }, controls: [TOG('select', 'OUT', ['A', 'B', 'A+B'], { def: 2 }), K('level', 'LEVEL A', { min: -60, max: 12, def: 0, display: db }), K('levelB', 'LEVEL B', { min: -60, max: 12, def: 0, display: db })] }),
   UT({ id: 'ut.merge', name: 'Mixer / Merge', logo: 'MERGE', algo: 'utility', opts: { kind: 'merge' }, ports: { ins: ['IN A', 'IN B'], outs: ['OUT'] }, controls: [K('level', 'LEVEL A', { min: -60, max: 12, def: 0, display: db }), K('levelB', 'LEVEL B', { min: -60, max: 12, def: 0, display: db })] }),
   UT({ id: 'ut.mergeSt', name: 'Stereo Merge', logo: 'L/R MERGE', algo: 'utility', opts: { kind: 'merge' }, ports: { ins: ['IN L', 'IN R'], outs: ['OUT L', 'OUT R'] }, controls: [K('level', 'LEVEL L', { min: -60, max: 12, def: 0, display: db }), K('levelB', 'LEVEL R', { min: -60, max: 12, def: 0, display: db })] }),
@@ -152,7 +152,7 @@ export const converters = [
     bands.forEach((i) => Object.assign(init, { [`b${i}on`]: 1, [`b${i}type`]: defT[i - 1], [`b${i}f`]: defF[i - 1], [`b${i}g`]: 0, [`b${i}q`]: 0.9 }));
     return TZ({ id: 'tz.paraeq', name: 'TZ Parametric EQ', cat: 'EQ', kind: 'Pedal', form: 'paraeq', color: '#15181e', accent: '#ff7a2f', logo: 'PARAMETRIC', typeName: '6-band studio EQ · analyser · listen', algo: 'pareq', stereo: 'both', cost: 0.6, noStd: true,
       initParams: init,
-      desc: 'Drag the numbered handles (frequency / gain), scroll for Q (or HPF/LPF slope), double-click to switch a band on/off, click the band name to change its type. LISTEN solos the band you pick (or click / drag anywhere on the screen); SPECTRUM shows the analyser – PRE / POST in the corner.',
+      desc: 'Drag the numbered handles to set frequency and gain, and scroll to change Q (or the HPF/LPF slope). Double-click a band to turn it on or off, and click its name to change its type. LISTEN solos the band you pick and SPECTRUM shows the analyser (PRE/POST in the corner).',
       controls: [
         SCREEN('paraeq', { interactive: true }),
         ...bands.flatMap((i) => [FOOT({ action: 'toggle', p: `b${i}on`, caption: `B${i}`, labelColor: BC[i - 1] }), LED({ bind: `param:b${i}on`, color: BC[i - 1] })]),
@@ -166,12 +166,12 @@ export const converters = [
   // control sources
   def({ id: 'tz.expctl', name: 'TZ Expression Pedal', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'EXP', cat: 'Control', kind: 'Utility', form: 'treadle', color: '#23262e', algo: null,
     ports: { ins: [], outs: [] }, ctrl: { outs: [{ label: 'EXP OUT', source: 'param:pos' }] }, controls: [{ t: 'treadle', p: 'pos', def: 0.5, min: 0, max: 1, virtual: true }], logo: 'EXPRESSION', logoFont: "'Oswald', sans-serif", logoColor: '#9aa3b5', noBypassClick: true, alwaysOn: true,
-    desc: 'Plug its TRS cable into any EXP / CTRL jack (or a device plugin like the Helix) to sweep that parameter.' }),
+    desc: 'Plug its TRS cable into any EXP or CTRL jack (or a device plugin like the Helix) to sweep that control.' }),
   ...[1, 2, 3].map((n) =>
     def({ id: `tz.fs${n}`, name: `TZ Footswitch ${n === 1 ? '' : '×' + n}`.trim(), brand: 'Tone Zone', ref: 'Tone Zone original', code: 'FS', cat: 'Control', kind: 'Utility', form: 'footswitch', color: '#1a1d23', text: '#e9ecf3', algo: null, logo: n === 1 ? 'FS' : `FS ×${n}`, alwaysOn: true,
       ports: { ins: [], outs: [] }, ctrl: { outs: [...Array(n)].map((_, i) => ({ label: `SW ${i + 1}`, source: 'foot' })) },
       controls: [...[...Array(n)].flatMap((_, i) => [FOOT({ action: 'ctrl', idx: i, label: String(i + 1) }), LED({ bind: `param:sw${i + 1}`, color: '#ff3020' })]), ...[...Array(n)].map((_, i) => TOG(`mode${i + 1}`, `SW${i + 1}`, ['MOM', 'LATCH'], { def: 0 }))],
-      desc: 'External footswitch. Connect its control jacks to EXT FS / CTRL inputs (tap tempo, bypass, presets, Helix footswitches…).' })
+      desc: 'External footswitch. Connect its control jacks to EXT FS or CTRL inputs for tap tempo, bypass, presets, Helix footswitches and more.' })
   ),
 ];
 

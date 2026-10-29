@@ -1,16 +1,15 @@
 // Built-in Tone Zone plugin: Fairfield Circuitry.
 // Blocks inspired by Fairfield Circuitry pedals (Montreal). Names and artwork are Tone Zone originals; control sets,
-// mini toggles and layouts follow the real units (see each block's `ref`). One custom "ffc-steel" enclosure serves
-// the family: bare brushed steel with only the barest information stamped into the metal – a tiny line icon, the
-// name in small lower-case type and a turquoise status LED.
+// mini toggles and layouts follow the real units (see each block's `ref`). "ffc-steel" enclosure: bare brushed
+// steel with a tiny stamped line icon, the name in small lower-case type and a turquoise LED.
 export default function register(tz) {
   const { K, TOG, FOOT, LED, def, ten, ms } = tz.helpers;
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
-  // Forms run more than once and control objects are shared: every control this form positions is remembered in
-  // `owned` and laid out again on each call. Knob labels sit above the knobs; art only goes in the free zone
-  // between the last control row and the LEDs, so printed text never touches artwork or other text.
+  // Forms run more than once and controls are shared, so every control this form places goes in `owned` and is
+  // laid out again on each call. Labels sit above the knobs; art only goes in the gap above the LEDs so it never
+  // overlaps text.
   const owned = new WeakSet();
   const fit = (s, maxW, maxSize, k = 0.6) => Math.min(maxSize, maxW / Math.max(1, String(s).length * k));
   function layout(d, W, H, o = {}) {
@@ -61,8 +60,8 @@ export default function register(tz) {
     leds.forEach((l, k) => Object.assign(l, { x: fx[k] ?? W / 2, y: footY - 25, r: l.r || 2.8 }));
     return { y, footY, artBottom: footY - (leds.length ? 33 : 20), nFeet: feet.length, feet, leds, togs };
   }
-  // toggle titles are printed by the form (theme.toggleTitles = false) a little higher than the core does, so the
-  // lever tip never touches them
+  // the form prints toggle titles itself (theme.toggleTitles = false), a bit higher than the core, so the lever
+  // tip doesn't hit them
   function togTitles(g, L, fill, o = {}) {
     L.togs.forEach((c) => { if (c.t === 'toggle' && c.label) tz.gfx.label(g, c.x, c.y - 21, c.label, { size: o.size || 5.6, fill, weight: 800, ls: 0.6, font: o.font }); });
   }
@@ -126,7 +125,7 @@ export default function register(tz) {
       ],
       ctrl: { ins: [{ label: 'CV', param: 'feedback', min: 0, max: 1.08 }] },
       derive: (p) => ({ mode: 1, sat: (p.comp ?? 0) ? 0.65 : 0.25, age: (p.comp ?? 0) ? 0.5 : 0.3, moddepth: [0, 0.18, 0.5][p.modsw ?? 0], modrate: 0.32 }),
-      desc: 'Dark, warm bucket-brigade delay (50–500 ms) that self-oscillates. C sets light or heavy compression in the feedback path, M adds light or heavy random time modulation (approximated with the BBD wow).',
+      desc: 'Dark, warm analog delay (50 to 500 ms) that can run away into oscillation. C sets light or heavy compression on the repeats, M adds light or heavy random wobble (approximated).',
     }),
     F({ color: '#d3d6d9',
       id: 'ffc.shallowwater', name: 'Puddle Deep', ref: 'Fairfield Circuitry Shallow Water', logo: 'puddle deep', tagline: 'K-FIELD MODULATOR', cat: 'Modulation', typeName: 'Random pitch modulator + LPG',
@@ -140,7 +139,7 @@ export default function register(tz) {
         K('lpg', 'LPG', { def: 0.3, virtual: true }), K('c.mix', 'MIX', { def: 0.6 }), K('c.level', 'VOLUME', { def: 0.5, display: ten }),
       ],
       derive: (p) => { const l = p.lpg ?? 0.3; return { 'c.mode': 1, 'c.wave': 1 - (p.damp ?? 0.5), 'w.on': l > 0.02 ? 1 : 0, 'w.sens': 0.3 + 0.6 * l, 'w.range': 0.35 + 0.6 * l, 'w.level': 0.85 }; },
-      desc: 'Woozy, seasick pitch wobble with a low-pass gate that opens on every pick. The real unit\'s random modulation is approximated with a vibrato whose wave softens as DAMP goes up.',
+      desc: 'Woozy, seasick pitch wobble with a gate that opens on every pick. DAMP smooths the wobble. The random wobble is approximated with a vibrato.',
     }),
     F({ color: '#d3d6d9',
       id: 'ffc.randysrevenge', name: 'Rodney\'s Retort', ref: 'Fairfield Circuitry Randy\'s Revenge', logo: 'rodney\'s retort', tagline: 'RING MODULATOR', cat: 'Modulation', typeName: 'Ring modulator',
@@ -152,7 +151,7 @@ export default function register(tz) {
       controls: [K('freq', 'FREQUENCY', { def: 0.45, virtual: true }), K('m.mix', 'MIX', { def: 0.6 }),
         TOG('wave', 'WAVE', ['SQR', 'SIN'], { def: 1, virtual: true }), TOG('range', 'RANGE', ['LO', 'HI'], { def: 1, virtual: true })],
       derive: (p) => { const f = p.freq ?? 0.45; return { 'm.freq': (p.range ?? 1) ? 0.4 + 0.6 * f : 0.45 * f, 's.mode': (p.wave ?? 1) ? 1 : 0, 's.gain': 0.5, 's.level': 0.5 }; },
-      desc: 'Classic ring modulation from subtle tremolo-like throb (LO range) to clangorous bells (HI). The square carrier is approximated with harmonics added after the modulator.',
+      desc: 'Ring modulator, from a soft tremolo-like throb (LO range) to clanging bells (HI). The square-wave carrier is approximated.',
     }),
     F({ color: '#d3d6d9',
       id: 'ffc.barbershop', name: 'Hair Salon', ref: 'Fairfield Circuitry The Barbershop', logo: 'hair salon', tagline: 'MILLENNIUM OVERDRIVE', cat: 'Overdrive', typeName: 'Germanium overdrive',

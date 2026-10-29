@@ -28,7 +28,7 @@ export default function register(tz) {
     // silk-screen frame with a notch for the side label
     const ink = txt;
     svg('path', { d: `M24 10 H${w - 18} Q${w - 10} 10 ${w - 10} 18 V${h - 18} Q${w - 10} ${h - 10} ${w - 18} ${h - 10} H24`, fill: 'none', stroke: ink, 'stroke-opacity': 0.55, 'stroke-width': 0.8 }, g);
-    // side label (rotated) – the name runs up the left edge, the type down the right edge
+    // rotated side labels: name up the left edge, type down the right edge
     const sideY = h / 2 + 4;
     label(g, 15, sideY, (def.logo || def.name).toUpperCase(), { size: def.logoSize || 11.5, fill: ink, font: "'Oswald', sans-serif", weight: 700, ls: 2.2, transform: `rotate(-90 15 ${sideY})` });
     label(g, w - 5.5, sideY, (def.typeName || def.cat).toUpperCase(), { size: 4.6, fill: ink, weight: 700, ls: 1.6, opacity: 0.75, transform: `rotate(90 ${w - 5.5} ${sideY})` });
@@ -98,7 +98,7 @@ export default function register(tz) {
           'ph.rate': env ? 0.05 : rate, 'ph.depth': p.depth ?? 0.65, 'ph.feedback': (p.reso ?? 0.45) * 0.85, 'ph.mix': mix * Math.min(1, bl * 1.6),
         };
       },
-      desc: 'Flanger and phaser in one: MODE picks flanger, phaser or both (FLG · PHS blends them), RESO sets regeneration, LFO env slows the sweep for a manual, expressive feel.',
+      desc: 'Flanger and phaser in one. MODE picks flanger, phaser or both (FLG · PHS blends them), RESO adds resonance and LFO env slows the sweep for a hands-on feel.',
     }),
     KY({
       id: 'kly.compplus', name: 'Squeeze Plus', ref: 'Keeley Compressor Plus', code: 'SQUEEZE+', logo: 'Squeeze', typeName: 'Compressor', cat: 'Dynamics', color: '#2f78d6',

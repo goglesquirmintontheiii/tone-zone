@@ -3,7 +3,7 @@
   "name": "Electro-Harmonix",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Electro-Harmonix gear: the Murk π fuzz family (NYC, green Russian, op-amp, bass, little, Ram's horn, nano), phasers, analog delays, polyphonic octavers, Holy Chalice reverbs, freeze / sustainers, the 9-series organ, Mellotron and synth machines, envelope filters and more – in folded-steel nano boxes, big Murk boxes and 9-series cases with big printed graphics.",
+  "description": "Pedals inspired by Electro-Harmonix gear: the Murk π fuzz family, phasers, analog delays, octavers, reverbs, freeze pedals, the 9-series organ, Mellotron and synth machines, envelope filters and more, in folded-steel boxes with big printed graphics.",
   "kind": "brand",
   "brand": "Electro-Harmonix",
   "main": "index.js",

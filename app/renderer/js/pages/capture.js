@@ -1,5 +1,5 @@
-// Capture page: turn a preset (or part of its chain) into a NAM model. Steps: render the NAM training signal
-// through the preset, train, check the accuracy, add the model to the Library.
+// Capture page: turn a preset (or part of its chain) into a NAM model.
+// Steps: play the training signal through it, train, check accuracy, add to the Library.
 import { el, esc, bus, toast } from '../util.js';
 import { state, buildGraph } from '../state.js';
 import { getDef } from '../catalog/index.js';
@@ -197,7 +197,7 @@ export async function renderCapture() {
   if (!root || !v.contains(root)) {
     v.innerHTML = '';
     root = el('div', { class: 'page cap-page' }, v);
-    el('div', { class: 'page-head' }, root, '<div><h1>Capture</h1><p>Turn any preset into a Neural Amp Model. Tone Zone plays the NAM training signal through it, trains a model and adds it to your Library.</p></div>');
+    el('div', { class: 'page-head' }, root, '<div><h1>Capture</h1><p>Turn any preset into a NAM model. Tone Zone plays a test signal through it, trains a model and adds it to your Library.</p></div>');
     el('div', { class: 'cap-top', id: 'capTop' }, root);
     const grid = el('div', { class: 'cap-grid' }, root);
     el('div', { class: 'panel cap-form', id: 'capForm' }, grid);
@@ -421,7 +421,7 @@ function drawForm() {
   }
   // quality
   const tr = S.status && S.status.trainer;
-  const qHint = tr && tr.ready && tr.info && !tr.info.gpu && !tr.info.fake ? 'Training runs on the CPU here: Good can take an hour or more.' : 'More training time gives a closer match.';
+  const qHint = tr && tr.ready && tr.info && !tr.info.gpu && !tr.info.fake ? 'Training runs on the CPU here, so Good can take an hour or more.' : 'More training time gives a closer match.';
   const q = row(f, 'Quality', qHint);
   q.appendChild(seg(QUALITY.map(([k, l, n]) => [k, `${l} · ${n} epochs`]), S.quality, (v) => { S.quality = v; }));
   // name + tone
@@ -488,7 +488,7 @@ function drawProgress() {
   box.innerHTML = '';
   el('h3', {}, box, '<i class="ic ic-wave"></i>Progress');
   if (!j) {
-    el('p', {}, box).textContent = 'Your capture runs in four steps. You can keep playing while it trains: the trainer runs at low priority.';
+    el('p', {}, box).textContent = 'A capture takes four steps. You can keep playing while it trains, since the trainer runs at low priority.';
   } else {
     el('p', {}, box).textContent = j.running ? `Creating "${j.name || S.name}"…` : j.result ? 'Done!' : j.steps && Object.values(j.steps).some((s) => s.state === 'cancel') ? 'Cancelled.' : 'Something went wrong.';
   }
@@ -562,7 +562,7 @@ function drawResult(box, j) {
 export function captureSettingsPanel(grid) {
   const p = el('div', { class: 'panel' }, grid);
   el('h3', {}, p, '<i class="ic ic-mic"></i>Capture trainer');
-  el('p', {}, p).textContent = 'The NAM trainer and PyTorch used by the Capture tab live in their own folder.';
+  el('p', {}, p).textContent = 'The Capture tab keeps the NAM trainer and PyTorch in their own folder.';
   const r = el('div', { class: 'srow' }, p);
   const lbl = el('div', { class: 'lbl' }, r, '<b>Trainer</b><small>Checking…</small>');
   const ctl = el('div', { class: 'ctrl' }, r);

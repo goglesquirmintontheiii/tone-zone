@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: DigiTech.
 // Blocks inspired by DigiTech gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 
 // Treadle enclosure with an optional side pod for knobs / switches (same layout as the Dunlop plugin's).
 function treadleForm(tz) {
@@ -138,7 +138,7 @@ export default function register(tz) {
         SEL('model', 'WHAMMY · DETUNE · HARMONY', WMODES.map((m) => m[0]), { panel: true, def: 1, sweep: 300, printLabels: false, ring: true, virtual: true, r: 12, labelPos: 'none' }),
         TOG('chords', '', ['CLASSIC', 'CHORDS'], { panel: true, def: 1, values: [1, 2] })],
       derive: (p) => Object.assign(whammyDerive(p), { quality: p.chords === 0 ? 1 : 2 }),
-      desc: '21 modes: Whammy (treadle sweeps from dry pitch to the interval), Detune (shallow / deep doubling) and Harmony (dry + a voice that moves between two intervals). CLASSIC = fastest tracking for single notes, CHORDS = polyphonic. Click the treadle to bypass.',
+      desc: '21 modes of Whammy pitch bends, Detune doubling and Harmony. CLASSIC tracks single notes fastest, CHORDS handles chords. Click the treadle to bypass.',
     }),
     DT({
       id: 'dt.ricochet', name: 'Ricoshift', ref: 'DigiTech Whammy Ricochet', code: 'RICO', logo: 'RICOSHIFT', typeName: 'Pitch shift glide', cat: 'Pitch', color: '#c0141b', mini: true, noStd: true,

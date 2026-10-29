@@ -2,16 +2,13 @@
 // Blocks inspired by Chase Bliss pedals. Names, logos and artwork are Tone Zone originals; control counts, labels,
 // layouts, toggle positions, footswitch functions and colours follow the real units (see each block's `ref`).
 //
-// One custom enclosure family ("chase") serves the pedals: a 125B-style portrait box (or the slightly larger stereo
-// MKII box) with full-face printed art drawn from a few dozen SVG paths per pedal (`art` + `palette`), two rows of
-// small knobs, a row of 3-way toggles, the little PRESET toggle between the two footswitches and a DIP switch bank on
-// the top face (an interactive screen: the labelled switches really work). "chase-desk" is the wide motorised-fader
-// desktop box (reverb / echo).
+// Form "chase": 125B-style portrait box (or the bigger stereo MKII box) with printed art (`art` + `palette`), two
+// knob rows, 3-way toggles, the PRESET toggle between the footswitches and a working DIP bank on top (a screen).
+// "chase-desk" is the wide motorised-fader desktop box (reverb / echo).
 //
-// Wet-only lanes: delay, reverb and looper blocks always pass their dry signal, so a "wet lane" is a nested chain of
-// the effect and an inverted utility running in parallel (x + wet − x = wet). That lets pitch / modulation / looping
-// act on the echoes only, and lets a pedal sum a dry lane with several wet lanes (lanes always on, levels via
-// `<lane>.lvl`, the parallel normalisation made up by a fixed post gain).
+// Wet-only lanes: delay, reverb and looper blocks always pass dry signal, so a "wet lane" runs the effect in parallel
+// with an inverted utility (x + wet - x = wet). That way pitch / mod / looping can act on the echoes only. Lanes are
+// always on, levels come from `<lane>.lvl` and a fixed post gain makes up the parallel normalisation.
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, def, ms, MONO, STEREO } = tz.helpers;
   const { svg, label, shade, formKit, setA } = tz.gfx;
@@ -45,9 +42,8 @@ export default function register(tz) {
   const POST = (prefix, db) => ({ prefix, algo: 'utility', params: { level: db } });
 
   // ------------------------------------------------------------------ footswitch behaviour (block hooks)
-  // FOOT({cb: {tap, hold, release, down, up, holdMs}}): tap 'bypass' leaves the press to the editor (bypass,
-  // momentary bypass); anything else is a function (c) with c.ui, c.set(p, v), c.toggle(p), c.ev(prefix, type,
-  // value, innerArg), c.tapMs().
+  // FOOT({cb: {tap, hold, release, down, up, holdMs}}): tap 'bypass' leaves the press to the editor. Anything else
+  // is a function (c) with c.ui, c.set(p, v), c.toggle(p), c.ev(prefix, type, value, innerArg), c.tapMs().
   const taps = new Map();
   const holds = new Map();
   function ctxFor(v) {
@@ -134,10 +130,9 @@ export default function register(tz) {
   };
 
   // ------------------------------------------------------------------ DIP runtime: ramping, trails, stereo, overlays
-  // Everything here modulates *engine* params only (sent straight to the engine, never through setParam), so the
-  // knobs stay where the user put them (like the real pedals) and nothing lands in the undo history. A 20 Hz timer
-  // walks the board; a block's overrides are re-applied right after the editor sends its own params and are
-  // restored when the DIP / ramp is switched off.
+  // Only touches engine params (never setParam), so the knobs stay put like on the real pedals and nothing goes
+  // into undo. A 20 Hz timer walks the board. Overrides are re-applied after the editor sends its own params and
+  // undone when the DIP / ramp is turned off.
   const DEFS = new Map();
   const RS = new Map(); // block id -> runtime state
   const stOf = (id, now = performance.now()) => {
@@ -682,14 +677,13 @@ export default function register(tz) {
   });
 
   // ------------------------------------------------------------------ block builder
-  // o.presets: [presetA, presetB] UI overrides recalled by the little A / LIVE / B toggle (knobs keep showing the
-  // live settings, like the real pedals). o.dips: DIP bank labels; {p, l} entries are working switches.
-  // o.dips: DIP bank, every entry a working switch: a label string (param `dp_<label>`) or {p, l, def}.
-  // o.ramp: Chase Bliss ramping. A DIP labelled like a knob ramps that knob (auto); `map: {DIP label: knob param}`
-  //   adds others, `enable: 'DIP label'` + `targets: [knob params]` ramps fixed knobs while that DIP is on;
-  //   BOUNCE / SWEEP / POLARITY DIPs are found by label (`pol: false` when POLARITY means something else),
-  //   `bounce(ui)` overrides the loop / one-shot choice, `engage: [params]` restart a one-shot ramp, `shape` = DIP
-  //   label for a smooth (sine) ramp curve. Without BOUNCE / SWEEP DIPs the inspector gets ramp settings.
+  // o.presets: [presetA, presetB] UI overrides for the A / LIVE / B toggle (knobs keep showing live settings).
+  // o.dips: DIP bank, each entry a label string (param `dp_<label>`) or {p, l, def}.
+  // o.ramp: a DIP labelled like a knob ramps that knob. `map: {DIP label: knob param}` adds more,
+  //   `enable: 'DIP label'` + `targets: [knob params]` ramps fixed knobs while that DIP is on.
+  //   BOUNCE / SWEEP / POLARITY are found by label (`pol: false` if POLARITY means something else).
+  //   `bounce(ui)` overrides loop vs one-shot, `engage: [params]` restart a one-shot ramp, `shape` = DIP label for
+  //   a sine ramp. Without BOUNCE / SWEEP DIPs the ramp settings go in the inspector.
   // o.trails: {p: DIP param (on = tails ring out), kill: {engine params while bypassed with the DIP off}}
   // o.stereo: {miso, spread} DIP params -> a stereo tool ('stx') at the end of the chain (stereo variant only)
   // o.overlay: {want(ui, b, st, now), apply(ui, b, st, now, eng, base)} extra engine-level behaviour
@@ -815,7 +809,7 @@ export default function register(tz) {
         'eq.lowfreq': 180, 'eq.lowgain': (0.5 - tone) * 10, 'eq.highfreq': 3200, 'eq.highgain': (tone - 0.5) * 12,
       };
     },
-    desc: 'Analog tremolo with a clean boost in front (DRIVE + VOLUME) and a tilt TONE. Two wave-shape toggles build the LFO; tap the left switch for tempo (1/2/4 divisions). DIP MODE turns the 1·2·4 toggle into Standard / Both / Harmonic, MOTOBYP makes bypass momentary. DIPs RATE / DEPTH ramp those knobs (SWEEP up / down, BOUNCE loops, ramp time in the inspector or via TAP R/P), DIV 3 = triplet taps.',
+    desc: 'Analog tremolo with a clean boost in front (DRIVE, VOLUME) and a TONE control. Two toggles shape the wave and the left switch taps the tempo. DIPs add harmonic modes, momentary bypass and knob ramping (see the inspector).',
   }));
 
   add(CB({
@@ -850,7 +844,7 @@ export default function register(tz) {
         'w.p.level1': s1 ? [0.9, 0.75, 0.6][p.s1 | 0] : 0, 'w.p.level2': s2 ? [0.9, 0.75, 0.6][p.s2 | 0] : 0 });
       return o;
     },
-    desc: 'Analog-voiced delay whose echoes are pitch-shifted by two interval steps (INT 1 / INT 2: off at noon, 4th, 5th, octave, octave+5th, two octaves up or down) with GLIDE between them. Tempo comes from the TAP switch (hold for runaway regen); the toggles set the base subdivision and the weight of each step. DIP MOD turns the INT knobs into modulation speed / depth, STEP removes the glide, TRAILS lets the echoes ring out on bypass, RAMP / MIX ramp the LPF / MIX (BOUNCE, SWEEP).',
+    desc: 'Analog-style delay whose echoes step between two pitch intervals (INT 1 / INT 2, off at noon) with GLIDE between them. Tap the tempo, hold TAP for runaway repeats. DIPs change the INT knobs to modulation, remove the glide, add trails and ramp knobs.',
   }));
 
   add(CB({
@@ -874,7 +868,7 @@ export default function register(tz) {
       'ph.center': c01(0.5 + ((p.form ?? 0.5) - 0.5) * 0.5 + (squareness(p) - 0.5) * 0.1),
       'v.level': ((p.vol ?? 0.5) - 0.5) * 24,
     }),
-    desc: 'Four-stage vactrol-style phaser. MIX blends from dry through phase-chorus (noon) to full phase vibrato, FEED adds resonance, FORM moves the sweep centre. Tap tempo with 1/2/4 divisions; DIP STAGES makes the left toggle select 2 / 4 / 6 stages, MIX / FORM ramp those knobs (BOUNCE, SWEEP, TAP R/P sets the ramp time, DIV 3 = triplets).',
+    desc: 'Four-stage analog phaser. MIX goes from dry through chorus-like (noon) to full vibrato, FEED adds resonance and FORM moves the sweep. Tap tempo; DIPs pick 2 / 4 / 6 stages and ramp knobs.',
   }));
 
   add(CB({
@@ -902,7 +896,7 @@ export default function register(tz) {
       'e.on': p.env ? 1 : 0, 'e.sens': [0.3, 0.55, 0.85][p.sens ?? 1], 'e.range': [0.75, 0.6, 0.45][p.rel ?? 2],
       'v.level': ((p.vol ?? 0.5) - 0.5) * 24,
     }),
-    desc: 'Signature six-stage phaser with an envelope section (ENV / RELEASE / SENS toggles) that adds a picking-dynamics filter sweep, MODUSHAPE morphing the modulation, and a SLOW mode DIP. Tap tempo with divisions, stages via DIP (STAGES or TOG T/S), FORM ramps with BOUNCE / SWEEP, TAP R/T taps the ramp time.',
+    desc: 'Six-stage phaser with an envelope section (ENV / RELEASE / SENS) that sweeps with your picking, and MODUSHAPE to change the wave. Tap tempo; DIPs set the stages, a SLOW mode and knob ramping.',
   }));
 
   add(CB({
@@ -925,7 +919,7 @@ export default function register(tz) {
       'fl.mode': p.pol ? 0 : 3,
       'fl.width': c01((p['fl.width'] ?? 0.6) * (1 - Math.abs((p.shift ?? 0.5) - 0.5) * 0.4) + (squareness(p) - 0.35) * 0.1),
     }),
-    desc: 'Through-zero flanger: ZERO sets the delay (the zero point sits around 1–3 o\'clock), REGEN from chorus-like to self-oscillation, RATE / WIDTH / SHIFT shape the sweep. Tap tempo with divisions; DIP POLARITY switches to a conventional (positive) flange; ZERO / REGEN ramp those knobs (BOUNCE, SWEEP, TAP R/P, DIV 3).',
+    desc: 'Through-zero flanger. ZERO sets the delay (the zero point is around 1 to 3 o\'clock), REGEN goes from chorus-like to self-oscillation, RATE / WIDTH / SHIFT shape the sweep. Tap tempo; DIPs switch to a normal flange and ramp knobs.',
   }));
 
   add(CB({
@@ -944,7 +938,7 @@ export default function register(tz) {
     presets: [{ 'ch.mix': 1, 'ch.rate': 0.55, 'ch.depth': 0.4 }, { 'ch.mix': 0.5, 'ch.rate': 0.15, 'ch.depth': 0.8, lofi: 1 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => ({ 'ch.wave': c01(squareness(p) * 0.8 + Math.abs((p.warp ?? 0.5) - 0.5) * 0.4), 'ch.delay': p.lofi ? 0.9 : 0.4 }),
-    desc: 'Bucket-brigade vibrato: MIX goes from dry through chorus (noon) to pure vibrato, RPM / DEPTH / WARP set the wobble, TONE darkens the wet side. Tap tempo with divisions; DIP LO-FI lengthens the delay line for a murkier, noisier vibrato; MIX / RPM ramp those knobs (BOUNCE, SWEEP, TAP R/P, DIV 3).',
+    desc: 'Analog vibrato. MIX goes from dry through chorus (noon) to pure vibrato, RPM / DEPTH / WARP set the wobble and TONE darkens it. Tap tempo; DIP LO-FI makes it murkier, other DIPs ramp knobs.',
   }));
 
   // Condor family: EQ / filter / preamp with a drive footswitch
@@ -980,13 +974,13 @@ export default function register(tz) {
     id: 'cba.condor', name: 'Albatross', ref: 'Chase Bliss Condor', code: 'ALBATROSS', logo: 'ALBATROSS', logoSize: 12, logoLs: 2.5,
     typeName: 'Analog EQ / filter / preamp', color: '#c4532a', text: '#fff3e2', palette: ['#f2a65a', '#e8d6b0', '#8c2f16', '#5a1d0c', '#f6e7cc'],
     drive: { clip: 'opamp', tone: 'none', gainMinDb: 0, gainMaxDb: 28, postLp: 12000, modes: [{ clip: 'clean' }, { clip: 'opamp', gainMinDb: 8, gainMaxDb: 36 }] },
-    desc: 'Analog preamp / EQ: BASS shelf (A/B/C reach), swept MIDS with FREQ and Q toggle, resonant LPF with three filter characters. The DRIVE footswitch pushes the gain stage into soft op-amp drive. DIPs GAIN / BASS / MIDS / LPF ramp those knobs (RESET = one-shot, otherwise bouncing; time and direction in the inspector), DRIVE makes the drive switch momentary, BUFFER adds a little sheen.',
+    desc: 'Analog preamp and EQ: BASS, sweepable MIDS and a resonant low-pass filter. The DRIVE footswitch adds soft drive. DIPs ramp knobs, make DRIVE momentary or add a little sheen (BUFFER).',
   }));
   add(condor({
     id: 'cba.condor-hifi', name: 'Albatross HiFi', ref: 'Chase Bliss Condor HiFi', code: 'ALBATROSS HIFI', logo: 'ALBATROSS', logoSize: 12, logoLs: 2.5,
     typeName: 'HiFi EQ / filter / preamp', color: '#e7eaee', text: '#162538', palette: ['#5f8fd6', '#a9c6ea', '#21477d', '#0f2442', '#f2b63e'],
     drive: { clip: 'clean', tone: 'none', gainMinDb: 0, gainMaxDb: 24, modes: [{ clip: 'clean' }, { clip: 'jfet', gainMinDb: 6, gainMaxDb: 30, postLp: 16000 }] },
-    desc: 'Higher-headroom, lower-noise version of the EQ / filter / preamp: BASS shelf, swept resonant MIDS, resonant LPF and a cleaner, more open DRIVE footswitch. DIPs as on the original: GAIN / BASS / MIDS / LPF ramps, RESET, momentary DRIVE, BUFFER.',
+    desc: 'Cleaner, quieter version of the EQ / filter preamp with a more open DRIVE footswitch. Same DIPs as the original.',
   }));
 
   // ================================================================== gain stages
@@ -1028,7 +1022,7 @@ export default function register(tz) {
       for (const pre of ['b0', 'bp', 'b']) for (const k in bv) o[pre + '.' + k] = bv[k];
       return o;
     },
-    desc: 'Two analog gain channels, each a boost, drive or fuzz, run A into B, in parallel (BLEND balances them) or B into A. Each footswitch engages its channel; MASTER sets the overall output. The left DIPs pick which knobs ramp (from the knob position up or down – SWEEP, POLARITY inverts – bouncing or one-shot on engage, time in the inspector).',
+    desc: 'Two analog gain channels (boost, drive or fuzz each), run A into B, in parallel (BLEND) or B into A. Each footswitch turns on its channel, MASTER sets the output. The left DIPs pick which knobs ramp.',
   }));
 
   add(CB({
@@ -1063,7 +1057,7 @@ export default function register(tz) {
         'eq.highfreq': 3500, 'eq.highgain': p.pl ? ((p.t1 ?? 0.5) - 0.5) * 8 : 0,
       };
     },
-    desc: 'Two stacked gain channels (1 into 2), each boost / overdrive / distortion; channel 2\'s boost is a germanium-style treble booster. DIP HI GAIN adds about 25 % gain, PRES LINK ties presence to TONE 1, MASTER turns VOL 2 into a master volume, MOTOBYP 1 / 2 make the channel switches momentary, BANK swaps the preset slots, SWEEP ramps both gains (POLARITY = downwards).',
+    desc: 'Two stacked gain channels (1 into 2), each boost, overdrive or distortion. Channel 2\'s boost is a treble booster. DIPs add more gain, a master volume, momentary switches and gain ramping.',
   }));
 
   // ================================================================== creative compressor
@@ -1106,7 +1100,7 @@ export default function register(tz) {
         'ph.on': phy === 1 ? 0 : 1, 'ph.depth': phy === 0 ? 0.07 : 0.14, 'ph.rate': phy === 0 ? 0.2 : 0.75, 'ph.wave': phy === 0 ? 0 : 0.6,
       };
     },
-    desc: 'Two-stage VCA compressor / limiter: DYNAMICS sweeps from light compression through limiting into a tube-sag zone, SENSITIVITY is the threshold, WET / DRY blend parallel compression. EQ MODE adds an envelope-shifted or modulated EQ, PHYSICS a little envelope wobble. AUX engages the volume swell; hold BYPASS for maximum sag. DIPs: DUSTY (gritty limiter), GATE, SWELL AUX (momentary swell), MOTION (EQ auto-sweep), SIDECHAIN (less bass pumping, approximated), LATCH (latching sag), SPREAD / MISO (stereo mode).',
+    desc: 'Compressor and limiter. DYNAMICS goes from light squeeze to limiting to tube-like sag, SENSITIVITY sets the threshold, WET / DRY blend. AUX turns on the volume swell, hold BYPASS for full sag. DIPs add grit, a gate, auto EQ sweep and stereo modes.',
   }));
 
   // ================================================================== micro-looper / glitch / loopers
@@ -1170,7 +1164,7 @@ export default function register(tz) {
       });
       return o;
     },
-    desc: 'Two sides: FREEZE holds a smooth spectral sustain, GLITCH loops a short fragment (SIZE). OCTAVE adds an octave up / down voice, TEXTURE crushes (left) or saturates (right), SUSTAIN sets how long sounds hold, ERROR adds timing (stretch), condition (crush) or playback (half speed / reverse) faults. ANIMATE adds vibrato or chorus. Tap a switch to toggle its side, hold for momentary. DIPs: REVERSE / ½ SPEED (glitch playback), LATCH (holds latch), MANUAL (fully momentary), SIDECHAIN (new notes re-capture), DUCK (effect ducks under your playing), MISO / SPREAD (stereo mode).',
+    desc: 'FREEZE holds a smooth sustain, GLITCH loops a short piece (SIZE). OCTAVE, TEXTURE, ERROR and ANIMATE add octaves, crush, faults and wobble. Tap a switch to turn its side on, hold for momentary. DIPs change playback, latching, ducking and stereo.',
   }));
 
   // MOOD-style two-channel pedal (wet channel + micro-looper with routing), shared by the MKII and the grumpy one
@@ -1208,8 +1202,8 @@ export default function register(tz) {
       },
     };
   };
-  // DIP TRAILS on a MOOD-style wet channel: switching the channel off lets the active wet lane ring out (its input is
-  // faded, the lane keeps playing its tail) instead of cutting it
+  // DIP TRAILS on a MOOD-style wet channel: turning the channel off fades the lane's input and lets the tail ring
+  // out instead of cutting it
   const wetTrails = (p, o, lanes, act) => {
     const tr = !!p.dp_trails && (p.wetOn ?? 1) < 0.5;
     for (const k of lanes) {
@@ -1265,7 +1259,7 @@ export default function register(tz) {
       wetTrails(p, o, ['rv', 'dl'], ['rv', 'dl', 'sl'][p.wm | 0]);
       return o;
     },
-    desc: 'Two channels. WET: modulated reverb (TIME = decay, MODIFY = smear), delay (time / feedback) or slip (re-captured slices played at MODIFY speed / reverse). LOOP: an always-listening micro-looper – ENV (slices triggered by your playing), TAPE (LENGTH + speed / direction) or STRETCH. ROUTING sets whether the looper captures the wet sound (IN) or the wet channel processes the loop (IN+LOOP / LOOP). CLOCK trades loop length for fidelity. Tap WET to toggle the channel, hold it to freeze; tap LOOP to capture / release. DIPs: DRY KILL, CLASSIC (MKI voicings), TRAILS, LATCH (latching freeze), NO DUB (re-capture), SMOOTH (soft loop edges), MISO / SPREAD (stereo mode).',
+    desc: 'Two channels: WET is a reverb, delay or slip effect, LOOP is an always-listening micro-looper (ENV, TAPE or STRETCH). ROUTING sets which one feeds the other, CLOCK trades loop length for quality. Hold WET to freeze, tap LOOP to capture or release.',
   }));
 
   add(CB({
@@ -1324,7 +1318,7 @@ export default function register(tz) {
       wetTrails(p, o, ['so', 're', 'fp'], ['so', 're', 'fp'][p.wm | 0]);
       return o;
     },
-    desc: 'The grumpy two-channel sibling: WET is SOUP (resynthesised ambient reverb), RELAY (repeats that don\'t fade) or FLIP (harmonies lagging behind you, MODIFY picks the intervals). The micro-looper is BURST (sliced rhythmic steps), RADIO (five stations: tape, ambient, orchestral, shoegaze, dance – MODIFY scans) or MASK (crushes the loud parts). Hold WET to freeze, tap LOOP to capture. DIPs: DRY KILL, DRY GLUE (saturator on everything), HALF, TRAILS, LATCH (latching freeze), SMOOTH (soft loop edges), MISO / SPREAD (stereo mode).',
+    desc: 'The grumpy sibling. WET is SOUP (ambient reverb), RELAY (repeats that don\'t fade) or FLIP (trailing harmonies). The looper is BURST (sliced steps), RADIO (five stations, MODIFY scans) or MASK (crushes loud parts). Hold WET to freeze, tap LOOP to capture.',
   }));
 
   add(CB({
@@ -1381,7 +1375,7 @@ export default function register(tz) {
         'w.f.on': filt ? 1 : 0, 'w.f.filter': b < 0 ? 0 : 2, 'w.f.pos': b < 0 ? 1 - Math.abs(b) * 0.85 : Math.abs(b) * 0.85,
       };
     },
-    desc: 'Looper with modifiers. Left: record / play (hold = undo), right: stop (hold = clear). LAYERS sets the loop playback level, REPEATS fades older layers while overdubbing, STABILITY adds tape wow / flutter / noise. MOD A (speed, dropper, trimmer) and MOD B (stepped speed, filter, scrambler) act on the loop when their buttons are lit; noon is neutral. MODE: normal, additive (record into overdub) or sampler. DIPs: DRY KILL, HALF (octave-down loop), TRAILS (STOP fades out), BOUNCE / SWEEP / POLARITY (the modifier knobs ramp by themselves), MISO / SPREAD (stereo mode).',
+    desc: 'Looper with modifiers. Left records and plays (hold to undo), right stops (hold to clear). REPEATS fades old layers, STABILITY adds tape wobble. MOD A and MOD B change speed, filter or chop the loop when lit (noon is neutral).',
   }));
 
   add(CB({
@@ -1424,7 +1418,7 @@ export default function register(tz) {
         'w.ms.on': bank === 2 && A > 0.04 ? 1 : 0, 'w.ms.depth': A, 'w.ms.pattern': a < 0 ? 5 : 11,
       };
     },
-    desc: 'Echo with a memory: LEVEL / REPEATS / SIZE (50 ms – 6 s) set the echo, SPREAD adds a second tap behind it, SCAN plays moments back out of the recent past. MODIFY applies modifier bank 1 (filter), 2 (octave) or 3 (stutter) to the echoes, noon neutral. Left: tap tempo, hold = momentary scan; right: bypass, hold = loop the echoes. DIPs: DRY KILL, WIPE, MANUAL (scan only while held), COLLECT (longer, smeared memory), ALWAYS (tails after bypass), LATCH (latching holds), BOUNCE + SHAPE (MODIFY ramps by itself).',
+    desc: 'Echo with a memory. LEVEL / REPEATS / SIZE (50 ms to 6 s) set the echo, SPREAD adds a second tap and SCAN plays back bits of the recent past. MODIFY adds a filter, octave or stutter (noon is neutral). Left taps tempo, hold right to loop the echoes.',
   }));
 
   // ================================================================== codec / tape degradation
@@ -1462,7 +1456,7 @@ export default function register(tz) {
         'l.mode': [1, 0, 2][p.lm ?? 1], 'l.packets': pk === 1 ? 0 : (0.15 + 0.6 * sp) * (pk === 0 ? 0.7 : 1), 'l.gate': p.gateH ? 0.6 : 0,
       });
     },
-    desc: 'Low-bitrate streaming damage: LOSS removes and quantises spectral detail (standard, inverse = only what the codec throws away, or jitter), PACKETS drops (LOSS) or repeats (RPT) frames at SPEED, FILTER + FREQ + SLOPE band-limit the signal, VERB smears it into a codec reverb. GLOBAL is the overall intensity. FREEZE holds the current frame; hold BYPASS to gate. DIPs: SLOW, ALL WET, PRE/POST (filter after the codec), INVERT (band-reject filter), TRAILS, LATCH (latching gate), MISO / SPREAD (stereo mode).',
+    desc: 'Makes your guitar sound like a bad internet stream. LOSS strips detail, PACKETS drops or repeats bits, FILTER narrows the sound and VERB smears it. GLOBAL sets the overall amount. FREEZE holds the sound, hold BYPASS to gate.',
   }));
 
   const TAPES = [
@@ -1504,7 +1498,7 @@ export default function register(tz) {
         'ps.on': aux && ax === 0 ? 1 : 0,
       };
     },
-    desc: 'Cassette / VHS machine: WOW and FLUTTER pitch drift, SATURATE magnetic saturation, FAILURE malfunctions (age and volume dropouts), MODEL picks one of eight tape-deck EQ profiles. NOISE adds hiss, DRY blends some clean signal back. Hold AUX for the performance effect: tape STOP, FILTER (model off) or FAIL. DIPs: DROP BYP, SNAG BYP, HUM BYP, DRY TYPE (more dry in the blend), BOUNCE + SWEEP (WOW / FLUTTER ramp by themselves), MISO / SPREAD (stereo mode).',
+    desc: 'Worn tape machine. WOW and FLUTTER drift the pitch, SATURATE adds tape grit, FAILURE adds dropouts and MODEL picks one of eight tape decks. NOISE adds hiss, DRY mixes in clean signal. Hold AUX for tape stop, filter or fail.',
   }));
 
   // ================================================================== multidirectional delay / multi-modulator
@@ -1559,7 +1553,7 @@ export default function register(tz) {
       if (p.dp_modtype) Object.assign(o, { 'rv.vb.on': 0, 'rv.tr.on': 0, 'rv.fs.on': 0 });
       return o;
     },
-    desc: 'Forward and reverse echo voices (BALANCE blends them, OFFSET moves the reverse voice\'s time against the forward one) with audio-rate modulation on the echoes: vibrato, tremolo or frequency-shift style ring mod, synced to the delay time or free. SEQUENCE RUN rolls the forward voice across the stereo field. Hold the left switch to halve the sample rate (double time, lo-fi); right: tap tempo, hold = capture and repeat. DIPs: SWAP, SPREAD, TRAILS, LATCH (latching capture), FEED TYPE (saturating feedback), FADE TYPE (softer reverse voice), MOD TYPE (modulate the forward voice only), MISO (stereo mode).',
+    desc: 'Forward and reverse echoes (BALANCE blends them, OFFSET shifts the reverse one) with vibrato, tremolo or ring mod on the repeats. Hold the left switch for a lo-fi double-time sound. The right switch taps tempo, hold it to capture and repeat.',
   }));
 
   add(CB({
@@ -1625,7 +1619,7 @@ export default function register(tz) {
       });
       return o;
     },
-    desc: 'Two channels of oddities. LEFT: reverb (slow-verb / useful ambience), pitch (orchestral swell / pitch repeater) or warp (pinging phaser / spectral modulator). RIGHT: delay (tape echo / grain tumbler), synth (impulse synth / sympathetic resonator) or bend (ensemble expander / tape lite). MODIFY picks variant A (left of noon) or B and its intensity; TIME is mode-specific. Footswitches engage each side, hold for freeze / infinite repeats. DIPs: L SWAP / R SWAP, UNSYNC (free R TIME, otherwise musical steps), TRAILS, LATCH (latching holds), BANK (swap preset slots), MISO / SPREAD (stereo mode).',
+    desc: 'Two channels of odd sounds. LEFT is reverb, pitch or warp; RIGHT is delay, synth or bend. MODIFY picks variant A (left of noon) or B and how strong it is. Each footswitch turns on its side, hold for freeze or endless repeats.',
   }));
 
   // ================================================================== desktop motorised-fader units
@@ -1660,7 +1654,7 @@ export default function register(tz) {
         'w.c.on': ck === 2 ? 1 : 0, 'w.c.bits': 0.62, 'w.c.rate': c01(0.8 - 0.65 * (p.pre ?? 0.1)),
       };
     },
-    desc: 'Desktop studio reverb with six motorised-style faders: BASS and MIDS decay either side of the CROSS-over, TREBLE damping, MIX and PRE-DLY. Arcade buttons cycle TYPE (room / plate / hall), DIFFUSION, TANK MOD and CLOCK (HIFI, standard or LOFI, where PRE-DLY also lowers the sample rate). PRESET recalls a favourite (hold to store).',
+    desc: 'Desktop studio reverb with six faders: BASS and MIDS decay, CROSS-over, TREBLE damping, MIX and PRE-DLY. The buttons cycle room / plate / hall, diffusion, modulation and clock (HIFI to LOFI). PRESET recalls a favourite, hold to save.',
   }));
 
   const BT_MODES = ['MOD', 'SHORT', 'LONG', 'LOOP'], BT_RANGE = [[10, 46], [46, 736], [736, 12000], [200, 12000]];
@@ -1707,7 +1701,7 @@ export default function register(tz) {
         'w.lim.on': st ? 1 : 0, 'w.lim.sustain': [0.2, 0.45, 0.85][st], 'w.lim.ratio': [0.3, 0.6, 0.95][st], 'w.lim.level': 0.5,
       };
     },
-    desc: 'Hybrid rack-style echo: analog-flavoured preamp (COLOR) into a 12-second digital delay with a limiter on the repeats (STATE). MODE picks the range (MOD 3–46 ms for chorus / flange, SHORT, LONG, LOOP = infinite repeats), CLUSTER spreads the echo into diffused multi-taps, MOTION adds modulation, SCALE snaps TIME to musical steps, VOICING and TILT EQ shape the repeats. Left: tap tempo, right: bypass (hold = freeze the repeats).',
+    desc: 'Rack-style echo: an analog-flavoured preamp (COLOR) into a 12-second delay. MODE picks the range (MOD for chorus / flange, SHORT, LONG, LOOP), CLUSTER smears the echoes, MOTION adds wobble. Left taps tempo, hold right to freeze the repeats.',
   }));
 
   tz.addDefs(defs);

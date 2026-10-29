@@ -1,6 +1,5 @@
-// Stand-in for nam-train.py used by tests (TZ_CAPTURE_FAKE_TRAINER=1). Takes the same arguments, prints the same
-// "TZ {json}" lines and writes a tiny valid .nam (a plain gain) so the rest of the capture flow can be tested
-// without Python or PyTorch.
+// Fake nam-train.py for tests (TZ_CAPTURE_FAKE_TRAINER=1). Same arguments and "TZ {json}" output, and it
+// writes a tiny valid .nam (a plain gain) so the capture flow can be tested without Python or PyTorch.
 'use strict';
 const fs = require('fs');
 const path = require('path');

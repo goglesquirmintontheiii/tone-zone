@@ -1,6 +1,6 @@
-// Capture: turns a Tone Zone preset (or part of its chain) into a NAM model. Renders the official NAM training
-// signal through the board with the offline engine, trains it with the NAM trainer in a private Python venv,
-// checks the result in our own engine and adds the .nam to the library.
+// Capture: turns a preset (or part of its chain) into a NAM model. Plays the NAM training signal through
+// the board with the offline engine, trains with the NAM trainer in its own Python venv, checks the
+// result in our engine and adds the .nam to the library.
 'use strict';
 const fs = require('fs');
 const path = require('path');

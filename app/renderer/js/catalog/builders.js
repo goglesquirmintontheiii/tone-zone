@@ -1,4 +1,4 @@
-// Enclosure / block builders shared by the core catalog and plugins (exposed to plugins as `tz.builders`).
+// Block builders shared by the core catalog and plugins (plugins get them as `tz.builders`).
 import { defaultMicXY, micToSpeaker } from '../gfx/cabgeom.js';
 import { K, FOOT, LED, MIC, def, ten, STD, STEREO } from './helpers.js';
 
@@ -9,7 +9,7 @@ export const nine = (o) => def(Object.assign({ form: 'nine' }, o, { controls: [.
 export const NINE = (o) => nine(Object.assign({ brand: 'Ibanez' }, o));
 export const mxr = (o) => def(Object.assign({ form: 'mxr' }, o, { controls: [...(o.controls || []), ...(o.noStd ? [] : STD(o.led || '#3d8bff'))] }));
 export const MXRD = (o) => mxr(Object.assign({ brand: 'MXR' }, o));
-// generic stomp in the Tone Zone "tz" enclosure (works for any brand: colours / logo / knob style from the def)
+// generic stomp in the "tz" enclosure (works for any brand, colours, logo and knobs come from the def)
 export const stomp = (o) => def(Object.assign({ form: 'tz' }, o, { controls: [...(o.controls || []), ...(o.noStd ? [] : STD(o.led))] }));
 export const lvl = (label = 'LEVEL') => K('level', label, { display: ten });
 export const tone = (label = 'TONE') => K('tone', label, { display: ten });
@@ -28,7 +28,7 @@ export const AMP = (o) =>
   }));
 export const marshallKnobs = (gainLabel = 'PRE-AMP', masterLabel = 'MASTER') => [k('presence', 'PRESENCE'), k('bass', 'BASS'), k('mid', 'MIDDLE'), k('treble', 'TREBLE'), k('master', masterLabel), k('gain', gainLabel)];
 export const fenderKnobs = (mid = true) => [k('gain', 'VOLUME', { scale: 10, style: 'fender' }), k('treble', 'TREBLE', { scale: 10, style: 'fender' }), ...(mid ? [k('mid', 'MIDDLE', { scale: 10, style: 'fender' })] : []), k('bass', 'BASS', { scale: 10, style: 'fender' }), k('master', 'POWER', { scale: 10, style: 'fender', def: 0.6 })];
-// preamp-only rack version of an amp (no power amp / output transformer)
+// preamp-only rack version of an amp (no power amp or output transformer)
 export function preampOf(a) {
   return def({
     id: a.id.replace(/^amp\./, 'pre.').replace(/^([^.]+)\.amp-/, '$1.pre-'), name: a.name + ' Pre', ref: a.ref + ' (preamp)', brand: a.brand, cat: 'Preamp', form: 'rack', algo: 'amp', cost: 1.6,

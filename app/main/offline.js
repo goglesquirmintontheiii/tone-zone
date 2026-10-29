@@ -1,5 +1,5 @@
-// Offline rendering + audio analysis: renders a board graph through the DSP engine (engine --offline) with a DI
-// clip and measures it (level, spectrum shape …). Used by the preset tools / tests, not by the UI.
+// Offline rendering and analysis: plays a DI clip through a board graph with `engine --offline` and
+// measures the result (level, spectrum shape…). Used by the preset tools and tests, not the UI.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -122,7 +122,7 @@ function features(chans, sr, t0 = 0, t1 = Infinity) {
       for (let i = lo; i < hi && i < N / 2; i++) s += mag2[i];
       band[bi] += s / (hi - lo) / (f.rms * f.rms + 1e-12);
     });
-    // spectral flatness 200 Hz – 6 kHz
+    // spectral flatness from 200 Hz to 6 kHz
     const a = Math.floor((200 / sr) * N), b = Math.floor((6000 / sr) * N);
     let lg = 0, ar = 0;
     for (let i = a; i < b; i++) { lg += Math.log(mag2[i] + 1e-20); ar += mag2[i]; }
@@ -174,7 +174,7 @@ function stemsFeatures(files, t0, t1) {
   return features(mix, sr, t0, t1);
 }
 
-// ------------------------------------------------------------------ DI clip + offline renders
+// ------------------------------------------------------------------ DI clip and offline renders
 function defaultDI() {
   const p = path.join(toolsDir(), 'offline-di-v1.wav');
   if (fs.existsSync(p)) return p;
@@ -229,7 +229,7 @@ async function renderAndAnalyse(graph, diPath) {
     fs.rmSync(op, { force: true });
   }
 }
-// evaluate many graphs (2 at a time – one per core)
+// evaluate many graphs, 2 at a time (one per core)
 async function evalGraphs(graphs, diPath) {
   const di = diPath || defaultDI();
   const out = new Array(graphs.length);

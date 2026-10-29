@@ -1,4 +1,4 @@
-// The board: pan / zoom, block placement and dragging, realistic patch cables, control interaction.
+// The board: pan and zoom, placing and dragging blocks, patch cables and controls.
 import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH, SLEEVE } from './gfx/jacks.js';
 import { svg, clamp, shade, bus, toast } from './util.js';
 import { installDefs } from './gfx/defs.js';
@@ -45,17 +45,17 @@ export class Editor {
     bus.on('bypass', ({ id }) => this.views.get(id)?.setBypassVisual());
     bus.on('selection', () => this.views.forEach((v) => v.updateSelection()));
     this.boardView = document.getElementById('view-board');
-    // timer, not rAF: an always-running rAF loop forces a BeginMainFrame on every vsync
-    setInterval(() => this.frame(), 45); // ~22 Hz: LEDs, screens and meters all repaint in the same frame
+    // a timer, not rAF: a rAF loop that never stops forces a BeginMainFrame every vsync
+    setInterval(() => this.frame(), 45); // ~22 Hz, so LEDs, screens and meters repaint in the same frame
   }
 
   // ------------------------------------------------------------ view
-  // fast = during a pan / zoom gesture: move the already-painted board with a compositor transform (no repaint of
-  // the SVG) and redraw it crisply once the gesture pauses
+  // fast = during a pan or zoom: move the painted board with a compositor transform (no SVG repaint)
+  // and redraw it sharp once the gesture pauses
   applyView(fast = false) {
     const { x, y, z } = this.view;
     const now = performance.now();
-    // during a gesture the full redraw happens at most ~10×/s; in between the painted board just moves
+    // during a gesture, do a full redraw at most ~10 times a second and just move the board in between
     if (fast && this.committed && now - (this._lastCommit || 0) < 100) {
       const c = this.committed;
       const sc = z / c.z;
@@ -90,8 +90,8 @@ export class Editor {
   }
 
   // ------------------------------------------------------------ level of detail
-  // Big boards: when zoomed out (or while the view moves) every block is drawn as one bitmap of itself instead of
-  // hundreds of live SVG shapes, so panning / zooming doesn't re-rasterise the whole board.
+  // Big boards: when zoomed out (or while moving), each block is drawn as one bitmap instead of
+  // hundreds of SVG shapes, so panning and zooming don't re-rasterise the whole board.
   lodWanted() {
     return this.view.z < 0.5 || (this._moving && this.views.size >= 12);
   }
@@ -104,12 +104,12 @@ export class Editor {
     const key = want + ':' + scale + ':' + this.views.size;
     if (!force && key === this._lodKey) return;
     this._lodKey = key;
-    // cable shadows are big soft strokes: skip them when far out
+    // cable shadows are big soft strokes, skip them when zoomed far out
     const farOut = this.view.z < 0.45;
     if (this._shadowsOff !== farOut) { this._shadowsOff = farOut; this.layerShadows.style.display = farOut ? 'none' : ''; }
     const prewarm = this.views.size >= 12; // so a pan can switch to bitmaps right away
     for (const v of this.views.values()) {
-      if (want) v.setLOD(true); // shows the bitmap if there is one (even if a little out of date)
+      if (want) v.setLOD(true); // shows the bitmap if there is one, even if slightly stale
       else v.setLOD(false);
       if ((want || prewarm) && !v.lodReady(scale)) this._lodQueue.add(v);
     }
@@ -196,8 +196,8 @@ export class Editor {
     }
     this.updateLOD(true);
   }
-  // Show the preset's saved view, or fit the board. While the board is hidden (preset loaded from another tab)
-  // it has no size, so wait until it's visible again.
+  // Use the preset's saved view or fit the board. A hidden board (preset loaded from another tab)
+  // has no size, so wait until it's visible.
   restoreView() {
     if (!this._pendingView || !state.preset) return;
     const r = this.board.getBoundingClientRect();
@@ -258,7 +258,7 @@ export class Editor {
     return { x: p.x, y: p.y, dx: dir[0], dy: dir[1], front: p.side === 'front', kind: p.kind || 'inst' };
   }
   cablePath(a, b) {
-    // a, b: plug tips {x,y,dx,dy}; cable starts at the end of each boot
+    // a, b: plug tips {x,y,dx,dy}. The cable starts at the end of each boot
     const plugLen = (j) => (j.front ? 6 : (JACK_TIP[j.kind] ?? 6) + (PLUG_LENS[j.kind] || 30) - (j.free ? 0 : SLEEVE[j.kind] || 0));
     const la = plugLen(a), lb = plugLen(b);
     const ax = a.x + a.dx * la, ay = a.y + a.dy * la;
@@ -281,7 +281,7 @@ export class Editor {
     for (const c of state.preset.cables) this.drawCable(c);
   }
   drawCable(c) {
-    if (c.direct) return; // coupler link: the plugs touch, nothing to draw
+    if (c.direct) return; // coupler link: the plugs touch, so nothing to draw
     const a = this.jackGeom(c.from.node, 'o' + c.from.port);
     const b = this.jackGeom(c.to.node, 'i' + c.to.port);
     if (!a || !b) return;
@@ -330,7 +330,7 @@ export class Editor {
     s.addEventListener('dblclick', (e) => this.onDbl(e));
     s.addEventListener('contextmenu', (e) => this.onContext(e));
     this.board.addEventListener('keydown', (e) => this.onKey(e));
-    // drop from block browser
+    // drop from the block list
     this.board.addEventListener('dragover', (e) => {
       if (e.dataTransfer.types.includes('application/x-tz-block')) {
         e.preventDefault();
@@ -358,8 +358,8 @@ export class Editor {
     const budget = (state.settings.budget ?? 0.75) * 100;
     const est = estimatedLoad(d.cost || 0.5);
     if (est > budget) {
-      if (state.settings.hardLimit) return toast(`Not added: the DSP budget (${Math.round(budget)}%) would be exceeded (≈${est.toFixed(0)}%).`, 'err');
-      toast(`Heads up: estimated DSP load ≈${est.toFixed(0)}% exceeds your ${Math.round(budget)}% budget.`, 'warn');
+      if (state.settings.hardLimit) return toast(`Not added. It would push DSP load to about ${est.toFixed(0)}%, over your ${Math.round(budget)}% budget.`, 'err');
+      toast(`Heads up: DSP load is now about ${est.toFixed(0)}%, over your ${Math.round(budget)}% budget.`, 'warn');
     }
     const b = addBlock(type, x, y);
     if (b && centered) {
@@ -513,13 +513,13 @@ export class Editor {
       this.highlightCables();
       return;
     }
-    // shift / ctrl + drag on empty board: rubber-band selection
+    // shift or ctrl + drag on empty board: box select
     if (e.shiftKey || e.ctrlKey) {
       const rect = svg('rect', { class: 'marquee', x: w.x, y: w.y, width: 0, height: 0, rx: 4 }, this.layerDrag);
       this.drag = { kind: 'marquee', sx: w.x, sy: w.y, rect, base: new Set(state.selection) };
       return;
     }
-    // empty board: pan + deselect
+    // empty board: pan and deselect
     if (state.selection.size || state.selectedCable) {
       state.selection.clear();
       state.selectedCable = null;
@@ -623,7 +623,7 @@ export class Editor {
       if (d.existing) {
         state.preset.cables = state.preset.cables.filter((c) => c.id !== d.existing.id);
       }
-      if (wouldCycle(from.node, to.node)) toast('That cable creates a feedback loop – it will run with one buffer of delay.', 'warn');
+      if (wouldCycle(from.node, to.node)) toast('That cable makes a feedback loop. It will run with one buffer of delay.', 'warn');
       const c = connect(from, to, d.color);
       if (c) {
         this.flashJack(to.node, 'i' + to.port);
@@ -632,7 +632,7 @@ export class Editor {
       removeCable(d.existing.id);
       toast('Cable unplugged', 'info', 1400);
     } else {
-      if (d.badKind) toast(`A ${KIND_NAMES[d.badKind[0]] || d.badKind[0]} cable doesn't fit a ${KIND_NAMES[d.badKind[1]] || d.badKind[1]} jack – use a DI box, re-amp box or adapter from Utilities.`, 'warn', 4200);
+      if (d.badKind) toast(`A ${KIND_NAMES[d.badKind[0]] || d.badKind[0]} cable doesn't fit a ${KIND_NAMES[d.badKind[1]] || d.badKind[1]} jack. Use a DI box, re-amp box or adapter from Utilities.`, 'warn', 4200);
       this.drawCables();
     }
   }
@@ -658,7 +658,7 @@ export class Editor {
     if (!entry) return;
     const c = entry.ctl;
     if (c.t === 'screen') {
-      // interactive screens (e.g. the parametric EQ) handle their own pointer gestures
+      // interactive screens (like the parametric EQ) handle their own pointer input
       const s = this.screenOf(v, c);
       commitNow();
       this.drag = { kind: 'ctl', node: nodeId, c, view: entry.view, sx: e.clientX, sy: e.clientY, moved: false, screen: s };
@@ -760,7 +760,7 @@ export class Editor {
     } else if (c.t === 'treadle' && (v.def.toeSwitch || !v.def.noBypassClick)) {
       setBypass(b.id, !b.bypass);
     } else if (c.t === 'mic') {
-      // click selects the mic (inspector shows its settings); shift-click cycles the mic model
+      // click selects the mic (the inspector shows it), shift-click cycles the mic model
       const sui = (state.ui[b.id] = state.ui[b.id] || {});
       if (e.shiftKey) {
         const cur = uiParams(b)[`m${c.idx}type`] ?? 0;
@@ -817,7 +817,7 @@ export class Editor {
   }
 
   // --- footswitches
-  // press / release a footswitch from code (MIDI controllers, Helix bindings): same behaviour as clicking it
+  // press or release a footswitch from code (MIDI, Helix bindings), same as clicking it
   remoteFoot(blockId, cid, down) {
     const v = this.views.get(blockId);
     const entry = v && v.views.get(cid);
@@ -838,7 +838,7 @@ export class Editor {
     v.updateControls();
     return true;
   }
-  // set a continuous control (knob / slider / treadle) from a 0..1 position
+  // set a knob, slider or treadle from a 0..1 position
   remoteControl(blockId, cid, pos) {
     const v = this.views.get(blockId);
     const entry = v && v.views.get(cid);
@@ -861,7 +861,7 @@ export class Editor {
     this.drag.footT0 = performance.now();
     this.drag.held = false;
     if (c.action === 'bypass' && d.tapFoot) {
-      // BOSS-style: hold the pedal ~2 s to enter / leave TEMPO (tap) mode
+      // BOSS style: hold the pedal ~2 s to enter or leave TEMPO (tap) mode
       this.drag.holdTimer = setTimeout(() => {
         if (!this.drag) return;
         this.drag.held = true;
@@ -885,7 +885,7 @@ export class Editor {
         if (d.holdWhen && d.holdWhen(ui)) window.tz.engine.send({ cmd: 'event', id: b.id, type: 2, value: 1, arg: 0 });
       }
     } else if (c.action === 'tap' || d.tapFoot) {
-      // handled on release (so hold can be detected)
+      // handled on release so a hold can be detected
     }
   }
   footUp(v, c, view) {
@@ -928,7 +928,7 @@ export class Editor {
       case 'tap': {
         // tapSub: route the tap to sub-block i of a chain (arg = i * 100)
         window.tz.engine.send({ cmd: 'event', id: b.id, type: 1, value: 0, arg: (c.tapSub ?? d.tapSub ?? 0) * 100 });
-        // mirror tap tempo into the UI param so knobs follow (tapHz: the target is a rate in Hz, e.g. tremolo speed)
+        // copy tap tempo into the UI param so knobs follow (tapHz: target is a rate in Hz, like tremolo speed)
         const now = performance.now();
         const dt = now - (sui.lastTap || 0);
         sui.lastTap = now;
@@ -1213,19 +1213,19 @@ export class Editor {
     }
   }
 
-  // ------------------------------------------------------------ animation loop for LEDs / screens
+  // ------------------------------------------------------------ animation loop for LEDs and screens
   frame() {
     const now = performance.now();
     if (this.onTick) this.onTick(now);
     this._tickN = (this._tickN || 0) + 1;
-    // plugin behaviour hooks (ramps, timers …) run for every block, on or off screen, on any tab
+    // plugin hooks (ramps, timers…) run for every block, on or off screen, on any tab
     for (const v of this.views.values()) {
       const hk = hooksFor(v.block.type);
       if (hk && hk.status) try { hk.status(v, now); } catch (e) { if (!v._hkErr) { v._hkErr = 1; console.error('status hook', v.block.type, e); } }
     }
     if (document.hidden || !this.boardView.classList.contains('active')) return;
-    // only blocks in view are animated; when zoomed far out (LEDs and screens are tiny) they update less often –
-    // every changed pixel of a big zoomed-out board costs a large SVG repaint
+    // only blocks in view animate, and less often when zoomed far out, since every changed pixel
+    // of a big zoomed-out board costs a large SVG repaint
     const { x, y, z } = this.view;
     if (!this._vr || now - this._vrT > 250) {
       this._vrT = now;
@@ -1233,16 +1233,16 @@ export class Editor {
     }
     const r = this._vr;
     const wx0 = -x / z, wy0 = -y / z, wx1 = (r.width - x) / z, wy1 = (r.height - y) / z;
-    // one pass for every visible block at once (so the repaints coalesce into one frame)
+    // one pass over all visible blocks so the repaints land in one frame
     const every = z < 0.35 ? 3 : z < 0.55 ? 2 : 1;
     if (this._tickN % every) return;
     for (const v of this.views.values()) {
       const b = v.block;
-      if (v.lodOn) continue; // shown as a bitmap: nothing to animate
+      if (v.lodOn) continue; // shown as a bitmap, nothing to animate
       if (b.x > wx1 || b.y > wy1 || b.x + (v.w || 200) < wx0 || b.y + (v.h || 200) < wy0) continue;
       v.updateStatus(now);
     }
-    // refresh out-of-date bitmaps now and then (a knob or bypass changed)
+    // refresh stale bitmaps now and then (a knob or bypass changed)
     if (now - (this._lodCheckT || 0) > 700 && (this.lodWanted() || this.views.size >= 12)) {
       this._lodCheckT = now;
       const sc = this.lodScale();

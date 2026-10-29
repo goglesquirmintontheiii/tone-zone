@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: BOSS.
 // Blocks inspired by BOSS gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 import { registerGXCore } from './gx-core.js';
 
 export default function register(tz) {
@@ -156,7 +156,7 @@ export default function register(tz) {
       id: 'bx.ns2', name: 'NR-2 Noise Suppressor', ref: 'BOSS NS-2', code: 'NR-2', typeName: 'Noise Suppressor', cat: 'Dynamics', color: '#f2f2f0', text: '#111',
       algo: 'gate', ports: { ins: ['INPUT', 'RETURN'], outs: ['OUTPUT', 'SEND'] },
       controls: [K('threshold', 'THRESHOLD', { def: 0.4 }), K('decay', 'DECAY', { def: 0.4 }), SEL('mode', 'MODE', ['REDUCTION', 'MUTE'], { sweep: 70, optSize: 4.4 })],
-      desc: 'Patch other pedals into SEND/RETURN – detection stays on INPUT, exactly like the real unit.',
+      desc: 'Patch other pedals into SEND/RETURN. It still listens on INPUT, like the real unit.',
     }),
     BOSS({
       id: 'bx.oc5', name: 'OX-5 Octave', ref: 'BOSS OC-5', code: 'OX-5', typeName: 'Octave', cat: 'Pitch', color: '#8a8e93', text: '#111',
@@ -184,7 +184,7 @@ export default function register(tz) {
         if (p.psmode === 3) Object.assign(r, { glide: 0.8 });
         return r;
       },
-      desc: 'HARM mode: diatonic harmony in the selected KEY (inner knob, major scale) – SHIFT (outer ring) picks the interval. SHIFT mode: fixed pitch shift.',
+      desc: 'HARM mode adds a harmony in the chosen KEY (inner knob, major scale) and SHIFT (outer ring) picks the interval. SHIFT mode is a fixed pitch shift.',
     }),
     BOSS({
       id: 'bx.aw3', name: 'AF-3 Dynamic Wah', ref: 'BOSS AW-3', code: 'AF-3', typeName: 'Dynamic Wah', cat: 'Filter', color: '#e94b8d', text: '#111',
@@ -634,7 +634,7 @@ export default function register(tz) {
       id: 'bx.ev30', name: 'EX-30 Dual Expression', ref: 'BOSS EV-30', brand: 'BOSS', code: 'EX-30', cat: 'Control', kind: 'Utility', form: 'treadle', color: '#1b1b1c', algo: null,
       ports: { ins: [], outs: [] }, ctrl: { outs: [{ label: 'EXP 1', source: 'param:pos' }, { label: 'EXP 2', source: 'param:pos' }] },
       controls: [TREADLE('pos', { def: 0.5, virtual: true })], logo: 'EXPRESSION', logoFont: "'Oswald', sans-serif", logoColor: '#bdbdbd', noBypassClick: true, alwaysOn: true,
-      desc: 'Dual-output expression pedal: both EXP outputs follow the treadle – patch them into EXP / CTRL jacks.',
+      desc: 'Expression pedal with two outputs that both follow the treadle. Patch them into EXP / CTRL jacks.',
     }),
     def({
       id: 'bx.fv30l', name: 'VL-30L Volume', ref: 'BOSS FV-30L', brand: 'BOSS', code: 'VL-30L', cat: 'Volume', form: 'treadle', color: '#1a1a1b', algo: 'volume',
@@ -820,7 +820,7 @@ export default function register(tz) {
         o['rv.on'] = rq >= 0 ? 1 : 0; o['rv.mode'] = [0, 1, 2, 3][Math.max(0, rq)]; o['rv.mix'] = 0.15 + 0.4 * rv;
         return o;
       },
-      desc: 'Compact multi-FX: BOOST/DS, MOD, DELAY and REVERB knobs each sweep four types (fully left = off), AMP picks one of six amps + cab. The expression pedal is a volume pedal; CTL taps the delay time.',
+      desc: 'Small multi-FX. The BOOST/DS, MOD, DELAY and REVERB knobs each sweep four types (fully left is off) and AMP picks one of six amps. The pedal sets volume, CTL taps the delay time.',
     }),
   ]);
   registerGXCore(tz);

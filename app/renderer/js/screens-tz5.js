@@ -1,6 +1,6 @@
 // Screens and button logic for the four v0.4.0 multi-effects originals (catalog/originals4.js).
-// Footswitches and buttons toggle `_p.<name>` params; the bus listener below turns each change into an action.
-// Unit state is saved in the `_st` param, the current page / cursor lives in state.ui[id].tz5.
+// Footswitches and buttons toggle `_p.<name>` params and the bus listener below turns each change into an action.
+// Unit state is saved in the `_st` param. The current page and cursor live in state.ui[id].tz5.
 import { svg, bus, clamp } from './util.js';
 import { registerScreen } from './screens.js';
 import { setA, setText } from './gfx/fx.js';
@@ -38,7 +38,7 @@ function flash(b, msg, ms = 1300) {
   n.msgT = performance.now() + ms;
 }
 
-// pointer state, for hold detection on footswitches (remote presses have no pointer: they act as taps)
+// pointer state for footswitch hold detection (remote presses have no pointer, so they act as taps)
 let ptrDown = false;
 window.addEventListener('pointerdown', () => (ptrDown = true), true);
 window.addEventListener('pointerup', () => (ptrDown = false), true);

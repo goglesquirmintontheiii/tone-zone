@@ -3,7 +3,7 @@
   "name": "Line 6 Helix (device)",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Use a real Line 6 Helix / HX unit plugged in over USB as a block: its USB audio channels become jacks, presets / snapshots / footswitches / expression are sent over MIDI with every Tone Zone preset, and Tone Zone footswitch / expression blocks can act as the Helix's external controllers.",
+  "description": "Use your own Line 6 Helix / HX over USB as a block. Its USB audio channels become jacks, presets and snapshots load with your Tone Zone presets, and Tone Zone footswitch / expression blocks can control it.",
   "kind": "device",
   "brand": "Line 6",
   "short": "HX",

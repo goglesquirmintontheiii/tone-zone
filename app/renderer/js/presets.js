@@ -1,4 +1,4 @@
-// Preset management: browse / load / save / save-as / rename / delete / import / export.
+// Preset actions: load, save, save as, rename, delete, import and export.
 import { el, esc, bus, toast } from './util.js';
 import { state, loadPreset, serialize, newPreset, markDirty } from './state.js';
 import { prompt, confirmDlg, showMenu } from './menus.js';
@@ -50,7 +50,7 @@ export function updateTitle() {
   const n = document.querySelector('#presetName .pn-name');
   n.textContent = state.preset?.name || 'Untitled';
   document.getElementById('presetName').classList.toggle('dirty', !!state.dirty);
-  document.title = `${state.preset?.name || 'Tone Zone'}${state.dirty ? ' •' : ''} — Tone Zone`;
+  document.title = `${state.preset?.name || 'Tone Zone'}${state.dirty ? ' •' : ''} - Tone Zone`;
 }
 
 export async function showPresetMenu(anchor) {
@@ -60,7 +60,7 @@ export async function showPresetMenu(anchor) {
   const head = el('div', { style: { display: 'flex', gap: '6px', padding: '4px 4px 8px', flexWrap: 'wrap' } }, box);
   const mk = (label, icon, fn) => el('button', { class: 'btn small', onclick: () => { document.getElementById('menuLayer').innerHTML = ''; fn(); } }, head, `<i class="ic ic-${icon}"></i>${label}`);
   mk('New', 'plus', async () => {
-    if (state.dirty && !(await confirmDlg('Unsaved changes', 'Discard current changes?', 'Discard', true))) return;
+    if (state.dirty && !(await confirmDlg('Unsaved changes', 'Throw away your current changes?', 'Discard', true))) return;
     loadPreset(newPreset(), null);
     updateTitle();
   });

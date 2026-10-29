@@ -1,4 +1,4 @@
-// Tone Zone – Electron main process
+// Tone Zone: Electron main process
 'use strict';
 const { app, BrowserWindow, ipcMain, dialog, shell, session, Menu, nativeTheme, screen } = require('electron');
 const path = require('path');
@@ -11,7 +11,7 @@ const { EngineHost, findEngine } = require('./engine-host');
 
 const APP_ROOT = path.join(__dirname, '..');
 app.setName('Tone Zone');
-// Prefer native Wayland/X11 auto-detection; smooth GPU rendering for the editor canvas
+// let Chromium pick Wayland or X11 natively
 app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 nativeTheme.themeSource = 'dark';
@@ -213,7 +213,7 @@ function setupIpc() {
 }
 
 // ---------------------------------------------------------------- lifecycle
-// automated test runs (Playwright attaches a debugger) may run several instances side by side
+// test runs (Playwright attaches a debugger) may run several instances at once
 const testRun = app.commandLine.hasSwitch('remote-debugging-port') || !!process.env.TZ_NO_SINGLE_INSTANCE;
 const gotLock = testRun || app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
@@ -224,7 +224,7 @@ app.on('second-instance', () => {
   }
 });
 
-// Web MIDI (device plugins such as the Line 6 Helix talk MIDI from the renderer)
+// Web MIDI (device plugins like the Line 6 Helix use MIDI from the renderer)
 function allowMidi() {
   const ok = (p) => p === 'midi' || p === 'midiSysex' || p === 'clipboard-sanitized-write' || p === 'media';
   session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(ok(perm)));

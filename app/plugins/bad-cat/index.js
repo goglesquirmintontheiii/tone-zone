@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Bad Cat.
 // Blocks inspired by Bad Cat gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, preampPair, stomp } = tz.builders;

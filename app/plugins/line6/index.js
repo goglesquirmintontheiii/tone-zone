@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Line 6.
 // Blocks inspired by Line 6 gear. Names, logos and artwork are Tone Zone originals; control layouts and
-// colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+// colours follow the real units (see each block's `ref`).
 import { createKit } from './mfx-kit.js';
 import { registerVX } from './vx-stomp-xl.js';
 import { registerRigXGo } from './rig-x-go.js';
@@ -108,7 +108,7 @@ function registerModelers(tz) {
         o[m[4]] = tweakVal(m[4], p.tweez ?? 0.4);
         return o;
       },
-      desc: '16 delay models (vintage tape / tube / analog / digital plus newer ambient voices). TWEAK and TWEEZ change per model (e.g. wow, head pattern, mod speed / depth, brightness). Footswitches: A on/off, B favorite (hold to save), C hold for infinite repeats, TAP tempo.',
+      desc: '16 delay models, from tape and analog to digital and ambient. TWEAK and TWEEZ change with the model. A turns it on, B recalls a favorite (hold to save), hold C for endless repeats, TAP sets tempo.',
     }),
   ]);
 
@@ -149,7 +149,7 @@ function registerModelers(tz) {
       }, m[2]);
       return o;
     },
-    desc: '14 modulation models (tremolos, phasers, vibe, rotary, flangers, choruses, vibrato, ring mod). SPEED / DEPTH / MIX work on every model; TWEAK and TWEEZ change per model (wave shape, feedback, tone, manual, delay).',
+    desc: '14 modulation models, from tremolo and phaser to rotary, chorus and ring mod. SPEED / DEPTH / MIX work on every model, TWEAK and TWEEZ change with the model.',
   })]);
 
   // ---- DM4: distortion modeler (drive voicings switched with the drive `mode` param)
@@ -201,7 +201,7 @@ function registerModelers(tz) {
         's.mod': sp, 's.filter': f, 's.reso': q, 's.wet': mx, 's.dry': 1 - mx, 's.level': (v - 0.5) * 24, 's.attack': 0.15, 's.decay': 0.6 };
       return Object.assign(o, m[2]);
     },
-    desc: '12 filter models: envelope filters, LFO filters, a fixed Q filter, voice box and guitar synths. SPEED = envelope sensitivity / LFO rate / synth modulation, FREQ = filter frequency, MIX blends the synths with the dry guitar.',
+    desc: '12 filter models: auto-wahs, sweeping filters, a voice box and guitar synths. SPEED sets sensitivity or rate, FREQ the filter, MIX blends in the dry guitar.',
   })]);
 
   // ---- M5: one effect at a time from a mini library, LCD shows model + knob functions
@@ -257,7 +257,7 @@ function registerModelers(tz) {
       }, m[3]);
       return o;
     },
-    desc: 'One effect at a time from a library of 12 models; the LCD shows what knobs 1–4 do for the current model. TAP sets the echo time.',
+    desc: 'One effect at a time from 12 models. The screen shows what knobs 1 to 4 do for the current model. TAP sets the echo time.',
   })]);
   void BTN;
 }

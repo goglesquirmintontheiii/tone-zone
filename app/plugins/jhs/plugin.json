@@ -3,7 +3,7 @@
   "name": "JHS",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by JHS Pedals: hand-painted boxes with hand-drawn art. Screamer and transparent drives, a nine-voice Tiny Tree, channel drives, British crunch, tartan fuzz, a nine-way rat pack, a console preamp, tape and bucket-brigade delays, spring reverb, uni-vibe, chorus, tremolo, dual overdrives and the minimal Trio Series (drives, fuzz, delays, reverbs, modulation, bit crusher and ring mod).",
+  "description": "Pedals inspired by JHS Pedals, in hand-painted boxes with hand-drawn art: lots of drives and fuzzes, a console preamp, delays, reverb, vibe, chorus, tremolo and the simple three-knob Trio Series.",
   "kind": "brand",
   "brand": "JHS",
   "main": "index.js",

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
-    <!-- shared gradients / patterns: in their own always-rendered svg so every tab (not just the board) can use them -->
+    <!-- shared gradients and patterns, kept in their own svg so every tab can use them -->
     <svg id="defsHost" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs id="globalDefs"></defs></svg>
   <div id="app">
     <header id="topbar">
@@ -38,13 +38,13 @@
         <button class="btn btn-accent" id="presetSave" title="Save (Ctrl+S)"><i class="ic ic-save"></i>Save</button>
       </div>
       <div id="meters">
-        <div class="meter-group" title="DSP load (budget marker)">
+        <div class="meter-group" title="DSP load (the line marks your budget)">
           <label>DSP</label>
           <div class="dsp-meter"><div class="fill"></div><div class="budget"></div></div>
           <span class="val" id="dspVal">0%</span>
         </div>
-        <div class="meter-group" title="Round-trip latency reported by PipeWire">
-          <label>LAT</label><span class="val" id="latVal">–</span>
+        <div class="meter-group" title="Round-trip latency from PipeWire">
+          <label>LAT</label><span class="val" id="latVal">-</span>
         </div>
         <div class="meter-group io" title="Input / output level">
           <label>IN</label><div class="vu" id="vuIn"><i></i></div>
@@ -95,7 +95,7 @@
         <aside id="inspector" class="collapsed">
           <div class="insp-empty">
             <i class="ic ic-pointer big"></i>
-            <p>Select a block to see all of its controls, variants and DSP cost.</p>
+            <p>Select a block to see all its controls and how much DSP it uses.</p>
           </div>
           <div class="insp-body"></div>
         </aside>

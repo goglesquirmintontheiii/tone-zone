@@ -1,8 +1,7 @@
-// Tone Zone original enclosures – the "studio" design language used by the core originals:
-// anodised aluminium lit from the top left, fine brushing, a recessed control deck, engraved type and an
-// accent stripe whose placement marks the family. Plus a few playful shapes (orb, cassette, scope slab),
-// a treadle housing and trims that dress the built-in amp / cab forms in Tone Zone colours.
-// Performance: gradients, cached noise and clip paths only – no SVG filters.
+// Tone Zone original enclosures in the "studio" look: anodised aluminium lit from the top left, fine
+// brushing, a recessed control deck, engraved type and an accent stripe that marks the family.
+// Also a few playful shapes (orb, cassette, scope slab), a treadle and trims for the amp and cab forms.
+// Only gradients, cached noise and clip paths, no SVG filters (for speed).
 import { svg, shade, luminance } from '../util.js';
 import { softShadow } from './fx.js';
 import { label } from './controls.js';

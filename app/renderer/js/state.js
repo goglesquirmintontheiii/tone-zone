@@ -1,4 +1,4 @@
-// Preset model, engine synchronisation and undo/redo history.
+// Preset data, syncing it to the engine, and undo/redo.
 import { cabGeom } from './gfx/cabgeom.js';
 import { getDef, portsFor, defaultVariant, jackChannels } from './catalog/index.js';
 import { bus, uid, clamp, debounce } from './util.js';
@@ -15,7 +15,7 @@ export const state = {
   cableColor: CABLE_COLORS[0],
   settings: {},
   engineParams: {}, // algo -> [{name, def, min, max}]
-  ui: {}, // transient per-block UI state (alt mode, looper layer, favourites)
+  ui: {}, // temporary per-block UI state (alt mode, looper layer, favourites)
 };
 
 export function newPreset(name = 'New Preset') {
@@ -160,7 +160,7 @@ function snapshot() {
   return JSON.stringify(state.preset);
 }
 export function commit(label = '') {
-  // call BEFORE mutating; coalesces rapid edits (knob drags) into one undo step
+  // call before changing anything. Quick edits (knob drags) merge into one undo step
   if (snapshotPending) return;
   history.past.push(snapshot());
   if (history.past.length > 150) history.past.shift();
@@ -340,7 +340,7 @@ function migrateBlock(b) {
 }
 
 export function loadPreset(p, file = null) {
-  // ensure I/O blocks exist
+  // make sure the I/O blocks exist
   if (!p.blocks.find((b) => b.id === '__in')) p.blocks.push({ id: '__in', type: '__in', x: 1500, y: 120, params: {} });
   if (!p.blocks.find((b) => b.id === '__out')) p.blocks.push({ id: '__out', type: '__out', x: -300, y: 120, params: {} });
   p.blocks = p.blocks.filter((b) => getDef(b.type) || b.id.startsWith('__'));

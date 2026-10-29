@@ -87,7 +87,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0, boost: 0 },
       derive: (p) => ({ 'm.level': p.mute ? -60 : (p.vol ?? -3) + (p.gain ?? 0) + (p.boost ? p.boostdb ?? 6 : 0) }),
-      desc: 'Studio-grade acoustic preamp: optical-style COMP, BASS / MIDDLE (sweepable FREQ) / TREBLE / BRILLIANCE, NOTCH (fully left = off), PHASE, footswitchable BOOST and TUNE / MUTE.',
+      desc: 'Acoustic preamp with COMP, a 4-band EQ (sweepable MIDDLE), NOTCH (fully left is off), PHASE, a BOOST footswitch and TUNE / MUTE.',
     }),
     // ---------------------------------------------------------------- ToneDEQ
     F({
@@ -120,7 +120,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0, fx: 1 },
       derive: deqFx,
-      desc: 'Acoustic preamp / DI with a 5-type effect section (two reverbs, chorus, delay, echo + reverb). FX ADJ sets decay / rate / delay time, FX LEVEL the amount; EFFECT footswitch turns the effect on and off.',
+      desc: 'Acoustic preamp / DI with five effects (two reverbs, chorus, delay, echo + reverb). FX ADJ sets the time or rate, FX LEVEL the amount, and the EFFECT footswitch turns it on and off.',
     }),
     // ---------------------------------------------------------------- Aura Spectrum DI
     F({
@@ -147,7 +147,7 @@ export default function register(tz) {
       ],
       initParams: { mute: 0 },
       derive: (p) => ({ 'a.type': p.model ?? 0, 'm.level': p.mute ? -60 : p.vol ?? -2 }),
-      desc: 'Acoustic imaging DI: rebuilds a studio-miked body sound from an under-saddle pickup (approximated with the piezo-enhance engine). IMAGE picks the body, BLEND mixes it with the raw pickup; ANTI-FB engages automatic feedback notches.',
+      desc: 'Acoustic DI that makes an under-saddle pickup sound more like a miked guitar (approximated). IMAGE picks the body, BLEND mixes it with the raw pickup, ANTI-FB adds automatic feedback notches.',
     }),
     // ---------------------------------------------------------------- AFX compact pedals
     compact({

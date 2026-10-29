@@ -1,4 +1,4 @@
-// Settings: audio engine (buffer, quality, DSP budget), PipeWire routing, board preferences, about.
+// Settings page: audio engine, PipeWire routing, board options, about.
 import { el, esc, bus, toast } from '../util.js';
 import { state, CABLE_COLORS } from '../state.js';
 import { captureSettingsPanel } from './capture.js';
@@ -17,7 +17,7 @@ export function sendEngineSettings() {
   for (const dir of ['in', 'out']) (ioConf(dir) || []).forEach((c, index) => sendIo(dir, index, c));
 }
 
-// ---------------- per-port I/O configuration (labels, trim, mute, polarity) – stored per machine
+// ---------------- per-port I/O setup (label, trim, mute, polarity), saved per machine
 export const IO_DEFAULT_LABELS = { in: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R'], out: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R'] };
 export const IO_PORT_NAMES = { in: ['in_1', 'in_2', 'return_1', 'return_2'], out: ['out_L', 'out_R', 'send_1', 'send_2'] };
 export function ioConf(dir) {
@@ -91,34 +91,34 @@ export function renderSettings() {
   const v = document.getElementById('view-settings');
   v.innerHTML = '';
   const page = el('div', { class: 'page' }, v);
-  el('div', { class: 'page-head' }, page, '<div><h1>Settings</h1><p>Audio engine, PipeWire routing and board preferences.</p></div>');
+  el('div', { class: 'page-head' }, page, '<div><h1>Settings</h1><p>Audio, PipeWire connections and board options.</p></div>');
   const grid = el('div', { class: 'settings-grid' }, page);
 
   // ---------------- audio
   const a = el('div', { class: 'panel' }, grid);
   el('h3', {}, a, '<i class="ic ic-chip"></i>Audio engine');
-  el('p', {}, a).textContent = 'Tone Zone runs as a native PipeWire (JACK API) client with a realtime DSP engine.';
+  el('p', {}, a).textContent = 'Tone Zone runs as a PipeWire client (through the JACK API).';
   const st = state.status;
-  const info = srow(a, 'Status', st.running ? `${st.sr} Hz · ${st.buffer} frames · round trip ≈ ${(st.latencyMs || 0).toFixed(1)} ms` : 'Not connected to PipeWire', null);
+  const info = srow(a, 'Status', st.running ? `${st.sr} Hz · ${st.buffer} frames · round trip about ${(st.latencyMs || 0).toFixed(1)} ms` : 'Not connected to PipeWire', null);
   info.id = 'audioStatusCtl';
   const re = el('button', { class: 'btn small' }, info, '<i class="ic ic-reload"></i>Reconnect');
   re.onclick = () => window.tz.engine.send({ cmd: 'reconnect' });
-  srow(a, 'Buffer size (quantum)', 'Smaller = lower latency, more CPU. 64 @ 48 kHz ≈ 1.3 ms per buffer.', seg([[32, '32'], [64, '64'], [128, '128'], [256, '256'], [512, '512']], s.buffer ?? 64, (b) => { applySettings({ buffer: b }); toast(`Requesting a ${b}-frame quantum from PipeWire…`, 'info'); }));
-  srow(a, 'DSP quality', 'Oversampling for amps & drives, IR length and A2 NAM size.', seg([[0, 'Eco'], [1, 'Standard'], [2, 'High'], [3, 'Ultra']], s.quality ?? 1, (q) => applySettings({ quality: q })));
-  srow(a, 'DSP budget', 'Share of each audio cycle the board may use. Shown as the white marker on the DSP meter.', range(20, 95, 1, Math.round((s.budget ?? 0.75) * 100), (x) => x + '%', (x, fin) => fin && applySettings({ budget: x / 100 })));
-  srow(a, 'Auto-lower quality', 'If the board stays over budget for a few seconds, step the DSP quality down automatically.', toggle(!!s.autoQuality, (x) => applySettings({ autoQuality: x })));
-  srow(a, 'Enforce budget', 'Refuse to add blocks that would exceed the budget.', toggle(!!s.hardLimit, (x) => applySettings({ hardLimit: x })));
+  srow(a, 'Buffer size', 'Smaller means less delay but more CPU. 64 at 48 kHz is about 1.3 ms.', seg([[32, '32'], [64, '64'], [128, '128'], [256, '256'], [512, '512']], s.buffer ?? 64, (b) => { applySettings({ buffer: b }); toast(`Asking PipeWire for a ${b}-frame buffer…`, 'info'); }));
+  srow(a, 'DSP quality', 'Higher sounds better but uses more CPU. Affects amps, drives, IRs and NAM.', seg([[0, 'Eco'], [1, 'Standard'], [2, 'High'], [3, 'Ultra']], s.quality ?? 1, (q) => applySettings({ quality: q })));
+  srow(a, 'DSP budget', 'How much CPU time the board may use. Shown as the white line on the DSP meter.', range(20, 95, 1, Math.round((s.budget ?? 0.75) * 100), (x) => x + '%', (x, fin) => fin && applySettings({ budget: x / 100 })));
+  srow(a, 'Auto-lower quality', 'Lower the DSP quality when the board stays over budget for a few seconds.', toggle(!!s.autoQuality, (x) => applySettings({ autoQuality: x })));
+  srow(a, 'Enforce budget', 'Stop new blocks from being added if they would go over the budget.', toggle(!!s.hardLimit, (x) => applySettings({ hardLimit: x })));
   srow(a, 'Input gain', 'Applied to every input before the board.', range(-24, 24, 0.5, s.inGainDb ?? 0, (x) => (x > 0 ? '+' : '') + x.toFixed(1) + ' dB', (x) => applySettings({ inGainDb: x })));
-  srow(a, 'Output gain', 'Master level after the board (a soft safety limiter sits after it).', range(-36, 12, 0.5, s.outGainDb ?? 0, (x) => (x > 0 ? '+' : '') + x.toFixed(1) + ' dB', (x) => applySettings({ outGainDb: x })));
-  const rst = srow(a, 'Engine', 'Restart the audio engine process.', null);
+  srow(a, 'Output gain', 'Master level after the board. A soft limiter follows it for safety.', range(-36, 12, 0.5, s.outGainDb ?? 0, (x) => (x > 0 ? '+' : '') + x.toFixed(1) + ' dB', (x) => applySettings({ outGainDb: x })));
+  const rst = srow(a, 'Engine', 'Restart the audio engine.', null);
   const rb = el('button', { class: 'btn small' }, rst, '<i class="ic ic-power"></i>Restart engine');
   rb.onclick = () => window.tz.engine.restart();
 
   // ---------------- routing
   const r = el('div', { class: 'panel' }, grid);
-  el('h3', {}, r, '<i class="ic ic-cable"></i>PipeWire routing');
-  el('p', {}, r).textContent = 'Tone Zone appears as “Tone Zone” in Helvum, qpwgraph, Carla or any patchbay. You can also patch it here.';
-  srow(r, 'Auto-connect on start', 'Connect the first hardware input and the stereo outputs automatically.', toggle(s.autoConnect !== false, (x) => applySettings({ autoConnect: x })));
+  el('h3', {}, r, '<i class="ic ic-cable"></i>PipeWire connections');
+  el('p', {}, r).textContent = 'Tone Zone shows up as “Tone Zone” in Helvum, qpwgraph, Carla and other patchbays. You can also connect it here.';
+  srow(r, 'Auto-connect on start', 'Connect the first hardware input and the stereo outputs when the app starts.', toggle(s.autoConnect !== false, (x) => applySettings({ autoConnect: x })));
   const ac = srow(r, 'Connect defaults now', '', null);
   el('button', { class: 'btn small', onclick: () => window.tz.engine.send({ cmd: 'autoConnect' }) }, ac, 'Auto-connect');
   el('button', { class: 'btn small', onclick: () => window.tz.engine.send({ cmd: 'ports' }) }, ac, '<i class="ic ic-reload"></i>Refresh');
@@ -129,10 +129,10 @@ export function renderSettings() {
   // ---------------- board
   const bd = el('div', { class: 'panel' }, grid);
   el('h3', {}, bd, '<i class="ic ic-board"></i>Board');
-  el('p', {}, bd).textContent = 'How the pedalboard looks and behaves.';
-  srow(bd, 'Signal flow', 'Real pedals take input on the right. Choose left→right to mirror every jack.', seg([[false, 'Realistic (R → L)'], [true, 'Left → right']], !!s.flowLeftToRight, (x) => { applySettings({ flowLeftToRight: x }); bus.emit('rebuildBoard'); }));
+  el('p', {}, bd).textContent = 'How the pedalboard looks and works.';
+  srow(bd, 'Signal flow', 'Real pedals take their input on the right. Pick Left to right to flip every jack.', seg([[false, 'Realistic (right to left)'], [true, 'Left to right']], !!s.flowLeftToRight, (x) => { applySettings({ flowLeftToRight: x }); bus.emit('rebuildBoard'); }));
   srow(bd, 'Snap to grid', '', toggle(s.snap !== false, (x) => applySettings({ snap: x })));
-  srow(bd, 'Show per-block DSP load', '', toggle(s.showLoad !== false, (x) => applySettings({ showLoad: x })));
+  srow(bd, 'Show DSP load on each block', '', toggle(s.showLoad !== false, (x) => applySettings({ showLoad: x })));
   const cc = srow(bd, 'Default cable colour', 'Right-click any cable to recolour it.', null);
   const sw = el('div', { class: 'color-row' }, cc);
   for (const c of CABLE_COLORS) {
@@ -153,11 +153,11 @@ export function renderSettings() {
     el('p', {}, ab).textContent = `Tone Zone ${inf.version} · data in ${inf.dataDir}`;
     const t = el('div', { class: 'sc-table' }, ab);
     const sc = [
-      ['Drag knob', 'turn (Shift = fine), wheel works too, double-click = default'],
-      ['Drag jack', 'patch a cable; drag a plugged input to move / unplug it'],
-      ['Shift+drag board', 'rubber-band select several blocks (Shift+click adds one)'],
+      ['Drag knob', 'turn it (hold Shift for fine steps). The wheel works too, double-click resets'],
+      ['Drag jack', 'add a cable. Drag a plugged input to move or unplug it'],
+      ['Shift+drag board', 'select several blocks (Shift+click adds one)'],
       ['Shift+drag output', 'pick up the last cable from an output'],
-      ['Right-click', 'block / cable menus (colours, stereo, duplicate…)'],
+      ['Right-click', 'block and cable menus (colours, stereo, duplicate…)'],
       ['Del', 'delete selection'], ['Ctrl+D', 'duplicate'], ['B', 'bypass selected'], ['F', 'fit board'],
       ['Ctrl+Z / Ctrl+Shift+Z', 'undo / redo'], ['Ctrl+S', 'save preset'], ['Space+drag / middle drag', 'pan'],
     ];
@@ -171,7 +171,7 @@ export function renderSettings() {
 function renderPorts() {
   const box = document.getElementById('portsBox');
   if (!box) return;
-  if (document.querySelector('.port-picker')) return (renderAfterPicker = true); // rebuilt when the picker closes
+  if (document.querySelector('.port-picker')) return (renderAfterPicker = true); // redrawn when the picker closes
   box.innerHTML = '';
   if (!portsData || !portsData.self) {
     el('p', { class: 'ports-wait' }, box).textContent = 'Waiting for the audio engine…';

@@ -29,7 +29,7 @@ export const originals3 = [
       const v = Math.round(p.voice ?? 0);
       return Object.assign({ mode: [2, 5, 0][v], lyric: [3, 0, 0][v], vowel: [0, 5, 2][v], drive: [0.3, 0.2, 0.8][v], attack: [0.08, 0.5, 0.05][v], release: [0.35, 0.75, 0.25][v], mix: Math.min(1, 2 * (p.blend ?? 0.7)) * [0.056, 0.04, 0.035][v], dry: Math.min(1, 2 * (1 - (p.blend ?? 0.7))) });
     },
-    desc: 'Your guitar, sung by a cat: every note becomes a pitch-tracked "m-i-a-u" with the little up-and-down bend. SIZE goes from lion to kitten, PURR adds vibrato, VOICE switches to a purring hummed pad (three detuned voices) or a hissing, snarling talk-box filter on your own signal.' }),
+    desc: 'Your guitar sung by a cat: every note becomes a "m-i-a-u" that follows your pitch. SIZE goes from lion to kitten, PURR adds vibrato, and VOICE switches to a purring hummed pad or a hissing talk-box filter.' }),
 
   O({ id: 'tz.vespers', name: 'Vespers', cat: 'Synth', form: 'tz4-arch', color: '#5f5a55', logo: 'VESPERS', typeName: 'Choir synth · cathedral reverb', led: '#ffd36b', stereo: 'both', cost: 1.6,
     art: { knobs: ['v.octave', 'vsel', 'v.attack', 'v.vibrato', 'v.shift', 'rv.mix', 'blend', 'v.level'] },
@@ -45,7 +45,7 @@ export const originals3 = [
       const vs = Math.round(p.vsel ?? 0), m = p.blend ?? 0.6;
       return { 'v.mode': 5, 'v.vowel': Math.min(vs, 5), 'v.lyric': vs === 6 ? 2 : 0, 'v.mix': Math.min(1, 2 * m) * 0.035, 'v.dry': Math.min(1, 2 * (1 - m)) };
     },
-    desc: 'A three-voice choir that sings whatever you play, in a cathedral. Pick the vowel (or A→U to sing a new vowel on every note), SWELL fades the voices in, RANGE moves the formants from bass to soprano, HALO adds the hall.' }),
+    desc: 'A three-voice choir in a cathedral that sings what you play. Pick a vowel (A→U sings a new one on every note); SWELL fades the voices in, RANGE goes from bass to soprano and HALO adds the hall.' }),
   O({ id: 'tz.polyester', name: 'Polyester', cat: 'Synth', form: 'tz4-disco', color: '#efe3c8', logo: 'Polyester', typeName: 'String ensemble machine', led: '#ff7a2f', stereo: 'both', cost: 1.6,
     art: { knobs: ['s.attack', 's.decay', 's.filter', 'ens', 'rv.mix', 's.wet', 's.dry', 's.level'], toggles: ['s.mode', 's.octave'] },
     algo: 'chain', opts: { chain: [
@@ -58,7 +58,7 @@ export const originals3 = [
       TOG('s.mode', 'VOICE', ['STRINGS', 'PAD'], { values: [3, 6] }), TOG('s.octave', 'OCTAVE', ['−1', '0', '+1'], { values: [-1, 0, 1], def: 1 }),
       FOOT(), LED({ color: '#ff7a2f' })],
     derive: (p) => ({ 'ch.mix': 0.15 + 0.45 * (p.ens ?? 0.6), 'ch.depth': 0.3 + 0.6 * (p.ens ?? 0.6), 's.level': (p['s.level'] ?? 0) }),
-    desc: 'A 1970s string ensemble machine from your guitar: lush polyphonic strings (or a softer pad) through a three-voice ensemble chorus and a plate. Blend the strings with your dry guitar.' }),
+    desc: 'A 1970s string machine for guitar: lush strings (or a softer pad) through an ensemble chorus and a plate. Blend it with your dry guitar.' }),
   O({ id: 'tz.insertcoin', name: 'Insert Coin', cat: 'Synth', form: 'tz4-arcade', color: '#1c1630', accent: '#ff3fa4', logo: 'INSERT COIN', typeName: '8-bit chord synth · gate', cost: 1.6,
     art: { knobs: ['s.filter', 's.octave', 'chord', 'blend', 'sl.time', 'sl.pattern', 'cr.bits', 's.level'] },
     algo: 'chain', opts: { chain: [
@@ -74,7 +74,7 @@ export const originals3 = [
       const c = p.chord ?? 0.5, m = p.blend ?? 0.75;
       return { 'p.level1': Math.min(1, c * 2) * 0.7, 'p.level2': Math.max(0, c * 2 - 1) * 0.7, 's.wet': Math.min(1, 2 * m), 's.dry': Math.min(1, 2 * (1 - m)) * 0.8, 's.level': (p['s.level'] ?? 0) - 8 };
     },
-    desc: 'Chiptune in a cabinet: a square-wave synth tracks your notes, stacks a fifth and an octave on top (CHORD), and a 16-step gate chops it into arpeggio-like patterns before an 8-bit crusher.' }),
+    desc: 'Chiptune in a box: a square-wave synth follows your notes, CHORD stacks a fifth and an octave on top, and a 16-step gate chops it up before an 8-bit crusher.' }),
   O({ id: 'tz.wobbler', name: 'Wobbler', cat: 'Synth', form: 'tz4-sub', color: '#1d1e22', accent: '#b6ff3b', logo: 'WOBBLER', typeName: 'Bass synth · LFO filter', led: '#b6ff3b', cost: 1.1,
     art: { knobs: ['s.octave', 'wb.rate', 'wb.range', 'wb.q', 's.wet', 's.dry', 's.level'], toggle: 's.mode' },
     algo: 'chain', opts: { chain: [
@@ -100,7 +100,7 @@ export const originals3 = [
       ...[0, 1, 2, 3, 4, 5, 6].map((i) => LED({ bind: 'fn', color: i % 2 ? '#ffcf3a' : '#7dffb0', ledFn: (ui, b, st, now) => !b.bypass && ((now / 110) | 0) % 7 === i })),
     ],
     derive: (p) => ({ 'v.mix': Math.min(1, 2 * (p.blend ?? 0.7)) * 0.05, 'v.dry': Math.min(1, 2 * (1 - (p.blend ?? 0.7))) }),
-    desc: 'Take me to your leader: a monotone robot voice that speaks along with your playing (DRONE holds a vowel, BABBLE talks in syllables), a ring modulator for the metallic edge and a short slap echo.' }),
+    desc: 'A monotone robot voice that talks along with your playing (DRONE holds a vowel, BABBLE talks in syllables), plus a ring modulator and a short slap echo.' }),
 
   // ================================================================== CREATIVE
   O({ id: 'tz.badwifi', name: 'Bad Wi-Fi', cat: 'Filter', form: 'tz4-router', color: '#eceef1', accent: '#ff3b30', logo: 'BAD Wi-Fi', typeName: 'Streaming damage · codec artefacts', stereo: 'both', cost: 1,
@@ -110,7 +110,7 @@ export const originals3 = [
       K('mix', 'MIX', { def: 1 }), dbK('level', 'LEVEL', { def: 0 }), SEL('mode', 'CODEC', ['LOSSY', 'GHOST', 'WARBLE'], { sweep: 120 }),
       LED({ color: '#3ddc84' }), LED({ bind: 'fn', color: '#ffb02e', ledFn: (ui, b, st, now) => !b.bypass && ((now / 70) | 0) % (3 + Math.round(6 * (1 - (ui.packets ?? 0)))) === 0 }), LED({ bind: 'onparam:freeze', color: '#ff3b30' }),
       FOOT({ label: 'ON' }), FOOT({ action: 'toggle', p: 'freeze', def: 0, label: 'BUFFER' })],
-    desc: 'Your tone streamed over a terrible connection: low-bitrate codec swirl, shrinking bandwidth, dropped packets and smeared frames. GHOST plays only what the codec throws away, WARBLE repeats lost packets like a video call. BUFFER freezes the current frame.' }),
+    desc: 'Your tone over a terrible connection: codec swirl, shrinking bandwidth and dropped packets. GHOST plays only what the codec throws away, WARBLE repeats lost packets and BUFFER freezes the current frame.' }),
   O({ id: 'tz.dejavu', name: 'Déjà Vu', cat: 'Looper', form: 'tz4-dejavu', color: '#2a1f4f', accent: '#ff4fa3', logo: 'DÉJÀ VU', typeName: 'Micro looper · short-term memory', stereo: 'both', cost: 0.5,
     art: { knobs: ['length', 'speed', 'stretch', 'decay', 'tone', 'mix'], sel: 'mode' },
     algo: 'microloop',
@@ -119,7 +119,7 @@ export const originals3 = [
       SEL('mode', 'MODE', ['LATCH', 'HOLD', 'AUTO', 'STUTTER'], { sweep: 150 }),
       LED({ color: '#ff4fa3' }), LED({ bind: 'fn', color: '#32e0e6', ledFn: (ui, b, st) => !b.bypass && st?.looping }),
       FOOT({ label: 'ON' }), FOOT({ action: 'event', label: 'REMEMBER', event: { type: 1, arg: 0 }, hold: { ms: 350, event: { type: 1, arg: 0 }, release: { type: 2, arg: 0 } } })],
-    desc: 'Always listening: REMEMBER loops the last LENGTH seconds you played, at any speed (negative = reverse), grain-stretched or slowly forgotten (MEMORY). HOLD loops only while the switch is held, AUTO grabs every new note, STUTTER keeps re-capturing.' }),
+    desc: 'Always listening: REMEMBER loops the last LENGTH seconds you played, at any speed (negative plays it backwards). HOLD loops only while the switch is held, AUTO grabs every new note and STUTTER keeps grabbing again.' }),
   O({ id: 'tz.cassetteghost', name: 'Cassette Ghost', cat: 'Modulation', form: 'tz4-ghost', color: '#e6f0f2', accent: '#8fd3e8', logo: 'Cassette Ghost', typeName: 'Haunted tape · spectral freeze', stereo: 'both', cost: 1.4,
     art: { knobs: ['lf.wow', 'lf.flutter', 'lf.age', 'lf.noise', 'fz.mix', 'fz.decay', 'lf.level'] },
     algo: 'chain', opts: { chain: [
@@ -131,7 +131,7 @@ export const originals3 = [
       LED({ color: '#7fe8ff' }), LED({ bind: 'fn', sub: 'fz', color: '#7fe8ff', ledFn: (ui, b, st) => !b.bypass && st?.frozen }),
       FOOT({ label: 'ON' }), FOOT({ action: 'event', label: 'GHOST', event: { type: 1, arg: 100 }, hold: { ms: 700, event: { type: 2, arg: 100 } } })],
     derive: (p) => ({ 'lf.level': (p['lf.level'] ?? 0) - 3 }),
-    desc: 'A worn cassette with something living in it: wow, flutter, age and hiss, plus a spectral freeze. Press GHOST to trap the note you play as a lingering haze (hold to let it go); FADE sets how slowly the ghost dissolves.' }),
+    desc: 'A worn cassette with wow, flutter, age and hiss, plus a freeze. Press GHOST to trap the note you play as a lingering haze (hold to let it go); FADE sets how slowly it fades.' }),
   O({ id: 'tz.lagspike', name: 'Lag Spike', cat: 'Modulation', form: 'tz4-lag', color: '#26282e', accent: '#ff3b3b', logo: 'LAG SPIKE', typeName: 'Packet loss · stutter', cost: 1.3,
     art: { knobs: ['net.loss', 'net.packets', 'net.filter', 'net.mix', 'lag.length', 'lag.speed', 'lag.decay', 'net.level'], toggle: 'lag.mode' },
     algo: 'chain', opts: { chain: [
@@ -144,7 +144,7 @@ export const originals3 = [
       TOG('lag.mode', 'SPIKES', ['HOLD', 'AUTO'], { values: [1, 2] }),
       LED({ color: '#3ddc84' }), LED({ bind: 'fn', sub: 'lag', color: '#ff3b3b', ledFn: (ui, b, st) => !b.bypass && st?.looping }),
       FOOT({ label: 'ON' }), FOOT({ action: 'none', label: 'SPIKE', hold: { ms: 1, event: { type: 1, arg: 100 }, release: { type: 2, arg: 100 } } })],
-    desc: 'Online multiplayer in a box: warbly packet loss and repeating dropped frames all the time, and a SPIKE switch that freezes and stutters the last fraction of a second while held. AUTO throws a lag spike on every new note (use DECAY to let it recover).' }),
+    desc: 'Online lag in a box: warbly packet loss and repeating dropped frames. Hold SPIKE to freeze and stutter the last moment, or turn on AUTO for a lag spike on every new note (DECAY sets the recovery).' }),
   O({ id: 'tz.reheat', name: 'Reheat', cat: 'Fuzz', form: 'tz4-microwave', color: '#d9d5cc', accent: '#ff6a2a', logo: 'REHEAT', typeName: 'Microwave fuzz', cost: 0.7,
     art: { sel: 'fz.mode', knobs: ['fz.gain', 'fz.tone', 'fz.level', 'gt.decay'] },
     algo: 'chain', opts: { chain: [
@@ -155,7 +155,7 @@ export const originals3 = [
     controls: [SEL('fz.mode', 'POWER', ['DEF', 'MED', 'HIGH'], { def: 1, sweep: 90 }), K('fz.gain', 'FUZZ', { def: 0.6 }), K('fz.tone', 'TONE', { def: 0.5 }), K('fz.level', 'VOLUME', { def: 0.5 }),
       K('gt.decay', 'TIMER', { def: 0.5, display: (v) => '0:' + String(Math.round(5 + v * 55)).padStart(2, '0') }),
       FOOT(), LED({ color: '#ffcf6a' })],
-    desc: 'Nuked fuzz: DEFROST is a starved, sputtering germanium, MED a cutting silicon fuzz and HIGH a wall of sustain. TIMER sets how long notes cook before the gate closes them.' }),
+    desc: 'Nuked fuzz: DEFROST is a starved, sputtering germanium fuzz, MED a cutting silicon fuzz and HIGH a wall of sustain. TIMER sets how long notes cook before the gate cuts them.' }),
   O({ id: 'tz.rubberduck', name: 'Rubber Duck', cat: 'Modulation', form: 'tz4-duck', color: '#ffd23f', logo: 'RUBBER DUCK', typeName: 'Bath-time chorus · vibrato', stereo: 'both', cost: 0.4,
     art: { knobs: ['rate', 'depth', 'tone', 'mix', 'level'], toggle: 'mode' },
     algo: 'chorus',
@@ -175,7 +175,7 @@ export const originals3 = [
       LED({ bind: 'param:cr.rate:>0.5', color: '#ff3b30' }), LED({ bind: 'param:rm.mix:>0.3', color: '#ff3b30' }), LED({ color: '#ff3b30' }), LED({ color: '#ff3b30' }),
       LED({ bind: 'fn', color: '#ff3b30', ledFn: (ui, b, st, now) => !b.bypass && ((now / 65) | 0) % 5 < 2 }), LED({ bind: 'fn', color: '#ff3b30', ledFn: (ui, b, st, now) => !b.bypass && ((now / 90) | 0) % 3 === 0 }),
       LED({ color: '#ff3b30' }), LED({ bind: 'on', color: '#3ddc84' })],
-    desc: 'Connecting at 56k: a telephone-line band-pass, a bit / sample-rate crusher and a ring-mod HANDSHAKE screech. All eight modem lights work (RD / SD flicker while it talks).' }),
+    desc: 'Connecting at 56k: a telephone-line filter, a bit and sample-rate crusher and a ring-mod HANDSHAKE screech. All eight modem lights work.' }),
   O({ id: 'tz.choirboy', name: 'Choir Boy', cat: 'Pitch', form: 'tz4-halo', color: '#9b1c2c', logo: 'CHOIR BOY', typeName: 'Diatonic harmonizer · halo', stereo: 'both', cost: 1.6,
     art: { knobs: ['p.level1', 'p.key', 'p.level2', 'p.level3', 'rv.mix', 'p.dry'], toggle: 'p.scale' },
     algo: 'chain', opts: { chain: [
@@ -185,7 +185,7 @@ export const originals3 = [
     controls: [K('p.level1', '3RD', { def: 0.6 }), SEL('p.key', 'KEY', ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], { def: 4, sweep: 300 }), K('p.level2', '5TH', { def: 0.4 }),
       K('p.level3', 'OCTAVE', { def: 0 }), K('rv.mix', 'HALO', { def: 0.3 }), K('p.dry', 'VOICE', { def: 1 }),
       TOG('p.scale', 'SCALE', ['MAJ', 'MIN'], { values: [1, 2] }), FOOT(), LED({ color: '#ffd36b' })],
-    desc: 'Instant choir practice: intelligent third and fifth harmonies (plus an octave) that stay in KEY, major or minor, with a halo of hall reverb.' }),
+    desc: 'Instant choir practice: third and fifth harmonies (plus an octave) that stay in KEY, major or minor, with a halo of hall reverb.' }),
   O({ id: 'tz.haunted', name: 'Haunted', cat: 'Reverb', form: 'tz4-house', color: '#3b3350', accent: '#ffcf5a', logo: 'HAUNTED', typeName: 'Reverse delay · ghost reverb', stereo: 'both', cost: 1.6,
     art: { knobs: ['rd.time', 'rd.feedback', 'rd.mix', 'rv.decay', 'rv.mix', 'rv.tone'] },
     algo: 'chain', opts: { chain: [
@@ -195,7 +195,7 @@ export const originals3 = [
     controls: [K('rd.time', 'TIME', { min: 150, max: 1500, def: 600, display: (v) => Math.round(v) + ' ms' }), K('rd.feedback', 'REPEATS', { max: 0.9, def: 0.35 }), K('rd.mix', 'REVERSE', { def: 0.45 }),
       K('rv.decay', 'DECAY', { def: 0.65 }), K('rv.mix', 'SPOOK', { def: 0.4 }), K('rv.tone', 'TONE', { def: 0.5 }),
       FOOT(), LED({ color: '#ffcf5a' })],
-    desc: 'Every note comes back sucked in backwards and dissolves into a slow, modulated haunted-hall reverb. Open the door to go in.' }),
+    desc: 'Every note comes back sucked in backwards and fades into a slow, haunted hall reverb. Open the door to go in.' }),
   O({ id: 'tz.goblin', name: 'Goblin', cat: 'Fuzz', form: 'tz4-goblin', color: '#5d8c3a', logo: 'GOBLIN', typeName: 'Octave fuzz · growl & snarl', cost: 1.4,
     art: { knobs: ['p.level1', 'fz.gain', 'p.level2', 'fz.tone', 'fz.level'] },
     algo: 'chain', opts: { chain: [
@@ -210,7 +210,7 @@ export const originals3 = [
     algo: 'delay', opts: { fixedMode: 6, maxMs: 1500 },
     controls: [K('time', 'SPLIT', { min: 60, max: 1500, def: 380, display: (v) => Math.round(v) + ' ms' }), K('feedback', 'ATTEMPTS', { max: 0.95, def: 0.45 }), K('mix', 'MIX', { def: 0.35 }), K('tone', 'TONE', { def: 0.6 }),
       FOOT({ action: 'tap' }), FOOT(), LED(), LED({ bind: 'tap:time', color: '#ff3b5c' })],
-    desc: 'Any% delay: every repeat jumps up an octave and climbs into the sky. Tap the crown for tempo.' }),
+    desc: 'A delay where every repeat jumps up an octave and climbs into the sky. Tap the crown for tempo.' }),
   O({ id: 'tz.npc', name: 'NPC', cat: 'Synth', form: 'tz4-dialog', color: '#1b2a6b', logo: 'NPC', typeName: 'Babbling villager voice', cost: 0.9,
     art: { knobs: ['octave', 'shift', 'chatter', 'vibrato', 'blend', 'level'], sel: 'lyric' },
     algo: 'vocal', opts: { mode: 1, lyric: 4 }, fixed: { mode: 1, sens: 0.6, drive: 0.2, tone: 0.75 },
@@ -222,7 +222,7 @@ export const originals3 = [
       const c = p.chatter ?? 0.6;
       return Object.assign({ attack: 0.12 - 0.1 * c, release: 0.45 - 0.35 * c, glide: 0.1, mix: Math.min(1, 2 * (p.blend ?? 0.65)) * 0.04, dry: Math.min(1, 2 * (1 - (p.blend ?? 0.65))) });
     },
-    desc: 'Every note you play becomes a burst of cheerful villager gibberish (or "mi-ku" / vowel syllables). CHARACTER sets the head size, CHATTER how clipped the syllables are.' }),
+    desc: 'Every note becomes a burst of cheerful villager gibberish (or "mi-ku" or vowel sounds). CHARACTER sets the head size and CHATTER how clipped the syllables are.' }),
   O({ id: 'tz.slowedreverb', name: 'Slowed + Reverb', cat: 'Reverb', form: 'tz4-vapor', color: '#c3c3c3', logo: 'SLOWED + REVERB', typeName: 'Pitch-down · vinyl · hall', stereo: 'both', cost: 2,
     art: { knobs: ['p.semis1', 'rv.mix', 'rv.decay', 'lf.mix', 'rv.tone', 'lf.level'] },
     algo: 'chain', opts: { chain: [
@@ -240,5 +240,5 @@ export const originals3 = [
     controls: [K('shift', 'SIZE', { def: 0.5 }), octK('octave', 'PITCH'), K('tone', 'TONE', { def: 0.5 }), K('blend', 'MIX', { def: 0.6, virtual: true, display: pctOf }), dbK('level', 'LEVEL', { def: 0 }),
       FOOT(), LED({ color: '#ff2a6a' })],
     derive: (p) => ({ mix: Math.min(1, 2 * (p.blend ?? 0.6)) * 0.025, dry: Math.min(1, 2 * (1 - (p.blend ?? 0.6))) }),
-    desc: 'Yes, it does exactly that: a raspy, flappy, sagging low voice that follows your notes. Surprisingly good as a filthy synth bass under the dry signal.' }),
+    desc: 'Yes, it does exactly that: a raspy, flappy low voice that follows your notes. Also works as a filthy synth bass under your dry signal.' }),
 ];

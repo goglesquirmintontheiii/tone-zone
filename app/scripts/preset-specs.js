@@ -7,7 +7,7 @@ const tuner = () => [TUNERS[tunerI++ % TUNERS.length], {}, { bypass: true }];
 const meter = ['tz.meter'];
 const off = (item) => [item[0], item[1] || {}, Object.assign({}, item[2] || {}, { bypass: true })];
 
-// g: { id, name, tags, order, rs, ls, rc, lc, desc: {rs, ls, rc, lc} } – each r*/l* is a chain array
+// g: { id, name, tags, order, rs, ls, rc, lc, desc: {rs, ls, rc, lc} }, each r*/l* is a chain array
 function genre(g) {
   const base = g.order;
   const mk = (suffix, label, chain, tags, desc, o) => ({
@@ -39,9 +39,9 @@ const G = [];
     rc: [tuner(), ['kly.compplus', { sustain: 0.25, level: 0.55, blend: 0.45, tone: 0.4 }], ['tz.contour', { lowgain: 0.55, mid1gain: 0.45, mid1freq: 0.45, highgain: 0.4 }], amp(0.32), cab, ['mx.m134', { rate: 0.25, depth: 0.3, feedback: 0.2, tone: 0.45 }, { bypass: true }], ['sy.bluesky', { decay: 0.35, predelay: 0.2, mix: 0.2, lowdamp: 0.4, highdamp: 0.55 }], meter],
     lc: [tuner(), ['tz.featherweight', { sustain: 0.35, level: 0.55, blend: 0.5 }], ['tz.klone', { gain: 0.2, tone: 0.42, level: 0.62 }], amp(0.42), cab, ['mx.m134', { rate: 0.2, depth: 0.25, feedback: 0.15, tone: 0.45 }], ['sy.brig', { time: 0.35, mix: 0.22, tone: 0.45, feedback: 0.25, moddepth: 0.2 }], ['sy.bluesky', { decay: 0.4, predelay: 0.25, mix: 0.22 }], meter],
     desc: {
-      rs: 'Warm solid-state clean with the treble rolled back and a touch of spring – comping on the neck pickup.',
-      ls: 'A transparent push for single-note lines, a short analog-style slap and spring.',
-      rc: 'Compressed, mid-scooped clean with optional stereo chorus and a soft stereo room. Two mics on the cab (dynamic + ribbon).',
+      rs: 'Warm solid-state clean with the treble rolled back and a touch of spring. For comping on the neck pickup.',
+      ls: 'A light, clear boost for single-note lines, a short analog slap echo and spring.',
+      rc: 'Compressed clean with scooped mids, optional stereo chorus and a soft stereo room. Two mics on the cab (dynamic and ribbon).',
       lc: 'Light compression and a touch of drive for singing lines, subtle chorus, bucket-brigade echo and room.',
     },
   }));
@@ -57,9 +57,9 @@ const G = [];
     rc: [tuner(), ['bx.cs3', { level: 0.55, tone: 0.5, attack: 0.5, sustain: 0.35 }], ['tz.klone', { gain: 0.25, tone: 0.5, level: 0.6 }, { bypass: true }], ['bx.bd2', { level: 0.55, tone: 0.5, gain: 0.45 }, { bypass: true }], amp(0.3), ['cab.2x12blue', { mic2: 2 }], ['tc.corona', { rate: 0.3, depth: 0.35, mix: 0.3, tone: 0.5 }, { bypass: true }], ['bx.dd8', { mix: 0.25, feedback: 0.3, dtime: 0.45 }], ['tz.vaulted', { decay: 0.55, mix: 0.3, predelay: 0.3, tone: 0.5, size: 0.6 }], meter],
     lc: [tuner(), ['tz.silkvol', { pos: 1 }], ['bx.cs3', { level: 0.55, tone: 0.5, attack: 0.6, sustain: 0.4 }], ['tz.klone', { gain: 0.35, tone: 0.55, level: 0.62 }], ['jhs.morningglory', { level: 0.55, gain: 0.55, tone: 0.55 }], amp(0.36), ['cab.2x12blue', { mic2: 2 }], ['tc.corona', { rate: 0.25, depth: 0.3, mix: 0.25 }, { bypass: true }], ['tc.flashback2', { dtime: 0.5, feedback: 0.35, mix: 0.3 }], ['tz.shimmer', { decay: 0.7, mix: 0.35, shimmer: 0.3, tone: 0.55 }], meter],
     desc: {
-      rs: 'Chimey top-boost clean with gentle compression and a warm hall – sits under a choir.',
-      ls: 'Morning-style drive into a chiming amp, dotted delay and hall for melodic lines.',
-      rc: 'Full worship rhythm board: compressor, stacked low-gain drives (off), dual-mic cab, optional chorus, delay and room.',
+      rs: 'Chimey top-boost clean with gentle compression and a warm hall. Sits nicely under a choir.',
+      ls: 'A Morning Glory style drive into a chiming amp, dotted delay and hall for melodic lines.',
+      rc: 'Full worship rhythm board: compressor, two low-gain drives (off), a cab with two mics, optional chorus, delay and room.',
       lc: 'Volume swells into stacked drives, delay and shimmer for soaring leads and intros.',
     },
   }));
@@ -76,9 +76,9 @@ const G = [];
     rc: [tuner(), ['tz.tidalswell', { sens: 0.5, attack: 0.4, level: 0.6 }, { bypass: true }], ['sy.compadre', { 'c.sustain': 0.4, 'c.level': 0.55, 'c.blend': 0.6 }], ['tz.klone', { gain: 0.3, tone: 0.55, level: 0.6 }, { bypass: true }], ['sy.riverside', { gain: 0.4, level: 0.55, bass: 0.5, mid: 0.5, treble: 0.55 }, { bypass: true }], amp(0.38), ['tworock.cab-1x12', { mic2: 2 }], ['sy.ola', { rate: 0.3, depth: 0.35, mix: 0.3 }, { bypass: true }], ['sy.timeline', { 'd.time': 0.45, 'd.feedback': 0.32, 'd.mix': 0.25 }], ['sy.bigsky', { decay: 0.7, mix: 0.32 }], ['tz.glacier', { mix: 0.5, decay: 0.6 }, { bypass: true }], meter],
     lc: [tuner(), ['tz.exp', { pos: 1 }], ['tz.tidalswell', { sens: 0.5, attack: 0.45, level: 0.6 }, { bypass: true }], ['sy.compadre', { 'c.sustain': 0.45, 'c.level': 0.55, 'c.blend': 0.55 }], ['eqd.westwood', { level: 0.6, gain: 0.5, bass: 0.5, treble: 0.55 }], ['tz.amberline', { gain: 0.55, tone: 0.55, level: 0.6 }, { bypass: true }], amp(0.42), ['tworock.cab-1x12', { mic2: 2 }], ['sy.timeline', { 'd.time': 0.45, 'd.feedback': 0.42, 'd.mix': 0.3 }], ['mrs.mercury7', { decay: 0.7, mix: 0.35, shimmer: 0.25 }], ['sy.bigsky', { decay: 0.8, mix: 0.3 }], meter],
     desc: {
-      rs: 'Boutique EF86-style clean, studio compression, dotted-eighth TimeLine and a big BigSky-style hall.',
-      ls: 'Transparent drive into the amp with longer, wetter delays and reverb for lead lines.',
-      rc: 'Modern worship rhythm board: swell, comp, Klon-style and multistage drives (off), chorus, dotted delay, hall and a freeze for pads.',
+      rs: 'Boutique EF86-style clean, studio compression, a dotted-eighth TimeLine delay and a big BigSky-style hall.',
+      ls: 'A clear drive into the amp with longer, wetter delays and reverb for lead lines.',
+      rc: 'Modern worship rhythm board: swell, compressor, a Klon-style and a multi-stage drive (off), chorus, dotted delay, hall and a freeze for pads.',
       lc: 'Ambient lead rig with swell, stacked drives, dotted delay into shimmer and hall.',
     },
   }));
@@ -95,10 +95,10 @@ const G = [];
     rc: [tuner(), ['tz.hush', { threshold: 0.3, decay: 0.4 }], ['ib.ts9', { gain: 0.15, tone: 0.5, level: 0.75 }], ['mx.m101', { rate: 0.3 }, { bypass: true }], amp(0.55), ['cab.4x12gb', { mic2: 2 }], ['bx.dd8', { mix: 0.18, feedback: 0.25, dtime: 0.35 }, { bypass: true }], ['tz.reverb', { decay: 0.35, mix: 0.15, mode: 0 }], meter],
     lc: [tuner(), ['dn.gcb95', { pos: 0.5 }, { bypass: true }], ['mx.m102', { level: 0.55, sustain: 0.35 }], ['ib.ts9', { gain: 0.25, tone: 0.55, level: 0.75 }], ['pc.rat2', { gain: 0.35, tone: 0.5, level: 0.55 }, { bypass: true }], amp(0.65), ['cab.4x12gb', { mic2: 2 }], ['tz.paraeq', { b3on: 1 }], ['bx.dd8', { mix: 0.25, feedback: 0.35, dtime: 0.45 }], ['tz.reverb', { decay: 0.4, mix: 0.18, mode: 0 }], meter],
     desc: {
-      rs: 'Screamer-boosted 800 into greenbacks – the classic tight rock rhythm.',
-      ls: 'Oxblood-style drive pushing the amp harder, analog echo and spring.',
-      rc: 'Gate, TS boost, optional Phase 90, dual-mic cab, delay (off) and room.',
-      lc: 'Wah, compressor, TS and RAT for two lead levels, EQ, delay and reverb.',
+      rs: 'A JCM800 boosted by a Tube Screamer into Greenback speakers. The classic tight rock rhythm.',
+      ls: 'An Oxblood-style drive pushing the amp harder, with analog echo and spring.',
+      rc: 'Gate, Tube Screamer boost, optional Phase 90, a cab with two mics, delay (off) and room.',
+      lc: 'Wah, compressor, a Tube Screamer and a RAT for two lead levels, EQ, delay and reverb.',
     },
   }));
 }
@@ -114,10 +114,10 @@ const G = [];
     rc: [tuner(), ['ib.ts9', { gain: 0, tone: 0.55, level: 0.8 }], ['tz.gate', { threshold: 0.45, attack: 0.2, decay: 0.3, range: 0.8 }], amp(0.65), ['cab.4x12v30', { mic1: 0, mic2: 3 }], ['bx.ge7', { b0: 0.55, b1: 0.5, b2: 0.42, b3: 0.5, b4: 0.55, b5: 0.5, b6: 0.45, level: 0.5 }], ['tz.vaulted', { decay: 0.3, mix: 0.1 }, { bypass: true }], meter],
     lc: [tuner(), ['evh.wah95', { pos: 0.5 }, { bypass: true }], ['ib.ts9', { gain: 0.05, tone: 0.6, level: 0.8 }], ['tz.gate', { threshold: 0.35, decay: 0.4 }], amp(0.75), ['cab.4x12v30', { mic2: 3 }], ['tz.paraeq', { b3on: 1 }], ['evh.chorus', { mix: 0.25, rate: 0.3, depth: 0.3 }, { bypass: true }], ['tz.lumen', { time: 0.45, feedback: 0.32, mix: 0.22 }], ['tz.vaulted', { decay: 0.45, mix: 0.18 }], meter],
     desc: {
-      rs: 'Gated, screamer-tightened Rectifier into V30s for heavy palm mutes.',
+      rs: 'A gated Rectifier, tightened by a Tube Screamer, into V30 speakers for heavy palm mutes.',
       ls: 'Same rig hotter, with a stereo delay and a little room for solos.',
-      rc: 'TS boost, gate, Recto, dual-mic V30 cab and a 7-band post EQ.',
-      lc: 'Wah, boost, gate, Recto, EQ, optional chorus, delay and reverb.',
+      rc: 'Tube Screamer boost, gate, Rectifier, a V30 cab with two mics and a 7-band EQ after the amp.',
+      lc: 'Wah, boost, gate, Rectifier, EQ, optional chorus, delay and reverb.',
     },
   }));
 }
@@ -133,9 +133,9 @@ const G = [];
     rc: [tuner(), ['bx.sd1', { level: 0.75, tone: 0.55, gain: 0.05 }], ['mx.m135', { threshold: 0.4 }], amp(0.6), ['cab.4x12t75', { mic2: 2 }], ['mx.m108', { level: 0.5, gain: 0.5, b2: 0.45, b3: 0.42, b4: 0.48, b6: 0.55 }], meter],
     lc: [tuner(), ['dn.gcb95', { pos: 0.5 }, { bypass: true }], ['bx.sd1', { level: 0.75, tone: 0.6, gain: 0.1 }], ['mx.m135', { threshold: 0.35 }], amp(0.72), ['cab.4x12t75', { mic2: 2 }], ['mx.m117', { manual: 0.4, width: 0.5, speed: 0.3, regen: 0.4 }, { bypass: true }], ['bx.dd8', { mix: 0.25, feedback: 0.35, dtime: 0.45 }], ['bx.rv6', { mix: 0.18, decay: 0.45 }], meter],
     desc: {
-      rs: '5150-style head with a smart gate – classic heavy metal crunch.',
+      rs: 'A 5150-style head with a smart gate. Classic heavy metal crunch.',
       ls: 'SD-1 in front for tight sustain, plus delay and reverb.',
-      rc: 'Boost, gate, 5150, dual-mic cab and the 10-band EQ trick for cut.',
+      rc: 'Boost, gate, 5150, a cab with two mics and a 10-band EQ to help it cut through.',
       lc: 'Wah, boost, flanger (off), delay and reverb for screaming leads.',
     },
   }));
@@ -154,7 +154,7 @@ const G = [];
     desc: {
       rs: 'Two semitones down, hard gate and a treble-boosted 6505+ for crushing breakdowns.',
       ls: 'Detuned lead with more gain, delay and reverb.',
-      rc: 'Drop pedal, gate, TS tightener, dual-mic V30, graphic EQ and a second gate after the amp.',
+      rc: 'Drop pedal, gate, Tube Screamer to tighten, a V30 cab with two mics, graphic EQ and a second gate after the amp.',
       lc: 'Drop-tuned lead rig with boost, gate, EQ, stereo delay and room.',
     },
   }));
@@ -171,9 +171,9 @@ const G = [];
     rc: [tuner(), ['ib.tsmini', { gain: 0, tone: 0.6, level: 0.8 }], ['tz.hush', { threshold: 0.45, decay: 0.3 }], amp(0.6), ['engl.cab-pro4x12', { mic2: 2 }], ['tz.contour', { lowgain: 0.55, mid1gain: 0.45, highgain: 0.55 }], ['tz.vaulted', { decay: 0.4, mix: 0.12 }, { bypass: true }], meter],
     lc: [tuner(), ['tz.whammy', { expr: 0 }, { bypass: true }], ['ib.tsmini', { gain: 0.1, tone: 0.6, level: 0.8 }], ['tz.hush', { threshold: 0.35, decay: 0.4 }], amp(0.68), ['engl.cab-pro4x12', { mic2: 2 }], ['tz.halo', { rate: 0.3, depth: 0.3, mix: 0.25 }, { bypass: true }], ['bx.dd500', { time: 0.45, feedback: 0.35, mix: 0.25 }], ['mrs.mercury7', { decay: 0.6, mix: 0.25 }], meter],
     desc: {
-      rs: 'Modern tight high gain with a TS front end and gate, for chugs and open chords.',
+      rs: 'Modern, tight high gain with a Tube Screamer and gate in front, for chugs and open chords.',
       ls: 'More gain with delay and a big room for melodic leads.',
-      rc: 'Boost, gate, modern amp, dual-mic cab and a smile-free EQ; room on demand.',
+      rc: 'Boost, gate, modern amp, a cab with two mics and an EQ without the mid scoop. Room reverb when you want it.',
       lc: 'Whammy (off), boost, gate, chorus (off), stereo delay and ambient reverb.',
     },
   }));
@@ -190,9 +190,9 @@ const G = [];
     rc: [tuner(), ['bx.ds1', { level: 0.6, tone: 0.55, gain: 0.45 }, { bypass: true }], amp(0.6), ['cab.4x12t75', { mic2: 2 }], ['tz.spring', { mix: 0.1, decay: 0.25 }], meter],
     lc: [tuner(), ['bx.ds1', { level: 0.6, tone: 0.55, gain: 0.5 }], ['tz.boost', { gain: 0.35 }], amp(0.62), ['cab.4x12t75', { mic2: 2 }], ['ehx.memorytoy', { mix: 0.18, feedback: 0.25, time: 0.3 }], ['tz.spring', { mix: 0.12, decay: 0.3 }], meter],
     desc: {
-      rs: 'Cranked British dual-channel head straight into T75s – loud, raw and simple.',
+      rs: 'A cranked British two-channel head straight into T75 speakers. Loud, raw and simple.',
       ls: 'A RAT in front for leads, plus slapback.',
-      rc: 'DS-1 for the chorus parts (off), the dirty channel and a splash of spring.',
+      rc: 'A DS-1 for the choruses (off), the dirty channel and a splash of spring.',
       lc: 'DS-1 plus a clean boost for solos, analog echo and spring.',
     },
   }));
@@ -211,8 +211,8 @@ const G = [];
     desc: {
       rs: 'Mid-heavy British crunch with a Muff on standby for the chorus.',
       ls: 'Big Muff sustain into the amp with a stereo delay.',
-      rc: 'Drop (off), Plumes-style OD, Muff, phaser (off) and reverb – 90s/00s alternative.',
-      lc: 'Whammy, OD into fuzz, stereo delay and otherworldly reverb.',
+      rc: 'Drop pedal (off), a Plumes-style overdrive, Muff, phaser (off) and reverb. 90s and 00s alternative.',
+      lc: 'Whammy, overdrive into fuzz, stereo delay and an otherworldly reverb.',
     },
   }));
 }
@@ -225,10 +225,10 @@ G.push(genre({
   rc: [tuner(), ['bx.sl2', { level: 0.6, depth: 0.8, time: 0.5 }], ['mrs.ottobit', { 'c.bits': 0.6 }, { variant: 'mono' }], ['amp.jc120', { gain: 0.35 }], ['cab.2x12jc', { mic2: 2 }], ['sy.mobius', { mix: 0.5, speed: 0.4, depth: 0.6 }], ['wa.lore', { 'd.mix': 0.3, 'r.mix': 0.4 }], ['tz.glacier', { mix: 0.5 }, { bypass: true }], meter],
   lc: [tuner(), ['dt.whammy5', { expr: 0 }], ['bee.octahive', { 'f.gain': 0.6, 'f.level': 0.55 }], ['eqd.rainbow', { 'c.mix': 0.4, 'p.level1': 0.5 }], ['amp.ac30', { gain: 0.45 }], ['cab.2x12blue', { mic2: 2 }], ['ehx.superego', { mix: 0.5 }, { bypass: true }], ['mrs.polymoon', { 'd.mix': 0.35, 'd.feedback': 0.5 }], ['eqd.astral', { mix: 0.4, decay: 0.7 }], meter],
   desc: {
-    rs: 'Harmonic synth tracking into a clean amp and a cavernous reverb.',
-    ls: 'Fuzz into bit crusher, chiming amp and granular delay.',
-    rc: 'Slicer, sequenced bit crusher, modulation workstation, reverse delay and freeze.',
-    lc: 'Whammy, octave fuzz, polyphonic pitch, Superego hold, Polymoon and shimmer.',
+    rs: 'A synth that follows your notes, into a clean amp and a huge reverb.',
+    ls: 'Fuzz into a bit crusher, a chiming amp and a granular delay.',
+    rc: 'Slicer, a stepped bit crusher, a big modulation pedal, reverse delay and freeze.',
+    lc: 'Whammy, octave fuzz, pitch shifter, a Superego for held notes, Polymoon delay and shimmer.',
   },
 }));
 
@@ -244,7 +244,7 @@ G.push(genre({
     lc: [tuner(), ['tz.vowel', { pos: 0.5 }, { bypass: true }], ['tz.comp', { sustain: 0.45, level: 0.55, blend: 0.55 }], ['jhs.atplus', { level: 0.6, gain: 0.55 }], amp(0.55), ['cab.2x12cream', { mic2: 2 }], ['tz.harmony', { level1: 0.3, semis1: 0.5 }, { bypass: true }], ['kly.halo', { time: 0.45, feedback: 0.35, mix: 0.25 }], ['tz.reverb', { decay: 0.5, mix: 0.22 }], meter],
     desc: {
       rs: 'Compressed Dumble-style clean with chorus for comping chords.',
-      ls: 'Andy-Timmons-style drive into the amp for vocal, singing fusion leads.',
+      ls: 'An Andy Timmons style drive into the amp for singing fusion leads.',
       rc: 'Compressor, envelope filter (off), dimension chorus, delay and reverb.',
       lc: 'Wah, compressor, drive, harmonizer (off), dual echo and hall.',
     },
@@ -262,10 +262,10 @@ G.push(genre({
     rc: [tuner(), ['mx.m102', { level: 0.55, sustain: 0.45 }], ['tz.peq', {}], amp(0.3), ['cab.1x12us', { mic2: 1 }], ['tz.trem', { rate: 0.45, depth: 0.4 }, { bypass: true }], ['tz.chorus', { rate: 0.35, depth: 0.25, mix: 0.25 }], ['tz.delay', { time: 0.35, feedback: 0.2, mix: 0.18 }], ['tz.reverb', { decay: 0.35, mix: 0.2 }], meter],
     lc: [tuner(), ['tz.opto', { sustain: 0.45, level: 0.55, blend: 0.6 }], ['bx.bd2', { level: 0.55, tone: 0.55, gain: 0.45 }], amp(0.35), ['cab.1x12us', { mic2: 1 }], ['tz.chorus', { rate: 0.3, depth: 0.2, mix: 0.2 }, { bypass: true }], ['tz.delay', { time: 0.38, feedback: 0.3, mix: 0.25 }], ['tz.reverb', { decay: 0.45, mix: 0.22 }], meter],
     desc: {
-      rs: 'Squeaky-clean compressed blackface with lush chorus – for funky pop strums.',
+      rs: 'A squeaky-clean, compressed blackface amp with lush chorus. For funky pop strumming.',
       ls: 'Blues Driver edge, tempo delay and hall.',
-      rc: 'Compressor, EQ, trem (off), chorus, delay and plate-ish hall; two mics.',
-      lc: 'Opto comp, BD-2, chorus (off), delay and hall.',
+      rc: 'Compressor, EQ, tremolo (off), chorus, delay and a plate-like hall, with two mics on the cab.',
+      lc: 'Opto compressor, BD-2, chorus (off), delay and hall.',
     },
   }));
 }
@@ -281,9 +281,9 @@ G.push(genre({
     rc: [tuner(), ['bx.ns2', { threshold: 0.35 }], ['bx.sd1', { level: 0.7, tone: 0.55, gain: 0.15 }], amp(0.55), ['mesa.cab-2x12recto', { mic2: 2 }], ['tz.reverb', { decay: 0.3, mix: 0.1 }], meter],
     lc: [tuner(), ['bx.sd1', { level: 0.7, tone: 0.55, gain: 0.25 }], ['tz.boost', { gain: 0.3 }], amp(0.6), ['mesa.cab-2x12recto', { mic2: 2 }], ['mx.m117', { speed: 0.3, regen: 0.4 }, { bypass: true }], ['bx.dd8', { mix: 0.22, feedback: 0.3, dtime: 0.4 }], ['tz.reverb', { decay: 0.35, mix: 0.12 }], meter],
     desc: {
-      rs: 'Bright, tight Mark-style crunch with an SD-1 in front – big power chords.',
+      rs: 'Bright, tight Mark-style crunch with an SD-1 in front. Big power chords.',
       ls: 'Same, a bit hotter, with slapback.',
-      rc: 'Noise suppressor, SD-1, dual-mic 2x12 and a little room.',
+      rc: 'Noise gate, SD-1, a 2x12 with two mics and a little room.',
       lc: 'SD-1 plus boost, flanger (off), delay and reverb.',
     },
   }));
@@ -300,9 +300,9 @@ G.push(genre({
     rc: [tuner(), ['tz.trebleboost', { gain: 0.5 }, { bypass: true }], ['mx.m101', { rate: 0.3 }, { bypass: true }], amp(0.6), ['cab.4x12gb', { mic2: 2 }], ['tz.rotary', { mix: 0.4 }, { bypass: true }], ['tz.reverb', { decay: 0.3, mix: 0.12, mode: 0 }], meter],
     lc: [tuner(), ['dn.gcb95', { pos: 0.5 }, { bypass: true }], ['tz.fuzzface', { level: 0.55, gain: 0.7 }, { bypass: true }], ['tz.trebleboost', { gain: 0.6 }], amp(0.65), ['cab.4x12gb', { mic2: 2 }], ['mx.m68', { level: 0.55, intensity: 0.5, speed: 0.35 }, { bypass: true }], ['tz.reelecho', { time: 0.35, feedback: 0.3, mix: 0.2 }], ['tz.spring', { mix: 0.12 }], meter],
     desc: {
-      rs: 'Cranked Plexi with the channels jumped into greenbacks.',
-      ls: 'Treble booster into the Plexi with tape echo – 70s lead.',
-      rc: 'Treble boost and Phase 90 (off), dual-mic cab, rotary (off) and spring.',
+      rs: 'A cranked Plexi with jumped channels into Greenback speakers.',
+      ls: 'A treble booster into the Plexi with tape echo. 70s lead.',
+      rc: 'Treble booster and Phase 90 (off), a cab with two mics, rotary (off) and spring.',
       lc: 'Wah, Fuzz Face (off), treble booster, Uni-Vibe (off), tape echo.',
     },
   }));
@@ -316,7 +316,7 @@ G.push(genre({
   rc: [tuner(), ['tz.comp', { sustain: 0.5, level: 0.55, blend: 0.7 }], ['bx.sl2', { level: 0.6, depth: 0.9, time: 0.5, pattern: 3 }], ['amp.jc120', { gain: 0.3, treble: 0.6 }], ['cab.2x12jc', { mic2: 1 }], ['tz.panorama', { rate: 0.5, depth: 0.7, width: 0.8 }], ['tz.delay', { time: 0.38, feedback: 0.35, mix: 0.25 }], ['tz.vaulted', { decay: 0.55, mix: 0.25 }], meter],
   lc: [tuner(), ['tz.neonlead', { filter: 0.6, reso: 0.4, wet: 0.8, dry: 0.2 }], ['bx.sy1', { wet: 0.6, dry: 0.3 }, { bypass: true }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc', { mic2: 1 }], ['tz.crush', { bits: 0.6, rate: 0.6, mix: 0.3 }, { bypass: true }], ['tz.delay', { time: 0.38, feedback: 0.4, mix: 0.3 }], ['tz.shimmer', { decay: 0.6, mix: 0.3 }], meter],
   desc: {
-    rs: 'Compressed clean chopped by a tempo gate – sidechain-pump guitar for drops.',
+    rs: 'A compressed clean chopped in time by a gate, for pumping EDM-style guitar on the drops.',
     ls: 'Guitar synth lead into tempo delay and big reverb.',
     rc: 'Compressor, slicer patterns, auto-pan, delay and reverb in stereo.',
     lc: 'Mono synth lead, second synth (off), bit crusher (off), delay and shimmer.',
@@ -333,8 +333,8 @@ G.push(genre({
   desc: {
     rs: 'Auto-swells into a clean twin and a vast ambient reverb.',
     ls: 'Soft drive, long delays and a huge hall.',
-    rc: 'Swells, BBD chorus, granular delay, NightSky-style pads and freeze.',
-    lc: 'Stereo volume, soft drive, chorus, long delay, MercuryX and shimmer.',
+    rc: 'Swells, analog chorus, granular delay, NightSky-style pads and freeze.',
+    lc: 'Stereo volume pedal, soft drive, chorus, long delay, MercuryX reverb and shimmer.',
   },
 }));
 
@@ -364,9 +364,9 @@ G.push(genre({
     rc: [tuner(), ['mx.m104', { level: 0.75, gain: 0.25 }], ['mx.m108', { level: 0.55, gain: 0.5, b0: 0.4, b5: 0.6, b6: 0.58 }], amp(0.7), ['celestion.cab-g12-65', { mic2: 2 }], ['bx.ce2w', { rate: 0.3, depth: 0.3 }, { bypass: true }], meter],
     lc: [tuner(), ['dn.gcb95', { pos: 0.5 }, { bypass: true }], ['mx.m104', { level: 0.75, gain: 0.35 }], ['mx.m108', { level: 0.55, gain: 0.5, b5: 0.62, b6: 0.6 }], amp(0.75), ['celestion.cab-g12-65', { mic2: 2 }], ['mx.m134', { rate: 0.3, depth: 0.25 }, { bypass: true }], ['mx.m169', { feedback: 0.3, mix: 0.25, time: 0.45 }], ['tz.reverb', { decay: 0.4, mix: 0.18 }], meter],
     desc: {
-      rs: 'Distortion+ into a hot 800 – early-80s NWOBHM rhythm.',
+      rs: 'A Distortion+ into a hot JCM800. Early-80s British heavy metal rhythm.',
       ls: 'More push with analog delay and reverb.',
-      rc: 'Distortion+, 10-band EQ boost, dual-mic G12-65 cab, CE-2 (off).',
+      rc: 'Distortion+, a 10-band EQ boost, a G12-65 cab with two mics and a CE-2 chorus (off).',
       lc: 'Wah, Distortion+, EQ, chorus (off), analog delay and reverb.',
     },
   }));
@@ -383,10 +383,10 @@ G.push(genre({
     rc: [tuner(), ['kly.compplus', { sustain: 0.5, level: 0.55, blend: 0.55 }], ['tz.boost', { gain: 0.2 }], amp(0.3), ['cab.2x12twin', { mic2: 2 }], ['tz.trem', { rate: 0.5, depth: 0.45 }, { bypass: true }], ['fender.marinelayer', { decay: 0.35, mix: 0.2 }], meter],
     lc: [tuner(), ['kly.compplus', { sustain: 0.55, level: 0.55, blend: 0.55 }], ['fender.santaana', { level: 0.6, gain: 0.3 }], ['tz.boost', { gain: 0.35 }, { bypass: true }], amp(0.32), ['cab.2x12twin', { mic2: 2 }], ['fender.mirrorimage', { time: 0.2, feedback: 0.15, mix: 0.22 }], ['fender.marinelayer', { decay: 0.35, mix: 0.18 }], meter],
     desc: {
-      rs: 'Squashed, sparkling Twin with spring – chicken pickin\' rhythm.',
+      rs: 'A squashed, sparkling Twin with spring, for chicken pickin\' rhythm.',
       ls: 'Compressor and a low-gain Fender drive, slapback and spring.',
-      rc: 'Compressor, clean boost, dual-mic Twin, tremolo (off) and reverb.',
-      lc: 'Comp, drive and boost (off), slapback and reverb for Tele leads.',
+      rc: 'Compressor, clean boost, a Twin with two mics, tremolo (off) and reverb.',
+      lc: 'Compressor, drive and boost (off), slapback and reverb for Tele leads.',
     },
   }));
 }
@@ -404,7 +404,7 @@ G.push(genre({
     desc: {
       rs: 'Blues Driver into a Hot Rod for gritty southern rhythm.',
       ls: 'Stacked BD-2 and boost with analog delay.',
-      rc: 'Compressor, BD-2, dual-mic cab, slapback (off) and spring.',
+      rc: 'Compressor, BD-2, a cab with two mics, slapback (off) and spring.',
       lc: 'Compressor, BD-2, Katana boost, analog delay and spring.',
     },
   }));
@@ -421,7 +421,7 @@ G.push(genre({
     rc: [tuner(), ['bx.ns2', { threshold: 0.35, decay: 0.4 }], ['dt.grunge', { level: 0.55, bass: 0.6, treble: 0.5, gain: 0.6 }], ['ehx.nanoclone', {}, { bypass: true }], amp(0.45), ['cab.4x12v30', { mic2: 2 }], ['tz.spring', { mix: 0.08, decay: 0.3 }], meter],
     lc: [tuner(), ['dn.gcb95', { pos: 0.6 }, { bypass: true }], ['ehx.bigmuff', { level: 0.55, tone: 0.55, gain: 0.8 }], ['evh.phase90', { rate: 0.3 }, { bypass: true }], amp(0.4), ['cab.4x12v30', { mic2: 2 }], ['mx.m169', { time: 0.35, feedback: 0.25, mix: 0.15 }], ['tz.reverb', { decay: 0.35, mix: 0.12 }], meter],
     desc: {
-      rs: 'Orange-box distortion into a loud clean Twin – the quiet-verse / loud-chorus garage sound.',
+      rs: 'An orange-box distortion into a loud clean Twin. The quiet verse, loud chorus garage sound.',
       ls: 'Big Muff sludge into a Rectifier with a short analog echo.',
       rc: 'Gate, the grunge distortion pedal, chorus for the clean verses (off), Rectifier and a hint of spring.',
       lc: 'Wah (off), Big Muff, phaser (off), Rectifier, analog delay and room for feedback-laden solos.',
@@ -440,9 +440,9 @@ G.push(genre({
     rc: [tuner(), ['tz.klone', { gain: 0.3, tone: 0.5, level: 0.6 }], amp(0.45), ['cab.4x10tweed', { mic2: 2 }], ['tz.trem', { rate: 0.45, depth: 0.5 }, { bypass: true }], ['tz.spring', { mix: 0.2, decay: 0.4 }], meter],
     lc: [tuner(), ['dn.cbm95', { pos: 0.55 }, { bypass: true }], ['ib.ts808', { gain: 0.5, tone: 0.55, level: 0.62 }], ['kly.katana', { gain: 0.3 }], amp(0.5), ['cab.4x10tweed', { mic2: 2 }], ['mx.m169', { time: 0.4, feedback: 0.3, mix: 0.2 }], ['tz.spring', { mix: 0.15 }], meter],
     desc: {
-      rs: 'Tweed Bassman on the edge of breakup – dig in for grit, back off for clean.',
+      rs: 'A tweed Bassman right on the edge of breakup. Dig in for grit, play softly for clean.',
       ls: 'Tube Screamer into a tweed, analog delay and spring for Texas-style leads.',
-      rc: 'Klon-style push, tweed with two mics, tremolo (off) and spring.',
+      rc: 'A Klon-style boost, a tweed amp with two mics, tremolo (off) and spring.',
       lc: 'Wah (off), Screamer and Katana boost into the tweed, analog delay and spring.',
     },
   }));
@@ -476,9 +476,9 @@ G.push(genre({
     rc: [tuner(), ['ehx.bigmuff', { level: 0.5, tone: 0.45, gain: 0.7 }], ['tz.warble', {}], amp(0.4), ['cab.2x12blue', { mic2: 2 }], ['ehx.memorytoy', { mix: 0.4, feedback: 0.55, time: 0.5 }], ['eqd.afterneath', { decay: 0.7, mix: 0.5, size: 0.7 }], meter],
     lc: [tuner(), ['dt.whammy5', { model: 13 }, { bypass: true }], ['ehx.greenmuff', { level: 0.5, tone: 0.5, gain: 0.75 }], ['jhs.unicorn', { speed: 0.35, intensity: 0.5 }], amp(0.42), ['cab.2x12blue', { mic2: 2 }], ['tz.delay', { time: 0.6, feedback: 0.55, mix: 0.4, moddepth: 0.5 }], ['sy.bigsky', { machine: 6, decay: 0.8, mix: 0.45 }], meter],
     desc: {
-      rs: 'A wall of fuzz washed in reverb – strum and let the chords smear.',
+      rs: 'A wall of fuzz washed in reverb. Strum and let the chords blur together.',
       ls: 'Gated, squealing fuzz into a long modulated delay and shimmer.',
-      rc: 'Muff, tape warble, chimey AC, wobbly echo and a cavernous reverb.',
+      rc: 'Muff, tape warble, a chimey AC, wobbly echo and a huge reverb.',
       lc: 'Whammy (off) for glides, Green Muff, Uni-Vibe-style wobble, long delay and a huge Big Sky.',
     },
   }));
@@ -495,7 +495,7 @@ G.push(genre({
     rc: [tuner(), ['dt.drop', { dsel: 1 }], ['ehx.greenmuff', { level: 0.55, tone: 0.4, gain: 0.8 }], amp(0.6), ['cab.4x12orange', { mic2: 2 }], ['tz.reverb', { decay: 0.4, mix: 0.12 }], meter],
     lc: [tuner(), ['dt.drop', { dsel: 1 }], ['eqd.hoof', { gain: 0.75, shift: 0.6, tone: 0.55, level: 0.55 }], ['dn.gcb95', { pos: 0.45 }], amp(0.6), ['cab.4x12orange', { mic2: 2 }], ['tz.delay', { time: 0.5, feedback: 0.35, mix: 0.2 }], ['tz.reverb', { decay: 0.5, mix: 0.15 }], meter],
     desc: {
-      rs: 'Muff into a cranked Orange – slow, heavy, fuzzy riffs.',
+      rs: 'A Muff into a cranked Orange. Slow, heavy, fuzzy riffs.',
       ls: 'Hoof fuzz into a Thunderverb with a dark echo.',
       rc: 'Pitch-drop a whole step, Green Muff, Thunderverb, two mics and a little room.',
       lc: 'Pitch-drop, Hoof fuzz, parked wah, Thunderverb, echo and room.',
@@ -514,9 +514,9 @@ G.push(genre({
     rc: [tuner(), ['tz.gate', { threshold: 0.5, attack: 0.05, decay: 0.15 }], ['mx.m102', { level: 0.6, sustain: 0.25 }], ['ib.ts9', { gain: 0, tone: 0.65, level: 0.78 }], amp(0.6), ['cab.4x12v30', { mic2: 2 }], ['tz.peq', {}], meter],
     lc: [tuner(), ['ib.ts9', { gain: 0.1, tone: 0.6, level: 0.75 }], amp(0.6), ['cab.4x12v30', { mic2: 2 }], ['tz.harmony', {}, { bypass: true }], ['sy.timeline', { 'd.time': 0.45, 'd.feedback': 0.3, 'd.mix': 0.2 }], ['sy.bigsky', { decay: 0.55, mix: 0.2 }], meter],
     desc: {
-      rs: 'Tight-gated, Screamer-boosted 5150 – palm mutes that go "djent".',
+      rs: 'A tightly gated 5150 boosted by a Tube Screamer. Palm mutes that go "djent".',
       ls: 'Boosted 5150 with a clean delay and room for melodic leads.',
-      rc: 'Hard gate, a little compression, boost, 5150, dual-mic cab and EQ.',
+      rc: 'Hard gate, a little compression, boost, 5150, a cab with two mics and EQ.',
       lc: 'Boosted 5150, harmonizer (off), stereo delay and reverb.',
     },
   }));
@@ -533,7 +533,7 @@ G.push(genre({
     rc: [tuner(), ['tz.boost', { gain: 0.2 }], amp(0.35), ['fender.cab-super4x10', { mic2: 2 }], ['tz.trem', { rate: 0.55, depth: 0.5 }, { bypass: true }], ['jhs.springtank', {}], meter],
     lc: [tuner(), ['tz.trebleboost', {}], amp(0.4), ['fender.cab-super4x10', { mic2: 2 }], ['bx.re2', {}], ['jhs.springtank', {}], meter],
     desc: {
-      rs: 'Super Reverb with the springs dripping wet – reverb-drenched rhythm.',
+      rs: 'A Super Reverb with the springs dripping wet, for reverb-soaked rhythm.',
       ls: 'Tape echo and deep spring for staccato picked melodies.',
       rc: 'Clean boost, Super Reverb, tremolo (off) and a spring tank.',
       lc: 'Treble booster, Super Reverb, Space Echo and spring tank.',
@@ -569,7 +569,7 @@ SPECIAL.push({
   file: 's01-worship-multi-rig',
   name: 'Worship · Multi-Layer Rig',
   tags: ['worship', 'contemporary-worship', 'gospel', 'rhythm', 'lead', 'ambient'],
-  desc: 'Four complete rigs behind one selector (A gospel clean, B contemporary ambient, C overdrive, D heavy). Each has its own drives, amp and cab; all of them share the delays and reverbs at the end. Use the selector\'s footswitches to change chains; MULTI mode stacks them.',
+  desc: 'Four full rigs on one selector: A gospel clean, B modern ambient, C overdrive, D heavy. Each has its own drives, amp and cab, and they share the delays and reverbs at the end. Switch rigs with the selector\'s footswitches, or use MULTI mode to play several at once.',
   order: 10,
   nodes: {
     tun: ['tz.tuner', {}, { bypass: true }],
@@ -618,7 +618,7 @@ SPECIAL.push({
 SPECIAL.push({
   file: 's02-crazy-train', name: 'Crazy Train', order: 11,
   tags: ['classic-metal', 'metal', 'rhythm', 'lead'],
-  desc: 'Inspired by the early-80s Randy Rhoads sound: a Distortion+ and a 10-band EQ (mid hump) into a hot modded 800 and G12-65s. Kick in the chorus and echo for the solo; the wah is there for the fills.',
+  desc: 'Inspired by Randy Rhoads in the early 80s: a Distortion+ and a 10-band EQ (mid boost) into a hot modded JCM800 and G12-65 speakers. Turn on the chorus and echo for the solo, and the wah for fills.',
   chain: [tuner(), ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['mx.m104', { level: 0.75, gain: 0.3 }], ['mx.m108', { level: 0.55, gain: 0.55, b0: 0.38, b1: 0.45, b2: 0.55, b3: 0.62, b4: 0.6, b5: 0.55, b6: 0.5, b7: 0.48, b8: 0.45, b9: 0.4 }], ['amp.jcm800', { gain: 0.78, master: 0.5, presence: 0.6, bass: 0.5, mid: 0.7, treble: 0.6 }], ['celestion.cab-g12-65', { mic1: 0, mic2: 2 }], ['mx.m134', { rate: 0.3, depth: 0.3, feedback: 0.1, tone: 0.5 }, { bypass: true }], ['mx.m169', { feedback: 0.25, mix: 0.22, time: 0.4, mod: 0.2 }, { bypass: true }], ['tz.reverb', { decay: 0.35, mix: 0.12, mode: 0 }], meter],
 });
 
@@ -626,7 +626,7 @@ SPECIAL.push({
 SPECIAL.push({
   file: 's03-love-of-god', name: 'For The Love Of God (Ibanez)', order: 12,
   tags: ['lead', 'rock', 'instrumental', 'ibanez'],
-  desc: 'Inspired by Steve Vai\'s singing lead tone: Bad Horsie-style wah, a light compressor, a TS used as a clean boost into a Bogner-style red channel, a mid-forward EQ, wide stereo delay and a big hall. Made for an Ibanez with hot/active pickups – the input gain stays modest so the notes bloom instead of fizz.',
+  desc: 'Inspired by Steve Vai\'s singing lead tone: Bad Horsie-style wah, light compressor, a Tube Screamer as a clean boost into a Bogner-style red channel, an EQ with more mids, wide stereo delay and a big hall. Made for an Ibanez with hot or active pickups, so the input gain stays low and notes bloom instead of fizzing.',
   chain: [tuner(), ['mo.badhorsie', { 'w.pos': 0.5, 'w.range': 0.5, 'w.level': 0.55 }], ['kly.compplus', { sustain: 0.3, level: 0.55, blend: 0.4, tone: 0.5 }], ['ib.ts9', { gain: 0.08, tone: 0.55, level: 0.72 }], ['bogner.amp-ecstasy', { gain: 0.62, master: 0.55, treble: 0.52, mid: 0.65, bass: 0.45, presence: 0.5, channel: 2 }], ['cab.4x12uber', { mic1: 0, mic2: 2 }], ['tz.paraeq', { b3on: 1 }], ['tz.harmony', { level1: 0.12, semis1: 0.5, dry: 1 }, { bypass: true }], ['tz.lumen', { time: 0.42, feedback: 0.38, mix: 0.25, spread: 0.7 }], ['sy.bigsky', { decay: 0.75, mix: 0.3 }], meter],
 });
 
@@ -638,9 +638,9 @@ SPECIAL.push(
     [tuner(), ['tz.meowsynth', { shift: 0.55, octave: 0.5, glide: 0.35, vibrato: 0.4, blend: 0.85, '=level': 10 }], ['amp.jc120', { gain: 0.3, treble: 0.5 }], ['cab.2x12jc'], ['tz.delay', { time: 0.4, feedback: 0.3, mix: 0.22 }], ['tz.reverb', { decay: 0.5, mix: 0.25 }], meter], 30),
   SYN('x02-synth-arcade', 'Synth · Arcade Lead', ['lead', 'edm'], 'Square-wave arcade synth with stacked fifth and octave, stepped gate and bit crush, into a clean amp, stereo delay and shimmer.',
     [tuner(), ['tz.insertcoin', { 's.filter': 0.6, chord: 0.5, blend: 0.85, 'sl.time': 0.4, 'cr.bits': 0.6, '=s.level': 6 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['tz.delay', { time: 0.38, feedback: 0.35, mix: 0.25 }], ['tz.shimmer', { decay: 0.6, mix: 0.25 }], meter], 31),
-  SYN('x03-synth-string-pad', 'Synth · String Machine Pad', ['ambient', 'rhythm'], 'Swelled 70s string machine with ensemble chorus into a huge hall – hold chords and let them bloom.',
+  SYN('x03-synth-string-pad', 'Synth · String Machine Pad', ['ambient', 'rhythm'], 'A swelling 70s string machine with ensemble chorus into a huge hall. Hold chords and let them bloom.',
     [tuner(), ['tz.tidalswell', { sens: 0.5, attack: 0.55, level: 0.6 }], ['tz.polyester', { 's.attack': 0.5, ens: 0.6, 'rv.mix': 0.25, 's.wet': 0.8, 's.dry': 0.1, '=s.level': 4 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['sy.bigsky', { decay: 0.75, mix: 0.35 }], meter], 32),
-  SYN('x04-synth-wobble-bass', 'Synth · Wobble Bass', ['bass', 'edm'], 'Sub / saw bass synth with an LFO wobble, into a bass amp and fridge cab. Works on bass or the low strings of a guitar.',
+  SYN('x04-synth-wobble-bass', 'Synth · Wobble Bass', ['bass', 'edm'], 'A sub or saw bass synth with a wobble, into a bass amp and an 8x10 cab. Works on bass or the low strings of a guitar.',
     [tuner(), ['tz.wobbler', { 's.octave': 0.5, 'wb.rate': 0.45, 'wb.range': 0.6, 'wb.q': 0.5, 's.wet': 0.85, 's.dry': 0.2 }], ['amp.svt', { gain: 0.35 }], ['cab.8x10svt'], meter], 33),
   SYN('x05-synth-vespers', 'Synth · Cathedral Choir', ['ambient', 'worship'], 'A choir that sings every note you play, a new vowel each time, into shimmer and a cathedral reverb.',
     [tuner(), ['tz.vespers', { 'v.attack': 0.4, 'v.vibrato': 0.3, 'rv.mix': 0.3, blend: 0.85, '=v.level': 9 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['mrs.mercury7', { decay: 0.8, mix: 0.35, shimmer: 0.2 }], meter], 34),
@@ -655,7 +655,7 @@ const MEME = (file, name, tags, desc, chain, order) => ({ file, name, tags: ['me
 SPECIAL.push(
   MEME('m01-meme-lofi-study', 'Meme · Lo-Fi Beats to Study To', ['ambient', 'experimental'], 'Slowed + reverb, a worn cassette ghost and a dusty radio. Jazz chords recommended, rain sounds optional.',
     [['tz.slowedreverb', { 'p.semis1': 0.45, 'rv.mix': 0.3, 'lf.mix': 0.5 }], ['tz.cassetteghost', { 'lf.wow': 0.4, 'lf.flutter': 0.3, 'lf.age': 0.5, 'lf.noise': 0.25 }], ['amp.deluxe', { gain: 0.3 }], ['cab.1x12us']], 40),
-  MEME('m02-meme-bad-connection', 'Meme · Bad Connection', ['experimental'], '"Can you hear me now?" – streaming damage, lag spikes and a 56k modem handshake on an otherwise lovely clean tone.',
+  MEME('m02-meme-bad-connection', 'Meme · Bad Connection', ['experimental'], '"Can you hear me now?" Streaming damage, lag spikes and a 56k modem screech on an otherwise lovely clean tone.',
     [['tz.dialup', { 'cr.bits': 0.7, 'cr.mix': 0.4, 'rm.mix': 0.15 }], ['tz.lagspike', { 'net.loss': 0.4, 'net.packets': 0.3, 'net.mix': 0.8 }], ['amp.ac30', { gain: 0.35 }], ['cab.2x12blue'], ['tz.badwifi', { loss: 0.5, packets: 0.3, mix: 0.8 }]], 41),
   MEME('m03-meme-microwave', 'Meme · Microwave Fuzz', ['rock', 'high-gain'], 'Reheated leftovers on HIGH: the microwave fuzz into a cranked British head. Ding!',
     [['tz.reheat', { 'fz.mode': 2, 'fz.gain': 0.7, 'fz.tone': 0.5, 'fz.level': 0.55 }], ['amp.orange', { gain: 0.5 }], ['cab.4x12orange']], 42),
@@ -665,24 +665,24 @@ SPECIAL.push(
     [['tz.rubberduck', { rate: 0.4, depth: 0.5, mix: 0.5 }], ['amp.deluxe', { gain: 0.3, bright: 1 }], ['cab.1x12us'], ['tz.spring', { mix: 0.18 }]], 44),
   MEME('m06-meme-haunted-house', 'Meme · Haunted House', ['experimental', 'metal'], 'Goblin octave fuzz into a reversed, haunted reverb. Best played at 3 a.m.',
     [['tz.goblin', { 'p.level1': 0.6, 'fz.gain': 0.65, 'p.level2': 0.2, 'fz.level': 0.5 }], ['amp.recto', { gain: 0.45 }], ['cab.4x12v30'], ['tz.haunted', { 'rd.mix': 0.35, 'rv.mix': 0.35 }]], 45),
-  MEME('m07-meme-speedrun', 'Meme · Speedrun Any%', ['edm', 'lead'], 'Arcade synth into a delay whose repeats keep climbing octaves – frame-perfect.',
+  MEME('m07-meme-speedrun', 'Meme · Speedrun Any%', ['edm', 'lead'], 'Arcade synth into a delay whose repeats keep climbing octaves. Frame-perfect.',
     [['tz.insertcoin', { blend: 0.7, '=s.level': 5 }], ['amp.jc120', { gain: 0.3 }], ['cab.2x12jc'], ['tz.speedrun', { time: 0.35, feedback: 0.45, mix: 0.35 }], ['tz.reverb', { decay: 0.4, mix: 0.2 }]], 46),
   MEME('m08-meme-whoopee', 'Meme · Whoopee Cushion', ['experimental'], 'Exactly what it sounds like. Low notes are funnier.',
     [['tz.whoopee', { blend: 0.85, '=level': 9 }], ['amp.svt', { gain: 0.3 }], ['cab.1x15bass'], ['tz.reverb', { decay: 0.4, mix: 0.18 }]], 47),
-  MEME('m09-meme-deja-vu', 'Meme · Déjà Vu', ['experimental', 'ambient'], 'Press REMEMBER and your last phrase comes back, slower and stretched – haven\'t we been here before?',
+  MEME('m09-meme-deja-vu', 'Meme · Déjà Vu', ['experimental', 'ambient'], 'Press REMEMBER and your last phrase comes back, slower and stretched. Haven\'t we been here before?',
     [['tz.dejavu', { length: 0.4, speed: 0.4, stretch: 0.3, mix: 0.6, mode: 0 }], ['amp.twin', { gain: 0.3 }], ['cab.2x12twin'], ['tz.shimmer', { decay: 0.6, mix: 0.25 }]], 48),
 );
 
 // ---------------------------------------------------------------- grunge signature rigs
 const GR = (file, name, tags, desc, chain, order) => ({ file, name, tags: ['grunge', ...tags], desc, chain, order });
 SPECIAL.push(
-  GR('r01-grunge-nevermind', 'Grunge · Nevermind Era', ['rock', 'rhythm'], 'Orange-box distortion into a scooped solid-state-style head and a 4×12, with a chorus for the clean verses (off) – 1991 Seattle.',
+  GR('r01-grunge-nevermind', 'Grunge · Nevermind Era', ['rock', 'rhythm'], 'An orange-box distortion into a scooped solid-state style head and a 4x12, with a chorus for the clean verses (off). Seattle, 1991.',
     [tuner(), ['bx.ds2', { level: 0.6, tone: 0.45, gain: 0.7 }], ['ehx.smallstone', { rate: 0.3 }, { bypass: true }], ['ehx.nanoclone', {}, { bypass: true }], ['mesa.amp-markv', { gain: 0.4, master: 0.5, treble: 0.55, mid: 0.35, bass: 0.6, presence: 0.5, channel: 2 }], ['cab.4x12v30', { mic2: 2 }], meter], 60),
   GR('r02-grunge-badmotor', 'Grunge · Badmotorfinger Drop D', ['metal', 'drop-tuning', 'rhythm'], 'Drop-D sludge: pitch drop, a Big Muff into a Rectifier, plus a parked wah you can kick on for the psychedelic bits.',
     [tuner(), ['dt.drop', { dsel: 0 }], ['ehx.bigmuff', { level: 0.55, tone: 0.45, gain: 0.7 }], ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['amp.recto', { gain: 0.5, treble: 0.5, mid: 0.45, bass: 0.6, presence: 0.5, master: 0.5, channel: 1 }], ['cab.4x12v30', { mic2: 2 }], ['tz.spring', { mix: 0.08 }], meter], 61),
-  GR('r03-grunge-dirt', 'Grunge · Dirt Wah Lead', ['metal', 'lead'], 'Dark, heavy Bogner-style lead with a wah, a slow flanger (off) and a dry-ish slap – sludgy minor-key solos.',
+  GR('r03-grunge-dirt', 'Grunge · Dirt Wah Lead', ['metal', 'lead'], 'A dark, heavy Bogner-style lead with a wah, a slow flanger (off) and a mostly dry slap echo. For sludgy minor-key solos.',
     [tuner(), ['dn.cbm95', { pos: 0.6 }], ['ib.ts9', { gain: 0.25, tone: 0.5, level: 0.65 }], ['evh.flanger117', { speed: 0.2, width: 0.5, regen: 0.4 }, { bypass: true }], ['bogner.amp-shiva', {}], ['cab.4x12v30', { mic2: 2 }], ['mx.m169', { time: 0.3, feedback: 0.2, mix: 0.15 }], meter], 62),
-  GR('r04-grunge-ten', 'Grunge · Ten Lead', ['rock', 'lead'], 'Classic-rock-rooted grunge lead: a Screamer into a cranked Marshall, wah and Uni-Vibe-style wobble (off), analog delay.',
+  GR('r04-grunge-ten', 'Grunge · Ten Lead', ['rock', 'lead'], 'Grunge lead with classic rock roots: a Tube Screamer into a cranked Marshall, wah and a Uni-Vibe-style wobble (off), and analog delay.',
     [tuner(), ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['ib.ts808', { gain: 0.4, tone: 0.55, level: 0.62 }], ['jhs.unicorn', { speed: 0.35, intensity: 0.5 }, { bypass: true }], ['amp.jcm800', { gain: 0.6, presence: 0.55, bass: 0.5, mid: 0.6, treble: 0.6, master: 0.5 }], ['cab.4x12gb', { mic2: 2 }], ['mx.m169', { time: 0.4, feedback: 0.3, mix: 0.2 }], ['tz.reverb', { decay: 0.4, mix: 0.12 }], meter], 63),
 );
 

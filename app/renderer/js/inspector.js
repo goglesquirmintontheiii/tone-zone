@@ -1,4 +1,4 @@
-// Right-hand inspector: precise parameter editing, variants, DSP cost and block info.
+// Right-hand inspector: exact control values, mono/stereo, DSP cost and block info.
 import { MIC_TYPES, MIC_COLORS, defaultMicXY } from './gfx/cabgeom.js';
 import { el, esc, bus, clamp } from './util.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
@@ -26,7 +26,7 @@ export function initInspector(editor) {
 }
 
 function fmtVal(c, v) {
-  if (v === undefined || v === null) return '–';
+  if (v === undefined || v === null) return '-';
   if (c.t === 'sel' || c.t === 'toggle') return c.options[v | 0] ?? String(v);
   if (c.display) return c.display(v, c);
   if (c.unit) return (c.unit === 'Hz' && v >= 1000 ? (v / 1000).toFixed(2) + 'k' : v >= 100 ? v.toFixed(0) : v.toFixed(1)) + ' ' + c.unit;
@@ -96,8 +96,8 @@ function render() {
 
   // DSP cost
   const cost = el('div', { class: 'insp-section' }, body);
-  el('h5', {}, cost).textContent = 'DSP cost';
-  const cr = el('div', { class: 'cost' }, cost, '<div class="bar"><i></i></div><span class="pv" style="font:12px Share Tech Mono;min-width:60px;text-align:right">–</span>');
+  el('h5', {}, cost).textContent = 'DSP load';
+  const cr = el('div', { class: 'cost' }, cost, '<div class="bar"><i></i></div><span class="pv" style="font:12px Share Tech Mono;min-width:60px;text-align:right">-</span>');
   cr.dataset.costFor = b.id;
 
   // controls
@@ -111,7 +111,7 @@ function render() {
     seen.add(c.p);
     rowFor(ctlSec, b, c, ui);
   }
-  // cabinet microphones (up to 4, any speaker, mixed / panned)
+  // cab mics: up to 4, on any speaker, mixed and panned
   if (d.cabMics) {
     const ms = el('div', { class: 'insp-section' }, body);
     const hdr = el('h5', { class: 'h5-row' }, ms, 'Microphones');
@@ -139,7 +139,7 @@ function render() {
       const add = el('button', { class: 'btn small', style: { marginTop: '8px' } }, ms, '<i class="ic ic-plus"></i>Add microphone');
       add.onclick = () => { addMic(b); render(); };
     }
-    el('p', { class: 'hint' }, ms).textContent = 'Drag mics anywhere over the speakers · scroll on a mic for distance · shift-click to change model.';
+    el('p', { class: 'hint' }, ms).textContent = 'Drag mics over the speakers. Scroll on a mic to change its distance, Shift-click to change its model.';
     void hdr;
     const cs = el('div', { class: 'insp-section' }, body);
     el('h5', {}, cs).textContent = 'Cabinet';
@@ -147,7 +147,7 @@ function render() {
     rowFor(cs, b, { t: 'knob', p: 'highcut', label: 'High cut', min: 2000, max: 20000, def: 14000, curve: 'log', unit: 'Hz' }, ui);
     rowFor(cs, b, { t: 'knob', p: 'level', label: 'Level', min: -24, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
   }
-  // plugin-provided inspector section
+  // inspector section added by a plugin
   const hk = hooksFor(d.id);
   if (hk && hk.inspector) {
     const sec = el('div', { class: 'insp-section' }, body);
@@ -164,7 +164,7 @@ function render() {
   const inf = blockInfo[b.id];
   if (d.pack) {
     const ps = el('div', { class: 'insp-section' }, body);
-    el('h5', {}, ps).textContent = d.algo === 'nam' ? 'NAM configurations' : 'Impulse responses';
+    el('h5', {}, ps).textContent = d.algo === 'nam' ? 'NAM models' : 'Impulse responses';
     const list = el('div', { class: 'kv' }, ps);
     d.pack.models.forEach((m, i) => {
       const mi = inf?.models?.[i] || inf?.irs?.[i];
@@ -289,7 +289,7 @@ export function addMic(b) {
   return 0;
 }
 
-// ------------------------------------------------------------------ AUDIO IN / AUDIO OUT configuration
+// ------------------------------------------------------------------ Audio In / Audio Out setup
 let ioPortsHandler = null;
 function renderIO(dir, fromPorts = false) {
   current = dir === 'in' ? '__in' : '__out';
@@ -350,7 +350,7 @@ function renderIO(dir, fromPorts = false) {
   });
   el('p', { class: 'hint', style: { padding: '0 16px' } }, body).textContent = 'Labels, trims and connections are saved for this computer, not per preset.';
   if (!ioPortsHandler) {
-    // re-render on port updates, but never request ports from here (that was a request → render → request loop)
+    // redraw on port updates, but don't request ports from here (that caused a request/render loop)
     ioPortsHandler = () => {
       if (current !== '__in' && current !== '__out') return;
       if (document.querySelector('.port-picker')) return; // don't rebuild under an open picker

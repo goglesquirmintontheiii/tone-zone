@@ -1,5 +1,5 @@
-// Control cables: expression pedals / footswitches (and plugin devices) drive other blocks through
-// TRS "ctrl" jacks. A block declares
+// Control cables: expression pedals, footswitches and plugin devices drive other blocks
+// through TRS "ctrl" jacks. A block declares
 //   ctrl: { outs: [{ label, source: 'param:pos' | 'foot' }], ins: [{ label, param, min, max } | { label, action: 'bypass'|'tap'|'event', event } | { label, hook: true }] }
 import { state, uiParams, setParam, setBypass, blockById } from './state.js';
 import { getDef } from './catalog/index.js';

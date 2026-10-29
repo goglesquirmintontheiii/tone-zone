@@ -1,8 +1,8 @@
-// Enclosure forms for the v0.3.0 Tone Zone originals: playful, illustrated shapes (a cat head, a router, a
-// stopwatch, a haunted house, a flying saucer …). Every form draws its own outline + art, then places the
-// controls into named slots (knob / toggle param, `foot0`, `led0` …) – slots are re-applied on every render
+// Enclosures for the v0.3.0 Tone Zone originals: playful illustrated shapes (a cat head, a router, a
+// stopwatch, a haunted house, a flying saucer…). Each form draws its outline and art, then puts the
+// controls into named slots (knob/toggle param, `foot0`, `led0`…). Slots are applied again on every render
 // because control objects are shared between renders.
-// Performance: gradients, cached noise tiles, clip paths and a few dozen paths per pedal – no SVG filters.
+// For speed: gradients, cached noise tiles, clip paths and a few dozen paths per pedal, no SVG filters.
 import { svg, shade } from '../util.js';
 import { softShadow, noisePattern } from './fx.js';
 import { label } from './controls.js';

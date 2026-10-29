@@ -3,7 +3,7 @@
   "name": "Big Ear Pedals",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Hand-assembled boutique pedals inspired by BIG EAR pedals (Nashville, formerly BIG EAR n.y.c.): the silicon bread-loaf fuzz (cream, walnut-facia and low-end editions), the 308 Kalamazoo-style distortion, an octave fuzz with its own octave footswitch, a slightly modulated three-knob reverb, the eight-stack ambient modulator with hold-for-alternate modes, a Burr-Brown low-gain drive, a triple booster, an analog-voiced short delay, a mini buffer, one-knob dimed fuzzes, the pizza-slice fuzz (pepperoni and cheese) and the nine-footswitch cascaded booster. Hand-painted enclosures with big painted names, sparkle, candy, wrinkle and wood finishes.",
+  "description": "Hand-painted boutique pedals inspired by BIG EAR pedals (Nashville): the bread-loaf fuzz family, a Kalamazoo-style distortion, octave and one-knob fuzzes, the pizza-slice fuzz, a reverb, an ambient modulator, a low-gain drive, boosters (including the nine-footswitch one), a short delay and a mini buffer.",
   "kind": "brand",
   "brand": "Big Ear Pedals",
   "main": "index.js",
