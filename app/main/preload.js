@@ -58,8 +58,4 @@ contextBridge.exposeInMainWorld('tz', {
     info: () => ipcRenderer.invoke('app:info'),
     openExternal: (u) => ipcRenderer.invoke('app:openExternal', u),
   },
-  t3: {
-    onDownload: (fn) => ipcRenderer.on('t3:download', (_e, d) => fn(d)),
-    clearSession: () => ipcRenderer.invoke('t3:clearSession'),
-  },
 });

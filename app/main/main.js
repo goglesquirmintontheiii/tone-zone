@@ -18,7 +18,6 @@ nativeTheme.themeSource = 'dark';
 let win = null;
 let engine = null;
 let settings = {};
-const T3_PARTITION = 'persist:tone3000';
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -40,7 +39,6 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webviewTag: true,
       sandbox: false,
       backgroundThrottling: false,
     },
@@ -57,53 +55,6 @@ function createWindow() {
     return { action: 'deny' };
   });
 }
-
-// ---------------------------------------------------------------- TONE3000 embedded browser
-function setupTone3000() {
-  const ses = session.fromPartition(T3_PARTITION);
-  // present as regular Chrome so sign-in providers work
-  const ua = ses.getUserAgent().replace(/\s*Electron\/[\d.]+/, '').replace(/\s*tone-zone\/[\d.]+/i, '');
-  ses.setUserAgent(ua);
-  const dlDir = path.join(lib.ensureDirs(), 'downloads');
-  ses.on('will-download', (event, item) => {
-    const name = item.getFilename() || 'download';
-    const target = path.join(dlDir, `${Date.now()}-${name.replace(/[^\w.\- ()]+/g, '_')}`);
-    item.setSavePath(target);
-    send('t3:download', { state: 'started', name, total: item.getTotalBytes() });
-    item.on('updated', () => send('t3:download', { state: 'progress', name, received: item.getReceivedBytes(), total: item.getTotalBytes() }));
-    item.once('done', (_e, state) => {
-      if (state !== 'completed') return send('t3:download', { state: 'failed', name });
-      const ext = path.extname(name).toLowerCase();
-      if (!['.nam', '.wav', '.zip'].includes(ext)) return send('t3:download', { state: 'ignored', name, path: target });
-      try {
-        const info = lib.inspect([target], 'tone3000');
-        info.sourceUrl = item.getURL();
-        send('t3:download', { state: 'completed', name, path: target, inspect: info });
-      } catch (e) {
-        send('t3:download', { state: 'failed', name, error: e.message });
-      }
-    });
-  });
-}
-
-app.on('web-contents-created', (_e, contents) => {
-  if (contents.getType() === 'webview') {
-    contents.setWindowOpenHandler(({ url }) => {
-      // OAuth / sign-in popups stay inside the TONE3000 session
-      if (/tone3000|google|accounts|auth|github|discord|apple/i.test(url)) {
-        return {
-          action: 'allow',
-          overrideBrowserWindowOptions: {
-            width: 520, height: 720, parent: win, autoHideMenuBar: true, backgroundColor: '#111',
-            webPreferences: { partition: T3_PARTITION },
-          },
-        };
-      }
-      shell.openExternal(url);
-      return { action: 'deny' };
-    });
-  }
-});
 
 // ---------------------------------------------------------------- IPC
 function setupIpc() {
@@ -225,16 +176,11 @@ function setupIpc() {
     version: app.getVersion(),
     packaged: app.isPackaged,
     dataDir: lib.dataRoot(),
-    t3Preload: 'file://' + path.join(__dirname, 't3-preload.js'),
-    partition: T3_PARTITION,
     platform: process.platform,
     electron: process.versions.electron,
   }));
   ipcMain.handle('app:openExternal', (_e, url) => shell.openExternal(url));
-  ipcMain.handle('t3:clearSession', async () => {
-    await session.fromPartition(T3_PARTITION).clearStorageData();
-    return true;
-  });
+
 }
 
 // ---------------------------------------------------------------- lifecycle
@@ -262,7 +208,6 @@ app.whenReady().then(() => {
   lib.installFactoryPresets(path.join(APP_ROOT, 'presets'));
   settings = Object.assign({ buffer: 64, quality: 1, budget: 0.75, autoConnect: true }, lib.loadSettings());
   setupIpc();
-  setupTone3000();
   engine = new EngineHost({ appRoot: APP_ROOT, isPackaged: app.isPackaged, dataDir: lib.dataRoot(), getBuffer: () => settings.buffer || 64 });
   engine.on('event', (ev) => send('engine:event', ev));
   engine.on('log', (l) => process.env.TZ_DEBUG && process.stderr.write(l));

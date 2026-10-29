@@ -75,7 +75,8 @@ export class Editor {
       const mx = (((x + 200) % grid) + grid) % grid, my = (((y + 200) % grid) + grid) % grid;
       gEl.style.transform = `translate(${mx.toFixed(1)}px, ${my.toFixed(1)}px)`;
     }
-    if (state.preset) state.preset.view = { ...this.view };
+    // don't save a view computed while the board was hidden
+    if (state.preset && !this._pendingView) state.preset.view = { ...this.view };
   }
   toWorld(cx, cy) {
     const r = this.board.getBoundingClientRect();
@@ -92,6 +93,7 @@ export class Editor {
   }
   fit(animate = true) {
     if (!this.views.size) return;
+    if (this.board.getBoundingClientRect().width < 50) { this._pendingView = true; state.preset && (state.preset.view = null); return this.restoreView(); }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const v of this.views.values()) {
       x0 = Math.min(x0, v.block.x - 40);
@@ -127,11 +129,41 @@ export class Editor {
     for (const b of order) this.addView(b, false);
     this.drawCables();
     if (!keepView) {
-      if (state.preset.view) {
-        this.view = { ...state.preset.view };
-        this.applyView();
-      } else this.fit(false);
+      this._pendingView = true;
+      this.restoreView();
     }
+  }
+  // Show the preset's saved view, or fit the board. While the board is hidden (preset loaded from another tab)
+  // it has no size, so wait until it's visible again.
+  restoreView() {
+    if (!this._pendingView || !state.preset) return;
+    const r = this.board.getBoundingClientRect();
+    if (r.width < 50 || r.height < 50) {
+      if (!this._viewRO) {
+        this._viewRO = new ResizeObserver(() => this.restoreView());
+        this._viewRO.observe(this.board);
+      }
+      return;
+    }
+    this._pendingView = false;
+    const sv = state.preset.view;
+    if (sv && this.viewShowsContent(sv, r)) {
+      this.view = { ...sv };
+      this.applyView();
+    } else this.fit(false);
+  }
+  // true if a saved view still shows a good part of the blocks
+  viewShowsContent(v, r) {
+    if (!(v.z >= 0.2 && v.z <= 2.5) || !isFinite(v.x) || !isFinite(v.y) || !this.views.size) return false;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const nv of this.views.values()) {
+      x0 = Math.min(x0, nv.block.x); y0 = Math.min(y0, nv.block.y);
+      x1 = Math.max(x1, nv.block.x + nv.w); y1 = Math.max(y1, nv.block.y + nv.h);
+    }
+    const sx0 = x0 * v.z + v.x, sy0 = y0 * v.z + v.y, sx1 = x1 * v.z + v.x, sy1 = y1 * v.z + v.y;
+    const ix = Math.max(0, Math.min(sx1, r.width) - Math.max(sx0, 0)), iy = Math.max(0, Math.min(sy1, r.height) - Math.max(sy0, 0));
+    const area = Math.max(1, (sx1 - sx0) * (sy1 - sy0));
+    return (ix * iy) / Math.min(area, r.width * r.height) > 0.35;
   }
   addView(b, animate) {
     const d = getDef(b.type);

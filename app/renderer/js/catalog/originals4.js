@@ -1,13 +1,7 @@
-// Tone Zone originals, v0.4.0: four multi-effects units that are not inspired by any product.
-//   tz.atlas      Atlas Floor     flagship floor modeler: 2 paths × 6 slots, model browser, scenes, presets, looper,
-//                                 tuner, global settings, 12 footswitches with scribble strips, 2 expression treadles
-//   tz.aurora     Aurora Desk     desktop + stomp ambient / modulation / pitch engine, A/B snapshot morphing
-//   tz.pixelquest Pixel Quest     game-console synth / meme multi-FX (characters = synth voices, levels = FX chains)
-//   tz.foundry    Low Foundry     bass multi-FX with analog VU meter + 14-segment display
-// This file holds the definitions and the *pure* logic (state → engine params / chain layout) so `derive` can run
-// anywhere. Interaction (screens, buttons, footswitches, menus) lives in ../screens-tz5.js, enclosures in
-// ../gfx/forms-tz5.js. Persistent unit state is a JSON string in the UI param `_st` (never sent to the engine);
-// footswitches / buttons toggle `_…` press params that screens-tz5.js turns into actions.
+// Tone Zone originals (v0.4.0): four multi-effects units, not based on any real product.
+// tz.atlas (flagship floor modeler), tz.aurora (ambient desk), tz.pixelquest (game console synth),
+// tz.foundry (bass floor unit). Screens and button logic: ../screens-tz5.js, enclosures: ../gfx/forms-tz5.js.
+// Unit state is a JSON string in the `_st` param. Buttons toggle `_p.*` params that screens-tz5.js reacts to.
 import { K, BTN, FOOT, LED, SCREEN, TREADLE, db } from './helpers.js';
 import { TZ } from './builders.js';
 
@@ -210,7 +204,7 @@ export const ATLAS_FACTORY = [
 export const ATLAS_BANKS = ['A', 'B', 'C'];
 export const ATLAS_MODES = ['STOMP', 'SCENE', 'PRESET', 'LOOPER'];
 export const ATLAS_GLOBAL = {
-  pad: 0, gate: 0, out: 0, bLvl: 1, route: 0, pan: 0, toe: 0, wahv: 0, volPos: 1, exp2: -1, bpm: 120, sync: 0, theme: 0, stripB: 1, dmode: 0, tapLed: 1, ref: 440,
+  pad: 0, gate: 0, out: 0, bLvl: 1, route: 0, pan: 0, toe: 0, wahv: 0, volPos: 1, bpm: 120, sync: 0, theme: 0, stripB: 1, dmode: 0, tapLed: 1, ref: 440,
 };
 
 // expand a factory patch into the live state (8 scenes with full on/value snapshots)
@@ -263,6 +257,18 @@ export function atlasChain(st) {
   return { chain };
 }
 export const atlasLooperArg = (st) => (atlasChain(st).chain.length - 1) * 100;
+// EXP 2 target: g.exp2 undefined = AUTO (first delay MIX, else first reverb MIX), -1 = OFF, {s, p} = that parameter
+export function atlasExpTarget(st) {
+  const e = st.g && st.g.exp2;
+  const all = atlasExpTargets(st);
+  if (e === -1) return null;
+  if (e && typeof e === 'object') return all.find((t) => t.s === e.s && t.p === e.p) || null;
+  for (const algo of ['delay', 'reverb']) {
+    const t = all.find((x) => x.p === 'mix' && MODEL_BY_ID[st.slots[x.s].m].algo === algo);
+    if (t) return Object.assign({ auto: true }, t);
+  }
+  return null;
+}
 // every assignable parameter (for the EXP 2 target list)
 export function atlasExpTargets(st) {
   const out = [];
@@ -270,7 +276,7 @@ export function atlasExpTargets(st) {
     const s = st.slots[k];
     const m = s && MODEL_BY_ID[s.m];
     if (!m) continue;
-    m.knobs.forEach((sp, i) => out.push({ s: k, i, name: `${k} ${m.short} ${sp.l}` }));
+    m.knobs.forEach((sp, i) => out.push({ s: k, i, p: sp.p, name: `${k} ${m.short} ${sp.l}` }));
   }
   return out;
 }
@@ -298,8 +304,7 @@ function atlasDerive(ui) {
   o['vol.on'] = volOn && !pre ? 1 : 0; o['vol.pos'] = e1;
   o['pad.level'] = [0, -6, -12][g.pad | 0];
   o['out.level'] = (g.out || 0) - 4; // calibrated so the factory presets sit near unity
-  const targets = g.exp2 >= 0 ? atlasExpTargets(st) : [];
-  const tgt = targets[g.exp2 | 0];
+  const tgt = (ui._e2 ?? 0) > 0.5 ? atlasExpTarget(st) : null;
   for (const k of SLOTS) {
     const s = st.slots[k];
     const m = s && MODEL_BY_ID[s.m];
@@ -344,7 +349,7 @@ export function atlasFsInfo(st, i, lp) {
     return { label: i === 8 ? 'PRESET ▼' : 'PRESET ▲', color: '#e8ecf3', lit: false };
   }
   if (mode === 2) {
-    if (i < 4) { const pi = ((st.pi | 0) - ((st.pi | 0) % 4)) + i; return { label: (presetName(st, pi) || '—'), color: '#ffffff', lit: (st.pi | 0) === pi }; }
+    if (i < 4) { const pi = ((st.pi | 0) - ((st.pi | 0) % 4)) + i; return { label: (presetName(st, pi) || '-'), color: '#ffffff', lit: (st.pi | 0) === pi }; }
     if (i === 4) return { label: 'BANK ▲', color: '#e8ecf3', lit: false };
     if (i === 9) return { label: 'BANK ▼', color: '#e8ecf3', lit: false };
     const si = i - 5;
@@ -542,6 +547,7 @@ function lfDerive(ui) {
 
 // ================================================================== definitions
 const ATLAS_STEREO = { ins: ['IN L', 'IN R'], outs: ['OUT L', 'OUT R'] };
+const ATLAS_IO = { ins: ['GUITAR IN', 'AUX IN'], outs: ['OUT L', 'OUT R', 'XLR L', 'XLR R', 'PHONES'] };
 const stripLed = (i) => LED({ bind: 'fn', r: 2.2, color: '#ffffff', ledFn: (ui, b, st) => {
   const s = atlasState(ui);
   const f = atlasFsInfo(s, i, st && st.lp && st.lp.looper);
@@ -551,7 +557,7 @@ const stripLed = (i) => LED({ bind: 'fn', r: 2.2, color: '#ffffff', ledFn: (ui, 
 export const originals4 = [
   // ------------------------------------------------------------------ 1. ATLAS FLOOR
   TZ({ id: 'tz.atlas', name: 'Atlas Floor', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-atlas', color: '#24272d', accent: '#ff8a3d', logo: 'ATLAS', noStd: true,
-    typeName: 'Flagship modeler · 2 paths · 12 slots · scenes · looper', stereo: 'both', ports: ATLAS_STEREO, monoPorts: { ins: ['IN'], outs: ['OUT'] }, cost: 5, noBypassClick: true,
+    typeName: 'Flagship modeler · 2 paths · 12 slots · scenes · looper', stereo: 'stereo', ports: ATLAS_IO, jackKinds: { o2: 'xlr', o3: 'xlr', o4: 'phones' }, cost: 5, noBypassClick: true,
     algo: 'chain', opts: atlasChain(atlasDefault()),
     ctrl: { ins: [{ label: 'EXP 3', param: 'exp2' }] },
     controls: [
@@ -578,11 +584,11 @@ export const originals4 = [
       LED({ bind: 'param:toe', r: 2, color: '#ff3b30', role: 'toeled' }),
     ],
     derive: atlasDerive,
-    desc: 'The Tone Zone flagship. Two parallel paths of six slots, each holding any of 80 drive, amp, cab, dynamics, EQ, modulation, filter, pitch, delay and reverb models. The big colour screen shows the signal chain; the joystick buttons move the cursor and open the model browser, the six knobs edit the selected block page by page. Eight scenes per preset, 12 factory presets in 3 banks, a 60-second looper, a tuner (hold TAP) and a global settings menu. Ten footswitches with scribble strips switch between STOMP, SCENE, PRESET and LOOPER modes (MODE). Two treadles: WAH/VOL with a toe switch and the assignable EXP 2 (Global ▸ Pedals ▸ EXP 2 target).' }),
+    desc: 'Flagship floor modeler: two paths of six slots with 80 models, scenes, presets, a looper, a tuner and two expression treadles. Use the joystick buttons to pick a slot and a model, and the six knobs to edit it.' }),
 
   // ------------------------------------------------------------------ 2. AURORA DESK
   TZ({ id: 'tz.aurora', name: 'Aurora Desk', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-aurora', color: '#1b1f2a', accent: '#7dffb0', logo: 'AURORA', noStd: true,
-    typeName: 'Ambient · modulation · pitch · A/B morph', stereo: 'stereo', ports: ATLAS_STEREO, monoPorts: { ins: ['IN'], outs: ['OUT'] }, cost: 6,
+    typeName: 'Ambient · modulation · pitch · A/B morph', stereo: 'stereo', ports: { ins: ['IN L', 'IN R'], outs: ['OUT L', 'OUT R', 'PHONES'] }, jackKinds: { o2: 'phones' }, cost: 6,
     algo: 'chain', opts: { chain: [
       { prefix: 'p', algo: 'pitch' },
       { prefix: 'ch', algo: 'chorus' },
@@ -608,11 +614,11 @@ export const originals4 = [
       PF('fz', { label: 'FREEZE', role: 'ffz', style: 'stomp' }),
     ],
     derive: auroraDerive,
-    desc: 'A desktop + stomp ambient engine: pitch voices → ensemble / vibrato → pulse → tape texture → modulated echo → reverb → freeze. Six programs (DRIFT, HALO, TIDE, PRISM, ORBIT, VOID) re-wire four macro knobs (SPACE, MOTION, PITCH, TEXTURE). Two complete snapshots (A and B): EDIT chooses which one the knobs change, the MORPH knob, an expression pedal or the A⇄B switch blend between them (tap = jump, hold = glide over the MORPH TIME). The vector-scope screen draws the morph as a Lissajous figure.' }),
+    desc: 'Ambient desk unit with pitch, modulation, echo and reverb. Four macro knobs, six programs, and two snapshots (A and B) you can morph between with a knob, a pedal or the A/B switch.' }),
 
   // ------------------------------------------------------------------ 3. PIXEL QUEST
   TZ({ id: 'tz.pixelquest', name: 'Pixel Quest', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-console', color: '#c9c3d6', accent: '#ff3f7f', logo: 'PIXEL QUEST', noStd: true,
-    typeName: 'Game-console synth · 8 characters · 6 levels', stereo: 'both', cost: 2.5,
+    typeName: 'Game-console synth · 8 characters · 6 levels', stereo: 'stereo', ports: { ins: ['IN'], outs: ['OUT L', 'OUT R', 'PHONES'] }, jackKinds: { o2: 'mini' }, cost: 4,
     algo: 'chain', opts: { chain: [
       { prefix: 'pw', algo: 'pitch', on: false },
       { prefix: 's', algo: 'synth' },
@@ -639,11 +645,11 @@ export const originals4 = [
       PF('pw', { label: 'POWER-UP (HOLD)', role: 'fpw' }),
     ],
     derive: pqDerive,
-    desc: 'A handheld game console that is secretly a synth: pick a CHARACTER (each one is a synth voice – square knight, saw ninja, pad wizard, sub-bass golem, string ghost, robot and cat voices, slime filter sweep) and a LEVEL (each world is an effects chain: slap echo, cave reverb, 8-bit crunch + gate, arpeggio castle, shimmer temple, underwater wobble). D-pad, A/B, START (pause menu) and SELECT drive the pixel menus; the LEVEL switches warp between worlds and POWER-UP adds a sparkling octave while held.' }),
+    desc: 'A game console that is secretly a synth: each character is a synth voice and each level is an effects chain. Use the D-pad, A/B and START to play through the menus.' }),
 
   // ------------------------------------------------------------------ 4. LOW FOUNDRY (bass)
   TZ({ id: 'tz.foundry', name: 'Low Foundry', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tz5-foundry', color: '#2b2622', accent: '#ffb02e', logo: 'LOW FOUNDRY', noStd: true,
-    typeName: 'Bass multi-FX · amp · drive · octave · DI', stereo: 'mono', ports: { ins: ['INPUT'], outs: ['OUTPUT'] }, cost: 3, tags: ['bass'],
+    typeName: 'Bass multi-FX · amp · drive · octave · DI', stereo: 'mono', ports: { ins: ['INPUT'], outs: ['OUTPUT', 'DI OUT', 'PHONES'] }, jackKinds: { o1: 'xlr', o2: 'phones' }, cost: 4.5, tags: ['bass'],
     algo: 'chain', opts: lfChain(lfDefault()),
     ctrl: { ins: [{ label: 'EXP', param: 'dimix' }] },
     controls: [
@@ -660,5 +666,5 @@ export const originals4 = [
       LED({ bind: 'param:_tuner', color: '#3ddc84', role: 'l4' }), LED({ bind: 'on', color: '#ff2a1a', role: 'l5' }),
     ],
     derive: lfDerive,
-    desc: 'A bass rig on the floor: opto compressor → sub octave → bass synth → blendable grit → tube bass preamp (5 amp voices) → 4-band EQ → chorus → cab sim, with a DI/AMP blend. The analog VU meter shows the output level (and the cents while tuning); the 14-segment display shows program, amp and values. MODE cycles PROGRAM / AMP / CAB / TUNER pages, ◀ ▶ change the value, STORE keeps the program on the current channel. Footswitches: COMP, DRIVE, OCTAVE, CH A/B (channel B = hotter preamp), TUNER (mutes) and BYPASS.' }),
+    desc: 'Bass floor unit with compressor, octave, drive, tube preamp, 4-band EQ and cab sim. The VU meter shows the output (or cents when tuning), the segment display shows programs and values.' }),
 ];

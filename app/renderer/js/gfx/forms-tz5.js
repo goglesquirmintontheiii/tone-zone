@@ -1,7 +1,5 @@
-// Enclosures for the v0.4.0 Tone Zone multi-effects originals (catalog/originals4.js): the Atlas Floor flagship
-// (two treadles, 12 footswitches with scribble strips), the Aurora Desk (angled desktop deck + stomp row), the
-// Pixel Quest handheld console and the Low Foundry bass floor unit. Controls are placed by their `role` (or param)
-// on every render (control objects are shared between renders). No SVG filters: gradients + cached noise tiles.
+// Enclosures for the v0.4.0 multi-effects originals (catalog/originals4.js).
+// Controls are placed by their `role` (or param) on every render. No SVG filters.
 import { svg, shade } from '../util.js';
 import { softShadow, noisePattern } from './fx.js';
 import { label } from './controls.js';
@@ -262,8 +260,8 @@ function foundryForm(ctx, def) {
   T(g, 352, 54, 'BASS FLOOR SYSTEM', { size: 5.4, fill: acc, font: INTER, weight: 800, ls: 2 });
   T(g, 352, 82, 'TONE ZONE', { size: 4.6, fill: '#d9ccb4', font: INTER, weight: 800, ls: 1.6, opacity: 0.7 });
   for (const [x, y] of [[280, 20], [w - 12, 20], [280, 86], [w - 12, 86]]) screwAt(g, x, y, 2.6);
-  T(g, 14, 112, 'PREAMP', { size: 4.8, fill: acc, font: INTER, weight: 800, ls: 1.4, anchor: 'start' });
-  T(g, 14, 160, 'EQUALIZER', { size: 4.8, fill: acc, font: INTER, weight: 800, ls: 1.4, anchor: 'start' });
+  T(g, 40, 108, 'PREAMP', { size: 4.8, fill: acc, font: INTER, weight: 800, ls: 1.4, anchor: 'start' });
+  T(g, 40, 154, 'EQUALIZER', { size: 4.8, fill: acc, font: INTER, weight: 800, ls: 1.4, anchor: 'start' });
   edge(g, d);
   const kx = (i) => 58 + i * 78;
   const slots = {

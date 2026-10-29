@@ -1,12 +1,6 @@
-// Screens + interaction for the v0.4.0 Tone Zone multi-effects originals (catalog/originals4.js):
-//   tz5-atlas / tz5-atlas-strip   Atlas Floor colour LCD (chain view, browser, menus, scenes, presets, looper, tuner,
-//                                 global settings) + footswitch scribble strips
-//   tz5-aurora                    Aurora Desk vector-scope (stroke font, Lissajous morph display)
-//   tz5-pixel                     Pixel Quest dot-matrix (bitmap font, sprites, game-style menus)
-//   tz5-meter / tz5-seg           Low Foundry analog VU meter + 14-segment alphanumeric display
-// Footswitches / buttons of these units toggle `_p.<name>` press params; a bus listener below turns every change
-// into an action (with hold detection from the pointer). Persistent unit state lives in the JSON param `_st`;
-// navigation (page, cursor) is transient in state.ui[id].tz5.
+// Screens and button logic for the four v0.4.0 multi-effects originals (catalog/originals4.js).
+// Footswitches and buttons toggle `_p.<name>` params; the bus listener below turns each change into an action.
+// Unit state is saved in the `_st` param, the current page / cursor lives in state.ui[id].tz5.
 import { svg, bus, clamp } from './util.js';
 import { registerScreen } from './screens.js';
 import { setA, setText } from './gfx/fx.js';
@@ -158,7 +152,8 @@ function setModel(st, k, mid) {
   st.slots[k] = { m: mid, on: 1, v };
   for (let i = 0; i < 8; i++) { const sc = st.scenes[i] || (st.scenes[i] = { on: {}, v: {} }); sc.on[k] = 1; sc.v[k] = v.slice(); }
 }
-function loadAtlasPreset(st, pi) {
+function loadAtlasPreset(st, pi, b) {
+  if (b && (uiParams(b)._e2 ?? 0) > 0.5) setUi(b, '_e2', 0);
   pi = ((pi % 12) + 12) % 12;
   const src = st.user && st.user[pi] ? O.clone(st.user[pi]) : O.patchToLive(O.ATLAS_FACTORY[pi]);
   Object.assign(st, { name: src.name, slots: src.slots, scenes: src.scenes, sc: src.sc | 0, pi });
@@ -224,6 +219,7 @@ HANDLERS['tz.atlas'] = {
     if (at.nav(b).page !== 'tuner' && (uiParams(b)._tuner ?? 0) > 0.5 && name !== 'tap') setUi(b, '_tuner', 0);
   },
   param(b, p) {
+    if (p === 'exp2') { if ((uiParams(b)._e2 ?? 0) < 0.5) setUi(b, '_e2', 1); return; }
     const m = /^k([1-6])$/.exec(p);
     if (!m) return;
     const n = at.nav(b), st = at.st(b);
@@ -248,12 +244,12 @@ function atlasPress(b, name) {
       if (mode === 0) return stompToggle(O.atlasStompSlots(st)[i]);
       if (mode === 1) {
         if (i < 8) { recallScene(st, i); at.put(b, st, true); flash(b, 'SCENE ' + (i + 1) + '  ' + O.SCENE_NAMES[i], 800); return atlasSyncKnobs(b); }
-        captureScene(st); loadAtlasPreset(st, (st.pi | 0) + (i === 8 ? -1 : 1)); at.put(b, st, true); flash(b, presetLabel(st)); return atlasSyncKnobs(b);
+        captureScene(st); loadAtlasPreset(st, (st.pi | 0) + (i === 8 ? -1 : 1), b); at.put(b, st, true); flash(b, presetLabel(st)); return atlasSyncKnobs(b);
       }
       if (mode === 2) {
         const bank = Math.floor((st.pi | 0) / 4);
-        if (i < 4) { loadAtlasPreset(st, bank * 4 + i); at.put(b, st, true); flash(b, presetLabel(st)); return atlasSyncKnobs(b); }
-        if (i === 4 || i === 9) { loadAtlasPreset(st, (((bank + (i === 4 ? 1 : -1)) % 3) + 3) % 3 * 4 + ((st.pi | 0) % 4)); at.put(b, st, true); flash(b, 'BANK ' + O.ATLAS_BANKS[Math.floor(st.pi / 4)]); return atlasSyncKnobs(b); }
+        if (i < 4) { loadAtlasPreset(st, bank * 4 + i, b); at.put(b, st, true); flash(b, presetLabel(st)); return atlasSyncKnobs(b); }
+        if (i === 4 || i === 9) { loadAtlasPreset(st, (((bank + (i === 4 ? 1 : -1)) % 3) + 3) % 3 * 4 + ((st.pi | 0) % 4), b); at.put(b, st, true); flash(b, 'BANK ' + O.ATLAS_BANKS[Math.floor(st.pi / 4)]); return atlasSyncKnobs(b); }
         recallScene(st, i - 5); at.put(b, st, true); return atlasSyncKnobs(b);
       }
       // looper mode
@@ -306,13 +302,19 @@ function openBrowser(b, n, st) {
 }
 function globalRowValue(st, row) {
   const v = st.g[row.k];
-  if (row.exp) { const t = O.atlasExpTargets(st)[v]; return v < 0 || !t ? 'OFF' : t.name; }
+  if (row.exp) { const t = O.atlasExpTarget(st); return v === -1 ? 'OFF' : !t ? (v ? 'MISSING' : 'AUTO · NONE') : (t.auto ? 'AUTO · ' : '') + t.name; }
   if (row.opts) return row.opts[v | 0] ?? row.opts[0];
   return row.f(v ?? row.min);
 }
 function globalRowStep(st, row, dir) {
   const g = st.g;
-  if (row.exp) { const n = O.atlasExpTargets(st).length; g.exp2 = clamp((g.exp2 ?? -1) + dir, -1, n - 1); return; }
+  if (row.exp) {
+    const list = [undefined, -1, ...O.atlasExpTargets(st).map((t) => ({ s: t.s, p: t.p }))];
+    const cur = g.exp2 === undefined ? 0 : g.exp2 === -1 ? 1 : Math.max(0, list.findIndex((x) => x && typeof x === 'object' && x.s === g.exp2.s && x.p === g.exp2.p));
+    const nx = list[(cur + dir + list.length) % list.length];
+    if (nx === undefined) delete g.exp2; else g.exp2 = nx;
+    return;
+  }
   if (row.opts) { const n = row.opts.length; g[row.k] = (((g[row.k] | 0) + dir) % n + n) % n; return; }
   g[row.k] = clamp(Math.round(((g[row.k] ?? row.min) + dir * row.step) / row.step) * row.step, row.min, row.max);
 }
@@ -379,7 +381,7 @@ function atlasNav(b, n, st, key) {
       return;
     }
     case 'presets': {
-      if (key === 'enter') { loadAtlasPreset(st, n.pri); at.put(b, st, true); flash(b, presetLabel(st)); n.page = 'home'; return atlasSyncKnobs(b); }
+      if (key === 'enter') { loadAtlasPreset(st, n.pri, b); at.put(b, st, true); flash(b, presetLabel(st)); n.page = 'home'; return atlasSyncKnobs(b); }
       if (key === 'up' || key === 'down') n.pri = Math.floor(n.pri / 4) * 4 + ((n.pri % 4) + dir + 4) % 4;
       else n.pri = ((Math.floor(n.pri / 4) + dir + 3) % 3) * 4 + (n.pri % 4);
       return;
@@ -546,7 +548,7 @@ registerScreen('tz5-atlas', {
     const kk = n.cur + '|' + n.pp + '|' + (st.slots[n.cur] ? st.slots[n.cur].m : '');
     if (kk !== n.knobKey || ui._st !== s.lastSt) { s.lastSt = ui._st; atlasSyncKnobs(b); }
     const msgOn = n.msg && now < n.msgT;
-    const sig = [ui._st, n.page, n.cur, n.pp, n.bcat, n.bidx, n.bcol, n.mi, n.gs, n.gr, n.sci, n.pri, msgOn ? n.msg : '', ui.exp2 ?? 0].join('|');
+    const sig = [ui._st, n.page, n.cur, n.pp, n.bcat, n.bidx, n.bcol, n.mi, n.gs, n.gr, n.sci, n.pri, msgOn ? n.msg : '', ui.exp2 ?? 0, ui._e2 ?? 0].join('|');
     if (sig !== s.sig) {
       s.sig = sig;
       atlasDraw(s, st, n, th, ui);
@@ -683,11 +685,11 @@ function atlasDraw(s, st, n, th, ui) {
     setA(s.cursor, 'x', cx); setA(s.cursor, 'y', cy); setA(s.cursor, 'stroke', th.sel);
     const sl = st.slots[n.cur], m = sl && O.MODEL_BY_ID[sl.m];
     const np = atlasPages(st, n.cur);
-    setText(s.info, m ? `${n.cur}  ·  ${O.CAT_BY_ID[m.cat].name}  ·  ${m.name}${sl.on ? '' : '  (OFF)'}` : `${n.cur}  ·  EMPTY — ENTER TO ADD A MODEL`);
+    setText(s.info, m ? `${n.cur}  ·  ${O.CAT_BY_ID[m.cat].name}  ·  ${m.name}${sl.on ? '' : '  (OFF)'}` : `${n.cur}  ·  EMPTY, ENTER TO ADD A MODEL`);
     setA(s.info, 'fill', m ? O.CAT_BY_ID[m.cat].color : th.dim);
     setText(s.infoR, m ? `PAGE ${n.pp + 1}/${np}` : '');
     setA(s.infoR, 'fill', th.dim);
-    const g = st.g, targets = g.exp2 >= 0 ? O.atlasExpTargets(st) : [], tgt = targets[g.exp2 | 0];
+    const tgt = O.atlasExpTarget(st), e2on = (ui._e2 ?? 0) > 0.5;
     s.cells.forEach((c, i) => {
       const idx = n.pp * 6 + i, sp = m && m.knobs[idx];
       setA(c.bgc, 'fill', th.panel);
@@ -695,7 +697,7 @@ function atlasDraw(s, st, n, th, ui) {
       if (!sp) { setText(c.lb, ''); setText(c.vl, ''); setA(c.arc, 'd', ''); setA(c.num, 'fill', th.line); return; }
       let v = sl.v[idx] ?? sp.def;
       const isExp = tgt && tgt.s === n.cur && tgt.i === idx;
-      if (isExp) v = O.specTo(sp, ui.exp2 ?? 0);
+      if (isExp && e2on) v = O.specTo(sp, ui.exp2 ?? 0);
       setText(c.lb, sp.l + (isExp ? ' ◆' : ''));
       setA(c.lb, 'fill', isExp ? th.acc : th.dim);
       setText(c.vl, O.specFmt(sp, v));
@@ -707,7 +709,7 @@ function atlasDraw(s, st, n, th, ui) {
   } else if (pg === 'browser') {
     setText(s.bTitle, `MODEL BROWSER  ·  ${n.cur}`);
     setA(s.bTitle, 'fill', th.text);
-    const cats = [{ name: '— EMPTY SLOT —', color: th.dim }, ...O.ATLAS_CATS];
+    const cats = [{ name: '(EMPTY SLOT)', color: th.dim }, ...O.ATLAS_CATS];
     s.bCatRows.forEach((r, i) => {
       const c = cats[i];
       setText(r.t, c.name);
@@ -814,7 +816,7 @@ function atlasTuner(s, status, th) {
   if (key === s.tuKey) return;
   s.tuKey = key;
   const ok = note && Math.abs(c) < 3;
-  setText(s.tuNote, note || '—');
+  setText(s.tuNote, note || '-');
   setA(s.tuNote, 'fill', !note ? th.dim : ok ? '#46d36f' : th.text);
   const pos = Math.round(clamp(c / 50, -1, 1) * 10);
   s.tuTicks.forEach((r, i) => {
@@ -1561,7 +1563,7 @@ registerScreen('tz5-meter', {
       svg('path', { d: `M${x0.toFixed(2)} ${y0.toFixed(2)}L${x1.toFixed(2)} ${y1.toFixed(2)}`, stroke: c === 0 ? '#1f8a3a' : '#1d1712', 'stroke-width': c === 0 ? 1.6 : 0.8 }, s.tuG);
       if (c % 25 === 0 || c === 0) T(s.tuG, tx, ty, c === 0 ? '0' : (c > 0 ? '+' : '') + c, { size: 4.4, fill: c === 0 ? '#1f8a3a' : '#1d1712', anchor: 'middle', font: "'Barlow Condensed', sans-serif", weight: 700 });
     }
-    s.tuNote = T(s.tuG, cx, h - 21, '', { size: 9, fill: '#1d1712', anchor: 'middle', font: "'Oswald', sans-serif", weight: 700 });
+    s.tuNote = T(s.tuG, 7, h - 15, '', { size: 8, anchor: 'start', fill: '#1d1712', font: "'Oswald', sans-serif", weight: 700 });
     T(g, 5, 6, 'LOW FOUNDRY', { size: 3.6, fill: '#6b5b45', font: "'Inter', sans-serif", weight: 800, ls: 0.6 });
     s.mode = T(g, w - 5, 6, '', { size: 3.6, fill: '#6b5b45', font: "'Inter', sans-serif", weight: 800, anchor: 'end', ls: 0.6 });
     s.peak = svg('circle', { cx: w - 8, cy: h - 8, r: 2.4, fill: '#5a1a14' }, g);
@@ -1585,7 +1587,7 @@ registerScreen('tz5-meter', {
       const m = status && status.mt && status.mt.meter;
       const v = m && m[0] ? (n.peakMode ? m[0][0] : m[0][1]) : 0;
       const dbfs = 20 * Math.log10(Math.max(1e-6, v));
-      target = b.bypass ? 0 : vuPos(dbfs + 18 - (n.peakMode ? 6 : 0));
+      target = b.bypass ? 0 : vuPos(dbfs + 10 - (n.peakMode ? 6 : 0));
       if (m && m[0] && m[0][0] > 0.9) s.peakT = now;
     }
     s.pos += (target - s.pos) * (tuner ? 0.25 : target > s.pos ? 0.35 : 0.12);

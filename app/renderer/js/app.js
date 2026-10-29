@@ -12,7 +12,6 @@ import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlock
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu } from './menus.js';
 import { refreshPacks, renderLibrary, importDialog } from './pages/library.js';
-import { initTone3000, showTone3000 } from './pages/tone3000.js';
 import { renderSettings, sendEngineSettings, onPorts } from './pages/settings.js';
 import { renderCapture } from './pages/capture.js';
 import { renderPresets } from './pages/presets.js';
@@ -40,7 +39,6 @@ async function boot() {
   initEngineEvents();
   initGlobalKeys();
   initFileDrop();
-  initTone3000();
   initNodeMenu();
   // engine param registry (for the inspector's advanced section)
   window.tz.engine.list().then((reg) => (state.engineParams = reg || {}));
@@ -80,7 +78,7 @@ function initTabs() {
     if (name === 'plugins') import('./pages/plugins.js').then((m) => m.renderPlugins()).catch((e) => console.error(e));
     if (name === 'settings') renderSettings();
     if (name === 'capture') renderCapture();
-    if (name === 'tone3000') showTone3000();
+    if (name === 'pi') import('./pages/pi.js').then((m) => m.renderPi()).catch((e) => console.error(e));
     if (name === 'board') document.getElementById('board').focus({ preventScroll: true });
   };
   tabs.querySelectorAll('button').forEach((b) => (b.onclick = () => show(b.dataset.tab)));

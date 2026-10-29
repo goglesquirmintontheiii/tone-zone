@@ -119,7 +119,7 @@ export function renderLibrary() {
   el('button', { class: 'btn btn-accent', onclick: () => importFiles() }, act, '<i class="ic ic-import"></i>Import .nam / .wav / .zip');
   const packs = getPackDefs();
   if (!packs.length) {
-    el('div', { class: 'empty-state' }, page, '<i class="ic ic-lib big"></i><h3>No models yet</h3><p>Import NAM models (A1, A2 / slimmable, LSTM…) or IRs, drop files anywhere on the window, or grab them from the TONE3000 tab.</p>');
+    el('div', { class: 'empty-state' }, page, '<i class="ic ic-lib big"></i><h3>No models yet</h3><p>Import NAM models (A1, A2 / slimmable, LSTM…) or IRs, drop files anywhere on the window,.</p>');
     return;
   }
   for (const kind of ['nam', 'ir']) {
