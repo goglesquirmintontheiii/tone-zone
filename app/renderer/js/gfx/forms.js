@@ -9,6 +9,7 @@ import { installTz4Forms } from './forms-tz4.js';
 import { installTz3Forms } from './forms-tz3.js';
 import { installTz5Forms } from './forms-tz5.js';
 import { installTz6Forms } from './forms-tz6.js';
+import { installBoardForms } from './forms-board.js';
 import { cabGeom, MIC_SHORT, MIC_COLORS } from './cabgeom.js';
 import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, label, hex, textColorFor } from './controls.js';
 
@@ -991,3 +992,4 @@ installTz3Forms(registerForm);
 installTz4Forms(registerForm);
 installTz5Forms(registerForm);
 installTz6Forms(registerForm);
+installBoardForms(registerForm);

@@ -13,6 +13,7 @@ import { showMenu } from './menus.js';
 import { footCtrl } from './control.js';
 import { hooksFor } from './plugins.js';
 import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
+import { BOARD_SLOT } from './catalog/pedalboards.js';
 
 
 export class Editor {
@@ -21,6 +22,7 @@ export class Editor {
     this.board = document.getElementById('board');
     this.viewport = document.getElementById('viewport');
     this.layerNodes = document.getElementById('layerNodes');
+    this.layerBoards = document.getElementById('layerBoards'); // pedalboards, under everything
     this.layerCables = document.getElementById('layerCables');
     this.layerShadows = document.getElementById('layerCableShadows');
     this.layerPlugs = document.getElementById('layerPlugs');
@@ -199,6 +201,7 @@ export class Editor {
   // ------------------------------------------------------------ building
   rebuild(keepView) {
     this.layerNodes.innerHTML = '';
+    this.layerBoards.innerHTML = '';
     this.views.clear();
     // draw order: big things (cabs/amps) behind pedals
     const order = [...state.preset.blocks].sort((a, b) => zOrder(a) - zOrder(b));
@@ -246,7 +249,7 @@ export class Editor {
   addView(b, animate) {
     const d = getDef(b.type);
     if (!d) return;
-    const v = new NodeView(b, this.layerNodes);
+    const v = new NodeView(b, d.pedalboard ? this.layerBoards : this.layerNodes);
     this.views.set(b.id, v);
     v.setBypassVisual();
     if (animate) {
@@ -256,7 +259,7 @@ export class Editor {
   }
   // turn blocks 90 degrees around their own centre
   rotateBlocks(ids, delta = 90) {
-    ids = ids.filter((id) => !id.startsWith('__') && this.views.has(id));
+    ids = ids.filter((id) => !id.startsWith('__') && this.views.has(id) && !this.views.get(id).def.pedalboard);
     if (!ids.length) return;
     commitNow();
     for (const id of ids) {
@@ -403,10 +406,57 @@ export class Editor {
       const hit = this.coupleSnap(new Set([b.id]));
       const v = this.views.get(b.id);
       if (hit && v) v.setPosition(v.block.x + hit.ox, v.block.y + hit.oy);
+      else this.boardSnap([b.id], b.id);
       this.coupleLinks(new Set([b.id]));
       this.select([b.id]);
     }
     return b;
+  }
+
+  // ------------------------------------------------------------ pedalboards
+  boardAt(x, y) {
+    let best = null;
+    for (const v of this.views.values()) {
+      if (!v.def.pedalboard) continue;
+      const b = v.block;
+      if (x >= b.x && x <= b.x + v.w && y >= b.y && y <= b.y + v.h) best = v; // last one is drawn on top
+    }
+    return best;
+  }
+  // blocks whose centre is on this board
+  boardMembers(id) {
+    const bv = this.views.get(id);
+    if (!bv || !bv.def.pedalboard) return [];
+    const out = [];
+    for (const v of this.views.values()) {
+      if (v === bv || v.def.pedalboard || v.block.id.startsWith('__')) continue;
+      const cx = v.block.x + v.w / 2, cy = v.block.y + v.h / 2;
+      if (this.boardAt(cx, cy) === bv) out.push(v.block.id);
+    }
+    return out;
+  }
+  // drop on a board: put the grabbed block in the nearest free slot and move the rest of the group with it
+  boardSnap(ids, grab) {
+    const gv = this.views.get(grab);
+    if (!gv || gv.def.pedalboard || gv.def.coupler || ids.some((i) => this.views.get(i)?.def.pedalboard)) return;
+    const bv = this.boardAt(gv.block.x + gv.w / 2, gv.block.y + gv.h / 2);
+    if (!bv || !bv.slots) return;
+    const { cols, rows } = bv.def.pedalboard, S = BOARD_SLOT;
+    const n = Math.min(cols, Math.ceil((gv.w + 6) / S.w)), m = Math.min(rows, Math.ceil((gv.h + 6) / S.h));
+    const others = this.boardMembers(bv.block.id).filter((i) => !ids.includes(i)).map((i) => this.views.get(i));
+    const hits = (x, y) => others.some((o) => x < o.block.x + o.w - 4 && x + gv.w > o.block.x + 4 && y < o.block.y + o.h - 4 && y + gv.h > o.block.y + 4);
+    let best = null;
+    for (let r = 0; r <= rows - m; r++)
+      for (let c = 0; c <= cols - n; c++) {
+        const x = Math.round(bv.block.x + S.padX + c * S.w + (n * S.w - gv.w) / 2), y = Math.round(bv.block.y + S.padY + r * S.h + (m * S.h - gv.h) / 2);
+        const d = Math.hypot(x - gv.block.x, y - gv.block.y) + (hits(x, y) ? 1e6 : 0);
+        if (!best || d < best.d) best = { d, x, y };
+      }
+    if (!best) return;
+    const dx = best.x - gv.block.x, dy = best.y - gv.block.y;
+    if (!dx && !dy) return;
+    for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x + dx, v.block.y + dy); }
+    this.updateCablesFor(ids);
   }
 
   // ------------------------------------------------------------ male couplers
@@ -564,12 +614,14 @@ export class Editor {
       const id = nodeEl.dataset.node;
       if (!state.selection.has(id)) this.select([id], e.shiftKey || e.ctrlKey);
       const ids = [...state.selection];
+      // a pedalboard takes the pedals sitting on it along
+      for (const i of [...ids]) for (const m of this.boardMembers(i)) if (!ids.includes(m)) ids.push(m);
       const starts = ids.map((i) => ({ id: i, x: blockById(i).x, y: blockById(i).y }));
       this.drag = { kind: 'node', sx: w.x, sy: w.y, starts, moved: false, grab: id };
       // raise
       for (const i of ids) {
         const v = this.views.get(i);
-        if (v) this.layerNodes.appendChild(v.g);
+        if (v && !v.def.pedalboard) v.layer.appendChild(v.g);
       }
       this.raiseCouplers();
       return;
@@ -1145,6 +1197,7 @@ export class Editor {
     if (d.kind === 'cable') this.finishCableDrag();
     else if (d.kind === 'ctl') this.endControl(e);
     else if (d.kind === 'node' && d.moved) {
+      this.boardSnap(d.starts.map((s) => s.id), d.grab);
       this.coupleLinks(new Set(d.starts.map((s) => s.id)));
       markDirty();
     }

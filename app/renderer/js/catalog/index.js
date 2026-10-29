@@ -4,6 +4,7 @@ import { originals2 } from './originals2.js';
 import { originals3 } from './originals3.js';
 import { originals4 } from './originals4.js';
 import { originals5 } from './originals5.js';
+import { pedalboards } from './pedalboards.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
 export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
@@ -34,7 +35,7 @@ function finalize(d) {
   return d;
 }
 
-[...originals, ...originals2, ...originals3, ...originals4, ...originals5, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...originals2, ...originals3, ...originals4, ...originals5, ...pedalboards, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
 // ---- plugin registration
 export function registerPluginDefs(pluginId, defs, defaults = {}) {
@@ -89,7 +90,7 @@ export function jackChannels(d, key) {
   return STEREO_KINDS.has(jackKindOf(d, key)) ? 2 : 1;
 }
 
-export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility'];
+export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility', 'Pedalboard'];
 export function kindOf(d) {
   if (d.kind) return d.kind;
   if (d.cat === 'Amp' || d.cat === 'Bass Amp') return 'Amp';

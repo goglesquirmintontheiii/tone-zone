@@ -1,0 +1,65 @@
+// Pedalboards: pedals dropped on a board snap into slots, dragging the board moves its pedals, name and colours.
+const { _electron: electron } = require('playwright');
+const path = require('path');
+const S = process.argv[2] || '/tmp';
+(async () => {
+  const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'] });
+  const win = await app.firstWindow();
+  const errs = []; win.on('pageerror', (e) => errs.push(e.message)); win.on('console', (m) => m.type() === 'error' && !/plugin /.test(m.text()) && errs.push(m.text()));
+  await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
+  const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) errs.push(m); };
+
+  const r = await win.evaluate(async () => {
+    const st = await import('./js/state.js');
+    st.loadPreset(st.newPreset('boards'), null);
+    const E = window.__tz.editor;
+    E.rebuild();
+    const pb = E.addAt('pb.small', 0, 0, false);
+    const bv = E.views.get(pb.id);
+    // drop two pedals roughly over slots 1 and 6
+    const a = E.addAt('ib.ts9', pb.x + 260, pb.y + 150, true);
+    const b = E.addAt('bx.ds1', pb.x + 400, pb.y + 430, true);
+    const va = E.views.get(a.id), vb = E.views.get(b.id);
+    const inSlot = (v) => bv.slots.some((s) => Math.abs(v.block.x + v.w / 2 - (pb.x + s.x + 80)) < 1 && Math.abs(v.block.y + v.h / 2 - (pb.y + s.y + 135)) < 1);
+    E.view = { x: 60, y: 80, z: 0.8 }; E.applyView();
+    return { pb: pb.id, a: a.id, b: b.id, aSlot: inSlot(va), bSlot: inSlot(vb), members: E.boardMembers(pb.id).length, w: bv.w, h: bv.h, ax: a.x, ay: a.y };
+  });
+  ok(r.aSlot && r.bSlot, 'dropped pedals snapped into slots');
+  ok(r.members === 2, `board has ${r.members} pedals`);
+  await win.waitForTimeout(300);
+  // drag the board by its frame edge
+  const p = await win.evaluate((id) => {
+    const E = window.__tz.editor, v = E.views.get(id), br = E.board.getBoundingClientRect();
+    return { x: br.left + E.view.x + (v.block.x + 12) * E.view.z, y: br.top + E.view.y + (v.block.y + v.h / 2) * E.view.z };
+  }, r.pb);
+  await win.mouse.move(p.x, p.y); await win.mouse.down(); await win.mouse.move(p.x + 120, p.y + 60, { steps: 10 }); await win.mouse.up();
+  await win.waitForTimeout(300);
+  const moved = await win.evaluate(({ a }) => { const b = window.__tz.state.preset.blocks.find((x) => x.id === a); return { x: b.x, y: b.y }; }, r);
+  ok(Math.abs(moved.x - r.ax - 150) < 15 && Math.abs(moved.y - r.ay - 75) < 15, `pedal moved with the board (${moved.x - r.ax}, ${moved.y - r.ay})`);
+  // name and colours
+  await win.evaluate(async (id) => {
+    const st = await import('./js/state.js');
+    st.setParam(id, 'name', 'Main Board');
+    st.setParam(id, 'velcro', 2);
+    st.setParam(id, 'jacket', '#9aa0a8');
+  }, r.pb);
+  await win.waitForTimeout(400);
+  const nameShown = await win.evaluate((id) => [...document.querySelectorAll(`[data-node="${id}"] text`)].some((t) => t.textContent === 'MAIN BOARD'), r.pb);
+  ok(nameShown, 'name shown above the board');
+  await win.screenshot({ path: S + '/pedalboard.png' });
+  // all six sizes
+  await win.evaluate(async () => {
+    const st = await import('./js/state.js');
+    st.loadPreset(st.newPreset('sizes'), null);
+    const E = window.__tz.editor;
+    E.rebuild();
+    let y = 0;
+    for (const k of ['tiny', 'small', 'medium', 'large', 'xl', 'xlmax']) { const b = E.addAt('pb.' + k, 0, y, false); y += E.views.get(b.id).h + 80; }
+    E.fit(false);
+  });
+  await win.waitForTimeout(2500);
+  await win.screenshot({ path: S + '/pedalboard-sizes.png' });
+  console.log(errs.length ? errs.join('\n') : 'no errors');
+  await app.close();
+})();

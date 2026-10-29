@@ -296,7 +296,7 @@ function renderIO(dir, fromPorts = false) {
   root.classList.remove('collapsed');
   body.innerHTML = '';
   const t = el('div', { class: 'insp-title' }, body);
-  el('div', { class: 'swatch', style: { background: 'linear-gradient(135deg,#2a3040,#161a22)' } }, t);
+  el('div', { class: 'swatch', style: { background: 'linear-gradient(135deg, var(--bg4), var(--bg1))' } }, t);
   el('div', {}, t, `<h3>${dir === 'in' ? 'Audio In' : 'Audio Out'}</h3><p>${dir === 'in' ? 'Inputs from PipeWire into the board' : 'Board outputs to PipeWire'}</p>`);
   const conf = ioConf(dir);
   const snap = portsSnapshot();

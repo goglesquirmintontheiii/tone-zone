@@ -10,6 +10,9 @@ const path = require('path');
   const tabs = await win.evaluate(() => [...document.querySelectorAll('#tabs [data-tab]')].map((b) => b.dataset.tab));
   console.log('tabs', tabs.join(' '));
   for (const t of tabs) { await win.click(`#tabs [data-tab="${t}"]`); await win.waitForTimeout(1200); }
+  // tabs that build their page on first open
+  if (!tabs.includes('factory')) errs.push('factory tab missing');
+  else if (!(await win.evaluate(() => !!document.querySelector('#view-factory .fz-stage [data-body]')))) errs.push('factory tab did not render a pedal');
   await win.click('#tabs [data-tab="board"]');
   console.log(errs.length ? errs.join('\n') : 'no errors');
   await app.close();

@@ -36,7 +36,7 @@ const KNOB_STYLES = [
   ['boss', 'Skirted'], ['mxr', 'Ribbed'], ['strymon', 'Soft touch'], ['chrome', 'Chrome'], ['fender', 'Chrome ring'],
   ['marshall', 'Gold cap'], ['white', 'White'], ['red', 'Red'], ['cream', 'Cream'], ['chicken', 'Chicken head'], ['vox', 'Pointer'],
 ];
-const KNOB_SIZES = [['S', 5.5], ['M', 8], ['L', 10.5], ['XL', 13]];
+const KNOB_SIZES = [[5.5, 'S'], [8, 'M'], [10.5, 'L'], [13, 'XL']];
 const SCREENS = {
   oled: { name: 'OLED', bg: '#04070a', fg: '#7fe8ff' },
   lcd: { name: 'LCD', bg: '#9fbf3a', fg: '#1d2a08' },
@@ -314,7 +314,7 @@ const TEMPLATES = [
       sub: txt({ id: 'sub', text: 'Classic Drive', font: FONTS[3][0], x: 33, y: 71, size: 5, weight: 700, ls: 0.2 }),
       art: [art('rect', 33, 66, 66, 22, '#2b7444', { opacity: 0.9 })],
       ctls: [knob(13, 22, 'LEVEL'), knob(33, 22, 'TONE'), knob(53, 22, 'DRIVE'), led(33, 44, '#ff2a1a'), stomp(33, 100)],
-      jacks: [jack('in', 'right', 0.3), jack('out', 'left', 0.3), jack('power', 'top', 0.5)],
+      jacks: [jack('in', 'right', 0.42), jack('out', 'left', 0.42), jack('power', 'top', 0.5)],
     }),
   },
   {
@@ -373,8 +373,8 @@ const TEMPLATES = [
       name: 'Synth Box',
       enc: { size: '1590XX', w: 121, h: 145, shape: 'box', radius: 6, finish: 'gradient', color: '#5a3fb0', color2: '#d6487e', angle: 120, flake: 0.5 },
       labels: { font: FONTS[4][0], size: 3.2, color: '#ffffff' },
-      title: txt({ id: 'title', text: 'SYNTH BOX', font: FONTS[4][0], weight: 400, x: 60.5, y: 103, size: 8, color: '#ffffff', ls: 1.5 }),
-      art: [art('wave', 60.5, 104, 150, 18, '#ffffff', { opacity: 0.14, rot: -8 }), art('dots', 100, 120, 26, 26, '#ffffff', { opacity: 0.18 })],
+      title: txt({ id: 'title', text: 'SYNTH BOX', font: FONTS[4][0], weight: 400, x: 60.5, y: 108, size: 8, color: '#ffffff', ls: 1.5 }),
+      art: [art('wave', 60.5, 109, 150, 18, '#ffffff', { opacity: 0.14, rot: -8 }), art('dots', 100, 120, 26, 26, '#ffffff', { opacity: 0.18 })],
       circuit: { type: 'synth', blocks: STACKS.synth.map((k) => ({ id: uid('b'), kind: k })) },
       ctls: [
         { id: uid('s'), kind: 'screen', x: 60.5, y: 25, w: 50, h: 22, type: 'tft', text: 'SAW 440Hz\nCUT 62%', label: '', labelPos: 'none', param: '' },
@@ -382,10 +382,10 @@ const TEMPLATES = [
         led(104, 25, '#b45cff', { label: 'GATE', labelPos: 'above' }),
         knob(19, 58, 'CUTOFF', { style: 'chrome', ticks: true, param: 'Cutoff' }), knob(46, 58, 'RES', { style: 'chrome', ticks: true, param: 'Resonance' }),
         knob(75, 58, 'GLIDE', { style: 'chrome', ticks: true, param: 'Glide' }), knob(102, 58, 'MIX', { style: 'chrome', ticks: true, param: 'Mix' }),
-        { id: uid('d'), kind: 'dip', x: 28, y: 84, n: 4, bits: [1, 0, 1, 1], color: '#c8102e', label: 'MODE', labelPos: 'below', param: 'Preset' },
-        { id: uid('b'), kind: 'button', x: 72, y: 84, r: 4, shape: 'round', color: '#2a2c31', led: true, ledColor: '#3fa8ff', on: true, label: 'OCT-', labelPos: 'below', param: '' },
-        { id: uid('b'), kind: 'button', x: 96, y: 84, r: 4, shape: 'round', color: '#2a2c31', led: true, ledColor: '#3fa8ff', on: false, label: 'OCT+', labelPos: 'below', param: '' },
-        stomp(32, 124, { label: 'ON', labelPos: 'above' }), stomp(89, 124, { label: 'HOLD', labelPos: 'above', param: 'Hold' }),
+        { id: uid('d'), kind: 'dip', x: 28, y: 90, n: 4, bits: [1, 0, 1, 1], color: '#c8102e', label: 'MODE', labelPos: 'below', param: 'Preset' },
+        { id: uid('b'), kind: 'button', x: 72, y: 92, r: 4, shape: 'round', color: '#2a2c31', led: true, ledColor: '#3fa8ff', on: true, label: 'OCT-', labelPos: 'below', param: '' },
+        { id: uid('b'), kind: 'button', x: 96, y: 92, r: 4, shape: 'round', color: '#2a2c31', led: true, ledColor: '#3fa8ff', on: false, label: 'OCT+', labelPos: 'below', param: '' },
+        stomp(32, 124, { label: 'ON', labelPos: 'below' }), stomp(89, 124, { label: 'HOLD', labelPos: 'below', param: 'Hold' }),
       ],
       jacks: [jack('in', 'right', 0.3), jack('out', 'left', 0.3), jack('exp', 'top', 0.25), jack('power', 'top', 0.75)],
     }),
@@ -743,14 +743,22 @@ function freeSpot(c) {
   const W = D.enc.w, H = D.enc.h;
   const r = ctlRadius(c);
   let best = null;
-  for (let y = r + 4; y <= H - r - 4; y += 2)
-    for (let x = r + 3; x <= W - r - 3; x += 2) {
-      const ok = D.ctls.every((o) => Math.hypot(o.x - x, o.y - y) > r + ctlRadius(o) + 3);
-      if (!ok) continue;
-      const score = Math.abs(x - W / 2) * 0.6 + Math.abs(y - H * 0.4);
-      if (!best || score < best.score) best = { x, y, score };
-    }
-  return best || { x: W / 2, y: H / 2 };
+  // first try to keep clear of the printed text, then allow overlapping it
+  for (const avoidText of [true, false]) {
+    if (best) break;
+    for (let y = r + 4; y <= H - r - 4; y += 2)
+      for (let x = r + 3; x <= W - r - 3; x += 2) {
+        const ok = D.ctls.every((o) => o.hidden || Math.hypot(o.x - x, o.y - y) > r + ctlRadius(o) + 3);
+        if (!ok) continue;
+        // keep clear of the printed name and subtitle
+        const onText = [D.title, D.sub].some((t) => !t.hidden && t.text && Math.abs(y - t.y) < t.size * 0.7 + r && Math.abs(x - t.x) < (t.text.length * t.size * 0.55) / 2 + r);
+        if (avoidText && onText) continue;
+        const score = Math.abs(x - W / 2) * 0.6 + Math.abs(y - H * 0.4);
+        if (!best || score < best.score) best = { x, y, score };
+      }
+  }
+  const p = best || { x: W / 2, y: H / 2 };
+  return { x: snap(p.x), y: snap(p.y) };
 }
 function jackAt(p) {
   const W = D.enc.w, H = D.enc.h;
@@ -766,7 +774,7 @@ function addPart(kind, payload, at) {
   if (kind === 'art') {
     const big = payload === 'stripe' || payload === 'stripes' || payload === 'wave';
     const s = Math.min(D.enc.w, D.enc.h) * 0.4;
-    item = art(payload, at ? at.x : D.enc.w / 2, at ? at.y : D.enc.h / 2, big ? D.enc.w : s, big ? s * 0.3 : s, payload === 'dots' ? '#ffffff' : '#f2c230', { opacity: payload === 'dots' ? 0.4 : 1 });
+    item = art(payload, at ? at.x : D.enc.w / 2, at ? at.y : D.enc.h / 2, big ? D.enc.w : s, big ? Math.max(8, s * 0.45) : s, payload === 'dots' ? '#ffffff' : '#f2c230', { opacity: payload === 'dots' ? 0.4 : 1 });
     D.art.push(item);
   } else if (kind === 'jack') {
     const used = D.jacks.filter((j) => j.edge === JACKS[payload].edge).length;
@@ -836,7 +844,7 @@ function toPedal(e) {
 function applyView() {
   ui.viewG.setAttribute('transform', `translate(${r1(view.x)},${r1(view.y)}) scale(${view.z.toFixed(4)})`);
   ui.zoomVal.textContent = Math.round((view.z / 4) * 100) + '%';
-  ui.stageWrap.style.setProperty('--fz-z', view.z);
+  ui.stageWrap.classList.toggle('touched', view.touched);
 }
 function fit() {
   if (!ui.stage) return;
@@ -1514,14 +1522,19 @@ function renderParts() {
   el('p', { class: 'fz-note' }, host).textContent = 'Click a part to add it, or drag it onto the pedal. Hold Alt while dragging to skip snapping.';
 }
 
-const LAYER_ICONS = { enc: 'M4 3h16v18H4z', text: 'M5 6h14M12 6v13', art: 'M12 3l9 16H3z', jack: 'M4 12h9M13 8v8M16 10h4v4h-4z', ctl: 'M12 4a8 8 0 1 0 0.01 0M12 12V6' };
+const LAYER_ICONS = {
+  enc: 'M5 3h14v18H5z', text: 'M5 6h14M12 6v13', art: 'M12 3l9 16H3z', jack: 'M4 12h9M13 8v8M16 10h4v4h-4z',
+  knob: 'M12 4a8 8 0 1 0 0.01 0M12 12V6', toggle: 'M12 21v-6M9 15h6M12 15l3-11', button: 'M12 7a5 5 0 1 0 0.01 0M5 21h14',
+  foot: 'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9zM12 9a3 3 0 1 0 0.01 0', led: 'M12 8a4 4 0 1 0 0.01 0M12 2v2M4 12H2M22 12h-2',
+  screen: 'M3 6h18v12H3zM7 10h6M7 14h3', dip: 'M3 7h18v10H3zM7 10v4M12 10v4M17 10v4',
+};
 function layerRow(parent, id, f, o = {}) {
   const it = f.item;
   const r = el('div', { class: 'fz-layer' + (sel === id || (id === 'enc' && !sel) ? ' on' : '') + (it.hidden ? ' hidden' : ''), 'data-layer': id }, parent);
   const ic = svg('svg', { viewBox: '0 0 24 24', class: 'fz-lic' }, r);
-  svg('path', { d: LAYER_ICONS[f.kind] }, ic);
-  if (f.kind === 'art') ic.style.color = it.color;
+  svg('path', { d: LAYER_ICONS[f.kind === 'ctl' ? it.kind : f.kind] }, ic);
   el('span', { class: 'n' }, r).textContent = o.name || itemName(f);
+  if (f.kind === 'art') el('i', { class: 'fz-ldot', style: { background: it.color } }, r);
   if (o.order) {
     el('button', { class: 'fz-lbtn', title: 'Bring forward', onclick: (e) => { e.stopPropagation(); moveOrder(id, 1); } }, r, '<i class="ic fz-ic-up"></i>');
     el('button', { class: 'fz-lbtn', title: 'Send back', onclick: (e) => { e.stopPropagation(); moveOrder(id, -1); } }, r, '<i class="ic ic-down"></i>');

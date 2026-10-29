@@ -95,6 +95,7 @@ export class NodeView {
       this.block._h = Math.round(res.h);
       this.block._ports = [rdef.ports.ins.length, rdef.ports.outs.length];
     }
+    this.slots = res.slots || null;
     this.jacks = this.rot ? res.jacks.map((j) => rotJack(j, this.rot, res.w, res.h)) : res.jacks;
     this.views = ctx.views;
     this.ioMeters = ctx.ioMeters;

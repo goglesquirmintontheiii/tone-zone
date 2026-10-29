@@ -55,7 +55,8 @@ async function thumbPNG(layout) {
   }
   const raw = Math.max(...boxes.map((b) => Math.max(b.w, b.h))) * sc * dpr;
   const px = raw < 80 ? 64 : raw < 112 ? 96 : 128; // fixed sizes so presets can share pedal images
-  for (const b of boxes) {
+  // pedalboards first so the pedals sit on top
+  for (const b of [...boxes].sort((p, q) => !!q.d?.pedalboard - !!p.d?.pedalboard)) {
     cx.globalAlpha = b.byp ? 0.5 : 1;
     if (!b.d || b.d.missing) {
       cx.setLineDash([4, 3]);

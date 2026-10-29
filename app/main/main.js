@@ -24,6 +24,9 @@ function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
+// window colour before the page paints, so a light theme doesn't flash dark
+const themeBg = () => ({ light: '#eceff3', mono: '#0b0b0b' }[settings.theme] || '#0d0f14');
+
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   win = new BrowserWindow({
@@ -31,7 +34,7 @@ function createWindow() {
     height: Math.min(1040, height),
     minWidth: 1100,
     minHeight: 680,
-    backgroundColor: '#0d0f14',
+    backgroundColor: themeBg(),
     title: 'Tone Zone',
     icon: path.join(APP_ROOT, 'build', 'icon.png'),
     show: false,
@@ -51,7 +54,7 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url, frameName }) => {
     // pop-out panels (blocks browser / inspector) share the renderer's JS context
     if (url === 'about:blank' && /^tz-panel-/.test(frameName))
-      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0f1218', icon: path.join(APP_ROOT, 'build/icon.png'), minWidth: 280, minHeight: 300, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
+      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: themeBg(), icon: path.join(APP_ROOT, 'build/icon.png'), minWidth: 280, minHeight: 300, webPreferences: { sandbox: false, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } } };
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });

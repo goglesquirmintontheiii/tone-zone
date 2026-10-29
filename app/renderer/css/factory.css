@@ -71,7 +71,8 @@
 .fz-zoom { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-radius: 12px; background: var(--toolbar-bg); backdrop-filter: blur(12px); border: 1px solid var(--line2); box-shadow: var(--shadow); }
 .fz-zoomval { font: 12px 'Share Tech Mono', monospace; color: var(--text2); min-width: 46px; text-align: center; }
 .fz-status { position: absolute; left: 14px; bottom: 18px; font-size: 11.5px; color: var(--text2); padding: 5px 10px; border-radius: 8px; background: var(--toolbar-bg); border: 1px solid var(--line); max-width: calc(50% - 120px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fz-hint { position: absolute; left: 14px; top: 12px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+.fz-hint { position: absolute; left: 14px; top: 12px; font-size: 11.5px; color: var(--muted); pointer-events: none; transition: opacity 0.3s; }
+.fz-stagewrap.touched .fz-hint { opacity: 0; }
 
 /* inspector */
 .fz-insp { flex: 1; overflow-y: auto; padding: 14px 14px 30px; }
@@ -92,7 +93,8 @@ textarea.fz-text { resize: vertical; font-family: 'Share Tech Mono', monospace; 
 .fz-xy em { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--muted); }
 .fz-seg { flex-wrap: wrap; }
 .fz-seg button { padding: 4px 8px; font-size: 11.5px; }
-.fz-wrap { width: 100%; margin-bottom: 10px; }
+.fz-wrap { width: 100%; margin-bottom: 10px; display: grid; grid-template-columns: repeat(3, 1fr); }
+.fz-wrap button { text-align: center; }
 .fz-swatches { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .fz-swatches i { width: 19px; height: 19px; border-radius: 6px; cursor: pointer; box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.3), inset 0 2px 3px rgba(255, 255, 255, 0.2), 0 0 0 1px var(--line2); outline: 2px solid transparent; outline-offset: 1px; transition: transform 0.12s, outline-color 0.12s; }
 .fz-swatches i:hover { transform: scale(1.1); }
@@ -134,12 +136,14 @@ textarea.fz-text { resize: vertical; font-family: 'Share Tech Mono', monospace; 
 .fz-layer .n { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fz-lic { width: 15px; height: 15px; flex: none; color: var(--text2); }
 .fz-lic path { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.fz-lbtn { all: unset; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; cursor: pointer; color: var(--muted); opacity: 0; transition: opacity 0.12s, background 0.12s, color 0.12s; }
+.fz-lbtn { all: unset; width: 22px; height: 22px; display: none; place-items: center; border-radius: 6px; cursor: pointer; color: var(--muted); opacity: 0; transition: opacity 0.12s, background 0.12s, color 0.12s; }
 .fz-lbtn .ic { width: 13px; height: 13px; }
+.fz-layer:hover .fz-lbtn, .fz-lbtn.off, .fz-lbtn.act, .fz-block .fz-lbtn { display: grid; }
 .fz-layer:hover .fz-lbtn, .fz-lbtn.off, .fz-lbtn.act { opacity: 1; }
 .fz-lbtn:hover { background: rgba(var(--fg-rgb), 0.08); color: var(--text); }
 .fz-lbtn.off { color: var(--bad); }
 .fz-lbtn.act { color: var(--accent); }
+.fz-ldot { width: 10px; height: 10px; border-radius: 3px; flex: none; box-shadow: 0 0 0 1px var(--line2); }
 .fz-lempty { padding: 4px 10px 6px; font-size: 11.5px; color: var(--muted); }
 
 /* circuit placeholder */

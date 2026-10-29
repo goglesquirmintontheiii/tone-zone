@@ -50,6 +50,15 @@ export function installDefs(defs) {
   // ---- brushed metal
   const br = svg('pattern', { id: 'p-brushed', width: 200, height: 6, patternUnits: 'userSpaceOnUse' }, defs);
   for (let i = 0; i < 6; i++) svg('rect', { y: i, width: 200, height: 1, fill: i % 2 ? '#fff' : '#000', opacity: [0.04, 0.03, 0.06, 0.02, 0.05, 0.03][i] }, br);
+  // ---- pedalboard velcro (hook side: fine speckle) and frame sheen
+  const velcro = (id, base, a, b, op = 1) => {
+    const v = svg('pattern', { id, width: 5, height: 5, patternUnits: 'userSpaceOnUse' }, defs);
+    svg('rect', { width: 5, height: 5, fill: base, 'fill-opacity': op }, v);
+    for (const [x, y, c] of [[0.6, 0.8, a], [3.1, 1.6, b], [1.8, 3.4, a], [4.2, 4.1, b], [2.6, 0.2, b], [0.3, 2.6, b]]) svg('rect', { x, y, width: 0.9, height: 0.9, fill: c, 'fill-opacity': op }, v);
+  };
+  velcro('p-velcro-black', '#141416', '#2a2b2f', '#060607');
+  velcro('p-velcro-white', '#e7e5df', '#ffffff', '#bdb9b0');
+  velcro('p-velcro-clear', '#d6e2ee', '#ffffff', '#9fb0c2', 0.32);
   // ---- grille cloths
   const grille = (id, base, a, b) => {
     const p = svg('pattern', { id, width: 6, height: 6, patternUnits: 'userSpaceOnUse' }, defs);
@@ -129,5 +138,6 @@ export function installDefs(defs) {
   lin(defs, 'g-tubePlate', [[0, '#25272b'], [0.28, '#6e737b'], [0.5, '#3b3e44'], [0.76, '#868c94'], [1, '#26282c']], 0, 0, 1, 0);
   lin(defs, 'g-tubeGetter', [[0, '#e3e7ec'], [0.35, '#8c939b'], [0.7, '#3d4147', 0.85], [1, '#3d4147', 0]]);
   lin(defs, 'g-tubeBase', [[0, '#120d0a'], [0.3, '#4d3d2e'], [0.55, '#2b221b'], [1, '#100b08']], 0, 0, 1, 0);
+  lin(defs, 'g-boardSheen', [[0, '#fff', 0.16], [0.45, '#fff', 0.02], [0.55, '#000', 0.04], [1, '#000', 0.22]]);
   rad(defs, 'g-tubeHalo', [[0, '#ffd78a', 0.95], [0.45, '#ff9636', 0.5], [1, '#ff6a1a', 0]]);
 }
