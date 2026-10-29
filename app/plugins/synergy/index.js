@@ -111,7 +111,7 @@ export default function register(tz) {
     formKit.tzBadge(g, 40, h - 14, '#c4c8ce', 4);
     const theme = { text: txt, knob: d.knob || 'mxr', labelSize: 5 };
     formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 52, gap: 30, flip: ctx.flip }) };
+    return { w, h, theme: Object.assign({}, theme, { jackText: '#c4c8ce' }), jacks: formKit.jacksSide(d, w, { y0: 148, gap: 30, flip: ctx.flip }) };
   });
   const SYN = (o) => def(Object.assign({ cat: 'Preamp', form: 'synergy-mod', algo: 'amp', cost: 1.6, color: '#2a2c30', typeName: '2-channel module' }, o, {
     opts: { preamp: true, models: o.models },

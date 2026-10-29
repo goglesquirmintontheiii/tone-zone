@@ -77,24 +77,28 @@ export default function register(tz) {
   const radio = (id) => tz.blockHooks(id, { foot(view, ctl, down) { if (ctl.chan === undefined) return false; if (down) tz.app.setParam(view.block.id, 'chsel', ctl.chan); return true; } });
   tz.addForm('twonotes-le', (ctx, d) => {
     const { svg, label, formKit } = tz.gfx;
-    const g = ctx.g, w = 330, h = 232, acc = d.accent || '#d8352e', txt = d.text || '#f2f2f2';
+    const g = ctx.g, w = 330, h = 240, acc = d.accent || '#d8352e', txt = d.text || '#f2f2f2';
     formKit.body(g, w, h, d.color || '#1b1c1f', { rx: 10, brushed: true });
-    svg('rect', { x: 8, y: 8, width: w - 16, height: 116, rx: 6, fill: acc }, g);
-    svg('rect', { x: 8, y: 8, width: w - 16, height: 116, rx: 6, fill: 'url(#g-shadeV)', 'fill-opacity': 0.35 }, g);
-    for (const x of [112, 268]) svg('path', { d: `M${x} 16 V116`, stroke: '#000', 'stroke-opacity': 0.35, 'stroke-width': 1.2 }, g);
+    svg('rect', { x: 8, y: 20, width: w - 16, height: 112, rx: 6, fill: acc }, g);
+    svg('rect', { x: 8, y: 20, width: w - 16, height: 112, rx: 6, fill: 'url(#g-shadeV)', 'fill-opacity': 0.35 }, g);
+    for (const x of [112, 268]) svg('path', { d: `M${x} 28 V124`, stroke: '#000', 'stroke-opacity': 0.35, 'stroke-width': 1.2 }, g);
     const dt = d.deckText || '#111';
-    label(g, 60, 20, 'CHANNEL A', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
-    label(g, 190, 20, 'CHANNEL B', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
-    label(g, 290, 20, 'FUSION', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
+    label(g, 60, 32, 'CHANNEL A', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
+    label(g, 190, 32, 'CHANNEL B', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
+    label(g, 290, 32, 'FUSION', { size: 5.6, fill: dt, weight: 800, ls: 1.6 });
     // small preset display
-    svg('rect', { x: 26, y: 134, width: 44, height: 20, rx: 3, fill: '#050607', stroke: '#444' }, g);
-    label(g, 48, 148, d.screenText || '01', { size: 10, fill: acc, font: "'Share Tech Mono', monospace", weight: 700 });
-    label(g, w / 2, 146, d.logo || d.name, { size: 17, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.6 });
-    label(g, w / 2, 158, (d.typeName || '').toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.7 });
+    svg('rect', { x: 26, y: 142, width: 44, height: 20, rx: 3, fill: '#050607', stroke: '#444' }, g);
+    label(g, 48, 156, d.screenText || '01', { size: 10, fill: acc, font: "'Share Tech Mono', monospace", weight: 700 });
+    label(g, w / 2, 154, d.logo || d.name, { size: 17, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.6 });
+    label(g, w / 2, 166, (d.typeName || '').toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.7 });
+    // labels on the dark lower half are printed here so they stay readable with any deck colour
+    label(g, 90, 230, 'A', { size: 7, fill: txt, weight: 800 });
+    label(g, 240, 230, 'B', { size: 7, fill: txt, weight: 800 });
+    label(g, 284, 166, 'FUSION', { size: 5, fill: txt, weight: 700, ls: 1.2 });
     formKit.tzBadge(g, w - 40, h - 10, txt, 4);
     const theme = { text: dt, knob: d.knob || 'mxr', labelSize: 5.4 };
     formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme, jacks: formKit.jacksTop(d, w, { flip: ctx.flip }) };
+    return { w, h, theme: Object.assign({}, theme, { jackText: txt }), jacks: formKit.jacksTop(d, w, { flip: ctx.flip }) };
   });
   const kn = (p, l, x, y, o = {}) => K(p, l, Object.assign({ x, y, r: 11, labelPos: 'below' }, o));
   const LE = (o) => {
@@ -104,13 +108,13 @@ export default function register(tz) {
         { prefix: 'b', algo: 'amp', group: 1, opts: { preamp: true, voice: o.voiceB } },
       ] },
       ports: o.ports || { ins: ['INPUT'], outs: ['OUTPUT', 'XLR OUT'] }, jackKinds: o.jackKinds || { o1: 'xlr' },
-      controls: [kn('a.gain', 'GAIN', 36, 46, { def: o.gA ?? 0.45 }), kn('va', 'VOLUME', 82, 46, { virtual: true }), kn('a.bass', 'BASS', 36, 94), kn('a.treble', 'TREBLE', 82, 94),
-        kn('b.gain', 'GAIN', 144, 46, { def: o.gB ?? 0.6 }), kn('vb', 'VOLUME', 190, 46, { virtual: true }), kn('b.bass', 'BASS', 236, 46), kn('b.mid', 'MID', 144, 94), kn('b.midfreq', 'SWEEP', 190, 94), kn('b.treble', 'TREBLE', 236, 94),
-        kn('fus', 'FUSION', 290, 46, { def: 0.5, virtual: true }), TOG('hot', 'MODE', ['COLD', 'HOT'], { virtual: true, x: 290, y: 95, orient: 'h', optSize: 4.4 }),
-        BTN('FUSION', { p: 'fon', toggle: true, virtual: true, shape: 'rect', w: 18, h: 8, led: true, ledColor: '#ffb000', x: 284, y: 144, labelPos: 'below', labelSize: 4.8 }),
+      controls: [kn('a.gain', 'GAIN', 36, 56, { def: o.gA ?? 0.45 }), kn('va', 'VOLUME', 82, 56, { virtual: true }), kn('a.bass', 'BASS', 36, 102), kn('a.treble', 'TREBLE', 82, 102),
+        kn('b.gain', 'GAIN', 144, 56, { def: o.gB ?? 0.6 }), kn('vb', 'VOLUME', 190, 56, { virtual: true }), kn('b.bass', 'BASS', 236, 56), kn('b.mid', 'MID', 144, 102), kn('b.midfreq', 'SWEEP', 190, 102), kn('b.treble', 'TREBLE', 236, 102),
+        kn('fus', 'FUSION', 290, 56, { def: 0.5, virtual: true }), TOG('hot', 'MODE', ['COLD', 'HOT'], { virtual: true, x: 290, y: 106, orient: 'h', optSize: 4.4 }),
+        BTN('', { p: 'fon', toggle: true, virtual: true, shape: 'rect', w: 18, h: 8, led: true, ledColor: '#ffb000', x: 284, y: 152, labelPos: 'none' }),
         { t: 'knob', p: 'chsel', label: 'CHANNEL', hidden: true, virtual: true, min: 0, max: 1, step: 1, def: 1 },
-        LED({ bind: 'param:chsel:=0', color: '#3ddc84', x: 90, y: 174, r: 3 }), LED({ bind: 'param:chsel:=1', color: '#ff2a1a', x: 240, y: 174, r: 3 }),
-        FOOT({ action: 'param', chan: 0, label: 'A', x: 90, y: 200, r: 13, style: 'stomp' }), FOOT({ action: 'param', chan: 1, label: 'B', x: 240, y: 200, r: 13, style: 'stomp' })],
+        LED({ bind: 'param:chsel:=0', color: '#3ddc84', x: 90, y: 182, r: 3 }), LED({ bind: 'param:chsel:=1', color: '#ff2a1a', x: 240, y: 182, r: 3 }),
+        FOOT({ action: 'param', chan: 0, label: '', x: 90, y: 208, r: 13, style: 'stomp' }), FOOT({ action: 'param', chan: 1, label: '', x: 240, y: 208, r: 13, style: 'stomp' })],
       derive: (u) => {
         const b = Math.round(u.chsel ?? 1), f = u.fus ?? 0.5, fon = !!u.fon, hot = !!u.hot, t = o.trim ?? -2;
         const la = ((u.va ?? 0.5) - 0.5) * 24 + t, lb = ((u.vb ?? 0.5) - 0.5) * 24 + t;
@@ -127,7 +131,7 @@ export default function register(tz) {
     LE({ id: 'twonotes.leclean', name: 'La Clean', ref: 'Two Notes Le Clean', logo: 'LA CLEAN', accent: '#86c6e0', screenText: 'CL', knob: 'mxr',
       voiceA: { base: 'twin', stages: [[32, 1.7, 0.18, 12000, 30], [28, 1.8, 0.2, 9500, 40]] }, voiceB: { base: 'ac30', drive: 1.05 }, gB: 0.55,
       desc: 'Dual-channel tube preamp: vintage clean on A, 60s garage overdrive on B, with cold and hot Fusion.' }),
-    LE({ id: 'twonotes.lecrunch', name: 'La Crunch', ref: 'Two Notes Le Crunch', logo: 'LA CRUNCH', accent: '#e8913f', screenText: 'CR', knob: 'mxr',
+    LE({ id: 'twonotes.lecrunch', name: 'La Crunch', ref: 'Two Notes Le Crunch', logo: 'LA CRUNCH', accent: '#e8913f', screenText: 'CR', knob: 'mxr', trim: -4,
       voiceA: { base: 'plexi', stages: [[38, 1.5, 0.26, 11500, 40], [32, 1.4, 0.3, 9000, 80]] }, voiceB: { base: 'plexi', drive: 1.2, stages: [[44, 1.4, 0.3, 11000, 45], [36, 1.25, 0.34, 8400, 100], [26, 1.3, 0.3, 7400, 90]] },
       desc: 'Late-60s British tones: throaty clean on A, crunch on B, Fusion for stacked gain.' }),
     LE({ id: 'twonotes.lelead', name: 'La Lead', ref: 'Two Notes Le Lead', logo: 'LA LEAD', accent: '#d8352e', deckText: '#f2f2f2', screenText: 'LD', knob: 'mxr',
