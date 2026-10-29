@@ -1,0 +1,473 @@
+{
+ "version": 1,
+ "name": "Artist · Linkin Park",
+ "tags": [
+  "artist",
+  "nu-metal",
+  "alt-rock",
+  "metal",
+  "rhythm",
+  "drop-tuning"
+ ],
+ "desc": "Hybrid Theory style: A a chorus clean, B a gated Dual Rectifier for the riffs, plus a Whammy (off) for the noise parts. Tune to drop C#, or play drop D with the Drop pedal on (down 1).",
+ "factory": true,
+ "order": 315,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 42,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3w",
+   "x": -146,
+   "y": 23,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "dt.drop",
+   "x": -362,
+   "y": 30,
+   "params": {
+    "dsel": 0
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "dt.whammy5",
+   "x": -642,
+   "y": 0,
+   "params": {
+    "expr": 1,
+    "model": 0
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.select2",
+   "x": -912,
+   "y": 47,
+   "params": {
+    "fade": 30.85,
+    "sel": 1,
+    "mode": 0
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b5",
+   "type": "mx.m134",
+   "x": -1148,
+   "y": 448,
+   "params": {
+    "rate": 0.3,
+    "depth": 0.35,
+    "feedback": 0.06,
+    "tone": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "amp.jc120",
+   "x": -1638,
+   "y": 394,
+   "params": {
+    "gain": 0.32,
+    "treble": 0.55,
+    "mid": 0.5,
+    "bass": 0.5,
+    "bright": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "cab.2x12jc",
+   "x": -2108,
+   "y": 428,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "tz.hush",
+   "x": -1102,
+   "y": 932.5,
+   "params": {
+    "threshold": 0.42,
+    "decay": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "ib.ts9",
+   "x": -1322,
+   "y": 919,
+   "params": {
+    "gain": 0,
+    "tone": 0.55,
+    "level": 0.78
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "amp.recto",
+   "x": -1824,
+   "y": 814,
+   "params": {
+    "gain": 0.6,
+    "treble": 0.55,
+    "mid": 0.4,
+    "bass": 0.62,
+    "presence": 0.55,
+    "master": 0.45,
+    "channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b11",
+   "type": "cab.4x12v30",
+   "x": -1832,
+   "y": 1028,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 3,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b12",
+   "type": "box.merge2",
+   "x": -2244,
+   "y": 1630,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b13",
+   "type": "tz.delay",
+   "x": -2530,
+   "y": 1553,
+   "params": {
+    "time": 400,
+    "feedback": 0.33,
+    "mix": 0.2,
+    "mode": 0
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b14",
+   "type": "tz.reverb",
+   "x": -2802,
+   "y": 1538,
+   "params": {
+    "mode": 0,
+    "decay": 0.3,
+    "mix": 0.1
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b15",
+   "type": "tz.meter",
+   "x": -3002,
+   "y": 1553,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -3242,
+   "y": 42,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c16",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b4",
+    "port": 2
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "b13",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b13",
+    "port": 0
+   },
+   "to": {
+    "node": "b14",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b13",
+    "port": 1
+   },
+   "to": {
+    "node": "b14",
+    "port": 1
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b14",
+    "port": 0
+   },
+   "to": {
+    "node": "b15",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c33",
+   "from": {
+    "node": "b14",
+    "port": 1
+   },
+   "to": {
+    "node": "b15",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c34",
+   "from": {
+    "node": "b15",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c35",
+   "from": {
+    "node": "b15",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

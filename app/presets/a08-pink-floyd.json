@@ -1,0 +1,507 @@
+{
+ "version": 1,
+ "name": "Artist · Pink Floyd",
+ "tags": [
+  "artist",
+  "classic-rock",
+  "rock",
+  "ambient",
+  "lead"
+ ],
+ "desc": "Gilmour's rig: Dyna Comp, a Power Boost-style push and a Ram's Head Muff (off) into a Hiwatt, with a Twin through a rotary alongside, then multi-head echo and a hall. Standard tuning; Muff on for Comfortably Numb, Uni-Vibe for Breathe.",
+ "factory": true,
+ "order": 308,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 14,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3",
+   "x": -144,
+   "y": 2,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "mx.m102",
+   "x": -342,
+   "y": 13,
+   "params": {
+    "level": 0.55,
+    "sustain": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "ehx.ramshead",
+   "x": -552,
+   "y": 6,
+   "params": {
+    "level": 0.5,
+    "tone": 0.45,
+    "gain": 0.7
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.boost",
+   "x": -772,
+   "y": 0,
+   "params": {
+    "gain": 0.3,
+    "bass": 0.5,
+    "treble": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "mx.m68",
+   "x": -1038,
+   "y": 13,
+   "params": {
+    "level": 0.55,
+    "intensity": 0.6,
+    "speed": 0.3,
+    "mode": 0
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "box.split2",
+   "x": -1204,
+   "y": 66,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "amp.hiwatt",
+   "x": -1676,
+   "y": 338,
+   "params": {
+    "gain": 0.45,
+    "bass": 0.45,
+    "treble": 0.6,
+    "mid": 0.5,
+    "presence": 0.5,
+    "master": 0.7
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "cab.4x12t75",
+   "x": -1684,
+   "y": 552,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -10.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "amp.twin",
+   "x": -1664,
+   "y": 1062,
+   "params": {
+    "gain": 0.35,
+    "treble": 0.55,
+    "mid": 0.5,
+    "bass": 0.5,
+    "master": 0.6,
+    "bright": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "cab.2x12twin",
+   "x": -2134,
+   "y": 1096,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": -10.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b11",
+   "type": "ehx.lester",
+   "x": -2474,
+   "y": 1109,
+   "params": {
+    "level": 0.5,
+    "drive": 0.2,
+    "balance": 0.5,
+    "accel": 0.5,
+    "mix": 0.9,
+    "speed": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b12",
+   "type": "ut.merge",
+   "x": -1842,
+   "y": 1555,
+   "params": {
+    "level": 0,
+    "levelB": -5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b13",
+   "type": "tz.reelecho",
+   "x": -2128,
+   "y": 1490,
+   "params": {
+    "time": 430,
+    "feedback": 0.385,
+    "mix": 0.25,
+    "heads": 6,
+    "age": 0.3,
+    "tone": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b14",
+   "type": "tz.delay",
+   "x": -2414,
+   "y": 1497,
+   "params": {
+    "time": 380,
+    "subdiv": 1,
+    "feedback": 0.385,
+    "mix": 0.25,
+    "mode": 0
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b15",
+   "type": "tz.reverb",
+   "x": -2686,
+   "y": 1482,
+   "params": {
+    "mode": 1,
+    "decay": 0.55,
+    "mix": 0.22,
+    "predelay": 150
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b16",
+   "type": "tz.meter",
+   "x": -2886,
+   "y": 1497,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -3126,
+   "y": 14,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c17",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b6",
+    "port": 1
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "b13",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b13",
+    "port": 0
+   },
+   "to": {
+    "node": "b14",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b14",
+    "port": 0
+   },
+   "to": {
+    "node": "b15",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c33",
+   "from": {
+    "node": "b14",
+    "port": 1
+   },
+   "to": {
+    "node": "b15",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c34",
+   "from": {
+    "node": "b15",
+    "port": 0
+   },
+   "to": {
+    "node": "b16",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c35",
+   "from": {
+    "node": "b15",
+    "port": 1
+   },
+   "to": {
+    "node": "b16",
+    "port": 1
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c36",
+   "from": {
+    "node": "b16",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c37",
+   "from": {
+    "node": "b16",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  }
+ ],
+ "view": null
+}

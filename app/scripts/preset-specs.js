@@ -686,4 +686,797 @@ SPECIAL.push(
     [tuner(), ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['ib.ts808', { gain: 0.4, tone: 0.55, level: 0.62 }], ['jhs.unicorn', { speed: 0.35, intensity: 0.5 }, { bypass: true }], ['amp.jcm800', { gain: 0.6, presence: 0.55, bass: 0.5, mid: 0.6, treble: 0.6, master: 0.5 }], ['cab.4x12gb', { mic2: 2 }], ['mx.m169', { time: 0.4, feedback: 0.3, mix: 0.2 }], ['tz.reverb', { decay: 0.4, mix: 0.12 }], meter], 63),
 );
 
-module.exports = [...G.flat(), ...SPECIAL];
+// ---------------------------------------------------------------- song and artist rigs
+// graph helpers: ser('a', 'b', 'c') chains keys in order, lr(a, b, to) sends a to the left and b to the right input
+const ser = (...k) => k.slice(1).map((b, i) => [k[i], b]);
+const lr = (a, b, to) => [[a, to, 0, 0], [b, to, 0, 1]];
+const tail = (...k) => [...ser(...k), [k[k.length - 1], 'out']];
+const sel = (n) => [n === 4 ? 'tz.select4' : 'tz.select2', { fade: 0.2 }, { raw: { sel: 0, mode: 0 } }];
+const SONGS = [];
+const ARTISTS = [];
+const song = (n, file, name, tags, desc, rig) => SONGS.push({ file: `t${String(n).padStart(2, '0')}-${file}`, name: `Song · ${name}`, tags: ['song', ...tags], desc, order: 200 + n, ...rig });
+const artist = (n, file, name, tags, desc, rig) => ARTISTS.push({ file: `a${String(n).padStart(2, '0')}-${file}`, name: `Artist · ${name}`, tags: ['artist', ...tags], desc, order: 300 + n, ...rig });
+
+song(1, 'sweet-child-o-mine', "Sweet Child O' Mine", ['rock', 'hard-rock', 'lead', 'rhythm'],
+  "Slash's Appetite tone: a hot modded Plexi and an 800 on two sides like a double-tracked part. Tune down a half step and use the neck pickup for the intro; turn on the wah and delay for the outro solo.",
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.sw95', { 'w.pos': 0.55 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.85, master: 0.6, presence: 0.55, bass: 0.5, mid: 0.7, treble: 0.6, bright: 0 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b1: ['amp.jcm800', { gain: 0.68, master: 0.5, presence: 0.5, bass: 0.5, mid: 0.65, treble: 0.55 }],
+      b2: ['cab.4x12t75', { mic1: 0, mic2: 3 }],
+      dly: ['tz.delay', { '=time': 420, feedback: 0.25, mix: 0.16, mode: 1, tone: 0.45 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 2, decay: 0.3, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(2, 'smells-like-teen-spirit', 'Smells Like Teen Spirit', ['grunge', 'rock', 'rhythm'],
+  'Nevermind style: a Small Clone chorus clean for the verses (A) and a DS-1 into a Mesa and a Bassman for the loud parts (B). Standard tuning; switch the selector for each verse and chorus.',
+  {
+    nodes: {
+      tun: tuner(),
+      sel: ['tz.select2', { fade: 0.15 }, { raw: { sel: 1, mode: 0 } }],
+      a1: ['ehx.smallclone', { rate: 0.35, deep: 0 }],
+      a2: ['amp.twin', { gain: 0.3, treble: 0.55, mid: 0.5, bass: 0.5, master: 0.6, bright: 0 }],
+      a3: ['cab.2x12twin', { mic2: 2 }],
+      b1: ['bx.ds1', { level: 0.4, tone: 0.45, gain: 0.75 }],
+      b2: ['box.split2'],
+      b3: ['mesa.amp-markv', { gain: 0.45, master: 0.38, treble: 0.55, mid: 0.4, bass: 0.6, presence: 0.5, channel: 1 }],
+      b4: ['cab.4x12v30', { mic2: 2 }],
+      b5: ['amp.bassman', { gain: 0.6, presence: 0.5, mid: 0.55, bass: 0.5, treble: 0.55, master: 0.42 }],
+      b6: ['cab.4x10tweed'],
+      mix: ['box.merge4'],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun'), ['tun', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0],
+      ['sel', 'b1', 2, 0], ['b1', 'b2'], ['b2', 'b3', 0, 0], ['b3', 'b4'], ['b4', 'mix', 0, 1], ['b2', 'b5', 1, 0], ['b5', 'b6'], ['b6', 'mix', 0, 2], ...tail('mix', 'rev', 'met')],
+    rows: [['tun', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3', 'b4'], ['@b2', 'b5', 'b6'], ['@a3', 'mix', 'rev', 'met']],
+  });
+
+song(3, 'enter-sandman', 'Enter Sandman', ['metal', 'rhythm', 'lead'],
+  'Black Album style: a scooped Mark IIC+ and a Rectifier side by side, with a gate for the tight stops. Standard tuning; turn on the wah and delay for the solo.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.kh95', { pos: 0.55 }, { bypass: true }],
+      gate: ['tz.hush', { threshold: 0.3, decay: 0.35 }],
+      split: ['box.split2'],
+      a1: ['amp.markiic', { gain: 0.7, treble: 0.6, bass: 0.35, mid: 0.3, master: 0.5, presence: 0.6 }],
+      a2: ['bx.ge7', { b0: 0.56, b1: 0.52, b2: 0.4, b3: 0.36, b4: 0.45, b5: 0.56, b6: 0.5, level: 0.5 }],
+      a3: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b1: ['amp.recto', { gain: 0.58, treble: 0.55, mid: 0.4, bass: 0.6, presence: 0.5, master: 0.45, channel: 1 }],
+      b2: ['cab.4x12t75', { mic2: 2 }],
+      dly: ['tz.delay', { '=time': 450, feedback: 0.3, mix: 0.18, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'gate', 'split'), ['split', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a3', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'gate', 'split'], ['@split', 'a1', 'a2', 'a3'], ['@split', 'b1', 'b2'], ['@a3', 'dly', 'rev', 'met']],
+  });
+
+song(4, 'master-of-puppets', 'Master Of Puppets', ['metal', 'thrash', 'rhythm', 'lead'],
+  'Hetfield in 1986: a Tube Screamer-boosted Mark IIC+ with a V-shaped graphic EQ (A) and a JC-120 clean for the middle section (B). Standard tuning; wah and delay are for the solos.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      sel: sel(2),
+      a1: ['ib.ts808', { gain: 0.05, tone: 0.55, level: 0.8 }],
+      a2: ['tz.hush', { threshold: 0.32, decay: 0.3 }],
+      a3: ['amp.markiic', { gain: 0.78, treble: 0.62, bass: 0.32, mid: 0.28, master: 0.5, presence: 0.6 }],
+      a4: ['bx.ge7', { b0: 0.58, b1: 0.53, b2: 0.38, b3: 0.33, b4: 0.44, b5: 0.57, b6: 0.52, level: 0.5 }],
+      a5: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b1: ['mx.m134', { rate: 0.25, depth: 0.3, feedback: 0.1, tone: 0.5 }],
+      b2: ['amp.jc120', { gain: 0.32, treble: 0.5, mid: 0.5, bass: 0.5, bright: 0 }],
+      b3: ['cab.2x12jc'],
+      mix: ['box.merge2'],
+      dly: ['tz.delay', { '=time': 400, feedback: 0.3, mix: 0.18, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.3, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah'), ['wah', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3', 'a4', 'a5'), ['a5', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3'), ['b3', 'mix', 0, 1], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'sel'], ['@sel', 'a1', 'a2', 'a3', 'a4', 'a5'], ['@sel', 'b1', 'b2', 'b3'], ['@a3', 'mix', 'dly', 'rev', 'met']],
+  });
+
+song(5, 'hysteria', 'Hysteria (Muse)', ['rock', 'alt-rock', 'rhythm', 'lead'],
+  'Absolution-era Bellamy: a Fuzz Factory into a Diezel VH4, with a Matchless-style amp alongside for bite. Standard tuning; turn on the Whammy (octave up) for the solo and the delay for the high lines.',
+  {
+    nodes: {
+      tun: tuner(),
+      wh: ['dt.whammy5', { expr: 1, model: 1 }, { bypass: true }],
+      ff: ['zvex.fuzzfactory', { 'f.level': 0.5, gate: 0.75, comp: 0.6, drive: 0.75, stab: 0.85 }],
+      split: ['box.split2'],
+      a1: ['amp.vh4', { gain: 0.6, bass: 0.55, mid: 0.55, treble: 0.55, master: 0.5, depth: 0.5, presence: 0.5 }],
+      a2: ['cab.4x12v30', { mic2: 2 }],
+      b1: ['amp.dc30', { gain: 0.55, bass: 0.45, treble: 0.6, presence: 0.5, master: 0.55 }],
+      b2: ['cab.2x12blue'],
+      dly: ['tz.delay', { '=time': 360, feedback: 0.3, mix: 0.2, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wh', 'ff', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wh', 'ff', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(6, 'thunderstruck', 'Thunderstruck', ['rock', 'hard-rock', 'lead', 'rhythm'],
+  "AC/DC: Angus on a cranked Plexi (left) and Malcolm on a JTM45-style amp (right), with a wireless-style boost and a little squash for the hammer-on intro. Standard tuning; roll the guitar volume back for the build-up.",
+  {
+    nodes: {
+      tun: tuner(),
+      sv: ['tz.boost', { gain: 0.4, bass: 0.45, treble: 0.6 }],
+      comp: ['tz.comp', { sustain: 0.35, ratio: 0.4, attack: 0.5, level: 0.5, blend: 0.7 }],
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.7, master: 0.6, presence: 0.55, bass: 0.45, mid: 0.65, treble: 0.6, bright: 0 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b1: ['marshall.amp-bluesbreaker', { 'a.gain': 0.55, 'a.master': 0.6, 'a.presence': 0.5, 'a.bass': 0.5, 'a.mid': 0.6, 'a.treble': 0.55, 't.depth': 0 }],
+      b2: ['celestion.cab-g12h4x12', { mic2: 2 }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'sv', 'comp', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'sv', 'comp', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'rev', 'met']],
+  });
+
+song(7, 'beat-it', 'Beat It', ['rock', 'pop', 'rhythm', 'lead'],
+  "Two rigs: A is the tight Marshall rhythm, B is Eddie's solo sound (Echoplex preamp, Phase 90, a hot Plexi and Echoplex echo). Tune down a half step; switch to B for the solo.",
+  {
+    nodes: {
+      tun: tuner(),
+      sel: sel(2),
+      a1: ['tz.comp', { sustain: 0.3, ratio: 0.4, level: 0.5, blend: 0.6 }],
+      a2: ['amp.jcm800', { gain: 0.55, master: 0.55, presence: 0.55, bass: 0.5, mid: 0.6, treble: 0.6 }],
+      a3: ['cab.4x12t75', { mic2: 2 }],
+      b1: ['dn.ep101', { gain: 0.5 }],
+      b2: ['mx.m101', { rate: 0.25 }],
+      b3: ['amp.plexi', { gain: 0.92, master: 0.6, presence: 0.6, bass: 0.45, mid: 0.6, treble: 0.65, bright: 1 }],
+      b4: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b5: ['dn.ep103', { '=time': 320, feedback: 0.2, mix: 0.22, age: 0.3 }],
+      mix: ['box.merge2'],
+      rev: ['tz.reverb', { mode: 2, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun'), ['tun', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4', 'b5'), ['b5', 'mix', 0, 1], ...tail('mix', 'rev', 'met')],
+    rows: [['tun', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3', 'b4', 'b5'], ['@a3', 'mix', 'rev', 'met']],
+  });
+
+song(8, 'layla', 'Layla', ['rock', 'blues', 'classic-rock', 'lead'],
+  "Derek and the Dominos style: two small cranked tweed amps, one for Clapton's Strat and one for Duane's slide, panned apart. Standard tuning; the compressor (off) helps slide notes sustain.",
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['mx.m102', { level: 0.55, sustain: 0.35 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['fender.amp-tweeddeluxe', { gain: 0.72, treble: 0.62, mic: 0 }],
+      a2: ['cab.1x12us', { mic2: 2 }],
+      b0: ['tz.boost', { gain: 0.3, bass: 0.55, treble: 0.45 }],
+      b1: ['fender.amp-tweeddeluxe', { gain: 0.82, treble: 0.5, mic: 0 }],
+      b2: ['fender.cab-princeton'],
+      rev: ['tz.reverb', { mode: 0, decay: 0.3, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b0', 1, 0], ...ser('b0', 'b1', 'b2'), ...lr('a2', 'b2', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'comp', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b0', 'b1', 'b2'], ['@a2', 'rev', 'met']],
+  });
+
+song(9, 'sunshine-of-your-love', 'Sunshine Of Your Love', ['rock', 'blues', 'classic-rock', 'rhythm', 'lead'],
+  "Clapton's Cream 'woman tone': neck pickup with the tone rolled off (the EQ does that here) into two cranked Marshalls. Standard tuning; switch the EQ off for a brighter solo, the wah is there for fills.",
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.5 }, { bypass: true }],
+      eq: ['tz.contour', { '=highcut': 1700, '=lowcut': 70, '=mid1freq': 650, '=mid1gain': 3, '=mid1q': 0.8 }],
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.82, master: 0.65, presence: 0.6, bass: 0.5, mid: 0.65, treble: 0.7, bright: 1 }],
+      a2: ['cab.4x12gb', { mic2: 2 }],
+      b1: ['marshall.amp-bluesbreaker', { 'a.gain': 0.75, 'a.master': 0.6, 'a.presence': 0.55, 'a.bass': 0.5, 'a.mid': 0.6, 'a.treble': 0.65, 't.depth': 0 }],
+      b2: ['celestion.cab-g12h4x12'],
+      rev: ['tz.reverb', { mode: 0, decay: 0.35, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'eq', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'wah', 'eq', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'rev', 'met']],
+  });
+
+song(10, 'nightmare', 'Nightmare (Avenged Sevenfold)', ['metal', 'heavy-metal', 'rhythm', 'lead'],
+  'Synyster and Zacky: an Überschall-style head and a Rectifier, boosted and gated. Tune to drop D; turn on the harmony (D minor, thirds) for the twin leads, and the wah and delay for the solo.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      harm: ['tz.choirmaster', { '=key': 2, scale: 1, '=deg1': 2, level1: 0.6, dry: 1, level2: 0 }, { bypass: true }],
+      ts: ['ib.ts9', { gain: 0.02, tone: 0.55, level: 0.8 }],
+      gate: ['tz.hush', { threshold: 0.38, decay: 0.3 }],
+      split: ['box.split2'],
+      a1: ['amp.uber', { gain: 0.65, presence: 0.55, bass: 0.5, mid: 0.5, treble: 0.55, master: 0.5 }],
+      a2: ['cab.4x12uber', { mic2: 2 }],
+      b1: ['amp.recto', { gain: 0.6, treble: 0.55, mid: 0.42, bass: 0.6, presence: 0.55, master: 0.45, channel: 1 }],
+      b2: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      dly: ['tz.delay', { '=time': 440, feedback: 0.3, mix: 0.2, mode: 7 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'harm', 'ts', 'gate', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'harm', 'ts', 'gate', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(11, 'holiday', 'Holiday (Green Day)', ['punk', 'pop-punk', 'rock', 'rhythm'],
+  'American Idiot style: a boosted modded Plexi and a Rectifier panned apart, with a gate for the hard stops. Standard tuning; lots of downstrokes, and the delay (off) is for the short solo.',
+  {
+    nodes: {
+      tun: tuner(),
+      gate: ['tz.hush', { threshold: 0.3, decay: 0.3 }],
+      split: ['box.split2'],
+      a0: ['ib.ts808', { gain: 0.2, tone: 0.55, level: 0.72 }],
+      a1: ['amp.plexi', { gain: 0.88, master: 0.6, presence: 0.55, bass: 0.55, mid: 0.6, treble: 0.6, bright: 0 }],
+      a2: ['cab.4x12gb', { mic2: 2 }],
+      b1: ['amp.recto', { gain: 0.48, treble: 0.55, mid: 0.5, bass: 0.55, presence: 0.5, master: 0.5, channel: 1 }],
+      b2: ['mesa.cab-2x12recto', { mic2: 2 }],
+      dly: ['tz.delay', { '=time': 360, feedback: 0.25, mix: 0.16, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.22, mix: 0.08 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'gate', 'split'), ['split', 'a0', 0, 0], ...ser('a0', 'a1', 'a2'), ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'gate', 'split'], ['@split', 'a0', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(12, 'no-more-tears', 'No More Tears', ['metal', 'heavy-metal', 'rhythm', 'lead'],
+  "Zakk's No More Tears rig: an SD-1 into a CH-1 chorus whose two outputs feed two JCM800s with G12T-75s. Tune to drop C#; the wah and delay are off (he only added delay at the end of the solo).",
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      sd1: ['bx.sd1', { level: 0.8, tone: 0.55, gain: 0.12 }],
+      ch: ['bx.ch1', { mix: 0.45, tone: 0.5, rate: 0.25, depth: 0.4 }],
+      a1: ['amp.jcm800', { gain: 0.75, master: 0.55, presence: 0.6, bass: 0.55, mid: 0.6, treble: 0.6 }],
+      a2: ['cab.4x12t75', { mic1: 0, mic2: 2 }],
+      b1: ['amp.jcm800', { gain: 0.72, master: 0.55, presence: 0.55, bass: 0.55, mid: 0.65, treble: 0.58 }],
+      b2: ['cab.4x12t75', { mic1: 0, mic2: 3 }],
+      dly: ['tz.delay', { '=time': 480, feedback: 0.35, mix: 0.2, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'sd1', 'ch'), ['ch', 'a1', 0, 0], ['a1', 'a2'], ['ch', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'sd1', 'ch'], ['@ch', 'a1', 'a2'], ['@ch', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(13, 'mr-brightside', 'Mr. Brightside', ['indie', 'rock', 'pop', 'rhythm'],
+  'Hot Fuss style: light compression and a Blues Driver into a Deluxe and an AC30, with a dotted-eighth delay (304 ms, 148 BPM) for the intro riff. Standard tuning; the chorus (off) adds width to the verses.',
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['tz.comp', { sustain: 0.3, ratio: 0.4, level: 0.5, blend: 0.6 }],
+      od: ['bx.bd2', { level: 0.6, tone: 0.55, gain: 0.45 }],
+      cho: ['mx.m134', { rate: 0.3, depth: 0.35, feedback: 0.1, tone: 0.55 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['amp.deluxe', { gain: 0.6, treble: 0.6, bass: 0.55, master: 0.6, bright: 1 }],
+      a2: ['cab.1x12us', { mic2: 2 }],
+      b1: ['amp.ac30', { gain: 0.5, treble: 0.6, bass: 0.5, presence: 0.5, master: 0.6 }],
+      b2: ['cab.2x12blue'],
+      dly: ['tz.delay', { '=time': 304, subdiv: 1, feedback: 0.3, mix: 0.3, mode: 0, tone: 0.55 }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.3, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'od', 'cho', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'comp', 'od', 'cho', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+song(14, 'message-in-a-bottle', 'Message In A Bottle', ['rock', 'pop', 'clean', 'rhythm'],
+  'Andy Summers: Dyna Comp and an Electric Mistress (set more chorus than flange) into a clean Marshall and a JC-120, with a short tape echo. Standard tuning; let the add9 arpeggios ring.',
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['mx.m102', { level: 0.55, sustain: 0.35 }],
+      mist: ['ehx.mistress', { speed: 0.25, width: 0.45, regen: 0.2, matrix: 0 }],
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.32, master: 0.6, presence: 0.55, bass: 0.45, mid: 0.55, treble: 0.6, bright: 1 }],
+      a2: ['cab.4x12gb', { mic2: 2 }],
+      b1: ['amp.jc120', { gain: 0.35, treble: 0.55, mid: 0.5, bass: 0.5, bright: 1 }],
+      b2: ['cab.2x12jc'],
+      dly: ['tz.delay', { '=time': 320, feedback: 0.2, mix: 0.15, mode: 2 }],
+      rev: ['tz.reverb', { mode: 2, decay: 0.3, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'mist', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'comp', 'mist', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(1, 'weezer', 'Weezer', ['alt-rock', 'rock', 'pop-punk', 'rhythm'],
+  'Blue Album style: a Mesa Mark into a tall Marshall 4x12, doubled on the other side for a wall of power chords. Tune down a half step; the delay (off) is for volume swells like in Only in Dreams.',
+  {
+    nodes: {
+      tun: tuner(),
+      vol: ['tz.silkvol', { pos: 1 }],
+      split: ['box.split2'],
+      a1: ['amp.markiic', { gain: 0.62, treble: 0.6, bass: 0.5, mid: 0.55, master: 0.5, presence: 0.5 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b0: ['pc.rat2', { gain: 0.3, tone: 0.45, level: 0.55 }],
+      b1: ['amp.markiic', { gain: 0.5, treble: 0.68, bass: 0.45, mid: 0.6, master: 0.5, presence: 0.55 }],
+      b2: ['celestion.cab-g12h4x12', { mic2: 3 }],
+      dly: ['tz.delay', { '=time': 500, feedback: 0.4, mix: 0.3, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'vol', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b0', 1, 0], ...ser('b0', 'b1', 'b2'), ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'vol', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b0', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(2, 'metallica', 'Metallica', ['metal', 'thrash', 'rhythm', 'lead'],
+  "Three Metallica sounds on a selector: A the chorus clean (Fade to Black), B the boosted, scooped Mark IIC+ rhythm, C Kirk's lead with more mids. Standard tuning; wah and delay for the solos.",
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.kh95', { pos: 0.55 }, { bypass: true }],
+      sel: ['tz.select4', { fade: 0.2 }, { raw: { sel: 1, mode: 0 } }],
+      a1: ['mx.m134', { rate: 0.25, depth: 0.35, feedback: 0.1, tone: 0.5 }],
+      a2: ['mesa.amp-markv', { gain: 0.35, master: 0.55, treble: 0.55, mid: 0.5, bass: 0.5, presence: 0.5, channel: 0 }],
+      a3: ['cab.4x12v30'],
+      b1: ['ib.ts808', { gain: 0.05, tone: 0.55, level: 0.8 }],
+      b2: ['tz.hush', { threshold: 0.32, decay: 0.3 }],
+      b3: ['amp.markiic', { gain: 0.75, treble: 0.62, bass: 0.33, mid: 0.28, master: 0.5, presence: 0.6 }],
+      b4: ['bx.ge7', { b0: 0.57, b1: 0.53, b2: 0.39, b3: 0.34, b4: 0.45, b5: 0.56, b6: 0.5, level: 0.5 }],
+      b5: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      c1: ['ib.ts808', { gain: 0.3, tone: 0.6, level: 0.7 }],
+      c2: ['amp.markiic', { gain: 0.82, treble: 0.6, bass: 0.4, mid: 0.6, master: 0.5, presence: 0.55 }],
+      c3: ['cab.4x12gb', { mic2: 2 }],
+      mix: ['box.merge4'],
+      dly: ['tz.delay', { '=time': 430, feedback: 0.32, mix: 0.2, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah'), ['wah', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4', 'b5'), ['b5', 'mix', 0, 1],
+      ['sel', 'c1', 4, 0], ...ser('c1', 'c2', 'c3'), ['c3', 'mix', 0, 2], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3', 'b4', 'b5'], ['@sel', 'c1', 'c2', 'c3'], ['@a3', 'mix', 'dly', 'rev', 'met']],
+  });
+
+artist(3, 'slipknot', 'Slipknot', ['metal', 'nu-metal', 'high-gain', 'rhythm', 'drop-tuning'],
+  "Mick and Jim: a gated, TS-tightened Rivera Knucklehead-style head on the left and an Orange on the right. Tune to drop B, or play in drop D and turn on the Drop pedal (down 3).",
+  {
+    nodes: {
+      tun: tuner(),
+      drop: ['dt.drop', { dsel: 2 }, { bypass: true }],
+      gate: ['tz.hush', { threshold: 0.45, decay: 0.25 }],
+      ts: ['ib.ts9', { gain: 0, tone: 0.55, level: 0.82 }],
+      split: ['box.split2'],
+      a1: ['rivera.amp-ktre', { ch: 2, g3: 0.7, treble: 0.55, mid: 0.45, bass: 0.6, master: 0.5, fnd: 0.5, presence: 0.55 }],
+      a2: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b1: ['amp.orange', { gain: 0.75, bass: 0.6, mid: 0.45, treble: 0.55, master: 0.5 }],
+      b2: ['cab.4x12orange', { mic2: 2 }],
+      eq: ['tz.contour', { '=lowcut': 70, '=mid1freq': 800, '=mid1gain': -2, '=highcut': 9000 }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.2, mix: 0.06 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'drop', 'gate', 'ts', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'eq'), ...tail('eq', 'rev', 'met')],
+    rows: [['tun', 'drop', 'gate', 'ts', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'eq', 'rev', 'met']],
+  });
+
+artist(4, 'eric-clapton', 'Eric Clapton', ['blues', 'classic-rock', 'rock', 'lead', 'rhythm'],
+  'Four Clapton eras on a selector: A the Beano (Les Paul into a cranked Bluesbreaker), B the Cream woman tone, C the 80s and 90s Strat into a Soldano, D a Leslie for Badge-style parts. Standard tuning.',
+  {
+    nodes: {
+      tun: tuner(),
+      sel: sel(4),
+      a1: ['marshall.amp-bluesbreaker', { 'a.gain': 0.85, 'a.master': 0.6, 'a.presence': 0.5, 'a.bass': 0.5, 'a.mid': 0.6, 'a.treble': 0.6, 't.depth': 0 }],
+      a2: ['cab.2x12cream', { mic2: 2 }],
+      b1: ['tz.contour', { '=highcut': 1700, '=lowcut': 70, '=mid1freq': 650, '=mid1gain': 3, '=mid1q': 0.8 }],
+      b2: ['amp.plexi', { gain: 0.82, master: 0.65, presence: 0.6, bass: 0.5, mid: 0.65, treble: 0.7, bright: 1 }],
+      b3: ['cab.4x12gb'],
+      c1: ['tz.comp', { sustain: 0.35, ratio: 0.45, level: 0.55, blend: 0.7, tone: 0.55 }],
+      c2: ['tz.boost', { gain: 0.3, bass: 0.45, treble: 0.55 }],
+      c3: ['amp.slo', { gain: 0.5, master: 0.5, presence: 0.5, bass: 0.5, mid: 0.6, treble: 0.55 }],
+      c4: ['cab.2x12cream'],
+      d1: ['amp.twin', { gain: 0.4, treble: 0.55, mid: 0.5, bass: 0.5, master: 0.6, bright: 0 }],
+      d2: ['cab.2x12twin'],
+      d3: ['ehx.lester', { level: 0.55, drive: 0.3, balance: 0.5, accel: 0.5, mix: 0.8, speed: 0.3 }],
+      mix: ['box.merge4'],
+      dly: ['tz.delay', { '=time': 380, feedback: 0.2, mix: 0.14, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.35, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun'), ['tun', 'sel', 0, 0], ['sel', 'a1', 0, 0], ['a1', 'a2'], ['a2', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3'), ['b3', 'mix', 0, 1],
+      ['sel', 'c1', 4, 0], ...ser('c1', 'c2', 'c3', 'c4'), ['c4', 'mix', 0, 2], ['sel', 'd1', 6, 0], ...ser('d1', 'd2', 'd3'), ['d3', 'mix', 0, 3], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'sel'], ['@sel', 'a1', 'a2'], ['@sel', 'b1', 'b2', 'b3'], ['@sel', 'c1', 'c2', 'c3', 'c4'], ['@sel', 'd1', 'd2', 'd3'], ['@c4', 'mix', 'dly', 'rev', 'met']],
+  });
+
+artist(5, 'the-beatles', 'The Beatles', ['classic-rock', 'pop', 'rock', 'rhythm', 'lead'],
+  'Four Beatles sounds: A a 12-string-style AC30 jangle, B Revolution-style fuzz, C a Leslie for Something and Let It Be, D a crunchy Bassman. Standard tuning; the tape slap at the end is very Abbey Road.',
+  {
+    nodes: {
+      tun: tuner(),
+      sel: sel(4),
+      a1: ['tz.harmony', { '=semis1': 12, level1: 0.35, level2: 0, dry: 1, '=cents': 4 }],
+      a2: ['amp.ac30', { gain: 0.45, treble: 0.65, bass: 0.45, presence: 0.55, master: 0.6 }],
+      a3: ['cab.2x12blue', { mic2: 2 }],
+      b1: ['bx.fz1w', { level: 0.5, tone: 0.55, gain: 0.85, mode: 0 }],
+      b2: ['vox.amp-ac15', { 'a.gain': 0.6, 'a.treble': 0.6, 'a.bass': 0.5, 'r.mix': 0, 't.depth': 0, 'a.presence': 0.5, 'a.master': 0.55 }],
+      b3: ['vox.cab-ac15'],
+      c1: ['amp.twin', { gain: 0.38, treble: 0.55, mid: 0.5, bass: 0.5, master: 0.6, bright: 0 }],
+      c2: ['cab.2x12twin'],
+      c3: ['ehx.lester', { level: 0.55, drive: 0.25, balance: 0.5, accel: 0.5, mix: 0.85, speed: 0.25 }],
+      d1: ['amp.bassman', { gain: 0.62, presence: 0.5, mid: 0.55, bass: 0.45, treble: 0.6, master: 0.6 }],
+      d2: ['cab.4x10tweed', { mic2: 2 }],
+      mix: ['box.merge4'],
+      slap: ['tz.reelecho', { '=time': 110, feedback: 0.1, mix: 0.16, heads: 2, age: 0.3 }],
+      rev: ['tz.reverb', { mode: 2, decay: 0.4, mix: 0.16 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun'), ['tun', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3'), ['b3', 'mix', 0, 1],
+      ['sel', 'c1', 4, 0], ...ser('c1', 'c2', 'c3'), ['c3', 'mix', 0, 2], ['sel', 'd1', 6, 0], ['d1', 'd2'], ['d2', 'mix', 0, 3], ...tail('mix', 'slap', 'rev', 'met')],
+    rows: [['tun', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3'], ['@sel', 'c1', 'c2', 'c3'], ['@sel', 'd1', 'd2'], ['@a3', 'mix', 'slap', 'rev', 'met']],
+  });
+
+artist(6, 'muse', 'Muse', ['alt-rock', 'rock', 'lead', 'rhythm'],
+  "Two Muse sounds: A Bellamy's Fuzz Factory into a Diezel VH4 (Whammy off, turn it on for octave-up leads), B a Queen-like treble booster into an AC30 with echo for Knights of Cydonia style leads. Standard tuning.",
+  {
+    nodes: {
+      tun: tuner(),
+      sel: sel(2),
+      a0: ['dt.whammy5', { expr: 1, model: 1 }, { bypass: true }],
+      a1: ['zvex.fuzzfactory', { 'f.level': 0.5, gate: 0.75, comp: 0.6, drive: 0.75, stab: 0.85 }],
+      a2: ['amp.vh4', { gain: 0.6, bass: 0.55, mid: 0.55, treble: 0.55, master: 0.5, depth: 0.5, presence: 0.5 }],
+      a3: ['cab.4x12v30', { mic2: 2 }],
+      b1: ['tz.trebleboost', { gain: 0.6 }],
+      b2: ['amp.ac30', { gain: 0.7, treble: 0.55, bass: 0.5, presence: 0.5, master: 0.6 }],
+      b3: ['cab.2x12blue', { mic2: 2 }],
+      b4: ['tz.reelecho', { '=time': 650, feedback: 0.35, mix: 0.3, heads: 2, age: 0.25 }],
+      mix: ['box.merge2'],
+      dly: ['tz.lumen', { '=time': 420, feedback: 0.3, mix: 0.18, mode: 2, spread: 0.7 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.4, mix: 0.14 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun'), ['tun', 'sel', 0, 0], ['sel', 'a0', 0, 0], ...ser('a0', 'a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4'), ['b4', 'mix', 0, 1], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'sel'], ['@sel', 'a0', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3', 'b4'], ['@a3', 'mix', 'dly', 'rev', 'met']],
+  });
+
+artist(7, 'green-day', 'Green Day', ['punk', 'pop-punk', 'rock', 'rhythm'],
+  'Dookie-era Billie Joe: a boosted modded Plexi on one side and an AC30 on the other for a punchy wall, with a gate. Tune down a half step; turn the Tube Screamer off for cleaner verses.',
+  {
+    nodes: {
+      tun: tuner(),
+      ts: ['ib.ts808', { gain: 0.15, tone: 0.55, level: 0.72 }],
+      gate: ['tz.hush', { threshold: 0.3, decay: 0.3 }],
+      ph: ['mx.m101', { rate: 0.3 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.9, master: 0.6, presence: 0.55, bass: 0.55, mid: 0.6, treble: 0.6, bright: 1 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b1: ['amp.ac30', { gain: 0.62, treble: 0.55, bass: 0.55, presence: 0.5, master: 0.6 }],
+      b2: ['cab.2x12blue', { mic2: 2 }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.2, mix: 0.07 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'ts', 'gate', 'ph', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'ts', 'gate', 'ph', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'rev', 'met']],
+  });
+
+artist(8, 'pink-floyd', 'Pink Floyd', ['classic-rock', 'rock', 'ambient', 'lead'],
+  "Gilmour's rig: Dyna Comp, a Power Boost-style push and a Ram's Head Muff (off) into a Hiwatt, with a Twin through a rotary alongside, then multi-head echo and a hall. Standard tuning; Muff on for Comfortably Numb, Uni-Vibe for Breathe.",
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['mx.m102', { level: 0.55, sustain: 0.4 }],
+      muff: ['ehx.ramshead', { level: 0.5, tone: 0.45, gain: 0.7 }, { bypass: true }],
+      boost: ['tz.boost', { gain: 0.3, bass: 0.5, treble: 0.55 }],
+      vibe: ['mx.m68', { level: 0.55, intensity: 0.6, speed: 0.3, mode: 0 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['amp.hiwatt', { gain: 0.45, bass: 0.45, treble: 0.6, mid: 0.5, presence: 0.5, master: 0.7 }],
+      a2: ['cab.4x12t75', { mic2: 2 }],
+      b1: ['amp.twin', { gain: 0.35, treble: 0.55, mid: 0.5, bass: 0.5, master: 0.6, bright: 0 }],
+      b2: ['cab.2x12twin'],
+      b3: ['ehx.lester', { level: 0.5, drive: 0.2, balance: 0.5, accel: 0.5, mix: 0.9, speed: 0.3 }],
+      mix: ['ut.merge', { '=level': 0, '=levelB': -5 }],
+      echo: ['tz.reelecho', { '=time': 430, feedback: 0.35, mix: 0.25, heads: 6, age: 0.3, tone: 0.5 }],
+      dly: ['tz.delay', { '=time': 380, subdiv: 1, feedback: 0.35, mix: 0.25, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.55, mix: 0.22, predelay: 0.3 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'muff', 'boost', 'vibe', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['a2', 'mix', 0, 0], ['split', 'b1', 1, 0], ...ser('b1', 'b2', 'b3'), ['b3', 'mix', 0, 1], ...tail('mix', 'echo', 'dly', 'rev', 'met')],
+    rows: [['tun', 'comp', 'muff', 'boost', 'vibe', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2', 'b3'], ['@a2', 'mix', 'echo', 'dly', 'rev', 'met']],
+  });
+
+artist(9, 'avenged-sevenfold', 'Avenged Sevenfold', ['metal', 'heavy-metal', 'metalcore', 'rhythm', 'lead'],
+  'City of Evil style: A a gated Rectifier rhythm, B a boosted Mark lead with the harmony set to E minor thirds for twin-guitar lines (change the key per song). Tune down a half step; wah for the solos.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      sel: sel(2),
+      a1: ['ib.ts9', { gain: 0.02, tone: 0.55, level: 0.8 }],
+      a2: ['tz.hush', { threshold: 0.38, decay: 0.3 }],
+      a3: ['amp.recto', { gain: 0.62, treble: 0.55, mid: 0.42, bass: 0.6, presence: 0.55, master: 0.45, channel: 1 }],
+      a4: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b1: ['tz.choirmaster', { '=key': 4, scale: 1, '=deg1': 2, level1: 0.55, dry: 1, level2: 0 }],
+      b2: ['ib.ts9', { gain: 0.15, tone: 0.6, level: 0.72 }],
+      b3: ['mesa.amp-markv', { gain: 0.65, master: 0.5, treble: 0.55, mid: 0.6, bass: 0.5, presence: 0.55, channel: 2 }],
+      b4: ['cab.4x12v30', { mic2: 2 }],
+      mix: ['box.merge2'],
+      dly: ['tz.lumen', { '=time': 450, feedback: 0.3, mix: 0.2, mode: 2, spread: 0.7 }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah'), ['wah', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3', 'a4'), ['a4', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4'), ['b4', 'mix', 0, 1], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'sel'], ['@sel', 'a1', 'a2', 'a3', 'a4'], ['@sel', 'b1', 'b2', 'b3', 'b4'], ['@a3', 'mix', 'dly', 'rev', 'met']],
+  });
+
+artist(10, 'ac-dc', 'AC/DC', ['rock', 'hard-rock', 'classic-rock', 'rhythm', 'lead'],
+  "Both AC/DC guitars at once: Malcolm's cleaner Marshall on the left, Angus's boosted JTM45-style amp on the right. Standard tuning; Angus's wah and the slap echo (off) are there for solos.",
+  {
+    nodes: {
+      tun: tuner(),
+      split: ['box.split2'],
+      a1: ['amp.plexi', { gain: 0.55, master: 0.6, presence: 0.5, bass: 0.5, mid: 0.6, treble: 0.55, bright: 0 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b0: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      b1: ['tz.boost', { gain: 0.45, bass: 0.45, treble: 0.6 }],
+      b2: ['marshall.amp-bluesbreaker', { 'a.gain': 0.8, 'a.master': 0.6, 'a.presence': 0.55, 'a.bass': 0.45, 'a.mid': 0.65, 'a.treble': 0.6, 't.depth': 0 }],
+      b3: ['celestion.cab-g12h4x12', { mic2: 2 }],
+      b4: ['dn.ep103', { '=time': 140, feedback: 0.1, mix: 0.15, age: 0.3 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.25, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b0', 1, 0], ...ser('b0', 'b1', 'b2', 'b3', 'b4'), ...lr('a2', 'b4', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b0', 'b1', 'b2', 'b3', 'b4'], ['@a2', 'rev', 'met']],
+  });
+
+artist(11, 'guns-n-roses', "Guns N' Roses", ['rock', 'hard-rock', 'lead', 'rhythm'],
+  "Slash and Izzy: a Jubilee-style lead amp on the left and an 800 on the right, with Slash's wah, a 10-band EQ push and a talk box (off) for Rocket Queen style parts. Tune down a half step.",
+  {
+    nodes: {
+      tun: tuner(),
+      tb: ['mx.m222', { volume: 0.55, tone: 0.5, sens: 0.5 }, { bypass: true }],
+      wah: ['dn.sw95', { 'w.pos': 0.55 }, { bypass: true }],
+      eq: ['mx.m108', { level: 0.55, gain: 0.5, b0: 0.45, b1: 0.48, b2: 0.52, b3: 0.58, b4: 0.6, b5: 0.56, b6: 0.52, b7: 0.5, b8: 0.48, b9: 0.45 }],
+      split: ['box.split2'],
+      a1: ['amp.jubilee', { gain: 0.72, master: 0.55, presence: 0.55, bass: 0.5, mid: 0.65, treble: 0.6 }],
+      a2: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      b1: ['amp.jcm800', { gain: 0.5, master: 0.55, presence: 0.5, bass: 0.5, mid: 0.6, treble: 0.55 }],
+      b2: ['cab.4x12t75', { mic2: 3 }],
+      dly: ['tz.delay', { '=time': 420, feedback: 0.25, mix: 0.16, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 2, decay: 0.3, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'tb', 'wah'), ['wah', 'eq'], ['eq', 'split', 0, 0], ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'tb', 'wah', 'eq', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(12, 'van-halen', 'Van Halen', ['rock', 'hard-rock', 'lead', 'rhythm'],
+  'Two Eddie eras: A the early brown sound (Echoplex preamp, Phase 90, Flanger off, a cranked Plexi and Echoplex echo), B the 5150 era with a touch of chorus. Tune down a half step; wah for the solos.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['evh.wah95', { pos: 0.55 }, { bypass: true }],
+      sel: sel(2),
+      a1: ['dn.ep101', { gain: 0.5 }],
+      a2: ['mx.m101', { rate: 0.25 }],
+      a3: ['mx.m117', { manual: 0.45, width: 0.5, speed: 0.2, regen: 0.55 }, { bypass: true }],
+      a4: ['amp.plexi', { gain: 0.95, master: 0.6, presence: 0.6, bass: 0.45, mid: 0.6, treble: 0.65, bright: 1 }],
+      a5: ['cab.4x12gb', { mic1: 0, mic2: 2 }],
+      a6: ['dn.ep103', { '=time': 330, feedback: 0.2, mix: 0.2, age: 0.3 }],
+      b1: ['tz.hush', { threshold: 0.3, decay: 0.35 }],
+      b2: ['amp.5150', { gain: 0.6, bass: 0.55, mid: 0.55, treble: 0.6, master: 0.5, depth: 0.5, presence: 0.55 }],
+      b3: ['evh.cab-stripe412', { mic2: 2 }],
+      b4: ['evh.chorus', { mix: 0.2, rate: 0.25, depth: 0.3 }],
+      mix: ['box.merge2'],
+      rev: ['tz.reverb', { mode: 2, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah'), ['wah', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3', 'a4', 'a5', 'a6'), ['a6', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4'), ['b4', 'mix', 0, 1], ...tail('mix', 'rev', 'met')],
+    rows: [['tun', 'wah', 'sel'], ['@sel', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'], ['@sel', 'b1', 'b2', 'b3', 'b4'], ['@a4', 'mix', 'rev', 'met']],
+  });
+
+artist(13, 'steve-vai', 'Steve Vai', ['rock', 'instrumental', 'lead'],
+  'Passion and Warfare to Fire Garden: Bad Horsie wah, Whammy and DS-1 (both off) into an Ecstasy and a JVM, then a Harmonizer-style detune, ping-pong delay and a big hall. Standard tuning; Whammy on for the screams.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['mo.badhorsie', { 'w.pos': 0.5, 'w.range': 0.5, 'w.level': 0.55 }, { bypass: true }],
+      wh: ['dt.whammy5', { expr: 1, model: 1 }, { bypass: true }],
+      ds: ['bx.ds1', { level: 0.55, tone: 0.5, gain: 0.35 }, { bypass: true }],
+      comp: ['tz.comp', { sustain: 0.3, ratio: 0.4, level: 0.5, blend: 0.5 }],
+      split: ['box.split2'],
+      a1: ['bogner.amp-ecstasy', { gain: 0.62, master: 0.55, treble: 0.52, mid: 0.65, bass: 0.45, presence: 0.5, channel: 2 }],
+      a2: ['cab.4x12uber', { mic1: 0, mic2: 2 }],
+      b1: ['marshall.amp-jvm', { gain: 0.6, bass: 0.5, mid: 0.62, treble: 0.55, master: 0.5, presence: 0.5, depth: 0.5, channel: 2 }],
+      b2: ['cab.4x12t75', { mic2: 3 }],
+      dv: ['tz.doublevision', { '=p.cents': 9, 'p.level1': 0.4, '=st.time': 12, '=st.level': -4 }, { variant: 'stereo' }],
+      dly: ['tz.lumen', { '=time': 440, feedback: 0.38, mix: 0.24, mode: 2, spread: 0.75 }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.6, mix: 0.22, predelay: 0.3 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'wh', 'ds', 'comp', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dv'), ...tail('dv', 'dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'wh', 'ds', 'comp', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dv', 'dly', 'rev', 'met']],
+  });
+
+artist(14, 'polyphia', 'Polyphia', ['prog', 'instrumental', 'clean', 'lead'],
+  'Polyphia style: heavy compression into a sparkly clean (A) or a boosted Mark lead (B), then stereo chorus, delay and reverb. Standard tuning; turn on the Ricochet for octave jumps and the harmonizer for stacked lines.',
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['tz.comp', { sustain: 0.6, ratio: 0.6, attack: 0.3, release: 0.4, level: 0.55, blend: 0.85 }],
+      ric: ['dt.ricochet', { glide: 0.2, dry: 0, semis1: 8 }, { bypass: true }],
+      harm: ['tz.harmony', { '=semis1': 12, level1: 0.25, '=semis2': 7, level2: 0.18, dry: 1 }, { bypass: true }],
+      sel: sel(2),
+      a1: ['tz.contour', { '=lowcut': 90, '=mid1freq': 500, '=mid1gain': -3, '=highgain': 2 }],
+      a2: ['amp.twin', { gain: 0.32, treble: 0.62, mid: 0.45, bass: 0.48, master: 0.6, bright: 1 }],
+      a3: ['cab.2x12twin', { mic2: 2 }],
+      b1: ['ib.ts9', { gain: 0.05, tone: 0.6, level: 0.78 }],
+      b2: ['mesa.amp-markv', { gain: 0.6, master: 0.5, treble: 0.55, mid: 0.55, bass: 0.45, presence: 0.55, channel: 2 }],
+      b3: ['prs.cab-212v30', { mic2: 2 }],
+      mix: ['box.merge2'],
+      cho: ['tz.chorus', { rate: 0.3, depth: 0.25, mix: 0.25, tone: 0.55 }],
+      dly: ['tz.delay', { '=time': 380, subdiv: 1, feedback: 0.3, mix: 0.18, mode: 7 }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.45, mix: 0.18 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'ric', 'harm'), ['harm', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3'), ['b3', 'mix', 0, 1], ...tail('mix', 'cho', 'dly', 'rev', 'met')],
+    rows: [['tun', 'comp', 'ric', 'harm', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3'], ['@a3', 'mix', 'cho', 'dly', 'rev', 'met']],
+  });
+
+artist(15, 'linkin-park', 'Linkin Park', ['nu-metal', 'alt-rock', 'metal', 'rhythm', 'drop-tuning'],
+  'Hybrid Theory style: A a chorus clean, B a gated Dual Rectifier for the riffs, plus a Whammy (off) for the noise parts. Tune to drop C#, or play drop D with the Drop pedal on (down 1).',
+  {
+    nodes: {
+      tun: tuner(),
+      drop: ['dt.drop', { dsel: 0 }, { bypass: true }],
+      wh: ['dt.whammy5', { expr: 1, model: 0 }, { bypass: true }],
+      sel: ['tz.select2', { fade: 0.15 }, { raw: { sel: 1, mode: 0 } }],
+      a1: ['mx.m134', { rate: 0.3, depth: 0.35, feedback: 0.1, tone: 0.5 }],
+      a2: ['amp.jc120', { gain: 0.32, treble: 0.55, mid: 0.5, bass: 0.5, bright: 0 }],
+      a3: ['cab.2x12jc'],
+      b1: ['tz.hush', { threshold: 0.42, decay: 0.25 }],
+      b2: ['ib.ts9', { gain: 0, tone: 0.55, level: 0.78 }],
+      b3: ['amp.recto', { gain: 0.6, treble: 0.55, mid: 0.4, bass: 0.62, presence: 0.55, master: 0.45, channel: 1 }],
+      b4: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      mix: ['box.merge2'],
+      dly: ['tz.delay', { '=time': 400, feedback: 0.3, mix: 0.2, mode: 0 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.3, mix: 0.1 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'drop', 'wh'), ['wh', 'sel', 0, 0], ['sel', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['a3', 'mix', 0, 0], ['sel', 'b1', 2, 0], ...ser('b1', 'b2', 'b3', 'b4'), ['b4', 'mix', 0, 1], ...tail('mix', 'dly', 'rev', 'met')],
+    rows: [['tun', 'drop', 'wh', 'sel'], ['@sel', 'a1', 'a2', 'a3'], ['@sel', 'b1', 'b2', 'b3', 'b4'], ['@a3', 'mix', 'dly', 'rev', 'met']],
+  });
+
+artist(16, 'slayer', 'Slayer', ['metal', 'thrash', 'rhythm', 'lead'],
+  'Kerry and Jeff: a mid-pushed JCM800 on one side and a JCM900 on the other, tight and gated. Tune down a half step; turn on the wah for the solos.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      gate: ['tz.hush', { threshold: 0.38, decay: 0.25 }],
+      eq: ['mx.m108', { level: 0.6, gain: 0.55, b0: 0.42, b1: 0.45, b2: 0.5, b3: 0.6, b4: 0.62, b5: 0.58, b6: 0.52, b7: 0.48, b8: 0.45, b9: 0.42 }],
+      split: ['box.split2'],
+      a1: ['amp.jcm800', { gain: 0.85, master: 0.5, presence: 0.6, bass: 0.55, mid: 0.6, treble: 0.62 }],
+      a2: ['cab.4x12t75', { mic1: 0, mic2: 2 }],
+      b1: ['marshall.amp-jcm900', { channel: 1, gb: 0.75, ga: 0.5, master: 0.5, presence: 0.55, bass: 0.55, mid: 0.55, treble: 0.6 }],
+      b2: ['cab.4x12gb', { mic2: 3 }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.2, mix: 0.06 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'gate', 'eq'), ['eq', 'split', 0, 0], ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'rev'), ...tail('rev', 'met')],
+    rows: [['tun', 'wah', 'gate', 'eq', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'rev', 'met']],
+  });
+
+artist(17, 'slaughter-to-prevail', 'Slaughter To Prevail', ['deathcore', 'metal', 'high-gain', 'rhythm', 'drop-tuning'],
+  'Deathcore weight: gate and TS into a 5150 and an ENGL, an octave fuzz (off) on one side and a stutter (off) for breakdowns. Made for a low-tuned 7-string; with a 6-string in drop D turn on the Drop pedal (down 6).',
+  {
+    nodes: {
+      tun: tuner(),
+      drop: ['dt.drop', { dsel: 5 }, { bypass: true }],
+      gate: ['tz.hush', { threshold: 0.5, decay: 0.2 }],
+      ts: ['ib.ts9', { gain: 0, tone: 0.6, level: 0.85 }],
+      split: ['box.split2'],
+      a1: ['amp.5150', { gain: 0.62, bass: 0.6, mid: 0.45, treble: 0.6, master: 0.5, depth: 0.55, presence: 0.55 }],
+      a2: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b0: ['tz.goblin', { 'p.level1': 0.55, 'fz.gain': 0.7, 'p.level2': 0.2, 'fz.tone': 0.5, 'fz.level': 0.5 }, { bypass: true }],
+      b1: ['engl.amp-powerball', { gain: 0.6, bass: 0.6, mid: 0.45, treble: 0.58, presence: 0.55, depth: 0.55, master: 0.5, channel: 2 }],
+      b2: ['engl.cab-pro4x12', { mic2: 2 }],
+      chop: ['tz.pulsegrid', { '=time': 110, '=pattern': 5, depth: 1, smooth: 0.1, mix: 1, '=steps': 8 }, { bypass: true, variant: 'stereo' }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.2, mix: 0.06 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'drop', 'gate', 'ts', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b0', 1, 0], ...ser('b0', 'b1', 'b2'), ...lr('a2', 'b2', 'chop'), ...tail('chop', 'rev', 'met')],
+    rows: [['tun', 'drop', 'gate', 'ts', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b0', 'b1', 'b2'], ['@a2', 'chop', 'rev', 'met']],
+  });
+
+artist(18, 'lorna-shore', 'Lorna Shore', ['deathcore', 'metal', 'high-gain', 'rhythm', 'lead', 'drop-tuning'],
+  "Lorna Shore's core sound: a noise gate and a TS9 into two 6505+ heads on V30 4x12s. Tune to drop A (or drop D with the Drop pedal down 5); turn on the delay and hall for the big leads.",
+  {
+    nodes: {
+      tun: tuner(),
+      drop: ['dt.drop', { dsel: 4 }, { bypass: true }],
+      gate: ['tz.hush', { threshold: 0.48, decay: 0.2 }],
+      ts: ['ib.ts9', { gain: 0, tone: 0.6, level: 0.85 }],
+      split: ['box.split2'],
+      a1: ['peavey.amp-6505plus', { channel: 1, gain: 0.58, bass: 0.6, mid: 0.45, treble: 0.6, master: 0.5, depth: 0.5, presence: 0.55, bright: 0 }],
+      a2: ['cab.4x12v30', { mic1: 0, mic2: 3 }],
+      b1: ['peavey.amp-6505plus', { channel: 1, gain: 0.55, bass: 0.58, mid: 0.5, treble: 0.58, master: 0.5, depth: 0.55, presence: 0.5, bright: 0 }],
+      b2: ['mesa.cab-2x12recto', { mic2: 2 }],
+      dly: ['tz.delay', { '=time': 460, feedback: 0.35, mix: 0.22, mode: 7 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.6, mix: 0.25 }, { bypass: true }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'drop', 'gate', 'ts', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'drop', 'gate', 'ts', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(19, 'iron-maiden', 'Iron Maiden', ['heavy-metal', 'classic-metal', 'metal', 'lead', 'rhythm'],
+  'Twin-guitar Maiden: a JCM800 on the left and a Plexi on the right, with a harmony pedal set to E minor thirds (off) for the twin leads. Standard tuning; change the harmony key per song.',
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['dn.gcb95', { pos: 0.55 }, { bypass: true }],
+      harm: ['tz.choirmaster', { '=key': 4, scale: 1, '=deg1': 2, level1: 0.6, dry: 1, level2: 0 }, { bypass: true }],
+      cho: ['mx.m134', { rate: 0.3, depth: 0.3, feedback: 0.1, tone: 0.5 }, { bypass: true }],
+      ts: ['ib.ts9', { gain: 0.1, tone: 0.55, level: 0.75 }],
+      split: ['box.split2'],
+      a1: ['amp.jcm800', { gain: 0.72, master: 0.55, presence: 0.55, bass: 0.5, mid: 0.65, treble: 0.6 }],
+      a2: ['cab.4x12t75', { mic2: 2 }],
+      b1: ['amp.plexi', { gain: 0.85, master: 0.6, presence: 0.55, bass: 0.5, mid: 0.65, treble: 0.6, bright: 1 }],
+      b2: ['cab.4x12gb', { mic2: 3 }],
+      dly: ['tz.delay', { '=time': 420, feedback: 0.3, mix: 0.18, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.35, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'harm', 'cho', 'ts', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'harm', 'cho', 'ts', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(20, 'red-hot-chili-peppers', 'Red Hot Chili Peppers', ['funk', 'rock', 'alt-rock', 'rhythm', 'lead'],
+  "Frusciante's board: WH10 wah, DS-2, Big Muff, Electric Mistress and CE-1 chorus (all off) into a Silver Jubilee and a Showman-style Fender. Standard tuning; DS-2 on for crunchy riffs, the chorus for Under the Bridge.",
+  {
+    nodes: {
+      tun: tuner(),
+      wah: ['ib.wh10', { pos: 0.55 }, { bypass: true }],
+      ds: ['bx.ds2', { level: 0.55, tone: 0.5, gain: 0.55, mode: 0 }, { bypass: true }],
+      muff: ['ehx.bigmuff', { level: 0.5, tone: 0.5, gain: 0.7 }, { bypass: true }],
+      mist: ['ehx.mistress', { speed: 0.2, width: 0.6, regen: 0.5, matrix: 0 }, { bypass: true }],
+      ce: ['bx.ce2w', { rate: 0.3, depth: 0.5, mode: 1 }, { bypass: true }],
+      split: ['box.split2'],
+      a1: ['amp.jubilee', { gain: 0.42, master: 0.6, presence: 0.55, bass: 0.5, mid: 0.6, treble: 0.6 }],
+      a2: ['cab.4x12gb', { mic2: 2 }],
+      b1: ['amp.twin', { gain: 0.4, treble: 0.6, mid: 0.5, bass: 0.5, master: 0.6, bright: 1 }],
+      b2: ['cab.2x12twin'],
+      dly: ['tz.delay', { '=time': 380, feedback: 0.3, mix: 0.18, mode: 1 }, { bypass: true }],
+      rev: ['tz.reverb', { mode: 3, decay: 0.3, mix: 0.12 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'wah', 'ds', 'muff', 'mist', 'ce'), ['ce', 'split', 0, 0], ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'wah', 'ds', 'muff', 'mist', 'ce', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'dly', 'rev', 'met']],
+  });
+
+artist(21, 'eagles', 'Eagles', ['classic-rock', 'country-rock', 'rock', 'rhythm', 'lead'],
+  'Hotel California layers: a 12-string-style clean Twin on the left and a Mesa Mark drive on the right, both playing at once. Standard tuning (capo 7 for the intro); the talk box (off) is for Rocky Mountain Way.',
+  {
+    nodes: {
+      tun: tuner(),
+      comp: ['mx.m102', { level: 0.55, sustain: 0.3 }],
+      split: ['box.split2'],
+      a1: ['tz.harmony', { '=semis1': 12, level1: 0.35, level2: 0, dry: 1, '=cents': 4 }],
+      a2: ['amp.twin', { gain: 0.32, treble: 0.6, mid: 0.5, bass: 0.48, master: 0.6, bright: 1 }],
+      a3: ['cab.2x12twin', { mic2: 2 }],
+      b0: ['mx.m222', { volume: 0.55, tone: 0.5, sens: 0.5 }, { bypass: true }],
+      b1: ['ib.ts808', { gain: 0.25, tone: 0.55, level: 0.65 }],
+      b2: ['amp.markiic', { gain: 0.55, treble: 0.55, bass: 0.5, mid: 0.6, master: 0.5, presence: 0.5 }],
+      b3: ['cab.1x12open', { mic2: 2 }],
+      dly: ['tz.delay', { '=time': 400, feedback: 0.25, mix: 0.14, mode: 1 }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.4, mix: 0.16 }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'comp', 'split'), ['split', 'a1', 0, 0], ...ser('a1', 'a2', 'a3'), ['split', 'b0', 1, 0], ...ser('b0', 'b1', 'b2', 'b3'), ...lr('a3', 'b3', 'dly'), ...tail('dly', 'rev', 'met')],
+    rows: [['tun', 'comp', 'split'], ['@split', 'a1', 'a2', 'a3'], ['@split', 'b0', 'b1', 'b2', 'b3'], ['@a3', 'dly', 'rev', 'met']],
+  });
+
+artist(22, 'rage-against-the-machine', 'Rage Against The Machine', ['rock', 'alt-rock', 'funk', 'metal', 'rhythm', 'lead'],
+  "Morello's board: Whammy, wah, Phase 90, flanger and a DD-2 style delay in front of a 50-watt JCM800 style head. Drop D for Killing in the Name; the stutter (off) stands in for his kill-switch toggle.",
+  {
+    chain: [tuner(), ['dt.whammy5', { expr: 1, model: 1 }, { bypass: true }], ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['mx.m101', { rate: 0.3 }, { bypass: true }], ['ib.fl9', { speed: 0.25, regen: 0.6, width: 0.6, manual: 0.5 }, { bypass: true }],
+      ['bx.dd3', { mix: 0.4, feedback: 0.55, dtime: 0.5, range: 1 }, { bypass: true }], ['amp.jcm800', { gain: 0.62, master: 0.6, presence: 0.6, bass: 0.55, mid: 0.5, treble: 0.55 }], ['cab.4x12t75', { mic1: 0, mic2: 2 }],
+      ['tz.pulsegrid', { '=time': 70, '=pattern': 1, depth: 1, smooth: 0.05, mix: 1, '=steps': 2 }, { bypass: true }], meter],
+  });
+
+module.exports = [...G.flat(), ...SPECIAL, ...SONGS, ...ARTISTS];

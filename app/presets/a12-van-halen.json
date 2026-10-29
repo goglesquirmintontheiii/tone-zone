@@ -1,0 +1,490 @@
+{
+ "version": 1,
+ "name": "Artist · Van Halen",
+ "tags": [
+  "artist",
+  "rock",
+  "hard-rock",
+  "lead",
+  "rhythm"
+ ],
+ "desc": "Two Eddie eras: A the early brown sound (Echoplex preamp, Phase 90, Flanger off, a cranked Plexi and Echoplex echo), B the 5150 era with a touch of chorus. Tune down a half step; wah for the solos.",
+ "factory": true,
+ "order": 312,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 42,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tz.tuner",
+   "x": -150,
+   "y": 26,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "evh.wah95",
+   "x": -372,
+   "y": 0,
+   "params": {
+    "pos": 0.55
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.select2",
+   "x": -642,
+   "y": 47,
+   "params": {
+    "fade": 40.8,
+    "sel": 0,
+    "mode": 0
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b4",
+   "type": "dn.ep101",
+   "x": -810,
+   "y": 513,
+   "params": {
+    "gain": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "mx.m101",
+   "x": -1008,
+   "y": 513,
+   "params": {
+    "rate": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "mx.m117",
+   "x": -1206,
+   "y": 513,
+   "params": {
+    "manual": 0.45,
+    "width": 0.5,
+    "speed": 0.2,
+    "regen": 0.55
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "amp.plexi",
+   "x": -1708,
+   "y": 394,
+   "params": {
+    "gain": 0.95,
+    "master": 0.6,
+    "presence": 0.6,
+    "bass": 0.45,
+    "mid": 0.6,
+    "treble": 0.65,
+    "bright": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "cab.4x12gb",
+   "x": -1716,
+   "y": 608,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -9
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "dn.ep103",
+   "x": -1914,
+   "y": 513,
+   "params": {
+    "time": 330,
+    "feedback": 0.21,
+    "mix": 0.2,
+    "age": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "tz.hush",
+   "x": -832,
+   "y": 1236.5,
+   "params": {
+    "threshold": 0.3,
+    "decay": 0.35
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b11",
+   "type": "amp.5150",
+   "x": -1370,
+   "y": 1118,
+   "params": {
+    "gain": 0.6,
+    "bass": 0.55,
+    "mid": 0.55,
+    "treble": 0.6,
+    "master": 0.5,
+    "depth": 0.5,
+    "presence": 0.55
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b12",
+   "type": "evh.cab-stripe412",
+   "x": -1356,
+   "y": 1332,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -9
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b13",
+   "type": "evh.chorus",
+   "x": -1636,
+   "y": 1237,
+   "params": {
+    "mix": 0.2,
+    "rate": 0.25,
+    "depth": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b14",
+   "type": "box.merge2",
+   "x": -1844,
+   "y": 1934,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b15",
+   "type": "tz.reverb",
+   "x": -2116,
+   "y": 1842,
+   "params": {
+    "mode": 2,
+    "decay": 0.35,
+    "mix": 0.12
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b16",
+   "type": "tz.meter",
+   "x": -2316,
+   "y": 1857,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2556,
+   "y": 42,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c17",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b14",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b3",
+    "port": 2
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "b13",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b13",
+    "port": 0
+   },
+   "to": {
+    "node": "b14",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b14",
+    "port": 0
+   },
+   "to": {
+    "node": "b15",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c33",
+   "from": {
+    "node": "b15",
+    "port": 0
+   },
+   "to": {
+    "node": "b16",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c34",
+   "from": {
+    "node": "b15",
+    "port": 1
+   },
+   "to": {
+    "node": "b16",
+    "port": 1
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c35",
+   "from": {
+    "node": "b16",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c36",
+   "from": {
+    "node": "b16",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#f39c12"
+  }
+ ],
+ "view": null
+}

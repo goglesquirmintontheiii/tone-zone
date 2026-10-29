@@ -23,7 +23,7 @@ const fs = require('fs');
   const prevTrim = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'preset-trims.json'), 'utf8')); } catch { return {}; } })();
   const trims = Object.assign({}, prevTrim);
   for (const [f, lv] of Object.entries(measured)) {
-    if (!/^[gsxmr]\d/.test(f)) continue;
+    if (!/^[gsxmrta]\d/.test(f)) continue;
     const target = /lead/.test(f) ? -13 : -15;
     trims[f] = Math.max(-12, Math.min(12, Math.round(((prevTrim[f] || 0) + (target - lv)) * 2) / 2));
   }

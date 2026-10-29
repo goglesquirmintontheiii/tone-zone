@@ -1,0 +1,330 @@
+{
+ "version": 1,
+ "name": "Song · Layla",
+ "tags": [
+  "song",
+  "rock",
+  "blues",
+  "classic-rock",
+  "lead"
+ ],
+ "desc": "Derek and the Dominos style: two small cranked tweed amps, one for Clapton's Strat and one for Duane's slide, panned apart. Standard tuning; the compressor (off) helps slide notes sustain.",
+ "factory": true,
+ "order": 208,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 16,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tz.tuner",
+   "x": -150,
+   "y": 0,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "mx.m102",
+   "x": -348,
+   "y": 15,
+   "params": {
+    "level": 0.55,
+    "sustain": 0.35
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "box.split2",
+   "x": -514,
+   "y": 68,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "fender.amp-tweeddeluxe",
+   "x": -974,
+   "y": 342,
+   "params": {
+    "gain": 0.72,
+    "treble": 0.62,
+    "mic": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "cab.1x12us",
+   "x": -1294,
+   "y": 389,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.3037383177570093,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "tz.boost",
+   "x": -704,
+   "y": 803,
+   "params": {
+    "gain": 0.3,
+    "bass": 0.55,
+    "treble": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "fender.amp-tweeddeluxe",
+   "x": -1194,
+   "y": 762,
+   "params": {
+    "gain": 0.82,
+    "treble": 0.5,
+    "mic": 0
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "fender.cab-princeton",
+   "x": -1494,
+   "y": 817,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6195051546391752,
+    "_m1y": 0.5,
+    "level": -0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "tz.reverb",
+   "x": -1536,
+   "y": 1182,
+   "params": {
+    "mode": 0,
+    "decay": 0.3,
+    "mix": 0.14
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b10",
+   "type": "tz.meter",
+   "x": -1736,
+   "y": 1197,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1976,
+   "y": 16,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c11",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b3",
+    "port": 1
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 1
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b9",
+    "port": 1
+   },
+   "to": {
+    "node": "b10",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b10",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#3498db"
+  }
+ ],
+ "view": null
+}

@@ -1,0 +1,458 @@
+{
+ "version": 1,
+ "name": "Artist · Muse",
+ "tags": [
+  "artist",
+  "alt-rock",
+  "rock",
+  "lead",
+  "rhythm"
+ ],
+ "desc": "Two Muse sounds: A Bellamy's Fuzz Factory into a Diezel VH4 (Whammy off, turn it on for octave-up leads), B a Queen-like treble booster into an AC30 with echo for Knights of Cydonia style leads. Standard tuning.",
+ "factory": true,
+ "order": 306,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 16,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tz.tuner",
+   "x": -150,
+   "y": 0,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.select2",
+   "x": -420,
+   "y": 21,
+   "params": {
+    "fade": 40.8,
+    "sel": 0,
+    "mode": 0
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b3",
+   "type": "dt.whammy5",
+   "x": -670,
+   "y": 420,
+   "params": {
+    "expr": 1,
+    "model": 1
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "zvex.fuzzfactory",
+   "x": -890,
+   "y": 454,
+   "params": {
+    "f.level": 0.5,
+    "gate": 0.75,
+    "comp": 0.6,
+    "drive": 0.75,
+    "stab": 0.85
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "amp.vh4",
+   "x": -1428,
+   "y": 342,
+   "params": {
+    "gain": 0.6,
+    "bass": 0.55,
+    "mid": 0.55,
+    "treble": 0.55,
+    "master": 0.5,
+    "depth": 0.5,
+    "presence": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "cab.4x12v30",
+   "x": -1414,
+   "y": 556,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "tz.trebleboost",
+   "x": -596,
+   "y": 1124,
+   "params": {
+    "gain": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "amp.ac30",
+   "x": -1086,
+   "y": 1066,
+   "params": {
+    "gain": 0.7,
+    "treble": 0.55,
+    "bass": 0.5,
+    "presence": 0.5,
+    "master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "cab.2x12blue",
+   "x": -1556,
+   "y": 1100,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.645,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "tz.reelecho",
+   "x": -1842,
+   "y": 1089,
+   "params": {
+    "time": 650,
+    "feedback": 0.385,
+    "mix": 0.3,
+    "heads": 2,
+    "age": 0.25
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b11",
+   "type": "box.merge2",
+   "x": -1550,
+   "y": 1578,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b12",
+   "type": "tz.lumen",
+   "x": -1830,
+   "y": 1510.5,
+   "params": {
+    "time": 420,
+    "feedback": 0.33,
+    "mix": 0.18,
+    "mode": 2,
+    "spread": 0.7
+   },
+   "bypass": true,
+   "variant": "stereo"
+  },
+  {
+   "id": "b13",
+   "type": "tz.reverb",
+   "x": -2102,
+   "y": 1486,
+   "params": {
+    "mode": 1,
+    "decay": 0.4,
+    "mix": 0.14
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b14",
+   "type": "tz.meter",
+   "x": -2302,
+   "y": 1501,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2542,
+   "y": 16,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c15",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b2",
+    "port": 2
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 1
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "b13",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b12",
+    "port": 1
+   },
+   "to": {
+    "node": "b13",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b13",
+    "port": 0
+   },
+   "to": {
+    "node": "b14",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b13",
+    "port": 1
+   },
+   "to": {
+    "node": "b14",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b14",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c33",
+   "from": {
+    "node": "b14",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e8473d"
+  }
+ ],
+ "view": null
+}

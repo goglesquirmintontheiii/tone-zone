@@ -14,14 +14,14 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 55,
+   "y": 67,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
    "x": -146,
-   "y": 36,
+   "y": 48,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,7 +30,7 @@
    "id": "b2",
    "type": "tz.silkvol",
    "x": -370,
-   "y": 8,
+   "y": 0,
    "params": {
     "pos": 1
    },
@@ -41,7 +41,7 @@
    "id": "b3",
    "type": "bx.cs3",
    "x": -586,
-   "y": 36,
+   "y": 48,
    "params": {
     "level": 0.55,
     "tone": 0.5,
@@ -55,7 +55,7 @@
    "id": "b4",
    "type": "tz.klone",
    "x": -806,
-   "y": 43,
+   "y": 55,
    "params": {
     "gain": 0.35,
     "tone": 0.55,
@@ -68,7 +68,7 @@
    "id": "b5",
    "type": "jhs.morningglory",
    "x": -1008,
-   "y": 41,
+   "y": 53,
    "params": {
     "level": 0.55,
     "gain": 0.55,
@@ -96,7 +96,7 @@
    "id": "b7",
    "type": "cab.2x12blue",
    "x": -1968,
-   "y": 34,
+   "y": 46,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -118,7 +118,7 @@
    "id": "b8",
    "type": "tc.corona",
    "x": -2172,
-   "y": 47,
+   "y": 59,
    "params": {
     "rate": 0.25,
     "depth": 0.3,
@@ -131,7 +131,7 @@
    "id": "b9",
    "type": "tc.flashback2",
    "x": -2376,
-   "y": 47,
+   "y": 59,
    "params": {
     "dtime": 0.5,
     "feedback": 0.343,
@@ -144,7 +144,7 @@
    "id": "b10",
    "type": "tz.shimmer",
    "x": -2610,
-   "y": 36,
+   "y": 48,
    "params": {
     "decay": 0.7,
     "mix": 0.35,
@@ -158,7 +158,7 @@
    "id": "b11",
    "type": "tz.meter",
    "x": -2810,
-   "y": 30,
+   "y": 42,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -167,7 +167,7 @@
    "id": "__out",
    "type": "__out",
    "x": -3050,
-   "y": 55,
+   "y": 67,
    "params": {}
   }
  ],

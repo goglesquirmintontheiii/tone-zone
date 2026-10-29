@@ -15,14 +15,14 @@
    "id": "__in",
    "type": "__in",
    "x": 130,
-   "y": 55,
+   "y": 67,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
    "x": -146,
-   "y": 36,
+   "y": 48,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,7 +31,7 @@
    "id": "b2",
    "type": "tz.silkvol",
    "x": -370,
-   "y": 8,
+   "y": 0,
    "params": {
     "pos": 1
    },
@@ -42,7 +42,7 @@
    "id": "b3",
    "type": "tz.lantern",
    "x": -650,
-   "y": 71.5,
+   "y": 83.5,
    "params": {
     "gain": 0.4,
     "tone": 0.5,
@@ -66,7 +66,7 @@
    "id": "b5",
    "type": "cab.2x12twin",
    "x": -1610,
-   "y": 34,
+   "y": 46,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -88,7 +88,7 @@
    "id": "b6",
    "type": "sy.ola",
    "x": -1884,
-   "y": 50,
+   "y": 62,
    "params": {
     "mix": 0.3
    },
@@ -99,7 +99,7 @@
    "id": "b7",
    "type": "sy.timeline",
    "x": -2254,
-   "y": 46,
+   "y": 58,
    "params": {
     "d.time": 223.6068,
     "d.feedback": 0.5775,
@@ -112,7 +112,7 @@
    "id": "b8",
    "type": "mrs.mercuryx",
    "x": -2640,
-   "y": 46,
+   "y": 58,
    "params": {
     "inf": 0,
     "decay": 0.8,
@@ -125,7 +125,7 @@
    "id": "b9",
    "type": "tz.shimmer",
    "x": -2874,
-   "y": 36,
+   "y": 48,
    "params": {
     "decay": 0.85,
     "mix": 0.3
@@ -137,7 +137,7 @@
    "id": "b10",
    "type": "tz.meter",
    "x": -3074,
-   "y": 30,
+   "y": 42,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -146,7 +146,7 @@
    "id": "__out",
    "type": "__out",
    "x": -3314,
-   "y": 55,
+   "y": 67,
    "params": {}
   }
  ],

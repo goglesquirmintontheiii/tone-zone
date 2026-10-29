@@ -1,0 +1,365 @@
+{
+ "version": 1,
+ "name": "Artist · Green Day",
+ "tags": [
+  "artist",
+  "punk",
+  "pop-punk",
+  "rock",
+  "rhythm"
+ ],
+ "desc": "Dookie-era Billie Joe: a boosted modded Plexi on one side and an AC30 on the other for a punchy wall, with a gate. Tune down a half step; turn the Tube Screamer off for cleaner verses.",
+ "factory": true,
+ "order": 307,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 19,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3",
+   "x": -146,
+   "y": 0,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "ib.ts808",
+   "x": -366,
+   "y": 4,
+   "params": {
+    "gain": 0.15,
+    "tone": 0.55,
+    "level": 0.72
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.hush",
+   "x": -586,
+   "y": 17.5,
+   "params": {
+    "threshold": 0.3,
+    "decay": 0.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "mx.m101",
+   "x": -784,
+   "y": 18,
+   "params": {
+    "rate": 0.3
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "box.split2",
+   "x": -950,
+   "y": 71,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "amp.plexi",
+   "x": -1422,
+   "y": 348,
+   "params": {
+    "gain": 0.9,
+    "master": 0.6,
+    "presence": 0.55,
+    "bass": 0.55,
+    "mid": 0.6,
+    "treble": 0.6,
+    "bright": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "cab.4x12gb",
+   "x": -1430,
+   "y": 562,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -4.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "amp.ac30",
+   "x": -1410,
+   "y": 1072,
+   "params": {
+    "gain": 0.62,
+    "treble": 0.55,
+    "bass": 0.55,
+    "presence": 0.5,
+    "master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "cab.2x12blue",
+   "x": -1880,
+   "y": 1106,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.645,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -4.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "tz.reverb",
+   "x": -1672,
+   "y": 1492,
+   "params": {
+    "mode": 0,
+    "decay": 0.2,
+    "mix": 0.07
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b11",
+   "type": "tz.meter",
+   "x": -1872,
+   "y": 1507,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2120,
+   "y": 19,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c12",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 1
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b10",
+    "port": 1
+   },
+   "to": {
+    "node": "b11",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b11",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  }
+ ],
+ "view": null
+}
