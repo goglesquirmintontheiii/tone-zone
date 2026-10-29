@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
+    <!-- shared gradients / patterns: in their own always-rendered svg so every tab (not just the board) can use them -->
+    <svg id="defsHost" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs id="globalDefs"></defs></svg>
   <div id="app">
     <header id="topbar">
       <div class="brand">
@@ -67,7 +69,6 @@
           <div id="board" tabindex="0">
             <div id="boardGrid"></div>
             <svg id="boardSvg" xmlns="http://www.w3.org/2000/svg">
-              <defs id="globalDefs"></defs>
               <g id="viewport">
                 <g id="layerNodes"></g>
                 <g id="layerCableShadows"></g>

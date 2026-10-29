@@ -1,6 +1,8 @@
 // Built-in Tone Zone plugin: Mooer.
 // Blocks inspired by Mooer gear. Names, logos and artwork are Tone Zone originals; control layouts and
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+import { registerGE300 } from './ge300.js';
+
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, stomp } = tz.builders;
@@ -49,4 +51,5 @@ export default function register(tz) {
     MICRO({ id: 'mooer.micro-010', name: 'Micro Pre 010 Two Stones', ref: 'Mooer Micro Preamp 010 Two Stone (Two-Rock)', logo: 'TWO STONES', tagline: 'MICRO PRE 010', color: '#e3ddcc', accent: '#1d1d1f',
       models: [{ base: 'twin', brightDb: 5 }, { base: 'dumble' }], cab: open12 }),
   ]);
+  registerGE300(tz);
 }

@@ -1,28 +1,17 @@
-// Tone Zone "modeler kit": the shared engine behind the big multi-effects units (block slots that hold any model,
-// category → model menus, parameter pages on the knobs under the screen, snapshots / scenes, internal presets,
-// tap tempo, tuner, looper, expression pedals).
+// Shared code for the big multi-FX units: block slots, model library, menus, snapshots, presets, tap, tuner, looper.
+// The same file is copied into every plugin that uses it (line6, boss, fractal-audio, neural-dsp, headrush, kemper).
+// Edit plugins/line6/mfx-kit.js and copy it over the others.
 //
-// The SAME file ships in every plugin that uses it (line6, boss, fractal-audio, neural-dsp, headrush, kemper) so a
-// plugin never depends on another one being installed. Keep the copies identical (edit plugins/line6/mfx-kit.js,
-// then copy it over the others).
-//
-// How it works
-// * Every slot i of a unit keeps its state in hidden block params (underscore names never reach the engine):
-//   `_s<i>m` model index (0 = empty), `_s<i>on` on/off, `_s<i>p<j>` parameter j as a 0..1 knob position.
-// * The engine block is a `chain` whose sub-blocks are built from the slots that hold a model (one sub-block per
-//   used slot, nothing for empty slots), so CPU only goes to what is in the patch. The chain lives in the block
-//   instance's own `opts` (`block.opts.chain`, saved with the preset); whenever a slot's model or the routing
-//   changes the kit rebuilds it and re-syncs the graph. Parallel paths are nested chains in a `group`.
-// * `derive` turns the slot params into engine params (`s3.gain`, `pa.s5.time`, …).
-// * Navigation (current view, cursor, selected slot, page) is UI-only state in `state.ui[blockId].mfx`;
-//   snapshots / internal presets are stored on the block object (`block.mfx`) so they save with the preset.
-// * Model indices are positions in LIB: only ever APPEND models (saved presets refer to them by index).
+// Slot state lives in hidden params: _s<i>m (model index, 0 = empty), _s<i>on, _s<i>p<j> (0..1 knob position).
+// The engine block is a chain with one sub-block per used slot, kept in block.opts.chain and rebuilt when a model
+// or the routing changes. Menu state is UI only (state.ui[id].mfx). Snapshots and presets are saved in block.mfx.
+// LIB is append only: saved presets refer to models by index.
 
 export const KIT_VERSION = 1;
 
 // ------------------------------------------------------------------ parameter descriptors
 // P(name, engineKey, default, { min, max, curve: 'log', step, f: format, names, fn, exp, sync })
-//  f: 'ten' 0–10 · 'pct' · 'db' · 'ms' · 'hz' · 'st' semitones · 'n' named steps · 'x' raw · 'onoff'
+//  f: 'ten' 0-10 · 'pct' · 'db' · 'ms' · 'hz' · 'st' semitones · 'n' named steps · 'x' raw · 'onoff'
 //  fn(pos) → { relKey: value, … } for one knob driving several engine params (k is then only a label key)
 //  exp: 1 | 2 → follows EXP 1 (wah / whammy) or EXP 2 (volume); sync: true → set by tap tempo (time in ms)
 const P = (n, k, d, o = {}) => Object.assign({ n, k, d, min: 0, max: 1, f: 'ten' }, o);
@@ -365,8 +354,8 @@ export function createKit(tz) {
   function setModel(id, i, idx) {
     const b = blk(id);
     if (!b) return;
-    const o = { [`_s${i}m`]: idx, [`_s${i}on`]: idx ? 1 : undefined };
-    for (let j = 0; j < 16; j++) o[`_s${i}p${j}`] = undefined;
+    const o = { [`_s${i}m`]: idx, [`_s${i}on`]: 1 };
+    explicit(o, i);
     bulk(id, o);
     syncKnobs(id);
   }
@@ -401,11 +390,23 @@ export function createKit(tz) {
     for (const k of slotKeys(b, i)) o[k.replace(/^_s\d+/, '')] = b.params[k];
     return o;
   }
+  // write every value of slot i explicitly, so nothing falls back to the def's initParams (preset 1 values)
+  function explicit(o, i) {
+    const mi = o[`_s${i}m`] ?? 0;
+    const m = LIB[mi | 0];
+    o[`_s${i}m`] = m ? m.idx : 0;
+    o[`_s${i}on`] = o[`_s${i}on`] ?? 1;
+    for (let j = 0; j < 16; j++) {
+      const k = `_s${i}p${j}`;
+      if (m && m.P[j]) { if (o[k] === undefined) o[k] = pPos(m.P[j], m.P[j].d); } else o[k] = undefined;
+    }
+  }
   function slotLoad(o, i, data) {
     for (let j = 0; j < 16; j++) o[`_s${i}p${j}`] = undefined;
     o[`_s${i}m`] = 0;
     o[`_s${i}on`] = undefined;
     for (const k in data || {}) o[`_s${i}${k}`] = data[k];
+    explicit(o, i);
   }
   function swapSlots(id, a, c) {
     const b = blk(id);
@@ -544,6 +545,7 @@ export function createKit(tz) {
     const o = {};
     for (const key in b.params) if (STRUCT.test(key)) o[key] = undefined;
     Object.assign(o, data.params, { _preset: k, _snap: data.snap || 0 });
+    for (let i = 1; i <= cfg.n; i++) explicit(o, i);
     bulk(id, o, (bb) => {
       const xx = mfx(bb);
       xx.preset = k;
@@ -710,6 +712,8 @@ export function createKit(tz) {
     let m;
     if ((m = /^k(\d+)$/.exec(p))) {
       const t = knobMap(id)[+m[1] - 1];
+      const nn = nav(id);
+      nn.lastK = +m[1]; nn.lastKT = performance.now();
       if (t && slotModel(ui(b), t[0]) && slotModel(ui(b), t[0]).P[t[1]]) {
         tz.app.setParam(id, `_s${t[0]}p${t[1]}`, v);
         bump(id);
@@ -809,11 +813,21 @@ export function createKit(tz) {
     M.valueTurn = (id, d) => { const n = nav(id); const it = M.items(id)[n.cur]; if (it && it.row) setStep(id, it.row, d); else if (it && it.turn) it.turn(d); else M.move(id, d); };
     return M;
   }
+  // jacks spread along the top edge: control jacks, then outputs, then inputs
+  function topJacks(d, W, flip, x0 = 40, x1 = W - 40) {
+    const all = [
+      ...d.ctrl.ins.map((c, i) => ({ key: 'ic' + i, dir: 'in', port: 'c' + i, label: c.label, kind: 'ctrl' })),
+      ...d.ports.outs.map((l, i) => ({ key: 'o' + i, dir: 'out', port: i, label: l })),
+      ...d.ports.ins.map((l, i) => ({ key: 'i' + i, dir: 'in', port: i, label: l })),
+    ];
+    const step = all.length > 1 ? (x1 - x0) / (all.length - 1) : 0;
+    return all.map((j, k) => Object.assign(j, { side: 'top', y: -2, x: flip ? W - (x0 + k * step) : x0 + k * step }));
+  }
   // visible window of a list
   const windowTop = (n, cur, top, rows) => Math.max(0, Math.min(Math.max(0, n - rows), cur < top ? cur : cur >= top + rows ? cur - rows + 1 : top));
 
   return {
-    svgT, bare, addEncoder, windowTop, menus,
+    svgT, bare, addEncoder, windowTop, menus, topJacks,
     LIB, CATS, BY_ID, modelsIn, modelIdx, pVal, pPos, pText, P,
     UNITS, live, blk, ui, nav, mfx, bump, say, bulk, uiSet,
     slotModel, slotOn, slotPos, setModel, toggleSlot, setPos, stepParam, swapSlots, copySlot, pasteSlot, clearSlot,

@@ -1,7 +1,7 @@
-// "Rig X Go" – inspired by the Line 6 POD Go.
-// 4.3" colour screen with the fixed POD-style signal flow (Wah, Volume, FX 1, Amp, Cab, EQ, FX 2–4), nav encoder,
+// "Rig X Go" - inspired by the Line 6 POD Go.
+// 4.3" colour screen with the fixed POD-style signal flow (Wah, Volume, FX 1, Amp, Cab, EQ, FX 2-4), nav encoder,
 // six knobs under the screen (parameter pages), < PAGE / PAGE >, ACTION, HOME buttons, VOLUME knob, built-in
-// expression treadle with toe switch (wah ↔ volume), footswitches A–D + MODE + TAP and BANK ▼ / ▲.
+// expression treadle with toe switch (wah ↔ volume), footswitches A-D + MODE + TAP and BANK ▼ / ▲.
 import { CATS, pText } from './mfx-kit.js';
 
 export function registerRigXGo(tz, kit) {
@@ -45,7 +45,7 @@ export function registerRigXGo(tz, kit) {
       const n = kit.nav(id), u = U(id);
       const fixed = !!FIXED[n.sel];
       return [
-        { t: 'Bypass', r: kit.slotModel(u, n.sel) ? (kit.slotOn(u, n.sel) ? 'On' : 'Off') : '–', act: () => kit.toggleSlot(id, n.sel) },
+        { t: 'Bypass', r: kit.slotModel(u, n.sel) ? (kit.slotOn(u, n.sel) ? 'On' : 'Off') : '-', act: () => kit.toggleSlot(id, n.sel) },
         { t: 'Copy Block', act: () => kit.copySlot(id, n.sel) },
         { t: 'Paste Block', act: () => (fixed ? kit.say(id, 'Fixed block') : kit.pasteSlot(id, n.sel)) },
         { t: 'Clear Block', act: () => { if (fixed) kit.say(id, 'Fixed block'); else { kit.clearSlot(id, n.sel); n.view = 'home'; } } },
@@ -119,7 +119,7 @@ export function registerRigXGo(tz, kit) {
     if (k === 5) return { t: MODES[mode], c: '#ffffff', lit: true };
     if (k === 6) { const per = 60000 / (u._bpm || 120); return { t: 'TAP', c: '#ff4d4d', lit: now % per < 90 }; }
     if (k === 4 || k === 7) return { t: mode === 2 ? FSL[k] : k === 4 ? 'PRESET ▼' : 'PRESET ▲', c: '#9aa3b0', lit: false };
-    if (mode === 0) { const s = assignable(u)[k]; const m = s && kit.slotModel(u, s); return m ? { t: m.n.slice(0, 12), c: COL[m.cat], lit: kit.slotOn(u, s) } : { t: '—', c: '#444', lit: false }; }
+    if (mode === 0) { const s = assignable(u)[k]; const m = s && kit.slotModel(u, s); return m ? { t: m.n.slice(0, 12), c: COL[m.cat], lit: kit.slotOn(u, s) } : { t: '-', c: '#444', lit: false }; }
     if (mode === 1) return { t: 'SNAP ' + (k + 1), c: SNAPCOL[k], lit: (u._snap | 0) === k };
     const bank = n.bank ?? Math.floor((u._preset | 0) / 4);
     const p = bank * 4 + k;
@@ -231,7 +231,7 @@ export function registerRigXGo(tz, kit) {
         const c = t && t.note ? t.cents : null;
         const idx = c === null ? -1 : Math.round(Math.max(-1, Math.min(1, c / 50)) * 12) + 12;
         s.segs.forEach((r, k) => setA(r, 'fill', k === idx ? (Math.abs(c) < 2 ? '#54e08a' : '#ff4d4d') : k === 12 ? '#3c5a47' : '#2b3038'));
-        setText(s.tn, t && t.note ? t.note : '–');
+        setText(s.tn, t && t.note ? t.note : '-');
         setText(s.tc, t && t.note ? `${c >= 0 ? '+' : ''}${c.toFixed(1)} cents` : `${u._tref ?? 440} Hz`);
         return;
       }
@@ -249,7 +249,7 @@ export function registerRigXGo(tz, kit) {
           setA(e.bg, 'stroke', i === n.sel ? '#ffffff' : m && on ? c : '#59616d');
           setA(e.bg, 'stroke-width', i === n.sel ? 1.3 : 0.7);
           setA(e.tag, 'fill', m && on ? '#000' : '#9aa3b0');
-          const words = m ? m.n.split(' ') : ['—'];
+          const words = m ? m.n.split(' ') : ['-'];
           setText(e.nm, (words[0] || '').slice(0, 7));
           setText(e.nm2, words.slice(1).join(' ').slice(0, 7));
           setA(e.nm, 'fill', m && on ? '#e8ecf1' : '#78818e');
@@ -257,7 +257,7 @@ export function registerRigXGo(tz, kit) {
           setA(e.sel, 'fill-opacity', i === n.sel ? 1 : 0);
         });
         const m = kit.slotModel(u, n.sel);
-        setText(s.mName, m ? m.n : SLOTNAME[n.sel] + ' — empty');
+        setText(s.mName, m ? m.n : SLOTNAME[n.sel] + ' - empty');
         setText(s.mCat, m ? `${SLOTNAME[n.sel]} · ${CATS[m.cat].n}${kit.slotOn(u, n.sel) ? '' : ' · OFF'}` : 'push the knob to choose');
         const np = kit.pages(u, n.sel, 6);
         s.dials.forEach((e, k) => {
@@ -360,12 +360,7 @@ export function registerRigXGo(tz, kit) {
     label(g, 504, 24, 'TOE', { size: 4.4, fill: '#8a8f97', weight: 700, font: FONT });
     if (ctx.block) kit.live.set(ctx.block.id, { rings });
     formKit.placeControls(ctx, d.controls, theme);
-    const X = (x) => (ctx.flip ? W - x : x);
-    const jacks = [];
-    d.ctrl.ins.forEach((c, i) => jacks.push({ key: 'ic' + i, dir: 'in', port: 'c' + i, label: c.label, side: 'top', x: X(150 + i * 30), y: -2, kind: 'ctrl' }));
-    d.ports.outs.forEach((l, i) => jacks.push({ key: 'o' + i, dir: 'out', port: i, label: l.replace('OUTPUT', 'OUT'), side: 'top', x: X(300 + i * 30), y: -2 }));
-    d.ports.ins.forEach((l, i) => jacks.push({ key: 'i' + i, dir: 'in', port: i, label: l.replace('INPUT', 'IN'), side: 'top', x: X(400), y: -2 }));
-    return { w: W, h: H, theme, jacks };
+    return { w: W, h: H, theme, jacks: kit.topJacks(d, W, ctx.flip) };
   });
 
   const controls = [
@@ -380,12 +375,12 @@ export function registerRigXGo(tz, kit) {
   ];
   const d = def({
     id: ID, name: 'Rig X Go', ref: 'Line 6 POD Go', brand: 'Line 6', code: 'RIG X GO', typeName: 'Amp modeler & effects with expression pedal', cat: 'Multi-FX', kind: 'Multi-FX',
-    form: 'rxg-podgo', color: '#2a2c30', stereo: 'both', cost: 6, alwaysOn: true, noBypassClick: true,
-    monoPorts: { ins: ['INPUT'], outs: ['OUTPUT L/MONO'] }, stereoPorts: { ins: ['INPUT'], outs: ['OUTPUT L/MONO', 'OUTPUT R'] }, ports: { ins: ['INPUT'], outs: ['OUTPUT L/MONO'] },
+    form: 'rxg-podgo', color: '#2a2c30', cost: 6, alwaysOn: true, noBypassClick: true,
+    ports: { ins: ['GUITAR IN'], outs: ['MAIN L/MONO', 'MAIN R', 'AMP OUT', 'FX SEND', 'PHONES'] }, jackKinds: { o4: 'phones' },
     ctrl: { ins: [{ label: 'EXP 2', hook: true, exp: 2 }] },
     controls,
     tags: ['pod', 'modeler', 'snapshot', 'expression'],
-    desc: 'Fixed POD-style signal flow: Wah, Volume, FX 1, Amp, Cab, EQ, FX 2–4 (the four FX slots take drives, dynamics, modulation, delays, reverbs, pitch / synth and filters). Nav knob: select a block, push to pick the FX type → model. Knobs 1–6 edit the block, < PAGE / PAGE > flip pages, ACTION = bypass / copy / paste / clear, HOME = home ↔ footswitch view, hold HOME = MENU (Global Settings, tuner, tempo). The treadle works the wah while it is on and the volume pedal otherwise; click the TOE strip to switch the wah on / off. MODE cycles STOMP / SNAPSHOT / PRESET; TAP (hold = tuner); BANK ▼▲ step presets or banks.',
+    desc: 'POD-style chain (wah, volume, FX 1, amp, cab, EQ, FX 2-4). Turn the knob to pick a block (push to choose its model), knobs 1-6 edit it, the pedal works the wah or volume and MODE switches footswitch modes.',
   });
   kit.register(d, {
     n: N, knobs: 6, sel0: 4, layout: () => [1, 2, 3, 4, 5, 6, 7, 8, 9], inputGate: false, looper: false, presets,

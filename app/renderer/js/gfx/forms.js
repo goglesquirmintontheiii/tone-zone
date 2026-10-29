@@ -488,45 +488,55 @@ forms.treadle = (ctx, def) => {
 
 // Valves standing on top of an enclosure. Shared gradients (g-tube*) keep them cheap; only the heater glow
 // elements change at runtime (ctx.tubeGlows, flickered by the block view a few times a second).
+// groups: [{ x0 | x1 (right edge), n, power }]
+export const TUBE_DIM = { power: { w: 11, h: 31, gap: 3.5 }, pre: { w: 7.4, h: 20, gap: 3 } };
 function drawTubes(ctx, groups) {
   const g = svg('g', { 'pointer-events': 'none' }, ctx.g);
   ctx.tubeGlows = ctx.tubeGlows || [];
-  for (const { x0, n, power } of groups) {
-    const tw = power ? 16 : 10.5, th = power ? 46 : 30, gap = power ? 5 : 4.5;
+  for (const { x0, x1, n, power } of groups) {
+    const D = power ? TUBE_DIM.power : TUBE_DIM.pre;
+    const tw = D.w, th = D.h, span = n * tw + (n - 1) * D.gap;
+    const start = x0 ?? x1 - span;
     for (let i = 0; i < n; i++) {
-      const cx = x0 + i * (tw + gap) + tw / 2, r = tw / 2;
-      // chrome socket on the chassis
-      svg('rect', { x: cx - r - 2.5, y: -3.5, width: tw + 5, height: 4.5, rx: 1.4, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.4 }, g);
-      const base = power ? -13 : -5; // octal bakelite base vs 9-pin miniature
+      const cx = start + i * (tw + D.gap) + tw / 2, r = tw / 2;
+      // chrome socket ring and a warm reflection of the glow on it
+      svg('rect', { x: cx - r - 1.6, y: -2.6, width: tw + 3.2, height: 3.4, rx: 1.1, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.3 }, g);
+      svg('ellipse', { cx, cy: -1.6, rx: r * 0.9, ry: 0.9, fill: '#ff8a2a', 'fill-opacity': 0.35 }, g);
+      const base = power ? -9.5 : -3.6;
       if (power) {
-        svg('rect', { x: cx - r * 0.86, y: base, width: r * 1.72, height: 10, rx: 2, fill: 'url(#g-tubeBase)', stroke: '#0b0806', 'stroke-width': 0.4 }, g);
-        svg('rect', { x: cx - r * 0.86, y: base + 1, width: r * 1.72, height: 1, fill: '#fff', 'fill-opacity': 0.12 }, g);
-      } else for (const dx of [-0.45, 0, 0.45]) svg('rect', { x: cx + dx * r - 0.4, y: -4.6, width: 0.8, height: 1.6, fill: '#c9ced5' }, g);
+        // octal bakelite base with its key ridge
+        svg('rect', { x: cx - r * 0.84, y: base, width: r * 1.68, height: 7.2, rx: 1.4, fill: 'url(#g-tubeBase)', stroke: '#0b0806', 'stroke-width': 0.3 }, g);
+        svg('rect', { x: cx - r * 0.84, y: base + 0.7, width: r * 1.68, height: 0.6, fill: '#fff', 'fill-opacity': 0.14 }, g);
+      } else for (const dx of [-0.5, 0, 0.5]) svg('rect', { x: cx + dx * r - 0.3, y: -3.4, width: 0.6, height: 1.2, fill: '#c9ced5' }, g);
       const top = base - th;
-      // the bottle: power tubes have a shoulder, preamp tubes a round top with the exhaust tip
       const bottle = power
-        ? `M${cx - r} ${base} L${cx - r} ${top + r * 2.6} C${cx - r} ${top + r * 1.1} ${cx - r * 0.62} ${top + r * 0.5} ${cx - r * 0.52} ${top + r * 0.1} Q${cx} ${top - 2.4} ${cx + r * 0.52} ${top + r * 0.1} C${cx + r * 0.62} ${top + r * 0.5} ${cx + r} ${top + r * 1.1} ${cx + r} ${top + r * 2.6} L${cx + r} ${base} Z`
+        ? `M${cx - r} ${base} L${cx - r} ${top + r * 2.6} C${cx - r} ${top + r * 1.15} ${cx - r * 0.66} ${top + r * 0.55} ${cx - r * 0.5} ${top + r * 0.12} Q${cx} ${top - 1.6} ${cx + r * 0.5} ${top + r * 0.12} C${cx + r * 0.66} ${top + r * 0.55} ${cx + r} ${top + r * 1.15} ${cx + r} ${top + r * 2.6} L${cx + r} ${base} Z`
         : `M${cx - r} ${base} L${cx - r} ${top + r} A${r} ${r} 0 0 1 ${cx + r} ${top + r} L${cx + r} ${base} Z`;
-      // faint warm halo behind everything inside the glass
-      svg('ellipse', { cx, cy: top + th * 0.58, rx: r * 1.15, ry: th * 0.36, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.55 }, g);
-      // inside: mica spacers, plate(s) with slots, heater glow through the slots
-      const py = top + th * (power ? 0.34 : 0.3), ph = th * (power ? 0.42 : 0.46);
-      svg('rect', { x: cx - r * 0.82, y: py - 2.2, width: r * 1.64, height: 1.3, rx: 0.6, fill: '#e9e3d2', 'fill-opacity': 0.65 }, g);
-      svg('rect', { x: cx - r * 0.82, y: py + ph + 1, width: r * 1.64, height: 1.3, rx: 0.6, fill: '#e9e3d2', 'fill-opacity': 0.55 }, g);
-      const plates = power ? [[-r * 0.62, r * 1.24]] : [[-r * 0.72, r * 0.66], [r * 0.06, r * 0.66]];
+      // warm haze inside the glass
+      svg('ellipse', { cx, cy: top + th * 0.6, rx: r * 1.05, ry: th * 0.34, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.5 }, g);
+      const py = top + th * (power ? 0.36 : 0.32), ph = th * (power ? 0.4 : 0.44);
+      // support rods running through the micas
+      svg('path', { d: `M${cx - r * 0.5} ${py - 3} V${py + ph + 2.5} M${cx + r * 0.5} ${py - 3} V${py + ph + 2.5}`, stroke: '#9aa1aa', 'stroke-width': 0.35, 'stroke-opacity': 0.8 }, g);
+      for (const my of [py - 1.6, py + ph + 0.7]) svg('rect', { x: cx - r * 0.8, y: my, width: r * 1.6, height: 0.9, rx: 0.4, fill: '#ece6d6', 'fill-opacity': 0.62 }, g);
+      const plates = power ? [[-r * 0.6, r * 1.2]] : [[-r * 0.7, r * 0.64], [r * 0.06, r * 0.64]];
       for (const [px, pw] of plates) {
-        svg('rect', { x: cx + px, y: py, width: pw, height: ph, rx: 0.8, fill: 'url(#g-tubePlate)', stroke: '#141518', 'stroke-width': 0.3 }, g);
-        svg('rect', { x: cx + px + pw * 0.38, y: py + ph * 0.12, width: pw * 0.24, height: ph * 0.76, fill: '#0c0d0f' }, g);
-        const glow = svg('rect', { x: cx + px + pw * 0.42, y: py + ph * 0.2, width: pw * 0.16, height: ph * 0.6, rx: pw * 0.08, fill: '#ff9a3a', 'fill-opacity': 0.8 }, g);
+        svg('rect', { x: cx + px, y: py, width: pw, height: ph, rx: 0.5, fill: 'url(#g-tubePlate)', stroke: '#141518', 'stroke-width': 0.25 }, g);
+        svg('rect', { x: cx + px + pw * 0.37, y: py + ph * 0.1, width: pw * 0.26, height: ph * 0.8, fill: '#0b0c0e' }, g);
+        const glow = svg('rect', { x: cx + px + pw * 0.42, y: py + ph * 0.18, width: pw * 0.16, height: ph * 0.64, rx: pw * 0.08, fill: '#ff9a3a', 'fill-opacity': 0.8 }, g);
         ctx.tubeGlows.push(glow);
+        // hottest spot of the filament
+        svg('rect', { x: cx + px + pw * 0.45, y: py + ph * 0.42, width: pw * 0.1, height: ph * 0.18, rx: pw * 0.05, fill: '#ffe2a8', 'fill-opacity': 0.75 }, g);
       }
-      // silvered getter flash at the top
-      if (power) svg('path', { d: `M${cx - r * 0.86} ${top + r * 1.9} C${cx - r * 0.86} ${top + r * 0.9} ${cx - r * 0.5} ${top + r * 0.35} ${cx} ${top + r * 0.2} C${cx + r * 0.5} ${top + r * 0.35} ${cx + r * 0.86} ${top + r * 0.9} ${cx + r * 0.86} ${top + r * 1.9} Z`, fill: 'url(#g-tubeGetter)' }, g);
-      else svg('path', { d: `M${cx - r * 0.86} ${top + r * 1.6} L${cx - r * 0.86} ${top + r} A${r * 0.86} ${r * 0.86} 0 0 1 ${cx + r * 0.86} ${top + r} L${cx + r * 0.86} ${top + r * 1.6} Z`, fill: 'url(#g-tubeGetter)' }, g);
-      // glass with highlights on top of the insides
-      svg('path', { d: bottle, fill: 'url(#g-tubeGlass)', stroke: '#dfe8f2', 'stroke-opacity': 0.5, 'stroke-width': 0.6 }, g);
-      if (!power) svg('path', { d: `M${cx - 0.9} ${top + 0.2} L${cx} ${top - 2} L${cx + 0.9} ${top + 0.2} Z`, fill: '#cfd9e4', 'fill-opacity': 0.6 }, g);
-      svg('path', { d: `M${cx - r * 0.6} ${top + r * (power ? 2.2 : 1.3)} L${cx - r * 0.6} ${base - 2}`, stroke: '#fff', 'stroke-opacity': 0.6, 'stroke-width': power ? 1.4 : 1, 'stroke-linecap': 'round', fill: 'none' }, g);
+      // silvered getter at the top
+      const gd = power
+        ? `M${cx - r * 0.84} ${top + r * 1.9} C${cx - r * 0.84} ${top + r * 0.95} ${cx - r * 0.48} ${top + r * 0.38} ${cx} ${top + r * 0.22} C${cx + r * 0.48} ${top + r * 0.38} ${cx + r * 0.84} ${top + r * 0.95} ${cx + r * 0.84} ${top + r * 1.9} Z`
+        : `M${cx - r * 0.84} ${top + r * 1.55} L${cx - r * 0.84} ${top + r} A${r * 0.84} ${r * 0.84} 0 0 1 ${cx + r * 0.84} ${top + r} L${cx + r * 0.84} ${top + r * 1.55} Z`;
+      svg('path', { d: gd, fill: 'url(#g-tubeGetter)' }, g);
+      // glass, exhaust tip and highlights
+      svg('path', { d: bottle, fill: 'url(#g-tubeGlass)', stroke: '#e3ecf5', 'stroke-opacity': 0.5, 'stroke-width': 0.45 }, g);
+      if (!power) svg('path', { d: `M${cx - 0.7} ${top + 0.2} L${cx} ${top - 1.5} L${cx + 0.7} ${top + 0.2} Z`, fill: '#cfd9e4', 'fill-opacity': 0.6 }, g);
+      svg('path', { d: `M${cx - r * 0.58} ${top + r * (power ? 2.3 : 1.4)} L${cx - r * 0.58} ${base - 1.5}`, stroke: '#fff', 'stroke-opacity': 0.62, 'stroke-width': power ? 1 : 0.75, 'stroke-linecap': 'round', fill: 'none' }, g);
+      svg('path', { d: `M${cx + r * 0.72} ${top + r * (power ? 2.6 : 1.6)} L${cx + r * 0.72} ${base - 2}`, stroke: '#fff', 'stroke-opacity': 0.22, 'stroke-width': 0.5, 'stroke-linecap': 'round', fill: 'none' }, g);
     }
   }
 }
@@ -546,7 +556,7 @@ forms.amp = (ctx, def) => {
   for (const [cx, cy] of [[0, 0], [w, 0], [0, h], [w, h]]) svg('circle', { cx: cx ? cx - 9 : 9, cy: cy ? cy - 9 : 9, r: 7, fill: 'url(#g-chromeR)', opacity: def.corners === false ? 0 : 0.9 }, g);
   if (def.tubesTop && !combo) {
     const [pre, pow] = def.tubesTop;
-    drawTubes(ctx, [{ x0: 26, n: pre, power: false }, { x0: w - 26 - pow * 21 + 6, n: pow, power: true }]);
+    drawTubes(ctx, [{ x0: 28, n: pre, power: false }, { x1: w - 28, n: pow, power: true }]);
   }
   // handle
   svg('rect', { x: w / 2 - 50, y: -9, width: 100, height: 12, rx: 6, fill: '#0e0e0e', stroke: '#000' }, g);
@@ -659,7 +669,7 @@ forms.rack = (ctx, def) => {
     svg('rect', { x, y: 0, width: 24, height: h, fill: shade(col, -0.25) }, g);
     for (const y of [16, h - 16]) svg('rect', { x: x + 6, y: y - 4, width: 12, height: 8, rx: 4, fill: '#050505' }, g);
   }
-  if (def.tubesTop && def.tubesTop[0]) drawTubes(ctx, [{ x0: w - 50 - def.tubesTop[0] * 15, n: def.tubesTop[0], power: false }]);
+  if (def.tubesTop && def.tubesTop[0]) drawTubes(ctx, [{ x1: w - 40, n: def.tubesTop[0], power: false }]);
   const txt = def.text || textColorFor(col);
   const theme = { text: txt, knob: def.knob || 'chrome', labelSize: 6 };
   label(g, 40, 30, def.logo || def.name, { size: 15, fill: def.logoColor || txt, weight: 800, ls: 1, anchor: 'start' });

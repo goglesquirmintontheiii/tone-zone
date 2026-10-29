@@ -1,6 +1,8 @@
 // Built-in Tone Zone plugin: NUX.
 // Core / Mini / Verdugo / Reissue style pedals, acoustic floor units, amp modelers and multi-effects inspired
 // by NUX gear. Names, logos and artwork are Tone Zone originals; layouts follow the real units (see `ref`).
+import { registerMG400 } from './mg400.js';
+
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SCREEN, def, db, ms } = tz.helpers;
   const at = (c, x, y, o = {}) => Object.assign(c, { x, y }, o);
@@ -427,4 +429,5 @@ export default function register(tz) {
       desc: 'Pedalboard-in-a-box: overdrive, distortion, chorus, delay and reverb, each on its own footswitch.',
     }),
   ]));
+  registerMG400(tz);
 }

@@ -3,7 +3,7 @@
   "name": "Fractal Audio",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amp & effects modelers inspired by Fractal Audio gear: a floor modeler with the 4 × 6 routing grid (parallel rows), A–E knobs, VALUE wheel, nav pad, scenes and three footswitches with mini displays.",
+  "description": "Amp & effects modelers inspired by Fractal Audio gear: a floor modeler with the 4 x 6 routing grid (parallel rows), A-E knobs, VALUE wheel, nav pad, scenes and three footswitches with mini displays.",
   "kind": "brand",
   "brand": "Fractal Audio",
   "main": "index.js",

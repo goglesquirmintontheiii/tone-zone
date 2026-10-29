@@ -1,0 +1,12 @@
+{
+  "id": "kemper",
+  "name": "Kemper",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "A small profiling-style player inspired by Kemper gear: rigs (amp + cab profiles) with stomp, mod, delay and reverb slots, eight knobs, rig buttons and LED-ring footswitches.",
+  "kind": "brand",
+  "brand": "Kemper",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8bc34a"
+}

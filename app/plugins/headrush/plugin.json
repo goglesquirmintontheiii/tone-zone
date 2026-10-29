@@ -1,0 +1,12 @@
+{
+  "id": "headrush",
+  "name": "Headrush",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Compact touchscreen amp & effects modeler inspired by Headrush gear, with four footswitches, rig / stomp / hybrid / looper modes and a built-in expression pedal.",
+  "kind": "brand",
+  "brand": "Headrush",
+  "main": "index.js",
+  "api": 1,
+  "color": "#18b4e8"
+}

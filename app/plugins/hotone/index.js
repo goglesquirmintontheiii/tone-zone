@@ -1,5 +1,5 @@
 // Built-in Tone Zone plugin: Hotone.
-// hotone.amb2 – compact touchscreen amp modeler inspired by the Hotone Ampero II Stomp: 4.3" touchscreen with a
+// hotone.amb2: compact touchscreen amp modeler inspired by the Hotone Ampero II Stomp: 4.3" touchscreen with a
 // 2 x 6 block grid (12 free blocks), three select knobs under the screen, VOLUME and MENU / VALUE knobs, a
 // screen-lock button and three footswitches (stomp / preset mode). Names and artwork are Tone Zone originals.
 import { makeKit, stdParts, stdLanes } from './mfx-kit.js';
@@ -203,7 +203,7 @@ export default function register(tz) {
         const bg = R(s.vSet, 4, y, w - 8, 13, { rx: 3, fill: C.tile });
         T(s.vSet, 9, y + 6.6, it.label, { anchor: 'start', size: 4.6, fill: C.ink, font: HF });
         R(s.vSet, w - 62, y + 2, 9, 9, { rx: 2, fill: '#262a31' });
-        T(s.vSet, w - 57.5, y + 6.6, '–', { size: 6, fill: C.ink, font: HF });
+        T(s.vSet, w - 57.5, y + 6.6, '-', { size: 6, fill: C.ink, font: HF });
         R(s.vSet, w - 14, y + 2, 9, 9, { rx: 2, fill: '#262a31' });
         T(s.vSet, w - 9.5, y + 6.6, '+', { size: 6, fill: C.ink, font: HF });
         const val = T(s.vSet, w - 33, y + 6.6, '', { size: 4.6, fill: C.acc, font: HF, weight: 700 });
@@ -256,7 +256,7 @@ export default function register(tz) {
         sa(s.eSw, 'fill', x.on ? C.acc : '#2a2e35');
         sa(s.eKnob, 'cx', x.on ? w - 9 : w - 21);
         const f = fsOf(ui, n.sel);
-        st(s.eFsT, f >= 0 ? `FS ${f + 1}` : 'FS –');
+        st(s.eFsT, f >= 0 ? `FS ${f + 1}` : 'FS -');
         sa(s.eFsT, 'fill', f >= 0 ? C.acc : C.dim);
         s.sl.forEach((r, k) => {
           const p = x.m.params[k];
@@ -290,7 +290,7 @@ export default function register(tz) {
     },
     pointer(s, view, type, pt, e, editor) {
       const blk = view.block, n = nav(blk.id), ui = tz.app.ui(blk), w = s.w, h = s.h;
-      if (n.lock) { if (type === 'down') tz.ui.toast('Screen locked – press LOCK to unlock', 'info', 1000); return; }
+      if (n.lock) { if (type === 'down') tz.ui.toast('Screen locked: press LOCK to unlock', 'info', 1000); return; }
       if (type === 'wheel') {
         const d = e.deltaY > 0 ? 1 : -1;
         if (n.view === 'edit') A.nudge(blk, n.sel, n.pf | 0, -d);
@@ -458,10 +458,10 @@ export default function register(tz) {
   for (const [k, f] of Object.entries(DEF_FS)) initParams[`_fa${k}`] = f;
   tz.addDefs([def({
     id: 'hotone.amb2', name: 'Ambera II Stomp', ref: 'Hotone Ampero II Stomp', brand: 'Hotone', code: 'AMB-II', logo: 'AMBERA II', typeName: 'Touchscreen amp modeler', cat: 'Multi-FX', kind: 'Multi-FX',
-    form: 'hotone-amb2', color: '#26282c', stereo: 'stereo', ports: { ins: ['INPUT L (MONO)', 'INPUT R'], outs: ['OUTPUT L', 'OUTPUT R'] }, cost: 6, noBypassClick: true,
+    form: 'hotone-amb2', color: '#26282c', stereo: 'stereo', ports: { ins: ['INPUT L (MONO)', 'INPUT R'], outs: ['OUTPUT L', 'OUTPUT R', 'PHONES'] }, jackKinds: { o2: 'mini' }, cost: 6, noBypassClick: true,
     ctrl: { ins: [{ label: 'EXP', param: 'exp' }] },
     algo: 'chain', opts: { chain: amb.chain }, derive: amb.derive, initParams, controls,
-    desc: 'Compact touchscreen modeler with a 12-block grid (any block anywhere: dynamics, filters, drives, amps, cabs, EQ, mods, pitch, delays, reverbs, volume). Tap a block to select it (knobs SELECT 1-3 edit it), tap again to edit: drag sliders, the switch turns it on/off, FS assigns it to a footswitch, the name opens the model picker (category tabs + models). MENU/VALUE: press = edit / next parameter, hold = settings, turn = change the focused value (or browse blocks). Tap the top bar for the preset list. LOCK ignores screen touches. Footswitches: STOMP mode = assigned blocks; PRESET mode = preset ◀ ▶ and TAP; hold FS 3 to change mode. EXP jack: wah or volume.',
+    desc: 'Compact touchscreen modeler with a grid of 12 free blocks and three footswitches. Tap a block to edit it, tap its name to change the model, and use MENU/VALUE for settings.',
   })]);
   kit.register('hotone.amb2', amb);
 }

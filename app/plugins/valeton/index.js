@@ -1,5 +1,5 @@
 // Built-in Tone Zone plugin: Valeton.
-// valeton.gr200 – floor multi-effects inspired by the Valeton GP-200: 4.3" colour screen with an 11-module
+// valeton.gr200: floor multi-effects inspired by the Valeton GP-200: 4.3" colour screen with an 11-module
 // signal chain, dedicated amp knobs, three quick knobs, PAGE / ENTER / EXIT / SAVE / MENU buttons, a row of
 // module buttons, eight footswitches (patch / stomp mode, bank, tap) and an expression pedal.
 // Names, logos and artwork are Tone Zone originals; the layout follows the real unit (see `ref`).
@@ -247,7 +247,7 @@ export default function register(tz) {
         st(s.hMod, `${CATS[n.sel].name}${x.over ? ' · DSP FULL' : ''}`);
         st(s.hModel, x.m ? x.m.name : 'NONE');
         sa(s.hOnBg, 'fill', x.on ? CATS[n.sel].color : '#2a2e33');
-        st(s.hOn, x.m ? (x.on ? 'ON' : 'OFF') : '—');
+        st(s.hOn, x.m ? (x.on ? 'ON' : 'OFF') : '-');
         sa(s.hOn, 'fill', x.on ? '#111' : '#fff');
         s.q.forEach((q, k) => {
           const p = x.m && x.m.params[n.page * 3 + k];
@@ -266,7 +266,7 @@ export default function register(tz) {
         st(s.eTagT, c.key);
         st(s.eModel, x.m ? x.m.name : 'NONE');
         sa(s.eOnBg, 'fill', x.on ? c.color : '#2a2e33');
-        st(s.eOn, x.m ? (x.on ? 'ON' : 'OFF') : '—');
+        st(s.eOn, x.m ? (x.on ? 'ON' : 'OFF') : '-');
         sa(s.eOn, 'fill', x.on ? '#111' : '#fff');
         const ps = x.m ? x.m.params : [];
         const off = Math.floor((n.page * 3) / 6) * 6;
@@ -469,7 +469,6 @@ export default function register(tz) {
     svg('rect', { x: 14, y: 166, width: 434, height: 56, rx: 5, fill: '#1a1b1e' }, g);
     svg('rect', { x: 462, y: 8, width: 70, height: 284, rx: 8, fill: '#0b0c0d', stroke: '#000' }, g);
     const txt = '#e3e5e8', dim = '#8d939c';
-    label(g, 316, 14.5, 'AMP', { size: 4.4, fill: '#ff8a1f', weight: 800, ls: 1.6 });
     label(g, 272, 66, 'QUICK ACCESS', { size: 4.2, fill: dim, weight: 800, ls: 1.2 });
     // button caps
     const cap = (x, y, t, ww = 30) => {
@@ -491,7 +490,7 @@ export default function register(tz) {
     const theme = { text: txt, knob: 'boss', labelSize: 4.8 };
     formKit.placeControls(ctx, d.controls, theme);
     const jacks = formKit.jacksTop(d, w, { flip: ctx.flip });
-    jacks.push({ key: 'ic0', dir: 'in', port: 'c0', label: 'EXP 2', side: 'top', x: ctx.flip ? w * 0.68 : w * 0.32, y: -2, kind: 'ctrl' });
+    jacks.push({ key: 'ic0', dir: 'in', port: 'c0', label: 'EXP 2', side: 'top', x: ctx.flip ? w - 30 : 30, y: -2, kind: 'ctrl' });
     return { w, h, theme, jacks };
   });
 
@@ -516,12 +515,12 @@ export default function register(tz) {
   ];
   tz.addDefs([def({
     id: 'valeton.gr200', name: 'GR-200 Graphite Pro', ref: 'Valeton GP-200', brand: 'Valeton', code: 'GR-200', logo: 'GR-200', typeName: 'Multi-effects processor', cat: 'Multi-FX', kind: 'Multi-FX',
-    form: 'valeton-gr200', color: '#17181a', stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUTPUT L', 'OUTPUT R'] }, cost: 6.5, noBypassClick: true,
+    form: 'valeton-gr200', color: '#17181a', stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUTPUT L', 'OUTPUT R', 'XLR L', 'XLR R', 'PHONES'] }, jackKinds: { o2: 'xlr', o3: 'xlr', o4: 'mini' }, cost: 6.5, noBypassClick: true,
     ctrl: { ins: [{ label: 'EXP 2', param: 'exp' }] },
     algo: 'chain', opts: { chain: gr.chain }, derive: gr.derive,
     initParams: Object.assign({}, gr.initParams, { _fsm: 0, _expT: 0, _lvl: 0, exp: 1 }),
     controls,
-    desc: 'Floor processor with 11 fixed modules (PRE · WAH · DST · AMP · NR · CAB · EQ · MOD · DLY · RVB · VOL). ◀ ▶ move the cursor along the chain, ENTER edits a module (◀ ▶ = parameter pages for quick knobs 1-3), ENTER again opens its model list, EXIT goes back. The module buttons jump to a module (press again to switch it on/off). AMP knobs always control the amp module. MENU: footswitch mode, stomp assign (A-D), expression pedal target, tempo, output level, init patch. SAVE stores the patch (◀ ▶ picks the location). Footswitches: PATCH mode = A-D recall patches of the bank (hold to store), STOMP mode = A-D switch the assigned modules; BANK ▼▲, MODE, TAP. Touch: tap modules, model arrows, rows (drag to edit).',
+    desc: 'Floor unit with 11 effect modules, amp knobs, three quick knobs and eight footswitches. Use the arrows and ENTER to move along the chain, open a module and pick its model; MENU and SAVE do the rest.',
   })]);
   kit.register('valeton.gr200', gr);
 }

@@ -1,6 +1,8 @@
 // Built-in Tone Zone plugin: BOSS.
 // Blocks inspired by BOSS gear. Names, logos and artwork are Tone Zone originals; control layouts and
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+import { registerGXCore } from './gx-core.js';
+
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { BOSS, NINE, MXRD, lvl, tone, gain, S, onFoot, onLed, k, AMP, CAB, preampPair, marshallKnobs, fenderKnobs } = tz.builders;
@@ -821,4 +823,5 @@ export default function register(tz) {
       desc: 'Compact multi-FX: BOOST/DS, MOD, DELAY and REVERB knobs each sweep four types (fully left = off), AMP picks one of six amps + cab. The expression pedal is a volume pedal; CTL taps the delay time.',
     }),
   ]);
+  registerGXCore(tz);
 }

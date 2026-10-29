@@ -4,35 +4,7 @@
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { BOSS, NINE, MXRD, lvl, tone, gain, S, onFoot, onLed, k, AMP, CAB, preampPair, preampOf, marshallKnobs, fenderKnobs } = tz.builders;
-  // ---- long, slim all-in-one enclosure (four footswitches, sections printed on the top)
-  tz.addForm('tech21-flyrig', (ctx, d) => {
-    const { svg, label, formKit } = tz.gfx;
-    const g = ctx.g, w = 380, h = 150, txt = d.text || '#e8e8e8';
-    formKit.body(g, w, h, d.color, { rx: 8, brushed: true });
-    const secs = [['p', 10, 100, 'PLXS'], ['s', 100, 230, 'SANSAMP'], ['d', 230, 370, 'DLY']];
-    const kn = d.controls.filter((c) => c.t === 'knob');
-    for (const [pre, x0, x1, name] of secs) {
-      svg('rect', { x: x0 + 3, y: 8, width: x1 - x0 - 6, height: 78, rx: 5, fill: '#000', opacity: 0.25 }, g);
-      label(g, (x0 + x1) / 2, 16, name, { size: 6.5, fill: txt, weight: 800, ls: 1.6, opacity: 0.85 });
-      const ks = kn.filter((c) => c.p.startsWith(pre + '.') || (pre === 's' && c.p.startsWith('r.')));
-      const n = Math.min(ks.length, 3), rows = Math.ceil(ks.length / 3);
-      ks.forEach((c, i) => {
-        const row = Math.floor(i / 3), inRow = Math.min(3, ks.length - row * 3), col = i % 3;
-        const step = (x1 - x0 - 30) / Math.max(1, n - 1 || 1);
-        const xs = inRow === 1 ? (x0 + x1) / 2 : x0 + 15 + col * step + ((n - inRow) * step) / 2;
-        Object.assign(c, { x: xs, y: rows === 1 ? 48 : 34 + row * 29, r: rows === 1 ? 11 : 9, labelPos: 'below', labelSize: 4.8 });
-      });
-    }
-    const foots = d.controls.filter((c) => c.t === 'foot'), leds = d.controls.filter((c) => c.t === 'led');
-    const fx = [55, 165, 270, 335];
-    foots.forEach((f, i) => Object.assign(f, { style: 'soft', x: fx[i], y: 120, r: 10, labelDy: 18 }));
-    leds.forEach((l, i) => Object.assign(l, { x: fx[i], y: 98, r: 2.8 }));
-    label(g, 110, 122, d.logo || d.name, { size: 11, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.4 });
-    formKit.tzBadge(g, 218, 122, txt, 4);
-    const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 4.8 };
-    formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 40, gap: 26, flip: ctx.flip }) };
-  });
+  registerFlyRig(tz);
   tz.addDefs([
     def({ id: 'pre.sansamp', name: 'BassDrive DI', ref: 'Tech 21 SansAmp Bass Driver DI', cat: 'Preamp', form: 'tz', color: '#202020', text: '#e9e9e9', logo: 'BASS DRIVE', typeName: 'Bass preamp', knob: 'chrome',
         algo: 'drive', opts: { clip: 'tube', bias: 0.2, preHp: 30, gainMinDb: 0, gainMaxDb: 34, tone: 'eq3', eqRangeDb: 12, bassF: 80, midF: 2800, trebleF: 4500, midQ: 0.9, postLp: 9000, levelMaxDb: 8 },
@@ -56,23 +28,78 @@ export default function register(tz) {
       algo: 'amp', cost: 1.6, opts: { preamp: true, voice: { base: 'svt', otLp: 5000, otHp: 30 } },
       controls: [K('level', 'LEVEL', { min: -24, max: 12, def: -2, display: db }), K('treble', 'HIGH'), K('mid', 'MID'), K('bass', 'LOW'), K('gain', 'DRIVE', { def: 0.45 }), K('midfreq', 'CHARACTER'), FOOT(), LED({ color: '#ff2a1a' })],
       desc: 'SVT-style tube bass tone in a pedal with a speaker-emulated DI output.' }),
-    def({ id: 'tech21.flyrig', name: 'Air Rig 5', ref: 'Tech 21 Fly Rig 5', cat: 'Preamp', kind: 'Preamp', form: 'tech21-flyrig', color: '#202124', text: '#e8e8e8', logo: 'AIR RIG 5', typeName: 'Pedalboard in a box', knob: 'chrome',
-      algo: 'chain', cost: 3.4, stereo: 'both', alwaysOn: true,
-      opts: { chain: [
-        { prefix: 'p', algo: 'drive', opts: { clip: 'asym', bias: 0.25, gainMinDb: 4, gainMaxDb: 40, tone: 'lp', toneLo: 1500, toneHi: 9000, postLp: 8000, levelMaxDb: 6 }, on: false },
-        { prefix: 's', algo: 'amp', opts: { preamp: true, voice: { base: 'plexi', otLp: 5200, otHp: 80 } } },
-        { prefix: 'd', algo: 'delay', opts: { maxMs: 1000 }, params: { mode: 1, time: 380, feedback: 0.3, mix: 0.25 }, on: false },
-        { prefix: 'r', algo: 'reverb', params: { mode: 0, decay: 0.4, mix: 0.2 } },
-      ] },
-      controls: [
-        K('p.level', 'LEVEL'), K('p.tone', 'TONE'), K('p.gain', 'DRIVE', { def: 0.55 }),
-        K('s.level', 'LEVEL', { min: -24, max: 12, def: -2, display: db }), K('s.bass', 'LOW'), K('s.treble', 'HIGH'), K('s.gain', 'DRIVE', { def: 0.4 }),
-        K('d.mix', 'LEVEL', { def: 0.25 }), K('d.feedback', 'REPEATS', { def: 0.3 }), K('d.time', 'TIME', { min: 40, max: 1000, def: 380, curve: 'log', display: ms }), K('d.moddepth', 'DRIFT', { def: 0.1 }),
-        K('r.mix', 'REVERB', { def: 0.2 }),
-        FOOT({ action: 'param', p: 'p.on', toggle: true, label: 'PLXS' }), FOOT({ action: 'param', p: 's.on', toggle: true, label: 'SANS' }), FOOT({ action: 'param', p: 'd.on', toggle: true, label: 'DLY' }), FOOT({ action: 'tap', label: 'TAP', tapSub: 2, tapTarget: 'd.time' }),
-        LED({ bind: 'param:p.on' }), LED({ bind: 'param:s.on', color: '#3ddc84' }), LED({ bind: 'param:d.on', color: '#3d8bff' }), LED({ bind: 'tap:d.time', color: '#3d8bff' }),
-      ],
-      initParams: { 'p.on': 0, 's.on': 1, 'd.on': 0, 'r.on': 1 },
-      derive: (u) => ({ 'r.on': (u['r.mix'] ?? 0) > 0.004 ? 1 : 0 }), desc: 'Slim all-in-one board: plexi-style drive, SansAmp preamp, analog-voiced delay with tap and a reverb.' }),
   ]);
+}
+
+// Fly Rig 5 style strip: PLXS drive + boost, SansAmp with speaker sim, reverb, delay with tap. No screen.
+function registerFlyRig(tz) {
+  const { K, BTN, FOOT, LED, def, db, ms } = tz.helpers;
+  const { svg, label, formKit } = tz.gfx;
+  // sections: [label, x0, x1, on-param]
+  const SECS = [['PLXS', 8, 96, 'p.on'], ['BOOST', 96, 128, 'b.on'], ['SANSAMP', 128, 282, 's.on'], ['REVERB', 282, 318, 'r.on'], ['DLY', 318, 452, 'd.on']];
+  tz.addForm('tech21-flyrig5', (ctx, d) => {
+    const g = ctx.g, w = 460, h = 132, txt = '#e8e8e8';
+    formKit.body(g, w, h, d.color, { rx: 8, brushed: true });
+    for (const [name, x0, x1] of SECS) {
+      svg('rect', { x: x0 + 2, y: 15, width: x1 - x0 - 4, height: 62, rx: 4, fill: '#000', 'fill-opacity': 0.28 }, g);
+      label(g, (x0 + x1) / 2, 21.5, name, { size: 5.6, fill: txt, weight: 800, ls: 1.4 });
+    }
+    label(g, 283, 110, d.logo, { size: 12, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.6 });
+    formKit.tzBadge(g, 283, 121, '#9a9ca0', 3.6);
+    const theme = { text: txt, knob: 'chrome', labelSize: 4.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksTop(d, w, { flip: ctx.flip }) };
+  });
+  const kx = (x0, x1, n, i) => x0 + ((x1 - x0) * (i + 0.5)) / n;
+  const knob = (p, l, sec, n, i, o = {}) => Object.assign(K(p, l, o), { x: kx(SECS[sec][1], SECS[sec][2], n, i), y: 40, r: 9, labelPos: 'below' });
+  const btn = (p, l, x) => Object.assign(BTN(l, { p, toggle: true, shape: 'rect', w: 18, h: 7, led: true, ledColor: '#ffb000', ledDx: 13, ledDy: 0, labelPos: 'below' }), { x, y: 66, labelSize: 3.8 });
+  const fx = [52, 112, 205, 360, 425];
+  const fsp = ['p.on', 'b.on', 's.on', 'd.on'];
+  tz.addDefs([def({
+    id: 'tech21.flyrig', name: 'Air Rig 5', ref: 'Tech 21 Fly Rig 5', cat: 'Multi-FX', kind: 'Multi-FX', form: 'tech21-flyrig5', color: '#202124', logo: 'AIR RIG 5', typeName: 'Analog multi-effect strip',
+    algo: 'chain', cost: 4.2, alwaysOn: true, noBypassClick: true,
+    ports: { ins: ['INPUT'], outs: ['OUTPUT', 'XLR OUT'] }, jackKinds: { o1: 'xlr' },
+    opts: { chain: [
+      { prefix: 'p', algo: 'drive', on: false, opts: { clip: 'asym', bias: 0.25, gainMinDb: 4, gainMaxDb: 40, tone: 'lp', toneLo: 1500, toneHi: 9000, postLp: 8000, levelMaxDb: 6,
+        modes: [{}, { gainMaxDb: 48, preEq: [{ type: 'peak', f: 800, q: 0.8, db: 5 }] }] } },
+      { prefix: 'b', algo: 'drive', on: false, opts: { clip: 'clean', gainMinDb: 0, gainMaxDb: 12, tone: 'none', levelMaxDb: 0 } },
+      { prefix: 's', algo: 'amp', opts: { preamp: true, voice: { base: 'bassman', otLp: 5200, otHp: 80 } } },
+      { prefix: 'c', algo: 'cab', opts: { model: '1x12open' }, params: { m1pos: 0.4 } },
+      { prefix: 'd', algo: 'delay', on: false, opts: { maxMs: 1200 }, params: { mode: 1 } },
+      { prefix: 'r', algo: 'reverb', params: { mode: 0 } },
+    ] },
+    controls: [
+      knob('p.level', 'LEVEL', 0, 3, 0), knob('p.tone', 'TONE', 0, 3, 1), knob('p.gain', 'DRIVE', 0, 3, 2, { def: 0.55 }),
+      knob('b.gain', 'LEVEL', 1, 1, 0, { def: 0.6 }),
+      knob('s.level', 'LEVEL', 2, 5, 0, { min: -24, max: 12, def: 2, display: db }), knob('s.bass', 'LOW', 2, 5, 1), knob('s.mid', 'MID', 2, 5, 2), knob('s.treble', 'HIGH', 2, 5, 3), knob('s.gain', 'DRIVE', 2, 5, 4, { def: 0.4 }),
+      knob('r.mix', 'MIX', 3, 1, 0, { def: 0.22 }),
+      knob('d.mix', 'LEVEL', 4, 4, 0, { def: 0.28 }), knob('d.feedback', 'REPEATS', 4, 4, 1, { def: 0.32 }), knob('d.time', 'TIME', 4, 4, 2, { min: 40, max: 1200, def: 380, curve: 'log', display: ms }), knob('d.moddepth', 'DRIFT', 4, 4, 3, { def: 0.12 }),
+      btn('p.mode', 'HOT', 52), btn('_hall', 'HALL', 300), btn('_dot', '8TH DOT', 385),
+      ...fsp.map((p, i) => Object.assign(FOOT({ action: 'param', p, label: ['PLXS', 'BOOST', 'SANSAMP', 'DLY'][i] }), { style: 'soft', x: fx[i], y: 106, r: 10, labelDy: 17 })),
+      Object.assign(FOOT({ action: 'tap', label: 'TAP', tapSub: 4, tapTarget: 'd.time' }), { style: 'soft', x: fx[4], y: 106, r: 10, labelDy: 17 }),
+      ...fsp.map((p, i) => Object.assign(LED({ bind: 'param:' + p, color: ['#ff3020', '#ffb000', '#3ddc84', '#3d8bff'][i] }), { x: fx[i], y: 88, r: 2.6 })),
+      Object.assign(LED({ bind: 'fn', color: '#3d8bff', ledFn: (ui, b, st, now) => ((now % (ui['d.time'] * (ui._dot ? 0.75 : 1) || 380)) < 60 ? '#3d8bff' : ui['r.on'] > 0.5 ? '#2a4c80' : null) }), { x: fx[4], y: 88, r: 2.6 }),
+    ],
+    initParams: { 'p.on': 0, 'b.on': 0, 's.on': 1, 'd.on': 0, 'r.on': 1, 'p.mode': 0, _hall: 0, _dot: 0 },
+    derive: (u) => ({ 'c.on': u['s.on'] ?? 1, 'r.mode': u._hall ? 1 : 0, 'd.time': (u['d.time'] ?? 380) * (u._dot ? 0.75 : 1), 'b.level': 0.5 }),
+    desc: 'Slim analog-style strip: plexi drive with HOT switch, +12 dB boost, SansAmp preamp with speaker sim, reverb and a delay with tap. Hold TAP to switch the reverb.',
+  })]);
+  // hold TAP to switch the reverb on / off
+  const holds = new Map();
+  tz.blockHooks('tech21.flyrig', {
+    foot(view, ctl, down) {
+      if (ctl.action !== 'tap') return false;
+      const id = view.block.id;
+      if (down) {
+        const h = { held: false };
+        h.t = setTimeout(() => { h.held = true; const u = tz.app.ui(view.block); tz.app.setParam(id, 'r.on', (u['r.on'] ?? 1) > 0.5 ? 0 : 1); }, 800);
+        holds.set(id, h);
+        return false;
+      }
+      const h = holds.get(id);
+      holds.delete(id);
+      if (h) clearTimeout(h.t);
+      return !!(h && h.held);
+    },
+  });
 }

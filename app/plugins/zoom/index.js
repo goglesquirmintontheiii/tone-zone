@@ -1,9 +1,9 @@
 // Built-in Tone Zone plugin: Zoom.
 // Multi-effects inspired by Zoom units. Names, logos and artwork are Tone Zone originals; layouts, colours and
 // the way the screens work follow the real units (see each block's `ref`).
-//  * zoom.zx6  – touchscreen floor unit (4.3" colour touchscreen, 4 footswitches with their own displays, bank
+//  * zoom.zx6 : touchscreen floor unit (4.3" colour touchscreen, 4 footswitches with their own displays, bank
 //                switches, play-mode buttons, 4 parameter knobs, expression pedal, looper).
-//  * zoom.ss50 – compact multi-stomp (small colour LCD, 4 knobs, ◀ ▶ / PAGE / TYPE buttons, chain of 6).
+//  * zoom.ss50: compact multi-stomp (small colour LCD, 4 knobs, ◀ ▶ / PAGE / TYPE buttons, chain of 6).
 // Both share one effect library (the Zoom family sound) on the multi-FX kit (mfx-kit.js).
 import { makeKit, stdParts, stdLanes } from './mfx-kit.js';
 
@@ -288,7 +288,7 @@ export default function register(tz) {
       s.sBack = T(s.vSub, w - 6, 17.5, 'DONE', { anchor: 'end', size: 5, fill: G6.acc, font: ZSANS, weight: 800 });
       s.sBig = T(s.vSub, w / 2, 52, '', { size: 22, fill: '#fff', font: ZFONT, weight: 800 });
       s.sMinus = R(s.vSub, 14, 40, 26, 22, { rx: 4, fill: '#122030' });
-      T(s.vSub, 27, 51, '–', { size: 14, fill: '#fff', font: ZSANS });
+      T(s.vSub, 27, 51, '-', { size: 14, fill: '#fff', font: ZSANS });
       s.sPlus = R(s.vSub, w - 40, 40, 26, 22, { rx: 4, fill: '#122030' });
       T(s.vSub, w - 27, 51, '+', { size: 13, fill: '#fff', font: ZSANS });
       s.sTap = R(s.vSub, w / 2 - 20, 74, 40, 14, { rx: 7, fill: '#18c3ff' });
@@ -325,7 +325,7 @@ export default function register(tz) {
         const stt = tr ? tr.state : 0;
         st(s.lState, ['READY', 'REC', 'PLAY', 'OVERDUB', 'STOP'][stt] || 'READY');
         sa(s.lState, 'fill', ['#e6edf6', '#ff4040', '#42e07a', '#ffd23a', '#e6edf6'][stt]);
-        st(s.lLen, tr && tr.len ? (tr.len || 0).toFixed(1) + ' s' : '— s');
+        st(s.lLen, tr && tr.len ? (tr.len || 0).toFixed(1) + ' s' : '- s');
         sa(s.lBar, 'width', ((tr ? (stt === 1 ? (now % 2000) / 2000 : tr.pos || 0) : 0) * (w - 24)).toFixed(1));
       }
       // everything else only when something changed
@@ -596,7 +596,7 @@ export default function register(tz) {
         st(s.top, `FX ${si + 1}`);
         st(s.st, x.m ? (x.on ? 'ON' : 'OFF') : '');
         sa(s.st, 'fill', x.on ? x.cat.color : '#6e7b8c');
-        st(s.name, x.m ? short(x.m.name, 12) : '—');
+        st(s.name, x.m ? short(x.m.name, 12) : '-');
         sa(s.name, 'fill', x.m && x.on ? '#fff' : '#6e7b8c');
       } else if (fsm === 3) {
         sa(s.band, 'fill', ['#ff4040', '#e6edf6', '#ffd23a', '#e6edf6'][i]);
@@ -765,8 +765,8 @@ export default function register(tz) {
       // type / memory overlay
       s.ov = svg('g', {}, g);
       R(s.ov, 0, 10, w, h - 10, { fill: MSC.bg });
-      s.ovTitle = T(s.ov, w / 2, 14, '', { size: 3.6, fill: '#ffd23a', font: MSMONO, weight: 700 });
-      s.ovRows = [-1, 0, 1].map((r) => T(s.ov, w / 2, 24 + r * 8.5, '', { size: r === 0 ? 8.6 : 5.4, fill: r === 0 ? '#fff' : MSC.dim, font: ZFONT, weight: 700 }));
+      s.ovTitle = T(s.ov, w / 2, 13, '', { size: 3.6, fill: '#ffd23a', font: MSMONO, weight: 700 });
+      s.ovRows = [-1, 0, 1].map((r) => T(s.ov, w / 2, 29 + r * 9.5, '', { size: r === 0 ? 8.6 : 5.4, fill: r === 0 ? '#fff' : MSC.dim, font: ZFONT, weight: 700 }));
       s.ovHint = T(s.ov, w / 2, h - 3, '', { size: 3.2, fill: MSC.dim, font: MSMONO });
       s.sig = '';
     },
@@ -856,7 +856,7 @@ export default function register(tz) {
   tz.addForm('zoom-ss50', (ctx, d) => {
     const g = ctx.g, w = 124, h = 212;
     formKit.body(g, w, h, d.color, { rx: 9 });
-    svg('rect', { x: 5, y: 5, width: w - 10, height: 108, rx: 6, fill: '#1c1d20', stroke: '#000', 'stroke-opacity': 0.5 }, g);
+    svg('rect', { x: 5, y: 5, width: w - 10, height: 111, rx: 6, fill: '#1c1d20', stroke: '#000', 'stroke-opacity': 0.5 }, g);
     const txt = '#d5d9e0';
     // button caps for ◀ ▶ PAGE TYPE
     const cap = (x, y, t, wd = 16) => {
@@ -864,7 +864,7 @@ export default function register(tz) {
       svg('rect', { x: x - wd / 2, y: y - 5, width: wd, height: 9, rx: 2.4, fill: '#46494f', stroke: '#111', 'stroke-width': 0.5 }, g);
       label(g, x, y - 0.5, t, { size: 4.6, fill: '#f2f4f7', weight: 800 });
     };
-    cap(16, 99, '◀'); cap(108, 99, '▶'); cap(46, 99, 'PAGE', 20); cap(78, 99, 'TYPE', 20);
+    cap(16, 103, '◀'); cap(108, 103, '▶'); cap(46, 103, 'PAGE', 20); cap(78, 103, 'TYPE', 20);
     label(g, w / 2, 124, 'SS-50+', { size: 14, fill: '#ffffff', font: ZFONT, weight: 800, ls: 1.4 });
     label(g, w / 2, 133, 'STACK STOMP', { size: 4.6, fill: '#8a919c', weight: 800, ls: 1.6 });
     formKit.tzBadge(g, w / 2, h - 7, '#6e747e', 4);
@@ -877,27 +877,27 @@ export default function register(tz) {
   const common = (u) => ({ algo: 'chain', opts: { chain: u.chain }, derive: u.derive, initParams: u.initParams, kind: 'Multi-FX', cat: 'Multi-FX', noBypassClick: true });
   const zx6 = def(Object.assign(common(g6), {
     id: 'zoom.zx6', name: 'ZX-6 Touchboard', ref: 'Zoom G6', brand: 'Zoom', code: 'ZX-6', logo: 'ZX-6', typeName: 'Touchscreen multi-effects', form: 'zoom-zx6', color: '#1a1b1e',
-    stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUTPUT L', 'OUTPUT R'] }, cost: 7,
+    stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUTPUT L', 'OUTPUT R', 'PHONES'] }, jackKinds: { o2: 'phones' }, cost: 7,
     ctrl: { ins: [{ label: 'EXP 2', param: 'exp' }] },
     controls: zx6Controls(),
     initParams: Object.assign({}, g6.initParams, { _fsm: 2, _expT: 0, _lvl: 0, exp: 1 }),
-    desc: 'Touchscreen floor processor: an 8-slot effect board (amp + cab, drives, mods, delays, reverbs, pedal wah / volume) you edit by touch. Tap a pedal to select it, tap it again to edit (drag the dials or use knobs 1-4, ◂ ▸ for pages), tap its name to pick another model; the LED corner switches it on/off. Pull the top bar for the menu (board, memory, looper, tempo, expression pedal target, output level). PLAY MODE buttons switch what the footswitches do: BANK/PATCH (▼▲ step patches), MEMORY (4 patches per bank, hold a switch to store), EFFECT BOARD (switches 1-4 toggle effects, ▼▲ flip between effects 1-4 and 5-8) and LOOPER. The expression pedal drives the wah when one is on, otherwise volume.',
+    desc: 'Touchscreen floor unit with an 8-slot effect board, footswitch displays, a looper and an expression pedal. Tap a pedal to select it, tap again to edit, and pull down the top bar for the menu.',
   }));
   const ss50 = def(Object.assign(common(ms), {
     id: 'zoom.ss50', name: 'Stack Stomp 50+', ref: 'Zoom MS-50G+ MultiStomp', brand: 'Zoom', code: 'SS-50+', logo: 'SS-50+', typeName: 'Multi stomp', form: 'zoom-ss50', color: '#2b2d31',
-    stereo: 'both', monoPorts: { ins: ['INPUT'], outs: ['OUTPUT'] }, stereoPorts: { ins: ['INPUT L', 'INPUT R'], outs: ['OUTPUT L', 'OUTPUT R'] }, cost: 5,
+    stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUTPUT L/MONO', 'OUTPUT R'] }, cost: 5,
     controls: [
-      Object.assign(SCREEN('ss50-lcd', { interactive: true }), { x: 62, y: 38, w: 100, h: 50, bezel: '#060606' }),
-      ...[0, 1, 2, 3].map((k) => Object.assign(K('k' + (k + 1), String(k + 1), { virtual: true, def: 0.5 }), { x: 19 + k * 28.7, y: 78, r: 9.5, labelPos: 'none' })),
-      Object.assign(FOOT({ action: 'nav', nav: 'left', style: 'plate', label: '' }), { x: 16, y: 98.5, w: 16, h: 9 }),
-      Object.assign(FOOT({ action: 'nav', nav: 'right', style: 'plate', label: '' }), { x: 108, y: 98.5, w: 16, h: 9 }),
-      Object.assign(FOOT({ action: 'nav', nav: 'page', style: 'plate', label: '' }), { x: 46, y: 98.5, w: 20, h: 9 }),
-      Object.assign(FOOT({ action: 'nav', nav: 'type', style: 'plate', label: '' }), { x: 78, y: 98.5, w: 20, h: 9 }),
+      Object.assign(SCREEN('ss50-lcd', { interactive: true }), { x: 62, y: 43, w: 100, h: 50, bezel: '#060606' }),
+      ...[0, 1, 2, 3].map((k) => Object.assign(K('k' + (k + 1), String(k + 1), { virtual: true, def: 0.5 }), { x: 19 + k * 28.7, y: 82, r: 9.5, labelPos: 'none' })),
+      Object.assign(FOOT({ action: 'nav', nav: 'left', style: 'plate', label: '' }), { x: 16, y: 102.5, w: 16, h: 9 }),
+      Object.assign(FOOT({ action: 'nav', nav: 'right', style: 'plate', label: '' }), { x: 108, y: 102.5, w: 16, h: 9 }),
+      Object.assign(FOOT({ action: 'nav', nav: 'page', style: 'plate', label: '' }), { x: 46, y: 102.5, w: 20, h: 9 }),
+      Object.assign(FOOT({ action: 'nav', nav: 'type', style: 'plate', label: '' }), { x: 78, y: 102.5, w: 20, h: 9 }),
       Object.assign(FOOT({ action: 'nav', nav: 'sw', style: 'stomp', label: '', holdMs: 900 }), { x: 62, y: 172, r: 17 }),
       Object.assign(LED({ bind: 'fn', ledFn: (ui, b) => { const x = ms.slot(ui, nav(b.id).sel); return x.m && x.on ? x.cat.color : null; } }), { x: 62, y: 144, r: 2.6 }),
     ],
     initParams: Object.assign({}, ms.initParams, { _lvl: 0 }),
-    desc: 'Compact multi-stomp: a chain of up to 6 effects (amps with cab, drives, mods, delays, reverbs, SFX). ◀ ▶ choose the effect, knobs 1-4 edit it, PAGE flips parameter pages, TYPE opens the type list (◀ ▶ change the model, TYPE again to exit). The footswitch turns the selected effect on/off; hold it for PATCH SELECT (◀ ▶ step through 8 patches, TYPE stores). Tap the LCD: chain boxes select, the name opens TYPE, the lower half flips pages; scroll to change values.',
+    desc: 'Compact multi-stomp with a chain of up to 6 effects. Arrows pick the effect, knobs 1-4 edit it, TYPE changes the model and holding the switch opens patch select.',
   }));
   tz.addDefs([zx6, ss50]);
   kit.register('zoom.zx6', g6);

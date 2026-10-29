@@ -1,6 +1,6 @@
 // Built-in Tone Zone plugin: Fractal Audio.
-// "Axis M3" – inspired by the Fractal Audio FM3: blue-and-black display with the 4 × 6 routing grid (blocks in
-// the same columns on different rows run as parallel rows), A–E knobs, VALUE wheel, nav pad + ENTER, HOME /
+// "Axis M3" - inspired by the Fractal Audio FM3: blue-and-black display with the 4 × 6 routing grid (blocks in
+// the same columns on different rows run as parallel rows), A-E knobs, VALUE wheel, nav pad + ENTER, HOME /
 // LAYOUT / EDIT / EXIT / TEMPO / STORE / PAGE buttons, three footswitches with mini displays + LED rings and
 // footswitch layouts (SCENES / EFFECTS / PRESETS / LOOPER). Names and artwork are Tone Zone originals.
 import { createKit, CATS, modelsIn, pText } from './mfx-kit.js';
@@ -192,7 +192,7 @@ export default function register(tz) {
   function fsInfo(id, u, n, k, st) {
     const mode = n.fsMode || 0;
     if (mode === 0) return { t: 'SCENE ' + (k + 1), s: 'SCENES', c: SCENECOL[k], lit: (u._snap | 0) === k };
-    if (mode === 1) { const s = effects(u)[k]; const m = s && kit.slotModel(u, s); return m ? { t: m.n.slice(0, 13), s: abbr(m), c: COL[m.cat], lit: kit.slotOn(u, s) } : { t: '—', s: 'EFFECTS', c: '#33415a', lit: false }; }
+    if (mode === 1) { const s = effects(u)[k]; const m = s && kit.slotModel(u, s); return m ? { t: m.n.slice(0, 13), s: abbr(m), c: COL[m.cat], lit: kit.slotOn(u, s) } : { t: '-', s: 'EFFECTS', c: '#33415a', lit: false }; }
     if (mode === 2) return [{ t: 'PRESET ▼', s: 'PRESETS', c: CY, lit: false }, { t: 'PRESET ▲', s: 'PRESETS', c: CY, lit: false }, { t: 'SCENE ' + ((u._snap | 0) + 1) + ' ▶', s: 'PRESETS', c: SCENECOL[u._snap | 0], lit: true }][k];
     const ls = kit.loopState(st);
     return [{ t: ls === 3 ? 'OVERDUB' : 'REC / DUB', s: 'LOOPER', c: '#ff5a5a', lit: ls === 1 || ls === 3 }, { t: ls === 2 || ls === 3 ? 'STOP' : 'PLAY', s: 'LOOPER', c: '#46d6a0', lit: ls === 2 }, { t: 'UNDO', s: 'LOOPER', c: '#ffd23a', lit: false }][k];
@@ -292,7 +292,7 @@ export default function register(tz) {
         const c = t && t.note ? t.cents : 0;
         setA(s.needleG, 'transform', `translate(${w / 2},78) rotate(${(Math.max(-50, Math.min(50, c)) / 50) * 60})`);
         setA(s.needle, 'stroke', t && t.note && Math.abs(c) < 2 ? '#46d6a0' : '#ff5a5a');
-        setText(s.tn, t && t.note ? t.note : '–');
+        setText(s.tn, t && t.note ? t.note : '-');
         setText(s.tc, t && t.note ? `${c >= 0 ? '+' : ''}${c.toFixed(1)} cents` : 'play a string');
         return;
       }
@@ -449,12 +449,7 @@ export default function register(tz) {
     }
     if (ctx.block) kit.live.set(ctx.block.id, { rings });
     formKit.placeControls(ctx, d.controls, theme);
-    const X = (x) => (ctx.flip ? W - x : x);
-    const jacks = [];
-    d.ctrl.ins.forEach((c, i) => jacks.push({ key: 'ic' + i, dir: 'in', port: 'c' + i, label: c.label, side: 'top', x: X(266 + i * 28), y: -2, kind: 'ctrl' }));
-    d.ports.outs.forEach((l, i) => jacks.push({ key: 'o' + i, dir: 'out', port: i, label: l.replace('OUTPUT', 'OUT'), side: 'top', x: X(W - 40 - i * 28), y: -2 }));
-    d.ports.ins.forEach((l, i) => jacks.push({ key: 'i' + i, dir: 'in', port: i, label: l.replace('INPUT', 'IN'), side: 'top', x: X(W - 40 - (d.ports.outs.length + 0.6 + i) * 28), y: -2 }));
-    return { w: W, h: H, theme, jacks };
+    return { w: W, h: H, theme, jacks: kit.topJacks(d, W, ctx.flip) };
   });
   const controls = [
     SCREEN('fm-main', { x: 150, y: 64, w: 196, h: 104, interactive: true, bg: '#02050c', bezel: '#050608' }),
@@ -468,12 +463,12 @@ export default function register(tz) {
   ];
   const d = def({
     id: ID, name: 'Axis M3', ref: 'Fractal Audio FM3', brand: 'Fractal Audio', code: 'AXIS M3', typeName: 'Amp modeler / effects processor', cat: 'Multi-FX', kind: 'Multi-FX',
-    form: 'fm-axis', color: '#17191d', stereo: 'both', cost: 7, alwaysOn: true,
-    monoPorts: { ins: ['INPUT 1'], outs: ['OUTPUT 1 L'] }, stereoPorts: { ins: ['INPUT 1'], outs: ['OUTPUT 1 L', 'OUTPUT 1 R'] }, ports: { ins: ['INPUT 1'], outs: ['OUTPUT 1 L'] },
+    form: 'fm-axis', color: '#17191d', cost: 7, alwaysOn: true,
+    ports: { ins: ['INPUT 1'], outs: ['OUT 1 L', 'OUT 1 R', 'OUT 2 L', 'OUT 2 R', 'PHONES'] }, jackKinds: { o4: 'phones' },
     ctrl: { ins: [{ label: 'PEDAL 1', hook: true, exp: 1 }, { label: 'PEDAL 2', hook: true, exp: 2 }] },
     controls,
     tags: ['fractal', 'grid', 'scenes', 'modeler'],
-    desc: 'A 4 × 6 routing grid: blocks run column by column, and blocks stacked in the same columns on different rows run as parallel rows (dual amps, parallel delay + reverb …). LAYOUT shows the grid — move the cursor with the arrows or VALUE wheel, ENTER on an empty cell adds a block (type → model), ENTER on a block opens EDIT. EDIT: TYPE row (VALUE scrolls models, ENTER lists them) and five parameters per page on knobs A–E, ◂ / ▸ or PAGE flip pages. HOME shows the preset and scenes (VALUE = scene), hold HOME for SETUP (global config, tuner, tempo, footswitch layout). TEMPO taps (hold = tuner), STORE saves the preset. Footswitches follow the layout on their mini displays: SCENES 1–3, EFFECTS, PRESETS, LOOPER; hold FS3 = next layout, hold FS2 = tuner, hold FS1 = tap.',
+    desc: 'A 4 x 6 grid: blocks in the same columns on different rows run in parallel. LAYOUT shows the grid, ENTER adds or edits a block, knobs A-E edit it and the footswitches follow their mini displays (hold FS3 for the next layout).',
   });
   kit.register(d, {
     n: N, knobs: 5, sel0: idx(1, 1), layout, inputGate: true, looper: true, presets, snapWord: 'Scene',

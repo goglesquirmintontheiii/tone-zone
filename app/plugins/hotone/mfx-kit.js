@@ -1,18 +1,12 @@
-// Tone Zone multi-FX kit (shared by the zoom, valeton, hotone, mooer and nux plugins – each plugin ships an
-// identical copy so it keeps working on its own).
+// Shared multi-FX helper. Each plugin that uses it keeps its own copy of this file.
 //
-// A unit is a `chain` block with a pool of engine lanes in a fixed order (gate → comp → filter → drive → amp →
-// cab → eq → volume → modulation → delay → reverb → looper). The user sees *slots* (an effect chain or a row
-// of fixed modules); every slot holds a model from the unit's library. derive() allocates each used slot to a
-// free lane of its model's pool and turns every other lane off (lanes that are off cost no DSP; delay / reverb
-// lanes keep their trails, so units have only one or two of those).
+// A unit is a chain block with engine lanes in a fixed order (gate, comp, wah, drive, amp, cab, eq, mod,
+// delay, reverb, looper, output). The user sees slots; derive() puts each used slot on a free lane of its
+// model's pool and switches the other lanes off.
 //
-// Persisted UI params (hidden, `_` prefix so they never reach the engine directly):
-//   _m<i>  model index of slot i (-1 = empty)     _o<i>  slot on/off     _p<i>_<k>  normalised value of param k
-//   _mem<n> stored patch memory (JSON)            _cur   current memory  _bpm  tempo (tap)
-//   k1..kN  the physical knobs under the screen (virtual): moving one writes the selected slot's param of the
-//           current page; selecting a slot / page moves the knobs to that slot's values (encoder-like).
-// Navigation state (view, selected slot, page, menu cursor …) lives in state.ui[blockId].mfx (not saved).
+// Hidden params: _m<i> model of slot i (-1 empty), _o<i> slot on, _p<i>_<k> param k (0..1), _mem<n> patch
+// memory (JSON), _cur current memory, _bpm tempo. k1..kN are the knobs under the screen: they edit the
+// selected slot on the current page. Menu state lives in state.ui[id].mfx and is not saved.
 
 export function makeKit(tz) {
   const { setA, setText } = tz.gfx;
@@ -57,7 +51,7 @@ export function makeKit(tz) {
   //         patch: [[modelName, on, {label: v}] | null] (default), mems: [{name, patch}], extra(ui, o, info) }
   // model: { name, cat, pool, fixed: {engParam: v}, params: [P(...)], fx(o, vals, pre, ui), voice (drive voicing /
   //          amp model / cab model) }
-  // lane spec: { pool, algo, n, opts, params } – pools 'drive' / 'amp' / 'cab' collect their models' voices.
+  // lane spec: { pool, algo, n, opts, params }: pools 'drive' / 'amp' / 'cab' collect their models' voices.
   function unit(spec) {
     const models = spec.models;
     models.forEach((m, i) => { m.idx = i; m.params = m.params || []; m.fixed = m.fixed || {}; });
@@ -167,7 +161,13 @@ export function makeKit(tz) {
           else lvl += ui.exp < 0.01 ? -60 : 40 * Math.log10(ui.exp);
         }
       }
-      if (chain.some((c) => c.prefix === 'lpr')) o['lpr.on'] = 1;
+      if (chain.some((c) => c.prefix === 'lpr')) {
+        o['lpr.on'] = 1;
+        o['lpr.tempo'] = ui._bpm || 120;
+        o['lpr.rhythm'] = (ui._drum ?? 0) > 0.5 ? 1 : 0;
+        o['lpr.pattern'] = ui._pat ?? 0;
+        o['lpr.rhythmLevel'] = ui._drl ?? 0.5;
+      }
       if (chain.some((c) => c.prefix === 'out')) { o['out.on'] = 1; o['out.level'] = Math.max(-60, lvl); }
       if (spec.extra) spec.extra(ui, o, A);
       return o;

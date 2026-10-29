@@ -1,6 +1,6 @@
-// "VX Stomp XL" – inspired by the Line 6 HX Stomp XL.
+// "VX Stomp XL" - inspired by the Line 6 HX Stomp XL.
 // Colour LCD with the signal-chain view (8 block slots, optional A/B split), UPPER / LOWER push encoders,
-// knobs 1–3 under the screen editing the selected block page by page, HOME/VIEW, ACTION, < PAGE, PAGE > buttons,
+// knobs 1-3 under the screen editing the selected block page by page, HOME/VIEW, ACTION, < PAGE, PAGE > buttons,
 // 8 capacitive footswitches with LED rings + scribble strips (STOMP / SNAPSHOT / PRESET / LOOPER modes, MODE
 // switch, TAP / hold = TUNER), EXP 1 / EXP 2 jacks. Menus: slot → category → model; ACTION menu (move / copy /
 // paste / clear / bypass / path); hold HOME = MENU → Global Settings submenu, tempo, tuner.
@@ -69,7 +69,7 @@ export function registerVX(tz, kit) {
           { t: 'Copy Block', act: () => kit.copySlot(id, n.sel) },
           { t: 'Paste Block', act: () => kit.pasteSlot(id, n.sel) },
           { t: 'Clear Block', act: () => { kit.clearSlot(id, n.sel); n.view = 'home'; } },
-          { t: 'Bypass', r: cur ? (kit.slotOn(u, n.sel) ? 'On' : 'Bypassed') : '–', act: () => kit.toggleSlot(id, n.sel) },
+          { t: 'Bypass', r: cur ? (kit.slotOn(u, n.sel) ? 'On' : 'Bypassed') : '-', act: () => kit.toggleSlot(id, n.sel) },
           { t: 'Signal Path', r: (u._split ?? 0) > 0.5 ? 'Split A/B' : 'Serial', act: () => kit.setStep(id, SETTINGS[2], 1) },
           { t: 'Exit', act: () => (n.view = 'home') },
         ];
@@ -344,7 +344,7 @@ export function registerVX(tz, kit) {
           setA(s.tNeedle, 'x', (w / 2 - 1.5 + Math.max(-1, Math.min(1, t.cents / 50)) * 80).toFixed(1));
           setA(s.tNeedle, 'fill', ok ? '#2fd36a' : '#ff3b30');
           setText(s.tC, `${t.cents >= 0 ? '+' : ''}${t.cents.toFixed(1)} ¢   ${t.freq ? t.freq.toFixed(1) + ' Hz' : ''}`);
-        } else { setText(s.tNote, '–'); setA(s.tNote, 'fill', '#5d6575'); setText(s.tC, `${u._tref ?? 440} Hz`); }
+        } else { setText(s.tNote, '-'); setA(s.tNote, 'fill', '#5d6575'); setText(s.tC, `${u._tref ?? 440} Hz`); }
         return;
       }
       const sig = n.rev + '|' + v + '|' + n.sel + '|' + n.page + '|' + n.cur + '|' + (n.fsMode || 0) + '|' + JSON.stringify(b.params) + '|' + (b.mfx ? b.mfx.preset + b.mfx.name : '');
@@ -486,7 +486,7 @@ export function registerVX(tz, kit) {
     const theme = { text: '#c8ccd4', knob: 'strymon', labelSize: 5.6, labelFont: FONT };
     label(g, 456, 128, 'VX STOMP XL', { size: 10, fill: '#e6e8ec', weight: 800, ls: 1.6, font: FONT });
     formKit.tzBadge(g, 456, 140, '#7b808a', 4.2);
-    label(g, 310, 18, 'UPPER', { size: 5, fill: '#8a8f99', weight: 700, font: FONT });
+    label(g, 310, 23, 'UPPER', { size: 5, fill: '#8a8f99', weight: 700, font: FONT });
     label(g, 310, 72, 'LOWER', { size: 5, fill: '#8a8f99', weight: 700, font: FONT });
     for (const [, t1, t2, x, y] of BTNS) {
       svg('rect', { x: x - 16, y: y - 7, width: 32, height: 14, rx: 3, fill: '#000', 'fill-opacity': 0.6 }, g);
@@ -506,15 +506,7 @@ export function registerVX(tz, kit) {
     });
     if (ctx.block) kit.live.set(ctx.block.id, { rings, strips });
     formKit.placeControls(ctx, d.controls, theme);
-    // jacks on the back edge: EXP 1/2 left, audio right
-    const jacks = [];
-    const flip = ctx.flip;
-    const X = (x) => (flip ? W - x : x);
-    d.ctrl.ins.forEach((c, i) => jacks.push({ key: 'ic' + i, dir: 'in', port: 'c' + i, label: c.label, side: 'top', x: X(54 + i * 30), y: -2, kind: 'ctrl' }));
-    const outs = d.ports.outs, ins = d.ports.ins;
-    outs.forEach((l, i) => jacks.push({ key: 'o' + i, dir: 'out', port: i, label: l.replace('OUTPUT', 'OUT'), side: 'top', x: X(W - 46 - i * 30), y: -2 }));
-    ins.forEach((l, i) => jacks.push({ key: 'i' + i, dir: 'in', port: i, label: l.replace('INPUT', 'IN'), side: 'top', x: X(W - 46 - (outs.length + 0.6 + i) * 30), y: -2 }));
-    return { w: W, h: H, theme, jacks };
+    return { w: W, h: H, theme, jacks: kit.topJacks(d, W, ctx.flip, 30, W - 30) };
   });
 
   const controls = [
@@ -530,12 +522,12 @@ export function registerVX(tz, kit) {
   ];
   const d = def({
     id: ID, name: 'VX Stomp XL', ref: 'Line 6 HX Stomp XL', brand: 'Line 6', code: 'VX STOMP XL', typeName: 'Amp & effects modeler', cat: 'Multi-FX', kind: 'Multi-FX',
-    form: 'vx-stompxl', color: '#141518', stereo: 'both', cost: 7, alwaysOn: true,
-    monoPorts: { ins: ['INPUT L/MONO'], outs: ['OUTPUT L/MONO'] }, stereoPorts: { ins: ['INPUT L/MONO', 'INPUT R'], outs: ['OUTPUT L/MONO', 'OUTPUT R'] }, ports: { ins: ['INPUT L/MONO'], outs: ['OUTPUT L/MONO'] },
+    form: 'vx-stompxl', color: '#141518', cost: 7, alwaysOn: true,
+    ports: { ins: ['IN L/MONO', 'IN R', 'RETURN L', 'RETURN R'], outs: ['OUT L/MONO', 'OUT R', 'SEND L', 'SEND R', 'PHONES'] }, jackKinds: { o4: 'phones' },
     ctrl: { ins: [{ label: 'EXP 1', hook: true, exp: 1 }, { label: 'EXP 2', hook: true, exp: 2 }] },
     controls,
     tags: ['helix', 'modeler', 'snapshot', 'looper', 'amp modeler'],
-    desc: 'Eight block slots that take any model (amps + cabs, drives, dynamics, EQ, modulation, delay, reverb, pitch / synth, filters, wah, volume) in series or split into two parallel paths. UPPER knob: select a block (push = choose category → model). LOWER knob: scroll models of the block\'s category (push = bypass). Knobs 1–3 edit the selected block, < PAGE / PAGE > flip parameter pages. ACTION: move / copy / paste / clear / bypass / path. Hold HOME (or press both PAGE buttons) for the MENU with Global Settings, tempo and tuner. MODE cycles STOMP / SNAPSHOT / PRESET footswitch modes (hold MODE = LOOPER). TAP = tap tempo, hold TAP = tuner. EXP 1 drives wah / whammy blocks, EXP 2 volume blocks. Tap the screen to select blocks and list rows.',
+    desc: 'Eight block slots for amps, cabs and effects, in series or split A/B. Turn UPPER to pick a block (push to choose its model), knobs 1-3 edit it, hold HOME for the menu, MODE switches footswitch modes and hold TAP for the tuner.',
   });
   kit.register(d, {
     n: N, knobs: 3, layout, inputGate: true, looper: true, presets, snapWord: 'Snapshot',
