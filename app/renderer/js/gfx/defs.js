@@ -124,4 +124,10 @@ export function installDefs(defs) {
   // plug metal
   lin(defs, 'g-plugMetal', [[0, '#5d636b'], [0.25, '#e6eaee'], [0.5, '#9aa1a9'], [0.75, '#f3f5f7'], [1, '#596068']]);
   lin(defs, 'g-plugGold', [[0, '#6b5320'], [0.3, '#f6dd94'], [0.55, '#b48d3c'], [0.8, '#fbe6a5'], [1, '#6b5320']]);
+  // ---- vacuum tubes (shared by every valve, so they stay cheap)
+  lin(defs, 'g-tubeGlass', [[0, '#ffffff', 0.06], [0.1, '#ffffff', 0.55], [0.2, '#e8f1ff', 0.14], [0.55, '#c8d8ea', 0.05], [0.84, '#ffffff', 0.08], [0.93, '#ffffff', 0.38], [1, '#ffffff', 0.04]], 0, 0, 1, 0);
+  lin(defs, 'g-tubePlate', [[0, '#25272b'], [0.28, '#6e737b'], [0.5, '#3b3e44'], [0.76, '#868c94'], [1, '#26282c']], 0, 0, 1, 0);
+  lin(defs, 'g-tubeGetter', [[0, '#e3e7ec'], [0.35, '#8c939b'], [0.7, '#3d4147', 0.85], [1, '#3d4147', 0]]);
+  lin(defs, 'g-tubeBase', [[0, '#120d0a'], [0.3, '#4d3d2e'], [0.55, '#2b221b'], [1, '#100b08']], 0, 0, 1, 0);
+  rad(defs, 'g-tubeHalo', [[0, '#ffb35e', 0.6], [0.55, '#ff7a26', 0.18], [1, '#ff6a1a', 0]]);
 }

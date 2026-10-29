@@ -51,8 +51,10 @@ function scan(dir, builtin, enabledMap) {
   return out;
 }
 
-function list(appRoot, dataRoot, enabledMap = {}) {
-  const b = scan(builtinDir(appRoot), true, enabledMap);
+// removed: ids of built-in plugins the user deleted (they ship inside the app, so they're just skipped)
+function list(appRoot, dataRoot, enabledMap = {}, removed = []) {
+  const gone = new Set(removed);
+  const b = scan(builtinDir(appRoot), true, enabledMap).filter((p) => !gone.has(p.id));
   const u = scan(userDir(dataRoot), false, enabledMap);
   // a user plugin with the same id overrides the built-in one (lets people patch a built-in)
   const ids = new Set(u.map((p) => p.id));
@@ -95,4 +97,10 @@ function remove(id, dataRoot) {
   fs.rmSync(target, { recursive: true, force: true });
 }
 
-module.exports = { list, install, remove, userDir, builtinDir };
+// manifests of removed built-ins (for the restore button)
+function removedBuiltins(appRoot, removed = []) {
+  const gone = new Set(removed);
+  return scan(builtinDir(appRoot), true, {}).filter((p) => gone.has(p.id)).map((p) => ({ id: p.id, name: p.manifest.name || p.id }));
+}
+
+module.exports = { list, install, remove, removedBuiltins, userDir, builtinDir };

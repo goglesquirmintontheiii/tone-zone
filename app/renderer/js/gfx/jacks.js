@@ -6,6 +6,8 @@ import { label as text } from './controls.js';
 
 export const JACK_TIP = { inst: 6, trs: 6, phones: 6, ctrl: 6, mini: 4, xlr: 4, usb: 3, midi: 3 };
 export const PLUG_LENS = { inst: 44, trs: 44, phones: 30, ctrl: 40, mini: 22, xlr: 50, usb: 22, midi: 30 };
+// length of the metal sleeve that disappears into a jack when the plug is pushed in
+export const SLEEVE = { inst: 10, trs: 10, ctrl: 10, phones: 10 };
 export const CABLE_WIDTH = { inst: 5.6, trs: 4.8, phones: 3.4, ctrl: 4.4, mini: 3.4, xlr: 7.8, usb: 4.2, midi: 5.2 };
 
 // side → transform mapping local frame (outward = -x, light from local -y) into board space
@@ -143,7 +145,9 @@ export function drawJack(parent, j, theme) {
 export function drawPlug(parent, j, color, kind = 'inst') {
   const ang = (Math.atan2(j.dy, j.dx) * 180) / Math.PI;
   const tip = j.front ? 0 : JACK_TIP[kind] ?? 6;
-  const g = svg('g', { transform: `translate(${(j.x + j.dx * tip).toFixed(1)},${(j.y + j.dy * tip).toFixed(1)}) rotate(${j.front ? 90 : ang})`, 'pointer-events': 'none' }, parent);
+  // plugged in: the sleeve sits inside the jack, so draw from the collar onwards (a loose plug shows it)
+  const S = j.free || j.front ? 0 : SLEEVE[kind] || 0;
+  const g = svg('g', { transform: `translate(${(j.x + j.dx * tip).toFixed(1)},${(j.y + j.dy * tip).toFixed(1)}) rotate(${j.front ? 90 : ang})${S ? ` translate(${-S},0)` : ''}`, 'pointer-events': 'none' }, parent);
   const dark = shade(color, -0.45), mid = shade(color, -0.12);
   if (j.front) {
     const r = kind === 'xlr' ? 13 : kind === 'mini' ? 5.5 : kind === 'phones' ? 6.5 : 8;
@@ -155,7 +159,7 @@ export function drawPlug(parent, j, color, kind = 'inst') {
     return g;
   }
   const L = PLUG_LENS[kind] || 30;
-  const shadow = (h) => svg('rect', { x: 2, y: -h / 2, width: L, height: h, rx: h / 2.5, fill: '#000', opacity: 0.32, transform: 'translate(3,4)' }, g);
+  const shadow = (h) => svg('rect', { x: S || 2, y: -h / 2, width: L - S, height: h, rx: h / 2.5, fill: '#000', opacity: 0.32, transform: 'translate(3,4)' }, g);
   switch (kind) {
     case 'xlr': {
       // male XLR: metal shell with latch button, coloured ID ring, long rubber boot
@@ -174,8 +178,10 @@ export function drawPlug(parent, j, color, kind = 'inst') {
     case 'phones': {
       // slim headphone plug: TRS sleeve with two insulator bands, moulded body, thin strain relief
       shadow(8);
-      svg('rect', { x: 0, y: -3, width: 10, height: 6, rx: 1, fill: 'url(#g-plugGold)', stroke: '#2b2f34', 'stroke-width': 0.3 }, g);
-      for (const x of [2.8, 5.6]) svg('rect', { x, y: -3, width: 0.8, height: 6, fill: '#111' }, g);
+      if (!S) {
+        svg('rect', { x: 0, y: -3, width: 10, height: 6, rx: 1, fill: 'url(#g-plugGold)', stroke: '#2b2f34', 'stroke-width': 0.3 }, g);
+        for (const x of [2.8, 5.6]) svg('rect', { x, y: -3, width: 0.8, height: 6, fill: '#111' }, g);
+      }
       svg('rect', { x: 9.5, y: -4.6, width: 12, height: 9.2, rx: 2.4, fill: '#25272c', stroke: '#0e0f11', 'stroke-width': 0.35 }, g);
       svg('rect', { x: 10, y: -4.1, width: 11, height: 2.6, rx: 1.3, fill: '#fff', opacity: 0.16 }, g);
       svg('rect', { x: 18.5, y: -4.6, width: 2, height: 9.2, fill: color }, g);
@@ -212,9 +218,11 @@ export function drawPlug(parent, j, color, kind = 'inst') {
       // 1/4" plug like a Switchcraft: exposed sleeve, collar, long knurled metal barrel, rubber strain relief
       const tip = kind === 'inst' ? 'url(#g-plugMetal)' : 'url(#g-plugGold)';
       shadow(12);
-      svg('rect', { x: 0, y: -3.9, width: 10, height: 7.8, rx: 1.2, fill: tip, stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
-      svg('rect', { x: 3.2, y: -3.9, width: 1, height: 7.8, fill: '#000', opacity: 0.55 }, g);
-      if (kind === 'trs' || kind === 'ctrl') svg('rect', { x: 6.4, y: -3.9, width: 0.9, height: 7.8, fill: '#000', opacity: 0.55 }, g);
+      if (!S) {
+        svg('rect', { x: 0, y: -3.9, width: 10, height: 7.8, rx: 1.2, fill: tip, stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
+        svg('rect', { x: 3.2, y: -3.9, width: 1, height: 7.8, fill: '#000', opacity: 0.55 }, g);
+        if (kind === 'trs' || kind === 'ctrl') svg('rect', { x: 6.4, y: -3.9, width: 0.9, height: 7.8, fill: '#000', opacity: 0.55 }, g);
+      }
       svg('rect', { x: 9.5, y: -5.4, width: 3.2, height: 10.8, rx: 0.8, fill: '#5d636b', stroke: '#24272b', 'stroke-width': 0.35 }, g);
       svg('rect', { x: 12.4, y: -5.9, width: 16, height: 11.8, rx: 1.6, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
       svg('rect', { x: 12.9, y: -5.4, width: 15, height: 3.2, rx: 1.2, fill: '#fff', opacity: 0.3 }, g);

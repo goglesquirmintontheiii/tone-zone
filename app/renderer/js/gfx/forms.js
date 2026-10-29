@@ -486,34 +486,47 @@ forms.treadle = (ctx, def) => {
 
 // amp head / combo
 
-// Valves standing on top of an enclosure (glass envelope, plate, chrome socket). The heater glows are collected in
-// ctx.tubeGlows so the block view can make them flicker a little.
+// Valves standing on top of an enclosure. Shared gradients (g-tube*) keep them cheap; only the heater glow
+// elements change at runtime (ctx.tubeGlows, flickered by the block view a few times a second).
 function drawTubes(ctx, groups) {
   const g = svg('g', { 'pointer-events': 'none' }, ctx.g);
   ctx.tubeGlows = ctx.tubeGlows || [];
   for (const { x0, n, power } of groups) {
-    const tw = power ? 15 : 10, th = power ? 42 : 27, gap = power ? 6 : 5;
+    const tw = power ? 16 : 10.5, th = power ? 46 : 30, gap = power ? 5 : 4.5;
     for (let i = 0; i < n; i++) {
-      const cx = x0 + i * (tw + gap) + tw / 2;
-      // socket on the chassis top
-      svg('rect', { x: cx - tw / 2 - 2.5, y: -4, width: tw + 5, height: 5, rx: 1.5, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.4 }, g);
-      svg('rect', { x: cx - tw / 2 - 0.5, y: -7, width: tw + 1, height: 4, rx: 1, fill: '#1b1c1f' }, g);
-      // glass
-      const top = -7 - th, r = tw / 2;
-      const d = power
-        ? `M${cx - r} -7 L${cx - r} ${top + r * 2.2} Q${cx - r} ${top + r * 0.6} ${cx - r * 0.55} ${top + r * 0.3} Q${cx} ${top - 1.5} ${cx + r * 0.55} ${top + r * 0.3} Q${cx + r} ${top + r * 0.6} ${cx + r} ${top + r * 2.2} L${cx + r} -7 Z`
-        : `M${cx - r} -7 L${cx - r} ${top + r} A${r} ${r} 0 0 1 ${cx + r} ${top + r} L${cx + r} -7 Z`;
-      svg('path', { d, fill: '#c9d6e3', 'fill-opacity': 0.16, stroke: '#e8f0f8', 'stroke-opacity': 0.55, 'stroke-width': 0.7 }, g);
-      // plate + getter
-      svg('rect', { x: cx - r * 0.55, y: top + th * 0.32, width: r * 1.1, height: th * 0.5, rx: 0.8, fill: '#3a3d42' }, g);
-      svg('rect', { x: cx - r * 0.55, y: top + th * 0.32, width: r * 0.3, height: th * 0.5, fill: '#5d6168' }, g);
-      svg('ellipse', { cx, cy: top + (power ? 4.5 : 3), rx: r * 0.7, ry: power ? 2.6 : 1.8, fill: '#7f8994', 'fill-opacity': 0.75 }, g);
-      // heater glow (animated)
-      const glow = svg('ellipse', { cx, cy: top + th * 0.62, rx: r * 0.42, ry: th * 0.2, fill: '#ff8a2a', 'fill-opacity': 0.75 }, g);
-      ctx.tubeGlows.push(glow);
-      svg('ellipse', { cx, cy: top + th * 0.62, rx: r * 0.9, ry: th * 0.3, fill: '#ff6a1a', 'fill-opacity': 0.12 }, g);
-      // glass highlight
-      svg('path', { d: `M${cx - r * 0.62} ${top + r * 1.5} L${cx - r * 0.62} -10`, stroke: '#fff', 'stroke-opacity': 0.45, 'stroke-width': power ? 1.6 : 1.1, 'stroke-linecap': 'round', fill: 'none' }, g);
+      const cx = x0 + i * (tw + gap) + tw / 2, r = tw / 2;
+      // chrome socket on the chassis
+      svg('rect', { x: cx - r - 2.5, y: -3.5, width: tw + 5, height: 4.5, rx: 1.4, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.4 }, g);
+      const base = power ? -13 : -5; // octal bakelite base vs 9-pin miniature
+      if (power) {
+        svg('rect', { x: cx - r * 0.86, y: base, width: r * 1.72, height: 10, rx: 2, fill: 'url(#g-tubeBase)', stroke: '#0b0806', 'stroke-width': 0.4 }, g);
+        svg('rect', { x: cx - r * 0.86, y: base + 1, width: r * 1.72, height: 1, fill: '#fff', 'fill-opacity': 0.12 }, g);
+      } else for (const dx of [-0.45, 0, 0.45]) svg('rect', { x: cx + dx * r - 0.4, y: -4.6, width: 0.8, height: 1.6, fill: '#c9ced5' }, g);
+      const top = base - th;
+      // the bottle: power tubes have a shoulder, preamp tubes a round top with the exhaust tip
+      const bottle = power
+        ? `M${cx - r} ${base} L${cx - r} ${top + r * 2.6} C${cx - r} ${top + r * 1.1} ${cx - r * 0.62} ${top + r * 0.5} ${cx - r * 0.52} ${top + r * 0.1} Q${cx} ${top - 2.4} ${cx + r * 0.52} ${top + r * 0.1} C${cx + r * 0.62} ${top + r * 0.5} ${cx + r} ${top + r * 1.1} ${cx + r} ${top + r * 2.6} L${cx + r} ${base} Z`
+        : `M${cx - r} ${base} L${cx - r} ${top + r} A${r} ${r} 0 0 1 ${cx + r} ${top + r} L${cx + r} ${base} Z`;
+      // faint warm halo behind everything inside the glass
+      svg('ellipse', { cx, cy: top + th * 0.58, rx: r * 1.15, ry: th * 0.36, fill: 'url(#g-tubeHalo)', 'fill-opacity': 0.55 }, g);
+      // inside: mica spacers, plate(s) with slots, heater glow through the slots
+      const py = top + th * (power ? 0.34 : 0.3), ph = th * (power ? 0.42 : 0.46);
+      svg('rect', { x: cx - r * 0.82, y: py - 2.2, width: r * 1.64, height: 1.3, rx: 0.6, fill: '#e9e3d2', 'fill-opacity': 0.65 }, g);
+      svg('rect', { x: cx - r * 0.82, y: py + ph + 1, width: r * 1.64, height: 1.3, rx: 0.6, fill: '#e9e3d2', 'fill-opacity': 0.55 }, g);
+      const plates = power ? [[-r * 0.62, r * 1.24]] : [[-r * 0.72, r * 0.66], [r * 0.06, r * 0.66]];
+      for (const [px, pw] of plates) {
+        svg('rect', { x: cx + px, y: py, width: pw, height: ph, rx: 0.8, fill: 'url(#g-tubePlate)', stroke: '#141518', 'stroke-width': 0.3 }, g);
+        svg('rect', { x: cx + px + pw * 0.38, y: py + ph * 0.12, width: pw * 0.24, height: ph * 0.76, fill: '#0c0d0f' }, g);
+        const glow = svg('rect', { x: cx + px + pw * 0.42, y: py + ph * 0.2, width: pw * 0.16, height: ph * 0.6, rx: pw * 0.08, fill: '#ff9a3a', 'fill-opacity': 0.8 }, g);
+        ctx.tubeGlows.push(glow);
+      }
+      // silvered getter flash at the top
+      if (power) svg('path', { d: `M${cx - r * 0.86} ${top + r * 1.9} C${cx - r * 0.86} ${top + r * 0.9} ${cx - r * 0.5} ${top + r * 0.35} ${cx} ${top + r * 0.2} C${cx + r * 0.5} ${top + r * 0.35} ${cx + r * 0.86} ${top + r * 0.9} ${cx + r * 0.86} ${top + r * 1.9} Z`, fill: 'url(#g-tubeGetter)' }, g);
+      else svg('path', { d: `M${cx - r * 0.86} ${top + r * 1.6} L${cx - r * 0.86} ${top + r} A${r * 0.86} ${r * 0.86} 0 0 1 ${cx + r * 0.86} ${top + r} L${cx + r * 0.86} ${top + r * 1.6} Z`, fill: 'url(#g-tubeGetter)' }, g);
+      // glass with highlights on top of the insides
+      svg('path', { d: bottle, fill: 'url(#g-tubeGlass)', stroke: '#dfe8f2', 'stroke-opacity': 0.5, 'stroke-width': 0.6 }, g);
+      if (!power) svg('path', { d: `M${cx - 0.9} ${top + 0.2} L${cx} ${top - 2} L${cx + 0.9} ${top + 0.2} Z`, fill: '#cfd9e4', 'fill-opacity': 0.6 }, g);
+      svg('path', { d: `M${cx - r * 0.6} ${top + r * (power ? 2.2 : 1.3)} L${cx - r * 0.6} ${base - 2}`, stroke: '#fff', 'stroke-opacity': 0.6, 'stroke-width': power ? 1.4 : 1, 'stroke-linecap': 'round', fill: 'none' }, g);
     }
   }
 }

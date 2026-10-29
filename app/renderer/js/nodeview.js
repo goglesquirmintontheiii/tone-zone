@@ -253,7 +253,7 @@ export class NodeView {
       const off = this.block.bypass;
       const lvl = Math.min(1, Math.max(...(state.status.inPeak || [0]).slice(0, 2)) * 2.5);
       this.tubeGlows.forEach((el, i) => {
-        const v = off ? 0.25 : 0.62 + 0.22 * lvl + 0.08 * Math.sin(now / (380 + i * 57) + i * 1.7) + 0.04 * (Math.random() - 0.5);
+        const v = off ? 0.18 : 0.62 + 0.22 * lvl + 0.08 * Math.sin(now / (380 + i * 57) + i * 1.7) + 0.04 * (Math.random() - 0.5);
         setA(el, 'fill-opacity', v.toFixed(2));
       });
     }

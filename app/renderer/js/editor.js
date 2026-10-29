@@ -1,5 +1,5 @@
 // The board: pan / zoom, block placement and dragging, realistic patch cables, control interaction.
-import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH } from './gfx/jacks.js';
+import { drawPlug as drawPlugGfx, JACK_TIP, PLUG_LENS, CABLE_WIDTH, SLEEVE } from './gfx/jacks.js';
 import { svg, clamp, shade, bus, toast } from './util.js';
 import { installDefs } from './gfx/defs.js';
 import { NodeView, knobPos, knobValue } from './nodeview.js';
@@ -195,7 +195,8 @@ export class Editor {
   }
   cablePath(a, b) {
     // a, b: plug tips {x,y,dx,dy}; cable starts at the end of each boot
-    const la = a.front ? 6 : (JACK_TIP[a.kind] ?? 6) + (PLUG_LENS[a.kind] || 30), lb = b.front ? 6 : (JACK_TIP[b.kind] ?? 6) + (PLUG_LENS[b.kind] || 30);
+    const plugLen = (j) => (j.front ? 6 : (JACK_TIP[j.kind] ?? 6) + (PLUG_LENS[j.kind] || 30) - (j.free ? 0 : SLEEVE[j.kind] || 0));
+    const la = plugLen(a), lb = plugLen(b);
     const ax = a.x + a.dx * la, ay = a.y + a.dy * la;
     const bx = b.x + b.dx * lb, by = b.y + b.dy * lb;
     const dist = Math.hypot(bx - ax, by - ay);
@@ -434,7 +435,7 @@ export class Editor {
     else {
       const dx = w.x - a.x, dy = w.y - a.y;
       const len = Math.hypot(dx, dy) || 1;
-      b = { x: w.x, y: w.y, dx: -(dx / len), dy: 0.2 };
+      b = { x: w.x, y: w.y, dx: -(dx / len), dy: 0.2, free: true };
     }
     // the loose plug matches the cable (an interface combo jack takes whatever is plugged in)
     const kind = a.kind !== 'any' ? a.kind : b.kind && b.kind !== 'any' ? b.kind : 'inst';

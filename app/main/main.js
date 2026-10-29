@@ -141,7 +141,18 @@ function setupIpc() {
   ipcMain.handle('offline:features', (_e, files, t0, t1) => offline.stemsFeatures(files, t0, t1));
   ipcMain.handle('offline:evalGraphs', (_e, graphs, di) => offline.evalGraphs(graphs, di));
   // ---- plugins
-  ipcMain.handle('plugins:list', () => plugins.list(APP_ROOT, lib.dataRoot(), settings.plugins || {}));
+  ipcMain.handle('plugins:list', () => plugins.list(APP_ROOT, lib.dataRoot(), settings.plugins || {}, settings.pluginsRemoved || []));
+  ipcMain.handle('plugins:removeBuiltin', (_e, id) => {
+    settings.pluginsRemoved = [...new Set([...(settings.pluginsRemoved || []), id])];
+    lib.saveSettings(settings);
+    return true;
+  });
+  ipcMain.handle('plugins:removedBuiltins', () => plugins.removedBuiltins(APP_ROOT, settings.pluginsRemoved || []));
+  ipcMain.handle('plugins:restoreBuiltins', (_e, ids) => {
+    settings.pluginsRemoved = ids ? (settings.pluginsRemoved || []).filter((x) => !ids.includes(x)) : [];
+    lib.saveSettings(settings);
+    return true;
+  });
   ipcMain.handle('plugins:setEnabled', (_e, id, on) => {
     settings.plugins = Object.assign({}, settings.plugins, { [id]: !!on });
     lib.saveSettings(settings);

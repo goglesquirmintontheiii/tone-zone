@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('tz', {
     install: (kind) => ipcRenderer.invoke('plugins:install', kind),
     installPath: (p) => ipcRenderer.invoke('plugins:installPath', p),
     remove: (id) => ipcRenderer.invoke('plugins:remove', id),
+    removeBuiltin: (id) => ipcRenderer.invoke('plugins:removeBuiltin', id),
+    removedBuiltins: () => ipcRenderer.invoke('plugins:removedBuiltins'),
+    restoreBuiltins: (ids) => ipcRenderer.invoke('plugins:restoreBuiltins', ids),
     openDir: () => ipcRenderer.invoke('plugins:openDir'),
   },
   offline: {
