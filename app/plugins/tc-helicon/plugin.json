@@ -1,0 +1,12 @@
+{
+  "id": "tc-helicon",
+  "name": "TC-Helicon",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Vocal processors inspired by TC-Helicon gear: single-effect vocal stomps, two-switch vocal pedals, mini vocal pedals (harmony, doubling, mic looper, talkbox), floor vocal and guitar processors and mic-stand units. XLR mic inputs and outputs, built for singers.",
+  "kind": "brand",
+  "brand": "TC-Helicon",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e2342b"
+}

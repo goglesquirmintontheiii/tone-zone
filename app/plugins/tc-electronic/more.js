@@ -132,7 +132,7 @@ export function registerMore(tz, kit) {
     return out;
   };
   const X1 = (o) => TC(Object.assign({
-    cat: 'Multi-FX', kind: 'Multi-FX', tcSize: 'budget', stereo: 'both', cost: 2.6, tagline: 'toneprint multi', nameY: 144, noStd: true,
+    cat: 'Multi-FX', kind: 'Multi-FX', tcSize: 'budget', stereo: 'both', cost: 2.6, tagline: 'toneprint multi', nameY: 150, noStd: true,
     algo: 'chain', opts: { chain: [
       { prefix: 'c', algo: 'comp', opts: { type: 'vca' }, on: false, params: { ratio: 0.5 } },
       { prefix: 'm', algo: 'chorus', on: false },
@@ -145,8 +145,8 @@ export function registerMore(tz, kit) {
       pin(SCREEN('tc-lcd', { p: 'board', names: X1_NAMES, sub: 'board / slot A' }), 62, 36, { w: 96, h: 28 }),
       pin(k('ka', 'A', { virtual: true, def: 0.5 }), 30, 80, { r: 10, labelPos: 'below' }), pin(k('kb', 'B', { virtual: true, def: 0.5 }), 62, 80, { r: 10, labelPos: 'below' }),
       pin(k('kc', 'C', { virtual: true, def: 0.4 }), 94, 80, { r: 10, labelPos: 'below' }),
-      pin(SEL('board', '', ['1', '2', '3', '4', '5', '6', '7'], { virtual: true, sweep: 220, optSize: 4.2, labelRadius: 7, labelPos: 'none' }), 62, 116, { r: 9 }),
-      FOOT(), pin(LED({ color: '#ff2a1a' }), 100, 116, { r: 2.8 }),
+      pin(SEL('board', '', ['1', '2', '3', '4', '5', '6', '7'], { virtual: true, sweep: 220, optSize: 4.2, labelRadius: 7, labelPos: 'none' }), 62, 122, { r: 9 }),
+      FOOT(), pin(LED({ color: '#ff2a1a' }), 100, 122, { r: 2.8 }),
     ],
     derive: x1Derive,
     desc: 'Seven boards of TonePrint-style effects (reverb, delay, chorus, flanger, phaser, vibrato, compressor). Knobs A, B and C change with the board.',
@@ -482,9 +482,9 @@ export function registerMore(tz, kit) {
 
     // ---------------------------------------------------------------- preamps
     PRE({ id: 'tc.combodeluxe65', name: "Combo Luxe '65 Preamp", ref: "TC Electronic Combo Deluxe 65' Preamp", code: 'CL65', logo: "combo luxe '65", typeName: 'Preamp', tagline: 'preamp · spring reverb',
-      color: '#1f2024', text: '#d9e4ee', art: 'tube', artColor: '#9ec9ff', artOpacity: 0.25, models: ['deluxe', 'deluxe'], cab: '1x12us', reverb: true, krows: [4, 3],
+      color: '#1f2024', text: '#d9e4ee', nameY: 158, models: ['deluxe', 'deluxe'], cab: '1x12us', reverb: true, krows: [4, 3],
       controls: [k('a.master', 'LEVEL', { def: 0.5 }), k('a.gain', 'GAIN', { def: 0.4 }), k('r.mix', 'REVERB', { def: 0.25 }), k('r.tone', 'REV TONE', { def: 0.5 }),
-        k('a.bass', 'BASS'), k('a.mid', 'MIDDLE'), k('a.treble', 'TREBLE'), TOG('a.bright', 'BRIGHT', ['OFF', 'ON'])],
+        k('a.bass', 'BASS'), k('a.mid', 'MIDDLE'), k('a.treble', 'TREBLE'), TOG('a.bright', 'BRIGHT', ['NORM', 'BRIGHT'])],
       derive: (p) => ({ 'a.gain': Math.min(1, (p['a.gain'] ?? 0.4) + (p['a.channel'] ? 0.35 : 0)) }),
       desc: 'Two-channel blackface-style preamp with spring reverb. DI and phones carry the cab sim.' }),
     PRE({ id: 'tc.dualwreck', name: 'Twin Ruin Preamp', ref: 'TC Electronic Dual Wreck Preamp', code: 'TRN', logo: 'twin ruin', typeName: 'Preamp', tagline: 'high gain preamp',

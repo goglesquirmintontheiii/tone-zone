@@ -235,7 +235,9 @@ export default function register(tz) {
         leds.forEach((l, i) => Object.assign(l, { x: i < foots.length ? fx(i) : w / 2, y: h - 72, r: 2.8 }));
       } else if (foots.length === 2) {
         foots.forEach((f, i) => Object.assign(f, { style: 'stomp', x: [w * 0.27, w * 0.73][i], y: h - 40, r: 12.5 }));
-        leds.forEach((l, i) => Object.assign(l, { x: [w * 0.27, w * 0.73][i] ?? w / 2, y: h - 74, r: 2.8 }));
+        // preamps: LEDs sit beside their switch so the name has room
+        if (size === 'pre') leds.forEach((l, i) => Object.assign(l, { x: [w * 0.27 + 26, w * 0.73 - 26][i] ?? w / 2, y: h - 40, r: 2.8 }));
+        else leds.forEach((l, i) => Object.assign(l, { x: [w * 0.27, w * 0.73][i] ?? w / 2, y: h - 74, r: 2.8 }));
       } else {
         foots.forEach((f) => Object.assign(f, { style: 'stomp', x: w / 2, y: big ? h - 40 : h - 34, r: 13 }));
         leds.forEach((l) => Object.assign(l, { x: w / 2, y: big ? h - 74 : h - 60, r: 2.8 }));
