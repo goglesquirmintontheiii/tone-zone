@@ -1,0 +1,182 @@
+{
+ "version": 1,
+ "name": "Funk · Lead",
+ "tags": [
+  "funk",
+  "clean",
+  "lead"
+ ],
+ "desc": "Envelope filter quack into compression and a Twin.",
+ "factory": true,
+ "order": 342,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "ehx.qtron",
+   "x": -204,
+   "y": 37,
+   "params": {
+    "sens": 0.55,
+    "q": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "mx.m102",
+   "x": -402,
+   "y": 54,
+   "params": {
+    "level": 0.55,
+    "sustain": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "amp.twin",
+   "x": -892,
+   "y": 0,
+   "params": {
+    "gain": 0.32,
+    "treble": 0.62,
+    "mid": 0.4,
+    "bass": 0.45,
+    "master": 0.6,
+    "bright": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "cab.2x12twin",
+   "x": -1362,
+   "y": 34,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.31299999999999994,
+    "_m1y": 0.5,
+    "level": -2.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "tz.spring",
+   "x": -1590,
+   "y": 38,
+   "params": {
+    "mix": 0.12
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1830,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  }
+ ],
+ "view": null
+}

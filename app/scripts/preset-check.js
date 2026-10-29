@@ -22,8 +22,8 @@ const fs = require('fs');
     const r = await win.evaluate(async (p) => {
       try {
         const g = window.__tz.buildGraph(p);
-        const wav = await window.tz.tm.preview(g, null);
-        const ft = await window.tz.tm.features([wav], 0, Infinity);
+        const wav = await window.tz.offline.render(g, null);
+        const ft = await window.tz.offline.features([wav], 0, Infinity);
         return { level: ft ? ft.level : null, nodes: g.nodes.length, crest: ft && ft.crest };
       } catch (e) {
         return { error: String(e.message || e) };

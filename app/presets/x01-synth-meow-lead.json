@@ -19,9 +19,9 @@
   },
   {
    "id": "b1",
-   "type": "tc.polytune3",
-   "x": -144,
-   "y": 43,
+   "type": "tz.tuner",
+   "x": -150,
+   "y": 39,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,7 +29,7 @@
   {
    "id": "b2",
    "type": "tz.meowsynth",
-   "x": -424,
+   "x": -430,
    "y": 4,
    "params": {
     "shift": 0.55,
@@ -45,7 +45,7 @@
   {
    "id": "b3",
    "type": "amp.jc120",
-   "x": -914,
+   "x": -920,
    "y": 0,
    "params": {
     "gain": 0.3,
@@ -57,7 +57,7 @@
   {
    "id": "b4",
    "type": "cab.2x12jc",
-   "x": -1384,
+   "x": -1390,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -73,7 +73,7 @@
   {
    "id": "b5",
    "type": "tz.delay",
-   "x": -1670,
+   "x": -1676,
    "y": 30,
    "params": {
     "time": 97.9148,
@@ -86,7 +86,7 @@
   {
    "id": "b6",
    "type": "tz.reverb",
-   "x": -1942,
+   "x": -1948,
    "y": 15,
    "params": {
     "decay": 0.5,
@@ -98,7 +98,7 @@
   {
    "id": "b7",
    "type": "tz.meter",
-   "x": -2142,
+   "x": -2148,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -107,7 +107,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2382,
+   "x": -2388,
    "y": 55,
    "params": {}
   }

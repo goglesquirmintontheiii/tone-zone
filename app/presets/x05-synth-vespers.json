@@ -19,9 +19,9 @@
   },
   {
    "id": "b1",
-   "type": "tz.tuner",
-   "x": -150,
-   "y": 39,
+   "type": "tc.polytune3mini",
+   "x": -96,
+   "y": 70,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,7 +29,7 @@
   {
    "id": "b2",
    "type": "tz.vespers",
-   "x": -420,
+   "x": -366,
    "y": 4,
    "params": {
     "v.attack": 0.4,
@@ -44,7 +44,7 @@
   {
    "id": "b3",
    "type": "amp.jc120",
-   "x": -910,
+   "x": -856,
    "y": 0,
    "params": {
     "gain": 0.3
@@ -55,7 +55,7 @@
   {
    "id": "b4",
    "type": "cab.2x12jc",
-   "x": -1380,
+   "x": -1326,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -71,7 +71,7 @@
   {
    "id": "b5",
    "type": "mrs.mercury7",
-   "x": -1656,
+   "x": -1602,
    "y": 49,
    "params": {
     "inf": 0,
@@ -85,7 +85,7 @@
   {
    "id": "b6",
    "type": "tz.meter",
-   "x": -1856,
+   "x": -1802,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -94,7 +94,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2096,
+   "x": -2042,
    "y": 55,
    "params": {}
   }

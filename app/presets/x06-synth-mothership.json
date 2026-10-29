@@ -19,9 +19,9 @@
   },
   {
    "id": "b1",
-   "type": "bx.tu3",
-   "x": -146,
-   "y": 36,
+   "type": "bh.tm300",
+   "x": -140,
+   "y": 39,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,7 +29,7 @@
   {
    "id": "b2",
    "type": "tz.mothership",
-   "x": -468,
+   "x": -462,
    "y": 15,
    "params": {
     "v.shift": 0.5,
@@ -44,7 +44,7 @@
   {
    "id": "b3",
    "type": "amp.jc120",
-   "x": -958,
+   "x": -952,
    "y": 0,
    "params": {
     "gain": 0.3
@@ -55,7 +55,7 @@
   {
    "id": "b4",
    "type": "cab.2x12jc",
-   "x": -1428,
+   "x": -1422,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -71,7 +71,7 @@
   {
    "id": "b5",
    "type": "tz.lumen",
-   "x": -1708,
+   "x": -1702,
    "y": 39.5,
    "params": {
     "time": 175.6465,
@@ -84,7 +84,7 @@
   {
    "id": "b6",
    "type": "tz.reverb",
-   "x": -1980,
+   "x": -1974,
    "y": 15,
    "params": {
     "decay": 0.6,
@@ -96,7 +96,7 @@
   {
    "id": "b7",
    "type": "tz.meter",
-   "x": -2180,
+   "x": -2174,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -105,7 +105,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2420,
+   "x": -2414,
    "y": 55,
    "params": {}
   }

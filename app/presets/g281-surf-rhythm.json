@@ -1,0 +1,138 @@
+{
+ "version": 1,
+ "name": "Surf · Rhythm",
+ "tags": [
+  "surf",
+  "clean",
+  "rhythm"
+ ],
+ "desc": "Super Reverb with the springs dripping wet – reverb-drenched rhythm.",
+ "factory": true,
+ "order": 381,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "fender.amp-superreverb",
+   "x": -512,
+   "y": 0,
+   "params": {
+    "a.gain": 0.35,
+    "a.treble": 0.65,
+    "a.mid": 0.5,
+    "a.bass": 0.45,
+    "r.mix": 0.45,
+    "t.rate": 0.5,
+    "t.depth": 0,
+    "a.bright": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "fender.cab-super4x10",
+   "x": -882,
+   "y": 0,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.313,
+    "_m1y": 0.25,
+    "level": -2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.spring",
+   "x": -1110,
+   "y": 38,
+   "params": {
+    "mix": 0.45,
+    "decay": 0.6,
+    "tone": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1350,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c4",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c5",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  }
+ ],
+ "view": null
+}

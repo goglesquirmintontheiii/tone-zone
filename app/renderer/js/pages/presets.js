@@ -7,7 +7,7 @@ import { thumbURL, cacheGet, cacheSet } from '../gfx/raster.js';
 import { openPreset, savePreset, refreshPresetList, updateTitle } from '../presets.js';
 import { prompt, confirmDlg, showMenu, modal } from '../menus.js';
 
-const V = { q: '', sort: 'name', filter: 'All', tags: new Set(), tagMode: 'any' };
+const V = { q: '', sort: 'name', filter: 'All', tags: new Set(), tagMode: 'any', selecting: false, sel: new Set() };
 export const GENRE_TAGS = ['rhythm', 'lead', 'clean', 'crunch', 'high-gain', 'ambient', 'simple', 'complex', 'jazz', 'worship', 'contemporary-worship', 'gospel', 'rock', 'classic-rock', 'alt-rock', 'metal', 'heavy-metal', 'classic-metal', 'deathcore', 'metalcore', 'punk', 'pop-punk', 'pop', 'experimental', 'jazz-fusion', 'edm', 'acoustic', 'country', 'country-rock', 'blues', 'funk', 'bass'];
 
 // Preset thumbnails: the board's real pedals (cached raster images) composited into one PNG per preset.
@@ -124,8 +124,17 @@ export async function renderPresets() {
   el('button', { class: 'btn', onclick: () => savePreset(true).then(renderPresets) }, acts, '<i class="ic ic-save"></i>Save current as…');
   el('button', { class: 'btn', onclick: async () => { const f = await window.tz.presets.importPresets(); if (f && f.length) { toast(`Imported ${f.length} preset(s)`, 'ok'); renderPresets(); } } }, acts, '<i class="ic ic-import"></i>Import');
   el('button', { class: 'btn', onclick: () => window.tz.presets.exportPreset(serialize()) }, acts, '<i class="ic ic-copy"></i>Export current');
+  const deleted = await window.tz.presets.deletedFactory().catch(() => []);
+  if (deleted.length)
+    el('button', { class: 'btn', title: 'Bring back the built-in presets you deleted', onclick: async () => {
+      if (!(await confirmDlg('Restore built-in presets', `Restore ${deleted.length} deleted built-in preset${deleted.length > 1 ? 's' : ''}?`, 'Restore'))) return;
+      await window.tz.presets.restoreFactory();
+      toast(`Restored ${deleted.length} preset${deleted.length > 1 ? 's' : ''}`, 'ok');
+      renderPresets();
+    } }, acts, `<i class="ic ic-undo"></i>Restore built-in (${deleted.length})`);
 
   const list = await refreshPresetList();
+  for (const f of [...V.sel]) if (!list.some((p) => p.file === f)) V.sel.delete(f);
   const tools = el('div', { class: 'pp-tools' }, page);
   const sr = el('div', { class: 'search' }, tools, '<i class="ic ic-search"></i>');
   const q = el('input', { placeholder: 'Search presets, blocks or tags…', value: V.q, spellcheck: 'false' }, sr);
@@ -156,11 +165,48 @@ export async function renderPresets() {
     }
   };
   drawTags();
+  const selBtn = el('button', { class: 'btn' + (V.selecting ? ' on' : ''), title: 'Select several presets (or Ctrl-click a card)' }, tools, '<i class="ic ic-check"></i>Select');
+  selBtn.onclick = () => setSelecting(!V.selecting);
   const sortSel = el('select', { class: 'pp-sort' }, tools, '<option value="name">Name</option><option value="recent">Recently saved</option><option value="blocks">Most blocks</option>');
   sortSel.value = V.sort;
   sortSel.onchange = () => { V.sort = sortSel.value; draw(); };
   const grid = el('div', { class: 'preset-grid' }, page);
   q.oninput = () => { V.q = q.value.trim().toLowerCase(); draw(); };
+  // selection bar (multi-delete)
+  const bar = el('div', { class: 'pp-selbar' }, page);
+  let shown = [];
+  function setSelecting(on) {
+    V.selecting = on;
+    if (!on) V.sel.clear();
+    selBtn.classList.toggle('on', on);
+    draw();
+  }
+  function drawBar() {
+    bar.classList.toggle('show', V.selecting);
+    bar.innerHTML = '';
+    if (!V.selecting) return;
+    el('span', { class: 'pp-selcount' }, bar, `${V.sel.size} selected`);
+    el('button', { class: 'btn', onclick: () => { const all = shown.every((p) => V.sel.has(p.file)); for (const p of shown) all ? V.sel.delete(p.file) : V.sel.add(p.file); draw(); } }, bar,
+      shown.length && shown.every((p) => V.sel.has(p.file)) ? 'Select none' : `Select all shown (${shown.length})`);
+    const del = el('button', { class: 'btn btn-danger' }, bar, '<i class="ic ic-trash"></i>Delete');
+    del.disabled = !V.sel.size;
+    del.onclick = () => deleteFiles([...V.sel]);
+    el('button', { class: 'btn', onclick: () => setSelecting(false) }, bar, 'Cancel');
+  }
+  async function deleteFiles(files) {
+    if (!files.length) return;
+    const names = files.map((f) => list.find((p) => p.file === f)?.name || f);
+    const fac = files.filter((f) => list.find((p) => p.file === f)?.factory).length;
+    const msg = files.length === 1 ? `Delete “${names[0]}”?` : `Delete ${files.length} presets?`;
+    const extra = fac ? ' Built-in presets can be brought back later with “Restore built-in”.' : '';
+    if (!(await confirmDlg(files.length === 1 ? 'Delete preset' : 'Delete presets', msg + extra, 'Delete', true))) return;
+    await window.tz.presets.removeMany(files);
+    if (files.includes(state.file)) state.file = null;
+    for (const f of files) V.sel.delete(f);
+    if (!V.sel.size) V.selecting = false;
+    toast(files.length === 1 ? `Deleted “${names[0]}”` : `Deleted ${files.length} presets`, 'ok', 1600);
+    renderPresets();
+  }
 
   function draw() {
     grid.innerHTML = '';
@@ -184,15 +230,25 @@ export async function renderPresets() {
     items.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
     if (!items.length) {
       el('div', { class: 'empty-state' }, grid, '<p>No presets match.</p>');
+      shown = [];
+      drawBar();
       return;
     }
+    shown = items;
+    grid.classList.toggle('selecting', V.selecting);
     for (const p of items) card(p);
+    drawBar();
   }
   function card(p) {
     const cur = p.file === state.file;
-    const c = el('div', { class: 'preset-card' + (cur ? ' cur' : '') }, grid);
+    const c = el('div', { class: 'preset-card' + (cur ? ' cur' : '') + (V.sel.has(p.file) ? ' sel' : '') }, grid);
     const art = el('div', { class: 'pc-art' }, c);
     art.appendChild(thumb(p));
+    if (V.selecting) el('span', { class: 'pc-check' }, art, V.sel.has(p.file) ? '<i class="ic ic-check"></i>' : '');
+    else {
+      const del = el('button', { class: 'icon-btn pc-del', title: 'Delete preset' }, art, '<i class="ic ic-trash"></i>');
+      del.onclick = (e) => { e.stopPropagation(); deleteFiles([p.file]); };
+    }
     if (cur) el('span', { class: 'pc-cur' }, art, state.dirty ? 'LOADED · EDITED' : 'LOADED');
     const star = el('button', { class: 'fav-star pc-star' + (p.favorite ? ' on' : ''), title: 'Favourite' }, art, p.favorite ? '★' : '☆');
     star.onclick = async (e) => { e.stopPropagation(); p.favorite = !p.favorite; await window.tz.presets.meta(p.file, { favorite: p.favorite }); draw(); };
@@ -211,8 +267,18 @@ export async function renderPresets() {
     }
     const more = el('button', { class: 'icon-btn pc-more', title: 'More' }, c, '<i class="ic ic-dots"></i>');
     more.onclick = (e) => { e.stopPropagation(); cardMenu(p, more); };
-    c.onclick = async () => { if (await openPreset(p.file)) { updateTitle(); draw(); } };
-    c.ondblclick = async () => { if (state.file === p.file || (await openPreset(p.file))) bus.emit('tab', 'board'); };
+    c.onclick = async (e) => {
+      if (V.selecting || e.ctrlKey || e.metaKey) {
+        V.selecting = true;
+        selBtn.classList.add('on');
+        V.sel.has(p.file) ? V.sel.delete(p.file) : V.sel.add(p.file);
+        draw();
+        return;
+      }
+      if (await openPreset(p.file)) { updateTitle(); draw(); }
+    };
+    c.ondblclick = async () => {
+      if (V.selecting) return; if (state.file === p.file || (await openPreset(p.file))) bus.emit('tab', 'board'); };
     c.oncontextmenu = (e) => { e.preventDefault(); cardMenu(p, null, e); };
   }
   function cardMenu(p, anchor, e) {
@@ -224,7 +290,8 @@ export async function renderPresets() {
       { label: 'Duplicate', icon: 'copy', onClick: async () => { await window.tz.presets.duplicate(p.file); renderPresets(); } },
       { label: 'Export…', icon: 'import', onClick: async () => window.tz.presets.exportPreset(await window.tz.presets.load(p.file)) },
       { sep: true },
-      { label: 'Delete', icon: 'trash', danger: true, onClick: async () => { if (await confirmDlg('Delete preset', `Delete “${p.name}”?`, 'Delete', true)) { await window.tz.presets.remove(p.file); if (state.file === p.file) state.file = null; renderPresets(); } } },
+      { label: 'Select', icon: 'check', onClick: () => { V.selecting = true; V.sel.add(p.file); selBtn.classList.add('on'); draw(); } },
+      { label: 'Delete', icon: 'trash', danger: true, onClick: () => deleteFiles([p.file]) },
     ]);
   }
   draw();

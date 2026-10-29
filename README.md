@@ -27,8 +27,6 @@ Requirements: PipeWire with its JACK compatibility library (installed by default
   EarthQuaker, Walrus, Strymon, Meris, Chase Bliss, Big Ear, TC Electronic, Fender, Marshall, Mesa/Boogie and 70 more brands), with the
   same knob / switch / footswitch / screen layout and similar colours. Each brand is a built-in **plugin** you can
   turn off; write your own with [docs/plugins.md](docs/plugins.md).
-- **Tone Match** – give it a song (file or YouTube link), optionally isolate the guitar / bass / other parts with an
-  AI model, and let it build a rig from your gear that sounds like the recording.
 - **Line 6 Helix** – connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
   expression, external switches, USB audio), and bind its footswitches and expression pedal to the footswitches
   and treadles of other pedals on the board.
@@ -85,9 +83,8 @@ Engine test mode: `engine/dist/tonezone-engine-v2 --offline graph.json in.wav ou
 - `engine/` – realtime DSP engine (C++20): PipeWire/JACK host, graph compiler, block library
   (`src/blocks/*`), NAM, convolution, tuner, looper.
 - `app/` – Electron UI: board editor, SVG pedal graphics (`renderer/js/gfx`), core block catalog
-  (`renderer/js/catalog`), pages (presets, library, Tone Match, plugins, settings), the plugin host
+  (`renderer/js/catalog`), pages (presets, library, plugins, settings), the plugin host
   (`renderer/js/plugins.js`) and the built-in brand plugins (`app/plugins/*`).
-- `app/tools/separate.py` – AI stem separation (Demucs) used by Tone Match.
 - `docs/` – plugin authoring guide, engine block reference, release notes.
 
 See [THIRD_PARTY.md](THIRD_PARTY.md) for bundled components. Product names are trademarks of their owners and are

@@ -327,24 +327,72 @@ function duplicatePreset(file) {
 function deletePreset(file) {
   fs.rmSync(path.join(presetDir(), path.basename(file)), { force: true });
 }
-// Copies factory presets the user hasn't received yet. The marker remembers which ones were installed, so presets
-// added in a later version still arrive after an update while ones the user deleted stay deleted.
-function installFactoryPresets(srcDir) {
-  const d = presetDir();
-  const marker = path.join(dataRoot(), '.factory-installed');
-  let done = [];
+// Factory presets: copied into the user's preset folder. The marker (.factory-installed) remembers every factory
+// file the user received with a hash of the content they got, so:
+//  * presets added in a later version arrive after an update,
+//  * presets the user deleted stay deleted (until "Restore built-in presets"),
+//  * presets the user never changed are updated to the new version (the favourite star is kept),
+//  * presets the user edited (saved, renamed, re-tagged) are left alone.
+const FACTORY_MARKER = () => path.join(dataRoot(), '.factory-installed');
+// content hash that ignores formatting and the favourite flag
+function presetHash(obj) {
+  const o = Object.assign({}, obj);
+  delete o.favorite;
+  return crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex');
+}
+function readFactoryMarker() {
   try {
-    const raw = fs.readFileSync(marker, 'utf8');
-    done = raw.trim().startsWith('[') ? JSON.parse(raw) : ['01-welcome.json', '02-clean-ambient.json', '03-modern-metal.json', '04-bass-rig.json', '05-rig-x.json', '06-looper-jam.json', '07-drop-tune.json', '08-boutique.json', '09-wah-fuzz.json'];
-  } catch (_) {}
-  const have = new Set(done);
+    const raw = fs.readFileSync(FACTORY_MARKER(), 'utf8').trim();
+    if (raw.startsWith('{')) return JSON.parse(raw).files || {};
+    // older versions stored a plain list of file names (no hashes)
+    const list = raw.startsWith('[') ? JSON.parse(raw) : ['01-welcome.json', '02-clean-ambient.json', '03-modern-metal.json', '04-bass-rig.json', '05-rig-x.json', '06-looper-jam.json', '07-drop-tune.json', '08-boutique.json', '09-wah-fuzz.json'];
+    return Object.fromEntries(list.map((f) => [f, null]));
+  } catch (_) {
+    return {};
+  }
+}
+function writeFactoryMarker(files) {
+  fs.writeFileSync(FACTORY_MARKER(), JSON.stringify({ v: 2, files }));
+}
+function installFactoryPresets(srcDir, { restore = false } = {}) {
+  const d = presetDir();
+  const files = readFactoryMarker();
+  let added = 0, updated = 0;
   if (fs.existsSync(srcDir))
     for (const f of fs.readdirSync(srcDir)) {
-      if (!f.endsWith('.json') || have.has(f)) continue;
-      if (!fs.existsSync(path.join(d, f))) fs.copyFileSync(path.join(srcDir, f), path.join(d, f));
-      have.add(f);
+      if (!f.endsWith('.json')) continue;
+      let src;
+      try { src = JSON.parse(fs.readFileSync(path.join(srcDir, f), 'utf8')); } catch (_) { continue; }
+      const srcHash = presetHash(src);
+      const dst = path.join(d, f);
+      const known = Object.prototype.hasOwnProperty.call(files, f);
+      if (!fs.existsSync(dst)) {
+        if (known && !restore) continue; // the user deleted it
+        fs.writeFileSync(dst, JSON.stringify(src, null, 2));
+        files[f] = srcHash;
+        added++;
+        continue;
+      }
+      let cur;
+      try { cur = JSON.parse(fs.readFileSync(dst, 'utf8')); } catch (_) { continue; }
+      const curHash = presetHash(cur);
+      if (curHash === srcHash) { files[f] = srcHash; continue; }
+      // unchanged since we installed it? (legacy entries have no hash: never saved by the user = unchanged)
+      const untouched = known && (files[f] ? curHash === files[f] : !cur.saved && cur.factory && cur.name === src.name);
+      if (!untouched) continue;
+      if (cur.favorite) src.favorite = true;
+      fs.writeFileSync(dst, JSON.stringify(src, null, 2));
+      files[f] = srcHash;
+      updated++;
     }
-  fs.writeFileSync(marker, JSON.stringify([...have]));
+  writeFactoryMarker(files);
+  return { added, updated };
+}
+// names of factory presets the user has deleted
+function deletedFactoryPresets(srcDir) {
+  const files = readFactoryMarker();
+  if (!fs.existsSync(srcDir)) return [];
+  return fs.readdirSync(srcDir).filter((f) => f.endsWith('.json') && Object.prototype.hasOwnProperty.call(files, f) && !fs.existsSync(path.join(presetDir(), f)));
 }
 
 // ---------------- settings ----------------
@@ -363,5 +411,5 @@ module.exports = {
   presetMeta,
   duplicatePreset,
   dataRoot, ensureDirs, inspect, commit, list, update, remove, discardStaging,
-  listPresets, loadPreset, savePreset, deletePreset, installFactoryPresets, loadSettings, saveSettings, readNamMeta,
+  listPresets, loadPreset, savePreset, deletePreset, installFactoryPresets, deletedFactoryPresets, loadSettings, saveSettings, readNamMeta,
 };

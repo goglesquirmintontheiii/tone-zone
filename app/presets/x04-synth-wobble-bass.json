@@ -19,9 +19,9 @@
   },
   {
    "id": "b1",
-   "type": "bh.tm300",
-   "x": -140,
-   "y": 104,
+   "type": "bx.tu3w",
+   "x": -146,
+   "y": 101,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,7 +29,7 @@
   {
    "id": "b2",
    "type": "tz.wobbler",
-   "x": -430,
+   "x": -436,
    "y": 59,
    "params": {
     "s.octave": -1,
@@ -45,7 +45,7 @@
   {
    "id": "b3",
    "type": "amp.svt",
-   "x": -924,
+   "x": -930,
    "y": 0,
    "params": {
     "gain": 0.35
@@ -56,7 +56,7 @@
   {
    "id": "b4",
    "type": "cab.8x10svt",
-   "x": -847,
+   "x": -853,
    "y": 214,
    "params": {
     "m1on": 1,
@@ -72,7 +72,7 @@
   {
    "id": "b5",
    "type": "tz.meter",
-   "x": -1124,
+   "x": -1130,
    "y": 95,
    "params": {},
    "bypass": false,
@@ -81,7 +81,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1364,
+   "x": -1370,
    "y": 130,
    "params": {}
   }

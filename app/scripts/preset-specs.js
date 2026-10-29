@@ -410,6 +410,156 @@ G.push(genre({
   }));
 }
 
+// ---------------------------------------------------------------- 22 Grunge
+{
+  const amp = (gain) => ['amp.recto', { gain, treble: 0.55, mid: 0.42, bass: 0.6, presence: 0.5, master: 0.5, channel: 1 }];
+  const cab = ['cab.4x12v30', {}];
+  G.push(genre({
+    id: 'grunge', name: 'Grunge', tags: ['grunge', 'rock', 'alt-rock'], order: 22,
+    rs: [['bx.ds1', { level: 0.6, tone: 0.45, gain: 0.7 }], ['amp.twin', { gain: 0.4, treble: 0.55, mid: 0.4, bass: 0.55, master: 0.6 }], ['cab.2x12twin']],
+    ls: [['ehx.bigmuff', { level: 0.55, tone: 0.5, gain: 0.75 }], amp(0.35), cab, ['mx.m169', { time: 0.3, feedback: 0.2, mix: 0.12 }]],
+    rc: [tuner(), ['bx.ns2', { threshold: 0.35, decay: 0.4 }], ['dt.grunge', { level: 0.55, bass: 0.6, treble: 0.5, gain: 0.6 }], ['ehx.nanoclone', {}, { bypass: true }], amp(0.45), ['cab.4x12v30', { mic2: 2 }], ['tz.spring', { mix: 0.08, decay: 0.3 }], meter],
+    lc: [tuner(), ['dn.gcb95', { pos: 0.6 }, { bypass: true }], ['ehx.bigmuff', { level: 0.55, tone: 0.55, gain: 0.8 }], ['evh.phase90', { rate: 0.3 }, { bypass: true }], amp(0.4), ['cab.4x12v30', { mic2: 2 }], ['mx.m169', { time: 0.35, feedback: 0.25, mix: 0.15 }], ['tz.reverb', { decay: 0.35, mix: 0.12 }], meter],
+    desc: {
+      rs: 'Orange-box distortion into a loud clean Twin – the quiet-verse / loud-chorus garage sound.',
+      ls: 'Big Muff sludge into a Rectifier with a short analog echo.',
+      rc: 'Gate, the grunge distortion pedal, chorus for the clean verses (off), Rectifier and a hint of spring.',
+      lc: 'Wah (off), Big Muff, phaser (off), Rectifier, analog delay and room for feedback-laden solos.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 23 Blues
+{
+  const amp = (gain) => ['amp.bassman', { gain, presence: 0.5, mid: 0.55, bass: 0.45, treble: 0.55, master: 0.6 }];
+  const cab = ['cab.4x10tweed', {}];
+  G.push(genre({
+    id: 'blues', name: 'Blues', tags: ['blues', 'crunch'], order: 23,
+    rs: [amp(0.45), cab, ['tz.spring', { mix: 0.18, decay: 0.4 }]],
+    ls: [['ib.ts808', { gain: 0.45, tone: 0.55, level: 0.6 }], amp(0.5), cab, ['mx.m169', { time: 0.35, feedback: 0.25, mix: 0.18 }], ['tz.spring', { mix: 0.15 }]],
+    rc: [tuner(), ['tz.klone', { gain: 0.3, tone: 0.5, level: 0.6 }], amp(0.45), ['cab.4x10tweed', { mic2: 2 }], ['tz.trem', { rate: 0.45, depth: 0.5 }, { bypass: true }], ['tz.spring', { mix: 0.2, decay: 0.4 }], meter],
+    lc: [tuner(), ['dn.cbm95', { pos: 0.55 }, { bypass: true }], ['ib.ts808', { gain: 0.5, tone: 0.55, level: 0.62 }], ['kly.katana', { gain: 0.3 }], amp(0.5), ['cab.4x10tweed', { mic2: 2 }], ['mx.m169', { time: 0.4, feedback: 0.3, mix: 0.2 }], ['tz.spring', { mix: 0.15 }], meter],
+    desc: {
+      rs: 'Tweed Bassman on the edge of breakup – dig in for grit, back off for clean.',
+      ls: 'Tube Screamer into a tweed, analog delay and spring for Texas-style leads.',
+      rc: 'Klon-style push, tweed with two mics, tremolo (off) and spring.',
+      lc: 'Wah (off), Screamer and Katana boost into the tweed, analog delay and spring.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 24 Funk
+{
+  const amp = (gain) => ['amp.twin', { gain, treble: 0.62, mid: 0.4, bass: 0.45, master: 0.6, bright: 1 }];
+  G.push(genre({
+    id: 'funk', name: 'Funk', tags: ['funk', 'clean'], order: 24,
+    rs: [['mx.m102', { level: 0.55, sustain: 0.55 }], amp(0.3), ['cab.2x12twin']],
+    ls: [['ehx.qtron', { sens: 0.55, q: 0.6 }], ['mx.m102', { level: 0.55, sustain: 0.5 }], amp(0.32), ['cab.2x12twin'], ['tz.spring', { mix: 0.12 }]],
+    rc: [tuner(), ['kly.compplus', { sustain: 0.55, level: 0.55, blend: 0.6 }], ['bx.aw3', { sens: 0.5, q: 0.55, range: 0.5 }, { bypass: true }], amp(0.3), ['cab.2x12twin', { mic2: 2 }], ['ehx.smallstone', { rate: 0.35 }, { bypass: true }], ['tz.spring', { mix: 0.1 }], meter],
+    lc: [tuner(), ['kly.compplus', { sustain: 0.5, level: 0.55, blend: 0.55 }], ['dn.535q', { pos: 0.5 }], ['ib.ts9', { gain: 0.3, tone: 0.6, level: 0.6 }], amp(0.35), ['cab.2x12twin', { mic2: 2 }], ['bx.dd3', { mix: 0.15, feedback: 0.2, dtime: 0.3 }], meter],
+    desc: {
+      rs: 'Squashed, bright Twin for sixteenth-note chicken scratch.',
+      ls: 'Envelope filter quack into compression and a Twin.',
+      rc: 'Compressor, auto-wah (off), dual-mic Twin and phaser (off).',
+      lc: 'Compressor, wah, light Screamer push and a short delay for funky leads.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 25 Shoegaze
+{
+  const amp = (gain) => ['amp.ac30', { gain, treble: 0.5, bass: 0.5, presence: 0.45, master: 0.6 }];
+  G.push(genre({
+    id: 'shoegaze', name: 'Shoegaze', tags: ['shoegaze', 'ambient', 'experimental'], order: 25,
+    rs: [['ehx.bigmuff', { level: 0.5, tone: 0.45, gain: 0.7 }], amp(0.4), ['cab.2x12blue'], ['ehx.holygrail', { mix: 0.45, gmode: 1 }]],
+    ls: [['zvex.fuzzfactory', { 'f.level': 0.5, gate: 0.9, comp: 0.6, drive: 0.75, stab: 0.85 }], amp(0.4), ['cab.2x12blue'], ['tz.delay', { time: 0.55, feedback: 0.5, mix: 0.4, moddepth: 0.4 }], ['tz.shimmer', { decay: 0.8, mix: 0.45 }]],
+    rc: [tuner(), ['ehx.bigmuff', { level: 0.5, tone: 0.45, gain: 0.7 }], ['tz.warble', {}], amp(0.4), ['cab.2x12blue', { mic2: 2 }], ['ehx.memorytoy', { mix: 0.4, feedback: 0.55, time: 0.5 }], ['eqd.afterneath', { decay: 0.7, mix: 0.5, size: 0.7 }], meter],
+    lc: [tuner(), ['dt.whammy5', { model: 13 }, { bypass: true }], ['ehx.greenmuff', { level: 0.5, tone: 0.5, gain: 0.75 }], ['jhs.unicorn', { speed: 0.35, intensity: 0.5 }], amp(0.42), ['cab.2x12blue', { mic2: 2 }], ['tz.delay', { time: 0.6, feedback: 0.55, mix: 0.4, moddepth: 0.5 }], ['sy.bigsky', { machine: 6, decay: 0.8, mix: 0.45 }], meter],
+    desc: {
+      rs: 'A wall of fuzz washed in reverb – strum and let the chords smear.',
+      ls: 'Gated, squealing fuzz into a long modulated delay and shimmer.',
+      rc: 'Muff, tape warble, chimey AC, wobbly echo and a cavernous reverb.',
+      lc: 'Whammy (off) for glides, Green Muff, Uni-Vibe-style wobble, long delay and a huge Big Sky.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 26 Stoner / Doom
+{
+  const amp = (gain) => ['orange.amp-thunderverb', { 'a.gain': gain, 'a.master': 0.55, 'a.treble': 0.5, 'a.mid': 0.6, 'a.bass': 0.65, 'r.mix': 0, 'a.channel': 1 }];
+  const cab = ['cab.4x12orange', {}];
+  G.push(genre({
+    id: 'stoner-doom', name: 'Stoner Doom', tags: ['stoner', 'doom', 'metal', 'drop-tuning'], order: 26,
+    rs: [['ehx.bigmuff', { level: 0.55, tone: 0.4, gain: 0.8 }], ['amp.orange', { gain: 0.55, bass: 0.65, mid: 0.6, treble: 0.5, master: 0.55 }], cab],
+    ls: [['eqd.hoof', { gain: 0.7, shift: 0.55, tone: 0.5, level: 0.55 }], amp(0.55), cab, ['tz.delay', { time: 0.45, feedback: 0.3, mix: 0.18 }]],
+    rc: [tuner(), ['dt.drop', { dsel: 1 }], ['ehx.greenmuff', { level: 0.55, tone: 0.4, gain: 0.8 }], amp(0.6), ['cab.4x12orange', { mic2: 2 }], ['tz.reverb', { decay: 0.4, mix: 0.12 }], meter],
+    lc: [tuner(), ['dt.drop', { dsel: 1 }], ['eqd.hoof', { gain: 0.75, shift: 0.6, tone: 0.55, level: 0.55 }], ['dn.gcb95', { pos: 0.45 }], amp(0.6), ['cab.4x12orange', { mic2: 2 }], ['tz.delay', { time: 0.5, feedback: 0.35, mix: 0.2 }], ['tz.reverb', { decay: 0.5, mix: 0.15 }], meter],
+    desc: {
+      rs: 'Muff into a cranked Orange – slow, heavy, fuzzy riffs.',
+      ls: 'Hoof fuzz into a Thunderverb with a dark echo.',
+      rc: 'Pitch-drop a whole step, Green Muff, Thunderverb, two mics and a little room.',
+      lc: 'Pitch-drop, Hoof fuzz, parked wah, Thunderverb, echo and room.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 27 Djent
+{
+  const amp = (gain) => ['peavey.amp-6505plus', { gain, bass: 0.45, mid: 0.55, treble: 0.6, master: 0.5, depth: 0.4, presence: 0.55, channel: 1 }];
+  const cab = ['cab.4x12v30', {}];
+  G.push(genre({
+    id: 'djent', name: 'Djent', tags: ['djent', 'metal', 'high-gain', 'drop-tuning'], order: 27,
+    rs: [['tz.gate', { threshold: 0.45, attack: 0.1, decay: 0.2 }], ['ib.ts9', { gain: 0, tone: 0.6, level: 0.75 }], amp(0.55), cab],
+    ls: [['ib.ts9', { gain: 0.1, tone: 0.6, level: 0.75 }], amp(0.55), cab, ['tz.delay', { time: 0.4, feedback: 0.3, mix: 0.18 }], ['tz.reverb', { decay: 0.45, mix: 0.15 }]],
+    rc: [tuner(), ['tz.gate', { threshold: 0.5, attack: 0.05, decay: 0.15 }], ['mx.m102', { level: 0.6, sustain: 0.25 }], ['ib.ts9', { gain: 0, tone: 0.65, level: 0.78 }], amp(0.6), ['cab.4x12v30', { mic2: 2 }], ['tz.peq', {}], meter],
+    lc: [tuner(), ['ib.ts9', { gain: 0.1, tone: 0.6, level: 0.75 }], amp(0.6), ['cab.4x12v30', { mic2: 2 }], ['tz.harmony', {}, { bypass: true }], ['sy.timeline', { 'd.time': 0.45, 'd.feedback': 0.3, 'd.mix': 0.2 }], ['sy.bigsky', { decay: 0.55, mix: 0.2 }], meter],
+    desc: {
+      rs: 'Tight-gated, Screamer-boosted 5150 – palm mutes that go "djent".',
+      ls: 'Boosted 5150 with a clean delay and room for melodic leads.',
+      rc: 'Hard gate, a little compression, boost, 5150, dual-mic cab and EQ.',
+      lc: 'Boosted 5150, harmonizer (off), stereo delay and reverb.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 28 Surf
+{
+  const amp = (gain) => ['fender.amp-superreverb', { 'a.gain': gain, 'a.treble': 0.65, 'a.mid': 0.5, 'a.bass': 0.45, 'r.mix': 0.45, 't.rate': 0.5, 't.depth': 0, 'a.bright': 1 }];
+  const cab = ['fender.cab-super4x10', {}];
+  G.push(genre({
+    id: 'surf', name: 'Surf', tags: ['surf', 'clean'], order: 28,
+    rs: [amp(0.35), cab, ['tz.spring', { mix: 0.45, decay: 0.6, tone: 0.6 }]],
+    ls: [amp(0.4), cab, ['tz.reelecho', {}], ['tz.spring', { mix: 0.5, decay: 0.65, tone: 0.6 }]],
+    rc: [tuner(), ['tz.boost', { gain: 0.2 }], amp(0.35), ['fender.cab-super4x10', { mic2: 2 }], ['tz.trem', { rate: 0.55, depth: 0.5 }, { bypass: true }], ['jhs.springtank', {}], meter],
+    lc: [tuner(), ['tz.trebleboost', {}], amp(0.4), ['fender.cab-super4x10', { mic2: 2 }], ['bx.re2', {}], ['jhs.springtank', {}], meter],
+    desc: {
+      rs: 'Super Reverb with the springs dripping wet – reverb-drenched rhythm.',
+      ls: 'Tape echo and deep spring for staccato picked melodies.',
+      rc: 'Clean boost, Super Reverb, tremolo (off) and a spring tank.',
+      lc: 'Treble booster, Super Reverb, Space Echo and spring tank.',
+    },
+  }));
+}
+
+// ---------------------------------------------------------------- 29 Indie
+{
+  const amp = (gain) => ['vox.amp-ac15', { 'a.gain': gain, 'a.treble': 0.55, 'a.bass': 0.5, 'r.mix': 0.15, 't.rate': 0.5, 't.depth': 0, 'a.presence': 0.5, 'a.master': 0.6 }];
+  const cab = ['vox.cab-ac15', {}];
+  G.push(genre({
+    id: 'indie', name: 'Indie', tags: ['indie', 'alt-rock', 'crunch'], order: 29,
+    rs: [amp(0.45), cab, ['tz.reverb', { decay: 0.35, mix: 0.15 }]],
+    ls: [['eqd.plumes', {}], amp(0.45), cab, ['bx.dd3', { mix: 0.2, feedback: 0.3, dtime: 0.45 }], ['tz.reverb', { decay: 0.35, mix: 0.15 }]],
+    rc: [tuner(), ['bx.cs3', { level: 0.55, sustain: 0.35 }], ['eqd.westwood', {}, { bypass: true }], amp(0.45), ['vox.cab-ac15', { mic2: 2 }], ['ehx.nanoclone', {}, { bypass: true }], ['ehx.holygrail', { mix: 0.25, gmode: 0 }], meter],
+    lc: [tuner(), ['eqd.plumes', {}], ['mx.m133', { gain: 0.3 }, { bypass: true }], amp(0.48), ['vox.cab-ac15', { mic2: 2 }], ['ehx.memorytoy', { mix: 0.3, feedback: 0.4, time: 0.45 }], ['ehx.holygrail', { mix: 0.25, gmode: 1 }], meter],
+    desc: {
+      rs: 'Jangly AC15 on the edge of breakup with a small room.',
+      ls: 'Plumes overdrive into an AC15, digital delay and room.',
+      rc: 'Compressor, Westwood drive (off), AC15, chorus (off) and Holy Grail.',
+      lc: 'Plumes, Micro Amp boost (off), AC15, Memory Toy echo and Holy Grail hall.',
+    },
+  }));
+}
+
 // ---------------------------------------------------------------- special presets
 const SPECIAL = [];
 
@@ -521,6 +671,19 @@ SPECIAL.push(
     [['tz.whoopee', { blend: 0.85, '=level': 9 }], ['amp.svt', { gain: 0.3 }], ['cab.1x15bass'], ['tz.reverb', { decay: 0.4, mix: 0.18 }]], 47),
   MEME('m09-meme-deja-vu', 'Meme · Déjà Vu', ['experimental', 'ambient'], 'Press REMEMBER and your last phrase comes back, slower and stretched – haven\'t we been here before?',
     [['tz.dejavu', { length: 0.4, speed: 0.4, stretch: 0.3, mix: 0.6, mode: 0 }], ['amp.twin', { gain: 0.3 }], ['cab.2x12twin'], ['tz.shimmer', { decay: 0.6, mix: 0.25 }]], 48),
+);
+
+// ---------------------------------------------------------------- grunge signature rigs
+const GR = (file, name, tags, desc, chain, order) => ({ file, name, tags: ['grunge', ...tags], desc, chain, order });
+SPECIAL.push(
+  GR('r01-grunge-nevermind', 'Grunge · Nevermind Era', ['rock', 'rhythm'], 'Orange-box distortion into a scooped solid-state-style head and a 4×12, with a chorus for the clean verses (off) – 1991 Seattle.',
+    [tuner(), ['bx.ds2', { level: 0.6, tone: 0.45, gain: 0.7 }], ['ehx.smallstone', { rate: 0.3 }, { bypass: true }], ['ehx.nanoclone', {}, { bypass: true }], ['mesa.amp-markv', { gain: 0.4, master: 0.5, treble: 0.55, mid: 0.35, bass: 0.6, presence: 0.5, channel: 2 }], ['cab.4x12v30', { mic2: 2 }], meter], 60),
+  GR('r02-grunge-badmotor', 'Grunge · Badmotorfinger Drop D', ['metal', 'drop-tuning', 'rhythm'], 'Drop-D sludge: pitch drop, a Big Muff into a Rectifier, plus a parked wah you can kick on for the psychedelic bits.',
+    [tuner(), ['dt.drop', { dsel: 0 }], ['ehx.bigmuff', { level: 0.55, tone: 0.45, gain: 0.7 }], ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['amp.recto', { gain: 0.5, treble: 0.5, mid: 0.45, bass: 0.6, presence: 0.5, master: 0.5, channel: 1 }], ['cab.4x12v30', { mic2: 2 }], ['tz.spring', { mix: 0.08 }], meter], 61),
+  GR('r03-grunge-dirt', 'Grunge · Dirt Wah Lead', ['metal', 'lead'], 'Dark, heavy Bogner-style lead with a wah, a slow flanger (off) and a dry-ish slap – sludgy minor-key solos.',
+    [tuner(), ['dn.cbm95', { pos: 0.6 }], ['ib.ts9', { gain: 0.25, tone: 0.5, level: 0.65 }], ['evh.flanger117', { speed: 0.2, width: 0.5, regen: 0.4 }, { bypass: true }], ['bogner.amp-shiva', {}], ['cab.4x12v30', { mic2: 2 }], ['mx.m169', { time: 0.3, feedback: 0.2, mix: 0.15 }], meter], 62),
+  GR('r04-grunge-ten', 'Grunge · Ten Lead', ['rock', 'lead'], 'Classic-rock-rooted grunge lead: a Screamer into a cranked Marshall, wah and Uni-Vibe-style wobble (off), analog delay.',
+    [tuner(), ['dn.gcb95', { pos: 0.55 }, { bypass: true }], ['ib.ts808', { gain: 0.4, tone: 0.55, level: 0.62 }], ['jhs.unicorn', { speed: 0.35, intensity: 0.5 }, { bypass: true }], ['amp.jcm800', { gain: 0.6, presence: 0.55, bass: 0.5, mid: 0.6, treble: 0.6, master: 0.5 }], ['cab.4x12gb', { mic2: 2 }], ['mx.m169', { time: 0.4, feedback: 0.3, mix: 0.2 }], ['tz.reverb', { decay: 0.4, mix: 0.12 }], meter], 63),
 );
 
 module.exports = [...G.flat(), ...SPECIAL];

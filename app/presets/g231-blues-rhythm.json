@@ -1,0 +1,135 @@
+{
+ "version": 1,
+ "name": "Blues · Rhythm",
+ "tags": [
+  "blues",
+  "crunch",
+  "rhythm"
+ ],
+ "desc": "Tweed Bassman on the edge of breakup – dig in for grit, back off for clean.",
+ "factory": true,
+ "order": 331,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "amp.bassman",
+   "x": -424,
+   "y": 0,
+   "params": {
+    "gain": 0.45,
+    "presence": 0.5,
+    "mid": 0.55,
+    "bass": 0.45,
+    "treble": 0.55,
+    "master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "cab.4x10tweed",
+   "x": -794,
+   "y": 0,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.313,
+    "_m1y": 0.25,
+    "level": 4.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "tz.spring",
+   "x": -1022,
+   "y": 38,
+   "params": {
+    "mix": 0.18,
+    "decay": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1262,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c4",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c5",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c6",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  }
+ ],
+ "view": null
+}

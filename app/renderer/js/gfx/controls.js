@@ -151,10 +151,16 @@ export function drawToggle(parent, ctl, theme) {
   svg('rect', { x: -14, y: -16, width: 28, height: 32, fill: 'transparent' }, g);
   if (ctl.plate !== false) svg('circle', { r: 6.4, fill: '#111', opacity: 0.4, cy: 1 }, g);
   svg('polygon', { points: hex(5.6), fill: 'url(#g-nut)', stroke: '#2a2d31', 'stroke-width': 0.4 }, g);
-  svg('circle', { r: 3.4, fill: '#24272b' }, g);
+  svg('circle', { r: 3.6, fill: '#1c1e21', stroke: '#5b6068', 'stroke-width': 0.5 }, g);
+  // the lever is a filled tapered "bat" shape: a gradient-stroked <line> has a zero-width bounding box when
+  // vertical, so objectBoundingBox gradients don't paint on it at all (that's why only a dot used to show)
   const lever = svg('g', {}, g);
-  svg('line', { x1: 0, y1: 0, x2: 0, y2: -11, stroke: 'url(#g-chrome)', 'stroke-width': 3.2, 'stroke-linecap': 'round' }, lever);
-  svg('circle', { cx: 0, cy: -11, r: 2.4, fill: 'url(#g-chromeDome)' }, lever);
+  svg('path', { d: 'M-1.9,0.6 L-1.4,-10.4 L1.6,-10.4 L2.4,0.6 Z', fill: '#000', 'fill-opacity': 0.35, transform: 'translate(1.2,0.8)' }, lever);
+  svg('path', { d: 'M-1.9,0.6 L-1.25,-10.6 Q0,-11.6 1.25,-10.6 L1.9,0.6 Q0,1.6 -1.9,0.6 Z', fill: 'url(#g-chrome)', stroke: '#3a3d42', 'stroke-width': 0.45 }, lever);
+  svg('path', { d: 'M-0.55,-0.4 L-0.35,-9.8', stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 0.6, 'stroke-linecap': 'round', fill: 'none' }, lever);
+  svg('circle', { cx: 0, cy: -11, r: 2.5, fill: 'url(#g-chromeDome)', stroke: '#3a3d42', 'stroke-width': 0.4 }, lever);
+  // centre position of a 3-way vertical toggle: the lever points at you – show its tip on top of the bushing
+  const mid = svg('circle', { r: 2.5, fill: 'url(#g-chromeDome)', stroke: '#3a3d42', 'stroke-width': 0.4, 'fill-opacity': 0, 'stroke-opacity': 0 }, g);
   const labels = [];
   ctl.options.forEach((o, i) => {
     let x, y, anchor = 'start';
@@ -180,10 +186,12 @@ export function drawToggle(parent, ctl, theme) {
       else {
         // vertical toggles: up / middle(sideways-ish short) / down
         const a = n === 2 ? (idx === 0 ? 0 : 180) : [0, 0, 180][idx];
-        const sc = n === 3 && idx === 1 ? 0.25 : 1;
-        lever.setAttribute('transform', `rotate(${a}) scale(1,${sc})`);
+        const centre = n === 3 && idx === 1;
+        lever.setAttribute('transform', centre ? 'scale(0)' : `rotate(${a})`);
+        mid.setAttribute('fill-opacity', centre ? 1 : 0);
+        mid.setAttribute('stroke-opacity', centre ? 1 : 0);
       }
-      labels.forEach((l, i) => l.setAttribute('opacity', i === idx ? 1 : 0.55));
+      labels.forEach((l, i) => l.setAttribute('fill-opacity', i === idx ? 1 : 0.55));
     },
   };
 }

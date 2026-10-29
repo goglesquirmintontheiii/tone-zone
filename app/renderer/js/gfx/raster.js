@@ -55,7 +55,7 @@ export async function cacheSet(key, val) {
   if (!d) return;
   try { d.transaction('t', 'readwrite').objectStore('t').put(val, key); } catch {}
 }
-const VER = '3'; // bump to invalidate every cached thumbnail
+const VER = '4'; // bump to invalidate every cached thumbnail
 const waiting = new Map(); // key -> Promise
 const queue = [];
 let busy = 0;

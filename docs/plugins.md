@@ -160,11 +160,15 @@ tz.addForm('acme-wedge', (ctx, def) => {
 | `helpers`, `builders`, `categories` | definition helpers (see above) |
 | `gfx` | `svg, label, shade, luminance, clamp, softShadow, noisePattern, haloFill, setA, setText, drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, drawJack, drawPlug, formKit, cabgeom` |
 | `addDefs(defs)` | register blocks (arrays may be nested) |
-| `addForm(name, fn)`, `addScreen(kind, {build(s,g,w,h,view), update(s,status,view,now)})`, `addStyles(css)` | rendering. In `update`, `s.ui` holds the block's current UI params (defaults filled in). Screens are removed when the plugin unloads. |
+| `addForm(name, fn)`, `addScreen(kind, {build(s,g,w,h,view), update(s,status,view,now), pointer(s,view,type,pt,e,editor)})`, `addStyles(css)` | rendering. In `update`, `s.ui` holds the block's current UI params (defaults filled in). Screens are removed when the plugin unloads. |
 | `blockHooks(type, {foot(view, ctl, down) → handled, ctrl(block, input, value, kind), …})` | custom behaviour |
 | `addPage({id, title, icon, render(el)})` | a full page tab |
 | `engine.send(cmd)`, `engine.onEvent(fn)` | talk to the DSP engine |
 | `storage.get(k, default)`, `storage.set(k, v)` | per-plugin settings |
+| `app.state`, `app.ui(block)`, `app.getDef(id)`, `app.blocks()` | current preset / block UI params / definitions |
+| `app.setParam(blockId, param, value)` | change a block's UI param (engine, inspector and screens update; undoable) |
+| `app.pressFoot(blockId, cid, down)`, `app.setControl(blockId, cid, pos 0..1)` | drive another block's footswitch / knob / treadle like the user would |
+| `app.syncGraph()`, `app.markDirty()` | push graph changes to the engine / mark the preset as modified |
 | `midi(opts)` | Web MIDI access (`navigator.requestMIDIAccess`) |
 | `sys.usbDevices()` | list USB devices (vendor / product ids, names) |
 | `asset(rel)` | URL of a file in the plugin folder |

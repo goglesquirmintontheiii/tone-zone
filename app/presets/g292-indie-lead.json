@@ -1,0 +1,184 @@
+{
+ "version": 1,
+ "name": "Indie · Lead",
+ "tags": [
+  "indie",
+  "alt-rock",
+  "crunch",
+  "lead"
+ ],
+ "desc": "Plumes overdrive into an AC15, digital delay and room.",
+ "factory": true,
+ "order": 392,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 55,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "eqd.plumes",
+   "x": -104,
+   "y": 65,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "vox.amp-ac15",
+   "x": -686,
+   "y": 0,
+   "params": {
+    "a.gain": 0.45,
+    "a.treble": 0.55,
+    "a.bass": 0.5,
+    "r.mix": 0.15,
+    "t.rate": 0.5,
+    "t.depth": 0,
+    "a.presence": 0.5,
+    "a.master": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "vox.cab-ac15",
+   "x": -1006,
+   "y": 47,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.6177570093457944,
+    "_m1y": 0.5,
+    "level": 2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "bx.dd3",
+   "x": -1222,
+   "y": 36,
+   "params": {
+    "mix": 0.2,
+    "feedback": 0.294,
+    "dtime": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "tz.reverb",
+   "x": -1494,
+   "y": 15,
+   "params": {
+    "decay": 0.35,
+    "mix": 0.15
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1734,
+   "y": 55,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null
+}

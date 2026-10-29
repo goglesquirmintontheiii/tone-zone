@@ -1,54 +1,22 @@
-// Tone Match backend: audio sources (files / YouTube via yt-dlp), AI stem separation (Demucs in a private
-// Python venv), offline renders of candidate rigs through the DSP engine and audio feature extraction.
+// Offline rendering + audio analysis: renders a board graph through the DSP engine (engine --offline) with a DI
+// clip and measures it (level, spectrum shape …). Used by the preset tools / tests, not by the UI.
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const https = require('https');
-const crypto = require('crypto');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 
-let dataRoot = null, appRoot = null, engineBin = null, send = () => {};
+let dataRoot = null, engineBin = null;
 function init(opts) {
-  ({ dataRoot, appRoot, engineBin, send } = opts);
-  for (const d of ['tools', 'ai', 'tonematch']) fs.mkdirSync(path.join(dataRoot, d), { recursive: true });
+  ({ dataRoot, engineBin } = opts);
+  fs.mkdirSync(path.join(dataRoot, 'tools'), { recursive: true });
+  // Tone Match was removed in 0.4.0: drop the large app-managed downloads it left behind (AI venv, yt-dlp)
+  for (const p of [path.join(dataRoot, 'ai'), path.join(dataRoot, 'tools', 'yt-dlp')]) {
+    try { fs.rmSync(p, { recursive: true, force: true }); } catch {}
+  }
 }
 const toolsDir = () => path.join(dataRoot, 'tools');
-const projDir = (id) => path.join(dataRoot, 'tonematch', path.basename(id));
-const venv = () => path.join(dataRoot, 'ai', 'venv');
-const venvPy = () => path.join(venv(), 'bin', 'python');
-const separateScript = () => {
-  const unpacked = appRoot.replace(/app\.asar$/, 'app.asar.unpacked');
-  return [path.join(unpacked, 'tools', 'separate.py'), path.join(appRoot, 'tools', 'separate.py')].find((p) => fs.existsSync(p));
-};
 
-// ------------------------------------------------------------------ helpers
-function which(cmd) {
-  for (const d of (process.env.PATH || '').split(':')) {
-    const p = path.join(d, cmd);
-    try { fs.accessSync(p, fs.constants.X_OK); return p; } catch {}
-  }
-  return null;
-}
-function download(url, dest, onProgress, redirects = 0) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'tone-zone' } }, (res) => {
-      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects < 8) {
-        res.resume();
-        return resolve(download(new URL(res.headers.location, url).href, dest, onProgress, redirects + 1));
-      }
-      if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode} for ${url}`)); }
-      const total = +res.headers['content-length'] || 0;
-      let got = 0;
-      const tmp = dest + '.part';
-      const f = fs.createWriteStream(tmp);
-      res.on('data', (c) => { got += c.length; onProgress && onProgress(total ? got / total : 0, got); });
-      res.pipe(f);
-      f.on('finish', () => f.close(() => { fs.renameSync(tmp, dest); resolve(dest); }));
-      f.on('error', reject);
-    }).on('error', reject);
-  });
-}
 function run(cmd, args, { onLine, cwd, env, nice } = {}) {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd, env: Object.assign({}, process.env, env || {}) });
@@ -95,185 +63,6 @@ function readWav(file) {
       out[c][i] = fmt === 3 ? (bits === 64 ? data.readDoubleLE(o) : data.readFloatLE(o)) : bits === 24 ? (data.readIntLE(o, 3) / 8388608) : bits === 32 ? data.readInt32LE(o) / 2147483648 : data.readInt16LE(o) / 32768;
     }
   return { chans: out, sr };
-}
-
-// ------------------------------------------------------------------ projects
-function newProject(title) {
-  const id = Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex');
-  fs.mkdirSync(path.join(projDir(id), 'stems'), { recursive: true });
-  const meta = { id, title: title || 'Untitled', created: Date.now(), stems: {} };
-  fs.writeFileSync(path.join(projDir(id), 'meta.json'), JSON.stringify(meta, null, 2));
-  return meta;
-}
-function getProject(id) {
-  try { return JSON.parse(fs.readFileSync(path.join(projDir(id), 'meta.json'), 'utf8')); } catch { return null; }
-}
-function saveProject(meta) {
-  fs.writeFileSync(path.join(projDir(meta.id), 'meta.json'), JSON.stringify(meta, null, 2));
-  return meta;
-}
-function listProjects() {
-  const d = path.join(dataRoot, 'tonematch');
-  return fs.readdirSync(d).map(getProject).filter(Boolean).sort((a, b) => b.created - a.created);
-}
-function deleteProject(id) {
-  fs.rmSync(projDir(id), { recursive: true, force: true });
-}
-function importFile(src) {
-  const meta = newProject(path.basename(src).replace(/\.[^.]+$/, ''));
-  const dest = path.join(projDir(meta.id), 'original' + path.extname(src).toLowerCase());
-  fs.copyFileSync(src, dest);
-  meta.original = dest;
-  return saveProject(meta);
-}
-// renderer decoded the audio (Web Audio) -> write the canonical source.wav
-function writeSource(id, chans, sr) {
-  const meta = getProject(id);
-  const p = path.join(projDir(id), 'source.wav');
-  writeWav(p, chans.map((c) => Float32Array.from(c)), sr);
-  meta.source = p;
-  meta.sr = sr;
-  meta.duration = chans[0].length / sr;
-  return saveProject(meta);
-}
-function writeStem(id, name, chans, sr) {
-  const meta = getProject(id);
-  const p = path.join(projDir(id), 'stems', name + '.wav');
-  writeWav(p, chans.map((c) => Float32Array.from(c)), sr);
-  meta.stems[name] = p;
-  return saveProject(meta);
-}
-
-// ------------------------------------------------------------------ yt-dlp
-function ytdlpPath() {
-  const own = path.join(toolsDir(), 'yt-dlp');
-  if (fs.existsSync(own)) return own;
-  return which('yt-dlp');
-}
-async function installYtdlp() {
-  const dest = path.join(toolsDir(), 'yt-dlp');
-  await download('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux', dest, (p) => send('tm:progress', { task: 'ytdlp-install', p }));
-  fs.chmodSync(dest, 0o755);
-  return dest;
-}
-async function fetchYoutube(url) {
-  const bin = ytdlpPath();
-  if (!bin) throw new Error('yt-dlp is not installed');
-  const meta = newProject('YouTube');
-  const dir = projDir(meta.id);
-  const ffmpeg = which('ffmpeg');
-  const args = ['--no-playlist', '--newline', '-f', 'bestaudio/best', '-o', path.join(dir, 'original.%(ext)s'), '--print', 'before_dl:TITLE %(title)s', '--print', 'after_move:FILE %(filepath)s'];
-  if (ffmpeg) args.push('-x', '--audio-format', 'wav');
-  args.push(url);
-  let title = null, file = null;
-  const r = await run(bin, args, {
-    onLine: (l) => {
-      if (l.startsWith('TITLE ')) title = l.slice(6);
-      else if (l.startsWith('FILE ')) file = l.slice(5).trim();
-      const m = l.match(/\[download\]\s+([\d.]+)%/);
-      if (m) send('tm:progress', { task: 'youtube', p: +m[1] / 100, line: l });
-    },
-  });
-  if (r.code !== 0 || !file || !fs.existsSync(file)) {
-    deleteProject(meta.id);
-    throw new Error((r.err || r.out).split('\n').filter((x) => /ERROR/.test(x)).join(' ') || 'yt-dlp failed');
-  }
-  meta.title = title || 'YouTube audio';
-  meta.url = url;
-  meta.original = file;
-  return saveProject(meta);
-}
-function readFileBytes(p) {
-  const b = fs.readFileSync(p);
-  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-}
-
-// ------------------------------------------------------------------ AI environment (Demucs)
-async function aiStatus() {
-  const st = { python: which('python3'), venv: fs.existsSync(venvPy()), script: !!separateScript() };
-  if (!st.venv) return st;
-  const r = await run(venvPy(), [separateScript(), '--check']);
-  const m = (r.out || '').match(/RESULT (.*)/);
-  if (m) Object.assign(st, JSON.parse(m[1]));
-  st.ready = !!(st.torch && st.demucs && st.soundfile);
-  const marker = path.join(dataRoot, 'ai', 'model-ready');
-  st.modelReady = fs.existsSync(marker);
-  return st;
-}
-let installing = false;
-async function aiInstall(kind = 'cuda') {
-  if (installing) throw new Error('already installing');
-  installing = true;
-  const log = (l) => send('tm:log', { task: 'ai-install', line: l });
-  const step = (p, label) => send('tm:progress', { task: 'ai-install', p, label });
-  try {
-    const py = which('python3');
-    if (!py) throw new Error('python3 was not found – install it with your package manager (e.g. sudo dnf install python3)');
-    if (!fs.existsSync(venvPy())) {
-      step(0.02, 'Creating Python environment');
-      const r = await run(py, ['-m', 'venv', venv()], { onLine: log });
-      if (r.code !== 0) throw new Error('could not create the virtual environment: ' + r.err);
-    }
-    const pip = [venvPy(), '-m', 'pip'];
-    step(0.06, 'Updating pip');
-    await run(pip[0], [...pip.slice(1), 'install', '--upgrade', 'pip', 'wheel'], { onLine: log });
-    step(0.1, kind === 'cpu' ? 'Installing PyTorch (CPU, ~250 MB)' : 'Installing PyTorch with NVIDIA CUDA (~2.5 GB)');
-    const torchArgs = ['install', 'torch', 'torchaudio'];
-    if (kind === 'cpu') torchArgs.push('--index-url', 'https://download.pytorch.org/whl/cpu');
-    let r = await run(pip[0], [...pip.slice(1), ...torchArgs], { onLine: (l) => { log(l); const m = l.match(/(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?) (MB|GB)/); if (m) step(0.1 + 0.6 * Math.min(1, +m[1] / +m[2]), 'Downloading PyTorch'); } });
-    if (r.code !== 0) throw new Error('PyTorch install failed (see log)');
-    step(0.72, 'Installing Demucs + soundfile');
-    r = await run(pip[0], [...pip.slice(1), 'install', 'demucs', 'soundfile'], { onLine: log });
-    if (r.code !== 0) throw new Error('Demucs install failed (see log)');
-    step(0.85, 'Downloading the separation model (htdemucs_6s, ~80 MB)');
-    r = await run(venvPy(), ['-c', "from demucs.pretrained import get_model; get_model('htdemucs_6s'); print('ok')"], { onLine: log });
-    if (r.code === 0) fs.writeFileSync(path.join(dataRoot, 'ai', 'model-ready'), String(Date.now()));
-    else log('Model download will be retried on first use.');
-    step(1, 'Ready');
-    return aiStatus();
-  } finally {
-    installing = false;
-  }
-}
-async function aiRemove() {
-  fs.rmSync(path.join(dataRoot, 'ai'), { recursive: true, force: true });
-  fs.mkdirSync(path.join(dataRoot, 'ai'), { recursive: true });
-  return true;
-}
-let sepProc = null;
-async function separate(id, opts = {}) {
-  const meta = getProject(id);
-  if (!meta || !meta.source) throw new Error('no source audio');
-  const outDir = path.join(projDir(id), 'stems');
-  const args = [separateScript(), '--in', meta.source, '--out', outDir, '--model', opts.model || 'htdemucs_6s', '--device', opts.device || 'auto', '--shifts', String(opts.shifts || 1)];
-  if (opts.splitGuitar !== false) args.push('--split-guitar');
-  return new Promise((resolve, reject) => {
-    sepProc = spawn(venvPy(), args);
-    let result = null, errLines = [];
-    const onLine = (l) => {
-      const p = l.match(/^PROGRESS ([\d.]+) (.*)$/);
-      if (p) return send('tm:progress', { task: 'separate', p: +p[1] / 100, label: p[2] });
-      const r = l.match(/^RESULT (.*)$/);
-      if (r) { result = JSON.parse(r[1]); return; }
-      if (/^ERROR /.test(l)) errLines.push(l.slice(6));
-      send('tm:log', { task: 'separate', line: l });
-    };
-    let buf = '';
-    const feed = (b) => { buf += b.toString(); const parts = buf.split(/\r?\n/); buf = parts.pop(); parts.forEach((l) => l.trim() && onLine(l.trim())); };
-    sepProc.stdout.on('data', feed);
-    sepProc.stderr.on('data', (b) => b.toString().split(/[\r\n]+/).forEach((l) => l.trim() && send('tm:log', { task: 'separate', line: l.trim() })));
-    sepProc.on('close', (code) => {
-      sepProc = null;
-      if (code === 0 && result) {
-        meta.stems = Object.assign({}, meta.stems, result.stems);
-        meta.separated = { model: result.model, device: result.device, at: Date.now() };
-        resolve(saveProject(meta));
-      } else reject(new Error(errLines.join(' ') || `separation failed (exit ${code})`));
-    });
-  });
-}
-function cancelSeparation() {
-  if (sepProc) sepProc.kill('SIGTERM');
 }
 
 // ------------------------------------------------------------------ audio features
@@ -387,7 +176,7 @@ function stemsFeatures(files, t0, t1) {
 
 // ------------------------------------------------------------------ DI clip + offline renders
 function defaultDI() {
-  const p = path.join(toolsDir(), 'tonematch-di-v1.wav');
+  const p = path.join(toolsDir(), 'offline-di-v1.wav');
   if (fs.existsSync(p)) return p;
   // synthetic DI guitar: single notes, power chords, open chords, palm-muted chugs (Karplus-Strong strings)
   const sr = 48000;
@@ -422,7 +211,7 @@ function defaultDI() {
   writeWav(p, [out], sr);
   return p;
 }
-const work = path.join(os.tmpdir(), 'tz-tonematch-' + process.pid);
+const work = path.join(os.tmpdir(), 'tz-offline-' + process.pid);
 fs.mkdirSync(work, { recursive: true });
 let evalSeq = 0;
 async function renderAndAnalyse(graph, diPath) {
@@ -455,7 +244,7 @@ async function evalGraphs(graphs, diPath) {
   await Promise.all(Array.from({ length: n }, worker));
   return out;
 }
-// render a graph to a file (for A/B listening of the result against the stem)
+// render a graph to a wav file
 async function renderPreview(graph, diPath) {
   const di = diPath || defaultDI();
   const gp = path.join(work, 'preview.json'), op = path.join(work, `preview-${Date.now()}.wav`);
@@ -465,8 +254,4 @@ async function renderPreview(graph, diPath) {
   return op;
 }
 
-module.exports = {
-  init, newProject, listProjects, getProject, saveProject, deleteProject, importFile, writeSource, writeStem, readFileBytes,
-  ytdlpPath, installYtdlp, fetchYoutube, aiStatus, aiInstall, aiRemove, separate, cancelSeparation,
-  fileFeatures, stemsFeatures, evalGraphs, renderPreview, defaultDI, readWav,
-};
+module.exports = { init, stemsFeatures, evalGraphs, renderPreview, defaultDI, readWav };

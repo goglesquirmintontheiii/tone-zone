@@ -76,7 +76,6 @@ function initTabs() {
     document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
     if (name === 'library') renderLibrary();
     if (name === 'presets') renderPresets();
-    if (name === 'tonematch') import('./pages/tonematch.js').then((m) => m.renderToneMatch()).catch((e) => console.error(e));
     if (name === 'plugins') import('./pages/plugins.js').then((m) => m.renderPlugins()).catch((e) => console.error(e));
     if (name === 'settings') renderSettings();
     if (name === 'capture') renderCapture();

@@ -1,0 +1,246 @@
+{
+ "version": 1,
+ "name": "Stoner Doom · Rhythm Pro",
+ "tags": [
+  "stoner",
+  "doom",
+  "metal",
+  "drop-tuning",
+  "rhythm"
+ ],
+ "desc": "Pitch-drop a whole step, Green Muff, Thunderverb, two mics and a little room.",
+ "factory": true,
+ "order": 363,
+ "blocks": [
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 130,
+   "y": 100,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "tc.polytune3",
+   "x": -144,
+   "y": 108,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "dt.drop",
+   "x": -360,
+   "y": 108,
+   "params": {
+    "dsel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "ehx.greenmuff",
+   "x": -666,
+   "y": 70,
+   "params": {
+    "level": 0.55,
+    "tone": 0.4,
+    "gain": 0.8
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "orange.amp-thunderverb",
+   "x": -1204,
+   "y": 0,
+   "params": {
+    "a.gain": 0.6,
+    "a.master": 0.55,
+    "a.treble": 0.5,
+    "a.mid": 0.6,
+    "a.bass": 0.65,
+    "r.mix": 0,
+    "a.channel": 1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "cab.4x12orange",
+   "x": -1190,
+   "y": 214,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "tz.reverb",
+   "x": -1476,
+   "y": 80,
+   "params": {
+    "decay": 0.4,
+    "mix": 0.12
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b7",
+   "type": "tz.meter",
+   "x": -1676,
+   "y": 95,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1916,
+   "y": 100,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c8",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c13",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c14",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b6",
+    "port": 1
+   },
+   "to": {
+    "node": "b7",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b7",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e8473d"
+  }
+ ],
+ "view": null
+}

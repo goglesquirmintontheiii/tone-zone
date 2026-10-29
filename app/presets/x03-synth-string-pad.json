@@ -19,9 +19,9 @@
   },
   {
    "id": "b1",
-   "type": "tc.polytune3mini",
-   "x": -96,
-   "y": 70,
+   "type": "tc.polytune3",
+   "x": -144,
+   "y": 43,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,7 +29,7 @@
   {
    "id": "b2",
    "type": "tz.tidalswell",
-   "x": -316,
+   "x": -364,
    "y": 53.5,
    "params": {
     "sens": 0.5,
@@ -42,7 +42,7 @@
   {
    "id": "b3",
    "type": "tz.polyester",
-   "x": -622,
+   "x": -670,
    "y": 19,
    "params": {
     "s.attack": 0.5,
@@ -58,7 +58,7 @@
   {
    "id": "b4",
    "type": "amp.jc120",
-   "x": -1112,
+   "x": -1160,
    "y": 0,
    "params": {
     "gain": 0.3
@@ -69,7 +69,7 @@
   {
    "id": "b5",
    "type": "cab.2x12jc",
-   "x": -1582,
+   "x": -1630,
    "y": 34,
    "params": {
     "m1on": 1,
@@ -85,7 +85,7 @@
   {
    "id": "b6",
    "type": "sy.bigsky",
-   "x": -1952,
+   "x": -2000,
    "y": 46,
    "params": {
     "inf": 0,
@@ -98,7 +98,7 @@
   {
    "id": "b7",
    "type": "tz.meter",
-   "x": -2152,
+   "x": -2200,
    "y": 30,
    "params": {},
    "bypass": false,
@@ -107,7 +107,7 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2392,
+   "x": -2440,
    "y": 55,
    "params": {}
   }
