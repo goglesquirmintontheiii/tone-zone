@@ -173,7 +173,7 @@ export default function register(tz) {
         { prefix: 'f', algo: 'drive', opts: { clip: 'si', preHp: 120, gainMinDb: 16, gainMaxDb: 44, tone: 'none', postLp: 6500, levelMaxDb: 0 } },
         { prefix: 'o', algo: 'pitch', params: { semis1: 12, level1: 0.7, dry: 0.8, quality: 0, tone: 0.8 } },
       ] },
-      controls: [K('f.level', 'VOLUME', { def: 0.5 }), K('f.gain', 'FUZZ', { def: 0.7 })],
+      controls: [K('f.level', 'VOLUME', { def: 0.3 }), K('f.gain', 'FUZZ', { def: 0.7 })],
       fixed: { 'o.semis1': 12, 'o.quality': 0 },
       desc: 'Octave-up fuzz: play above the 12th fret for the ringing upper octave.',
     }),

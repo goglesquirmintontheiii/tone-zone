@@ -162,7 +162,7 @@ export default function register(tz) {
       id: 'ib.sm7', name: 'SB7X Smash Box', ref: 'Ibanez SM7 Smashbox Tone-Lok', code: 'SB7X', logo: 'SMASH BOX', logoSize: 11, cat: 'Distortion', color: '#e2b023', text: '#151515',
       algo: 'chain', cost: 0.7,
       opts: { chain: [{ prefix: 'g', algo: 'gate', params: { threshold: 0.3 } }, { prefix: 'd', algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 12, preHp: 100, gainMinDb: 14, gainMaxDb: 52, tone: 'eq3', bassF: 100, midF: 800, trebleF: 3200, eqRangeDb: 14, postLp: 8000, levelMaxDb: 5 }, params: { mid: 0.45 } }] },
-      controls: [K('d.gain', 'DRIVE', { def: 0.6, display: ten }), K('d.bass', 'LO', { display: ten }), K('d.treble', 'HI', { display: ten }), K('d.level', 'LEVEL', { def: 0.5, display: ten }),
+      controls: [K('d.gain', 'DRIVE', { def: 0.6, display: ten }), K('d.bass', 'LO', { display: ten }), K('d.treble', 'HI', { display: ten }), K('d.level', 'LEVEL', { def: 0.3, display: ten }),
         TOG('void', 'VOID', ['OFF', '1', '2'], { def: 1 }), TOG('edge', 'EDGE', ['SHARP', 'SMOOTH'], { def: 1 })],
       derive: (p) => { const v = p.void ?? 1; return { 'g.on': v ? 1 : 0, 'g.threshold': v === 1 ? 0.3 : 0.45, 'g.decay': v === 2 ? 0.12 : 0.4, 'd.bright': p.edge ? 0 : 0.8 }; },
       desc: 'High-gain distortion. VOID: OFF (max sustain), 1 (noise reduction), 2 (short, tight decay). EDGE: SHARP adds bite, SMOOTH rounds it off.',
