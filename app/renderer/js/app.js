@@ -203,6 +203,7 @@ function autoQuality(st) {
 }
 
 // ------------------------------------------------------------ engine events
+let overCount = 0;
 let overBudgetWarned = 0;
 let pendingMeters = null;
 export function flushMeters() {
@@ -219,7 +220,9 @@ function initEngineEvents() {
         // the top-bar meters are applied in the board's tick so all repaints land in one frame
         pendingMeters = ev;
         autoQuality(ev);
-        if (ev.load > (state.settings.budget ?? 0.75) && Date.now() - overBudgetWarned > 20000) {
+        // warn only when the load stays high (one-off spikes happen while a big preset is being swapped in)
+        overCount = ev.load > (state.settings.budget ?? 0.75) && Date.now() - (state.graphSentAt || 0) > 2500 ? overCount + 1 : 0;
+        if (overCount >= 12 && Date.now() - overBudgetWarned > 20000) {
           overBudgetWarned = Date.now();
           toast(`DSP load ${Math.round(ev.load * 100)}% is over your budget – lower the quality, raise the buffer or remove blocks.`, 'warn', 5000);
         }

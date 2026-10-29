@@ -147,11 +147,11 @@ const SHAPES = {
   cloud: (w, h) => {
     const top = [[0.04, 0.5], [0.12, 0.3], [0.3, 0.13], [0.52, 0.03], [0.72, 0.12], [0.88, 0.28], [0.96, 0.48]];
     const side = [[1, 0.66], [0.97, 0.84], [0.9, 0.97]];
-    const pts = [...top, ...side, [0.62, 1], [0.38, 1], [0.1, 0.97], [0.03, 0.84], [0, 0.66]].map(([x, y]) => [x * w, y * h]);
+    const pts = [...top, ...side, [0.62, 0.97], [0.38, 0.97], [0.1, 0.97], [0.03, 0.84], [0, 0.66]].map(([x, y]) => [(0.035 + x * 0.93) * w, (0.02 + y * 0.98) * h]);
     let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
     for (let i = 1; i <= pts.length; i++) {
       const a = pts[i - 1], b = pts[i % pts.length], ch = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      const flat = i >= 11 && i <= 12;
+      const flat = i >= 10 && i <= 12;
       d += `A${f(flat ? ch * 2 : ch * 0.58)} ${f(flat ? ch * 2 : ch * 0.58)} 0 0 1 ${f(b[0])} ${f(b[1])}`;
     }
     return { d: d + 'Z' };
@@ -937,7 +937,7 @@ MOTIFS.lava = (t, b, k) => {
   P(t, `M0 ${by}H${k.w}V${k.h}H0Z`, { fill: lin('lbase', [[0, '#c9ced6'], [0.5, '#f3f5f8'], [1, '#5d636b']], 0, 0, 1, 0) });
   const blob = (x, y, r, s) => P(t, `M${x - r} ${y}C${x - r} ${y - r * s} ${x + r} ${y - r * s} ${x + r} ${y}C${x + r} ${y + r * 0.9} ${x - r} ${y + r * 1.1} ${x - r} ${y}Z`, { fill: lin('lava' + kid(k.acc), [[0, '#ffe066'], [1, k.acc]]) });
   blob(cx - 14, 64, 14, 1.2); blob(cx + 18, 104, 18, 1.4); blob(cx - 26, 150, 11, 1);
-  E(t, cx, by + 2, 64, 8, { fill: k.acc });
+  P(t, `M0 ${by}H${k.w}`, stroke('#5d636b', 2));
   R(t, cx - 42, 36, 8, by - 60, 4, { fill: '#fff', 'fill-opacity': 0.22 });
 };
 MOTIFS.ecg = (t, b, k) => {

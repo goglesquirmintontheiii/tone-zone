@@ -132,6 +132,7 @@ export function buildGraph(preset = state.preset) {
   return { nodes, cables };
 }
 export function syncGraph() {
+  state.graphSentAt = Date.now();
   window.tz.engine.send({ cmd: 'setGraph', graph: buildGraph() });
 }
 const syncGraphSoon = debounce(syncGraph, 30);
