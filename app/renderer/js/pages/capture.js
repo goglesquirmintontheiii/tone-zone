@@ -536,8 +536,13 @@ function drawResult(box, j) {
     el('div', {}, txt, `<span class="cap-rating ${rt[1]}">${esc(rt[0])}</span> ${esc(rt[2])}`);
     const lines = [];
     if (j.esrs && j.esrs.length > 1) lines.push(`Lite size ESR ${fmtEsr(j.esrs[0])}`);
-    if (j.engine && j.engine.ok) lines.push(`Plays correctly in the Tone Zone engine (ESR ${fmtEsr(j.engine.esr)})`);
-    el('small', {}, txt).textContent = lines.join(' · ');
+    let mismatch = false;
+    if (j.engine && j.engine.ok) {
+      // the engine result should be close to the trainer's own number
+      mismatch = j.esr != null && j.engine.esr > Math.max(0.05, j.esr * 3);
+      lines.push(mismatch ? `Sounds different in the Tone Zone engine (ESR ${fmtEsr(j.engine.esr)})` : `Plays correctly in the Tone Zone engine (ESR ${fmtEsr(j.engine.esr)})`);
+    }
+    el('small', { class: mismatch ? 'warn' : '' }, txt).textContent = lines.join(' · ');
     const a = el('div', { class: 'cap-actions' }, box);
     el('button', { class: 'btn btn-accent', id: 'capOpen', onclick: () => bus.emit('addToBoard', 'pack:' + j.result.packId) }, a, '<i class="ic ic-plus"></i>Open on board');
     el('button', { class: 'btn', onclick: () => bus.emit('tab', 'library') }, a, '<i class="ic ic-lib"></i>Show in Library');

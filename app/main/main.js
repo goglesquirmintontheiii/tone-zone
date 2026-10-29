@@ -142,7 +142,7 @@ function setupIpc() {
   ipcMain.handle('offline:features', (_e, files, t0, t1) => offline.stemsFeatures(files, t0, t1));
   ipcMain.handle('offline:evalGraphs', (_e, graphs, di) => offline.evalGraphs(graphs, di));
   // ---- capture (NAM models from presets)
-  capture.init({ dataRoot: lib.dataRoot(), engineBin: () => (engine && engine.binPath) || findEngine(APP_ROOT, app.isPackaged), send: (ev) => send('capture:event', ev) });
+  capture.init({ dataRoot: lib.dataRoot(), engineBin: () => (engine && engine.binPath) || findEngine(APP_ROOT, app.isPackaged), send });
   ipcMain.handle('capture:status', () => capture.status());
   ipcMain.handle('capture:setup', (_e, opts) => capture.setupTrainer(opts));
   ipcMain.handle('capture:cancelSetup', () => capture.cancelSetup());
