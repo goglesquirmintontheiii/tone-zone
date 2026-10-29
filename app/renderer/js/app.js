@@ -8,7 +8,7 @@ import './screens-eq.js';
 import './screens-tz5.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
-import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, CABLE_COLORS } from './state.js';
+import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, setParam, CABLE_COLORS } from './state.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu } from './menus.js';
 import { refreshPacks, renderLibrary, importDialog } from './pages/library.js';
@@ -335,6 +335,7 @@ function initNodeMenu() {
     if (!io) {
       if (!d.alwaysOn) items.push({ label: b.bypass ? 'Enable' : 'Bypass', icon: 'power', kbd: 'B', onClick: () => setBypass(id, !b.bypass) });
       if (canSwitchVariant(d)) items.push({ label: (b.variant || 'mono') === 'stereo' ? 'Switch to mono' : 'Switch to stereo', icon: 'cable', onClick: () => { setVariant(id, (b.variant || 'mono') === 'stereo' ? 'mono' : 'stereo'); editor.rerenderNode(id); } });
+      if (d.recolor) items.push({ title: 'Colour' }, { swatches: CABLE_COLORS, onPick: (c) => setParam(id, 'jacket', c) }, { sep: true });
       items.push({ label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', onClick: () => editor.select(duplicateBlocks([...state.selection]).map((n) => n.id)) });
       items.push({ label: isFavorite(b.type) ? 'Remove from favourites' : 'Add to favourites', icon: 'star', onClick: () => toggleFavorite(b.type) });
       if (d.cabMics) items.push({ label: 'Add microphone', icon: 'mic', onClick: () => { import('./inspector.js').then((m) => { m.addMic(b); editor.select([id]); }); } });

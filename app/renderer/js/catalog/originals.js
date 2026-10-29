@@ -182,6 +182,9 @@ CAB({ id: 'cab.4x10bass', name: '4x10 Bass', brand: 'Tone Zone', ref: 'Tone Zone
 ];
 
 export const ioDefs = [
+  // tiny 1/4" couplers: female-female barrel and male-male plug that joins two pedals directly
+  def({ id: 'tz.dfemale', name: 'Female-Female Coupler', brand: 'Tone Zone', ref: 'Tone Zone original', cat: 'Utility', kind: 'Utility', typeName: '1/4" barrel coupler', form: 'coupler', coupler: 'female', algo: 'thru', ports: { ins: ['IN'], outs: ['OUT'] }, controls: [], recolor: true, rerenderOn: ['jacket'], alwaysOn: true, cost: 0, desc: 'Joins two cables end to end. Right-click to change its colour.' }),
+  def({ id: 'tz.dmale', name: 'Male-Male Coupler', brand: 'Tone Zone', ref: 'Tone Zone original', cat: 'Utility', kind: 'Utility', typeName: '1/4" pedal coupler', form: 'coupler', coupler: 'male', algo: 'thru', ports: { ins: ['IN'], outs: ['OUT'] }, controls: [], recolor: true, rerenderOn: ['jacket'], alwaysOn: true, cost: 0, desc: 'Plugs straight into two pedals with no cable. Drag a pedal next to an open end and it snaps on. Right-click to change its colour.' }),
   // extra jacks share the interface channels (combo XLR / 1/4" inputs, aux = return L/R, XLR outs = main L/R)
   def({ id: '__in', name: 'Audio In', cat: 'I/O', form: 'io', io: 'in', algo: null, ports: { ins: [], outs: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R', 'XLR IN 1', 'XLR IN 2', 'AUX IN'] }, jackKinds: { o4: 'xlr', o5: 'xlr', o6: 'phones' }, ioMap: { o4: [0], o5: [1], o6: [2, 3] }, controls: [], fixedNode: true }),
   def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R', 'PHONES', 'XLR OUT L', 'XLR OUT R'], outs: [] }, jackKinds: { i4: 'phones', i5: 'xlr', i6: 'xlr' }, ioMap: { i4: [0, 1], i5: [0], i6: [1] }, controls: [], fixedNode: true }),

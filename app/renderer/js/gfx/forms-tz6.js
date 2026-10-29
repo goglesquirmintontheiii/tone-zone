@@ -268,7 +268,7 @@ const SHAPES = {
   bubble: (w, h) => { const t = 22, b = h - t; return { d: `M24 0H${w - 24}Q${w} 0 ${w} 24V${b - 24}Q${w} ${b} ${w - 24} ${b}H${f(w * 0.36)}L${f(w * 0.14)} ${h}L${f(w * 0.2)} ${b}H24Q0 ${b} 0 ${b - 24}V24Q0 0 24 0Z` }; },
   frog: (w, h) => { const T = 26, er = 25, e1 = w * 0.26, e2 = w * 0.74; return { d: `M0 ${T + 16}Q0 ${T} 16 ${T}H${f(e1 - er)}A${er} ${er} 0 0 1 ${f(e1 + er)} ${T}H${f(e2 - er)}A${er} ${er} 0 0 1 ${f(e2 + er)} ${T}H${w - 16}Q${w} ${T} ${w} ${T + 16}V${h - 18}Q${w} ${h} ${w - 18} ${h}H18Q0 ${h} 0 ${h - 18}Z` }; },
   lamp: (w, h) => {
-    const cx = w / 2, by = h - 104;
+    const cx = w / 2, by = h - 120;
     return { d: `M${f(cx - w * 0.17)} 0H${f(cx + w * 0.17)}L${f(cx + w * 0.2)} 30C${f(cx + w * 0.3)} 70 ${f(cx + w * 0.38)} ${f(by - 60)} ${f(cx + w * 0.34)} ${f(by)}L${w} ${h - 10}Q${w} ${h} ${w - 10} ${h}H10Q0 ${h} 0 ${h - 10}L${f(cx - w * 0.34)} ${f(by)}C${f(cx - w * 0.38)} ${f(by - 60)} ${f(cx - w * 0.3)} 70 ${f(cx - w * 0.2)} 30Z` };
   },
   window: (w, h) => ({ d: rr(0, 0, w, h, w * 0.4) }),
@@ -540,7 +540,7 @@ function tz6(ctx, def) {
     if (def.typeName && !A.noType) {
       const ty = ly + typeDy;
       const tb = B(ty - 4, ty + 4, lx);
-      txt(g, lx, ty, def.typeName.toUpperCase(), { size: 5, maxW: tb[1] - tb[0] - 24, font: 'inter', fill: A.typeColor || L.fill || def.logoColor || ink, weight: 700, ls: 1.1, opacity: 0.8 });
+      txt(g, lx, ty, def.typeName.toUpperCase(), { size: 5, maxW: tb[1] - tb[0] - 24, font: 'inter', fill: A.typeColor || def.logoColor || ink, weight: 700, ls: 1.1, opacity: 0.8 });
     }
   }
   // ---- 5. place controls
@@ -689,10 +689,11 @@ MOTIFS.marmalade = (t, b, k) => {
   P(t, `M14 ${b.y + b.h + 2}H${k.w - 14}`, stroke('#fff', 1, 0.4));
 };
 MOTIFS.road = (t, b, k) => {
-  const cx = k.w / 2, vy = b.y - 6, y1 = k.h;
+  const cx = k.w / 2, vy = b.y - 6, y1 = b.y + b.h + 4;
   R(t, 0, 0, k.w, b.y + 8, 0, { fill: lin('rsky', [[0, '#0b1230'], [1, '#2a2b2e', 0]]) });
   for (const s of [-1, 1]) P(t, `M${cx + s * 2} ${vy}L${f(cx + s * 7)} ${y1}`, stroke(k.acc, 2.2, 0.9));
-  for (const s of [-1, 1]) P(t, `M${cx + s * 18} ${vy}L${f(cx + s * k.w * 0.62)} ${y1}`, stroke('#f2f2ee', 2, 0.55));
+  for (const s of [-1, 1]) P(t, `M${cx + s * 18} ${vy}L${f(cx + s * k.w * 0.4)} ${y1}`, stroke('#f2f2ee', 2, 0.55));
+  R(t, 0, y1, k.w, 2, 0, { fill: k.acc, 'fill-opacity': 0.6 });
   for (let i = 0; i < 7; i++) { const yy = vy + 8 + i * i * 4; P(t, `M${f(cx - 1)} ${f(yy)}V${f(yy + 2 + i)}`, stroke('#2a2b2e', 4)); }
 };
 MOTIFS.battery = (t, b, k) => {
@@ -752,9 +753,14 @@ MOTIFS.velcro = (t, b, k) => {
 };
 MOTIFS.hornet = (t, b, k) => {
   const cx = k.w / 2;
-  for (const s of [-1, 1]) E(t, cx + s * 54, b.y + 46, 40, 20, { fill: '#dff6ff', 'fill-opacity': 0.55, stroke: '#141414', 'stroke-opacity': 0.6, transform: `rotate(${s * -24} ${cx + s * 54} ${b.y + 46})` });
-  for (const s of [-1, 1]) E(t, cx + s * 22, b.y + 18, 16, 20, { fill: '#141414' });
-  for (const s of [-1, 1]) E(t, cx + s * 26, b.y + 12, 5, 7, { fill: '#fff', 'fill-opacity': 0.25 });
+  for (const s of [-1, 1]) {
+    const wx = cx + s * 52, wy = b.y + 50, tr = `rotate(${s * -30} ${wx} ${wy})`;
+    E(t, wx, wy, 44, 15, { fill: '#e8f8ff', 'fill-opacity': 0.6, stroke: '#141414', 'stroke-opacity': 0.55, transform: tr });
+    P(t, `M${wx - s * 40} ${wy}H${wx + s * 38}M${wx - s * 10} ${wy}l${s * 22} -10M${wx - s * 10} ${wy}l${s * 24} 9M${wx + s * 14} ${wy}l${s * 14} -8`, Object.assign(stroke('#141414', 0.7, 0.45), { transform: tr }));
+    P(t, `M${cx + s * 10} ${b.y + 4}Q${cx + s * 24} ${b.y - 10} ${cx + s * 40} ${b.y - 14}`, stroke('#141414', 2));
+  }
+  const eye = pattern('ommat', 4, 4, (p) => { C(p, 2, 2, 1.3, { fill: '#3a3a3a' }); });
+  for (const s of [-1, 1]) { E(t, cx + s * 22, b.y + 20, 17, 22, { fill: '#141414' }); E(t, cx + s * 22, b.y + 20, 17, 22, { fill: eye }); E(t, cx + s * 26, b.y + 12, 5, 8, { fill: '#fff', 'fill-opacity': 0.3 }); }
   for (const y of [b.y + b.h - 16, b.y + b.h - 2]) R(t, 0, y, k.w, 8, 0, { fill: '#141414' });
   P(t, `M${cx - 30} ${k.h - 40}H${cx + 30}L${cx} ${k.h}Z`, { fill: '#141414' });
 };
@@ -854,8 +860,11 @@ MOTIFS.level = (t, b, k) => {
 MOTIFS.greek = (t, b, k) => {
   const key = pattern('meander', 16, 16, (p) => { P(p, 'M0 14H14V2H4V10H10V6', stroke('#9a7b4f', 1.6)); });
   for (const y of [b.y + 2, b.y + b.h - 14]) { R(t, 0, y, k.w, 14, 0, { fill: key }); P(t, `M0 ${y - 1}H${k.w}M0 ${y + 15}H${k.w}`, stroke('#9a7b4f', 1)); }
-  const cx = k.w / 2, cy = b.y + b.h / 2;
-  for (let i = 0; i < 6; i++) P(t, poly([[cx, cy], [cx + Math.cos(i) * 30, cy + Math.sin(i) * 14], [cx + Math.cos(i + 1) * 30, cy + Math.sin(i + 1) * 14]]), { fill: i % 2 ? '#fff' : '#000', 'fill-opacity': 0.12 });
+  const cx = k.w / 2, cy = b.y + b.h / 2 + 1, gold = '#9a7b4f';
+  R(t, cx - 30, cy - 12, 60, 5, 1, { fill: gold, 'fill-opacity': 0.85 });
+  P(t, `M${cx - 24} ${cy - 7}H${cx + 24}Q${cx + 18} ${cy + 1} ${cx + 12} ${cy + 3}H${cx - 12}Q${cx - 18} ${cy + 1} ${cx - 24} ${cy - 7}Z`, { fill: gold, 'fill-opacity': 0.55 });
+  for (const s of [-1, 1]) { C(t, cx + s * 22, cy - 2, 6, stroke(gold, 1.6)); C(t, cx + s * 22, cy - 2, 2.4, { fill: gold }); }
+  for (let i = -3; i <= 3; i++) P(t, `M${cx + i * 4} ${cy + 4}V${cy + 14}`, stroke(gold, 1.2, 0.8));
 };
 MOTIFS.jelly = (t, b, k) => {
   const cx = k.w / 2;
@@ -924,11 +933,11 @@ MOTIFS.carousel = (t, b, k) => {
 MOTIFS.lava = (t, b, k) => {
   const cx = k.w / 2;
   P(t, `M0 0H${k.w}V30H0Z`, { fill: lin('lcap2', [[0, '#c9ced6'], [0.5, '#f3f5f8'], [1, '#5d636b']], 0, 0, 1, 0) });
-  const by = k.h - 104;
+  const by = k.h - 120;
   P(t, `M0 ${by}H${k.w}V${k.h}H0Z`, { fill: lin('lbase', [[0, '#c9ced6'], [0.5, '#f3f5f8'], [1, '#5d636b']], 0, 0, 1, 0) });
   const blob = (x, y, r, s) => P(t, `M${x - r} ${y}C${x - r} ${y - r * s} ${x + r} ${y - r * s} ${x + r} ${y}C${x + r} ${y + r * 0.9} ${x - r} ${y + r * 1.1} ${x - r} ${y}Z`, { fill: lin('lava' + kid(k.acc), [[0, '#ffe066'], [1, k.acc]]) });
-  blob(cx - 14, 60, 14, 1.2); blob(cx + 18, 100, 18, 1.4); blob(cx - 22, 150, 12, 1); blob(cx + 6, by - 24, 30, 0.8);
-  E(t, cx + 2, by - 2, 50, 10, { fill: k.acc });
+  blob(cx - 14, 64, 14, 1.2); blob(cx + 18, 104, 18, 1.4); blob(cx - 26, 150, 11, 1);
+  E(t, cx, by + 2, 64, 8, { fill: k.acc });
   R(t, cx - 42, 36, 8, by - 60, 4, { fill: '#fff', 'fill-opacity': 0.22 });
 };
 MOTIFS.ecg = (t, b, k) => {
@@ -969,8 +978,8 @@ MOTIFS.clock = (t, b, k) => {
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P(t, `M${f(cx + Math.sin(a) * (r - 3))} ${f(cy - Math.cos(a) * (r - 3))}L${f(cx + Math.sin(a) * (r - (i % 3 ? 7 : 11)))} ${f(cy - Math.cos(a) * (r - (i % 3 ? 7 : 11)))}`, stroke('#2a1a08', i % 3 ? 1 : 2)); }
   P(t, `M${cx} ${cy}L${cx + 14} ${cy - 18}M${cx} ${cy}L${cx - 22} ${cy + 6}`, stroke('#2a1a08', 2));
   C(t, cx, cy, 2.6, { fill: '#2a1a08' });
-  P(t, `M${cx} ${cy + r + 5}V${cy + r + 42}`, stroke('#c9a03a', 2));
-  C(t, cx, cy + r + 48, 9, { fill: 'url(#g-gold)' });
+  P(t, `M${cx} ${cy + r + 5}V${cy + r + 14}`, stroke('#c9a03a', 2));
+  C(t, cx, cy + r + 19, 6, { fill: 'url(#g-gold)' });
   P(t, `M0 120H${k.w}`, stroke('#000', 2, 0.4));
 };
 MOTIFS.bulb = (t, b, k) => {
@@ -992,7 +1001,7 @@ MOTIFS.kangaroo = (t, b, k) => {
   R(t, 0, hy, k.w, 4, 0, { fill: '#5a2a0a' });
   P(t, `M${cx - 60} ${hy - 4}Q${cx - 24} ${b.y - 4} ${cx + 30} ${hy - 30}`, Object.assign(stroke('#5a2a0a', 1.4, 0.7), { 'stroke-dasharray': '2 4' }));
   const kg = G(t, { transform: `translate(${cx + 34},${hy - 46}) scale(1.05)` });
-  P(kg, 'M-18 8C-14 -2 -2 -6 6 -2L14 -16L18 -14L14 -2C20 4 18 14 10 18L18 30H10L2 20L-8 22L-34 34L-12 18C-16 16 -18 12 -18 8Z', { fill: '#3a1a08' });
+  P(kg, 'M-46 24Q-24 18 -12 8C-14 -6 -2 -16 10 -14C14 -20 16 -26 20 -30L18 -39L23 -32L27 -40L27 -30C33 -28 35 -24 29 -22C23 -20 21 -16 19 -12C23 -8 23 -2 17 2L25 4L23 6L15 5C17 10 15 16 11 18L27 24L27 27L6 26C0 24 -6 20 -10 16Q-24 22 -46 26Z', { fill: '#3a1a08' });
   P(t, `M${cx - 50} ${k.h - 64}Q${cx} ${k.h - 10} ${cx + 50} ${k.h - 64}`, Object.assign(stroke('#5a2a0a', 1.2, 0.6), { 'stroke-dasharray': '4 3' }));
 };
 MOTIFS.octopus = (t, b, k) => {
@@ -1144,14 +1153,13 @@ MOTIFS.pipes = (t, b, k) => {
     P(t, `M${f(x - 4)} ${f(y1 - 14)}h8l-4 -5Z`, { fill: '#2a1a08' });
   }
   P(t, `M10 ${y1 + 3}H${k.w - 40}`, stroke('#e3c26a', 2));
-  for (const x of [24, k.w - 54]) P(t, `M${x} ${y1 + 16}c6 -8 14 0 8 6c-4 4 -10 0 -6 -3`, stroke('#e3c26a', 1.4));
 };
 MOTIFS.gingham = (t, b, k) => {
   const gp = pattern('gingham2', 16, 16, (p) => { R(p, 0, 0, 8, 16, 0, { fill: '#d22a3a', 'fill-opacity': 0.22 }); R(p, 0, 0, 16, 8, 0, { fill: '#d22a3a', 'fill-opacity': 0.22 }); });
   P(t, k.d, { fill: gp });
-  const y = b.y + b.h / 2 + 10, x0 = k.w / 2 - 70;
+  const y = b.y + b.h - 2, x0 = k.w / 2 - 42;
   let d = `M${x0} ${y}`;
-  for (let i = 0; i < 7; i++) d += `V${i % 2 ? y : y - 22}h20`;
+  for (let i = 0; i < 6; i++) d += `V${i % 2 ? y : y - 18}h14`;
   P(t, d, stroke('#2a1010', 5));
   P(t, d, stroke('#ffffff', 2.4));
 };
@@ -1231,7 +1239,7 @@ MOTIFS.mail = (t, b, k) => {
   for (const y of [b.y + 6, b.y + b.h - 4]) P(t, `M8 ${y}H${2 * cx - 8}`, stroke('#000', 1.4, 0.35));
 };
 MOTIFS.crt = (t, b, k) => {
-  const x0 = 18, y0 = b.y, ww = k.w - 36, hh = b.h;
+  const x0 = 18, y0 = b.y, ww = k.w - 36, hh = b.h - 10;
   R(t, x0 - 6, y0 - 6, ww + 12, hh + 12, 16, { fill: '#121316' });
   const scr = rr(x0, y0, ww, hh, 14);
   P(t, scr, { fill: rad('crtg', [[0, '#14402a'], [1, '#030a06']], 0.5, 0.5, 0.7) });
@@ -1286,11 +1294,13 @@ MOTIFS.belljar = (t, b, k) => {
   return { leds: [{ x: cx, y: b.y + 14, r: 4.2, bezel: '#1d3a2a', color: '#bff0c8' }] };
 };
 MOTIFS.bell = (t, b, k) => {
-  for (const y of [b.y + 8, b.y + 14, k.h * 0.74, k.h * 0.74 + 6]) P(t, `M0 ${f(y)}H${k.w}`, stroke(shade(k.col, -0.45), 1.4, 0.6));
+  for (const y of [b.y + 8, b.y + 14, k.h - 8]) P(t, `M0 ${f(y)}H${k.w}`, stroke(shade(k.col, -0.45), 1.4, 0.6));
   for (let i = 0; i < 18; i++) C(t, k.w * 0.18 + i * ((k.w * 0.64) / 17), b.y + 11, 1.6, { fill: shade(k.col, -0.45), 'fill-opacity': 0.6 });
   const cx = k.w / 2, cy = b.y + b.h / 2 + 10;
-  for (let i = 1; i < 4; i++) P(t, `M${cx - i * 14} ${cy + i * 4}Q${cx} ${cy - i * 12} ${cx + i * 14} ${cy + i * 4}`, stroke('#fff6d0', 1.4, 0.5 - i * 0.1));
-  C(t, cx, cy + 10, 6, { fill: shade(k.col, -0.4) });
+  C(t, cx, cy, 20, { fill: shade(k.col, -0.2) });
+  C(t, cx, cy, 20, stroke(shade(k.col, -0.5), 1.2));
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P(t, `M${f(cx + Math.cos(a) * 7)} ${f(cy + Math.sin(a) * 7)}L${f(cx + Math.cos(a) * 16)} ${f(cy + Math.sin(a) * 16)}`, stroke('#fff6d0', i % 2 ? 1 : 1.8, 0.6)); }
+  C(t, cx, cy, 5, { fill: '#fff6d0', 'fill-opacity': 0.7 });
 };
 MOTIFS.ice = (t, b, k) => {
   const r = rnd(61), pts = [];
@@ -1303,12 +1313,11 @@ MOTIFS.ice = (t, b, k) => {
 };
 MOTIFS.stars = (t, b, k) => {
   const r = rnd(71);
-  for (let i = 0; i < 24; i++) { const x = 14 + r() * (k.w - 28), y = 14 + r() * (k.h - 28), s = 1 + r() * 2.4; P(t, starP(x, y, s * 1.6, s * 0.6, 4), { fill: '#ffe6a0', 'fill-opacity': 0.25 + r() * 0.4 }); }
+  for (let i = 0; i < 18; i++) { const x = 14 + r() * (k.w - 28), y = 14 + r() * (b.y + b.h - 20), s = 1 + r() * 2.4; P(t, starP(x, y, s * 1.6, s * 0.6, 4), { fill: '#ffe6a0', 'fill-opacity': 0.25 + r() * 0.4 }); }
   const cx = k.w / 2 + 40, cy = b.y + b.h / 2;
   P(t, `M${cx - 4} ${cy - 26}A26 26 0 1 0 ${cx + 20} ${cy + 14}A21 21 0 1 1 ${cx - 4} ${cy - 26}Z`, { fill: '#ffe6a0' });
   T6(t, cx - 64, cy - 4, 'z', { size: 16, fill: '#ffe6a0', weight: 700, font: FONTS.script, opacity: 0.8 });
   T6(t, cx - 50, cy - 16, 'z', { size: 11, fill: '#ffe6a0', weight: 700, font: FONTS.script, opacity: 0.6 });
-  C(t, k.w / 2, k.h / 2, 3, { fill: '#000', 'fill-opacity': 0.25 });
 };
 MOTIFS.campfire = (t, b, k) => {
   const cx = k.w / 2, cy = b.y + b.h - 50, r = 42;

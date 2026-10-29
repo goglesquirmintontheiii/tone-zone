@@ -747,6 +747,45 @@ forms.io = (ctx, def) => {
   return { w, h, theme, jacks };
 };
 
+
+// Tiny 1/4" couplers. Female: a barrel with a jack at each end. Male: a grip with a plug at each end; the plug
+// tips only show while an end isn't plugged into anything (ctx.connected).
+forms.coupler = (ctx, def) => {
+  const g = ctx.g;
+  const col = (ctx.block && ctx.block.params && ctx.block.params.jacket) || '#2d3436';
+  const male = def.coupler === 'male';
+  const w = male ? 30 : 34, h = male ? 12 : 14;
+  const inLeft = !!ctx.flip;
+  // body (the recolourable jacket)
+  svg('rect', { x: 4, y: 1, width: w - 8, height: h - 2, rx: (h - 2) / 2.4, fill: col, stroke: shade(col, -0.55), 'stroke-width': 0.6 }, g);
+  svg('rect', { x: 5, y: 2, width: w - 10, height: (h - 2) * 0.32, rx: 2, fill: '#fff', 'fill-opacity': 0.22 }, g);
+  for (let x = 9; x < w - 9; x += 2.4) svg('rect', { x, y: 2.2, width: 0.7, height: h - 4.4, fill: '#000', 'fill-opacity': 0.25 }, g);
+  // chrome ends
+  for (const x of [0, w - 5]) {
+    svg('rect', { x, y: male ? 0.5 : 0, width: 5, height: male ? h - 1 : h, rx: 1.2, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.4 }, g);
+    svg('rect', { x: x + 0.5, y: male ? 1 : 0.6, width: 4, height: 2, rx: 0.8, fill: '#fff', 'fill-opacity': 0.35 }, g);
+  }
+  const jacks = [];
+  const conn = ctx.connected || new Set();
+  if (male) {
+    const ends = [{ key: 'o0', dir: 'out', port: 0, left: !inLeft }, { key: 'i0', dir: 'in', port: 0, left: inLeft }];
+    for (const e of ends) {
+      const x = e.left ? 0 : w;
+      if (!conn.has(e.key)) {
+        // exposed plug: sleeve, ring and tip
+        const sx = e.left ? -10 : w, dirx = e.left ? -1 : 1;
+        svg('rect', { x: sx, y: h / 2 - 2.8, width: 10, height: 5.6, rx: 1, fill: 'url(#g-plugMetal)', stroke: '#2b2f34', 'stroke-width': 0.35 }, g);
+        svg('rect', { x: x + dirx * 6.8 - 0.4, y: h / 2 - 2.8, width: 0.9, height: 5.6, fill: '#000', 'fill-opacity': 0.55 }, g);
+      }
+      jacks.push({ key: e.key, dir: e.dir, port: e.port, label: '', side: e.left ? 'left' : 'right', x, y: h / 2, male: true, kind: 'inst' });
+    }
+  } else {
+    jacks.push({ key: 'i0', dir: 'in', port: 0, label: '', side: inLeft ? 'left' : 'right', x: inLeft ? -2 : w + 2, y: h / 2 });
+    jacks.push({ key: 'o0', dir: 'out', port: 0, label: '', side: inLeft ? 'right' : 'left', x: inLeft ? w + 2 : -2, y: h / 2 });
+  }
+  return { w, h, theme: { text: '#ccc', jackLabels: false }, jacks };
+};
+
 export function renderForm(ctx, def) {
   const f = forms[def.form] || forms.tz;
   const res = f(ctx, def);
@@ -763,6 +802,7 @@ export function renderForm(ctx, def) {
   }
   // jacks are drawn last so they sit above the enclosure edge
   for (const j of res.jacks) {
+    if (j.male) continue; // plug ends (male coupler): drawn by the form itself
     if (!j.kind && def.jackKinds) j.kind = def.jackKinds[j.key];
     if (j.side === 'face') {
       drawJack(ctx.g, Object.assign({}, j, { label: j.label && def.form !== 'amp' ? j.label : '' }), res.theme);

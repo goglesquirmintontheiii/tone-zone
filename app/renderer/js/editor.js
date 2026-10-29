@@ -36,7 +36,11 @@ export class Editor {
     bus.on('preset:changed', ({ keepView }) => this.rebuild(keepView));
     bus.on('block:added', (b) => this.addView(b, true));
     bus.on('cables', () => this.drawCables());
-    bus.on('param', ({ id }) => this.views.get(id)?.updateControls());
+    bus.on('param', ({ id, p }) => {
+      const v = this.views.get(id);
+      if (v && v.def.rerenderOn && v.def.rerenderOn.includes(p)) this.rerenderNode(id);
+      else v?.updateControls();
+    });
     bus.on('bypass', ({ id }) => this.views.get(id)?.setBypassVisual());
     bus.on('selection', () => this.views.forEach((v) => v.updateSelection()));
     this.boardView = document.getElementById('view-board');
@@ -217,6 +221,7 @@ export class Editor {
     for (const c of state.preset.cables) this.drawCable(c);
   }
   drawCable(c) {
+    if (c.direct) return; // coupler link: the plugs touch, nothing to draw
     const a = this.jackGeom(c.from.node, 'o' + c.from.port);
     const b = this.jackGeom(c.to.node, 'i' + c.to.port);
     if (!a || !b) return;
@@ -301,8 +306,79 @@ export class Editor {
       const v = this.views.get(b.id);
       if (v) v.setPosition(Math.round(x - v.w / 2), Math.round(y - v.h / 2));
     }
-    if (b) this.select([b.id]);
+    if (b) {
+      const hit = this.coupleSnap(new Set([b.id]));
+      const v = this.views.get(b.id);
+      if (hit && v) v.setPosition(v.block.x + hit.ox, v.block.y + hit.oy);
+      this.coupleLinks(new Set([b.id]));
+      this.select([b.id]);
+    }
     return b;
+  }
+
+  // ------------------------------------------------------------ male couplers
+  // every open plug end of a male coupler and every free side jack it could plug into
+  couplePairs(moved) {
+    const busy = new Set();
+    for (const c of state.preset.cables) { busy.add(c.from.node + ':o' + c.from.port); busy.add(c.to.node + ':i' + c.to.port); }
+    const ends = [], jacks = [];
+    for (const v of this.views.values()) {
+      for (const j of v.jacks || []) {
+        if (j.side !== 'left' && j.side !== 'right') continue;
+        if (/^[io]c/.test(j.key)) continue;
+        const kind = j.kind || jackKindOf(v.def, j.key);
+        if (!kindsCompatible(kind, 'inst')) continue;
+        const rec = { v, j, x: v.block.x + j.x, y: v.block.y + j.y, n: j.side === 'left' ? -1 : 1, busy: busy.has(v.block.id + ':' + j.key) };
+        (j.male ? ends : jacks).push(rec);
+      }
+    }
+    const pairs = [];
+    for (const e of ends)
+      for (const k of jacks) {
+        if (k.v === e.v || k.n !== -e.n || k.j.key[0] === e.j.key[0]) continue;
+        const em = moved.has(e.v.block.id), km = moved.has(k.v.block.id);
+        if (em === km && moved.size) continue;
+        const tx = k.x + k.n * 6; // where a plug's collar meets the jack
+        pairs.push({ e, k, em, dx: tx - e.x, dy: k.y - e.y });
+      }
+    return pairs;
+  }
+  coupleSnap(moved) {
+    let best = null;
+    for (const p of this.couplePairs(moved)) {
+      if (p.e.busy || p.k.busy) continue;
+      const d = Math.hypot(p.dx, p.dy);
+      if (d < 28 && (!best || d < best.d)) best = { d, ox: p.em ? p.dx : -p.dx, oy: p.em ? p.dy : -p.dy };
+    }
+    return best;
+  }
+  // after a move: link ends that touch a jack, unlink ones that were pulled apart
+  coupleLinks(moved) {
+    let changed = false;
+    const views = this.views;
+    const aligned = (c) => {
+      const a = views.get(c.from.node), b = views.get(c.to.node);
+      if (!a || !b) return false;
+      const ja = a.jack('o' + c.from.port), jb = b.jack('i' + c.to.port);
+      if (!ja || !jb) return false;
+      const male = ja.male ? { v: a, j: ja } : { v: b, j: jb }, fem = ja.male ? { v: b, j: jb } : { v: a, j: ja };
+      const n = fem.j.side === 'left' ? -1 : 1;
+      return Math.hypot(fem.v.block.x + fem.j.x + n * 6 - (male.v.block.x + male.j.x), fem.v.block.y + fem.j.y - (male.v.block.y + male.j.y)) < 1.5;
+    };
+    const keep = state.preset.cables.filter((c) => !c.direct || (!moved.has(c.from.node) && !moved.has(c.to.node)) || aligned(c));
+    if (keep.length !== state.preset.cables.length) { state.preset.cables = keep; changed = true; }
+    for (const p of this.couplePairs(moved)) {
+      if (p.e.busy || p.k.busy || Math.hypot(p.dx, p.dy) > 1.5) continue;
+      const out = p.e.j.key[0] === 'o' ? p.e : p.k, inn = out === p.e ? p.k : p.e;
+      state.preset.cables.push({ id: 'cd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), from: { node: out.v.block.id, port: +out.j.key.slice(1) }, to: { node: inn.v.block.id, port: +inn.j.key.slice(1) }, color: '#2d3436', direct: true });
+      p.e.busy = p.k.busy = true;
+      changed = true;
+    }
+    if (!changed) return;
+    for (const v of this.views.values()) if (v.def.coupler) this.rerenderNode(v.block.id);
+    this.drawCables();
+    bus.emit('cables');
+    import('./state.js').then((m) => m.syncGraph());
   }
   addNear(type) {
     // find a free spot near the centre of the view so the new block doesn't land on top of another
@@ -412,6 +488,7 @@ export class Editor {
       if (existing) fixed = { node: existing.to.node, key: 'i' + existing.to.port, dir: 'in' };
       else fixed = { node: nodeId, key, dir: 'out' };
     }
+    if (existing && existing.direct) { this.drag = null; return; }
     const color = existing ? existing.color : state.cableColor;
     if (existing) {
       const el = this.cableEls.get(existing.id);
@@ -902,6 +979,9 @@ export class Editor {
         const v = this.views.get(s.id);
         if (v) v.setPosition(Math.round((s.x + dx) / snap) * snap, Math.round((s.y + dy) / snap) * snap);
       }
+      // couplers: pull the dragged blocks onto a nearby open plug end
+      const hit = this.coupleSnap(new Set(d.starts.map((s) => s.id)));
+      if (hit) for (const s of d.starts) { const v = this.views.get(s.id); if (v) v.setPosition(v.block.x + hit.ox, v.block.y + hit.oy); }
       this.updateCablesFor(d.starts.map((s) => s.id));
     } else if (d.kind === 'cable') {
       d.moved = true;
@@ -930,7 +1010,10 @@ export class Editor {
     this.board.classList.remove('panning');
     if (d.kind === 'cable') this.finishCableDrag();
     else if (d.kind === 'ctl') this.endControl(e);
-    else if (d.kind === 'node' && d.moved) markDirty();
+    else if (d.kind === 'node' && d.moved) {
+      this.coupleLinks(new Set(d.starts.map((s) => s.id)));
+      markDirty();
+    }
     else if (d.kind === 'marquee') {
       d.rect.remove();
       bus.emit('selection');

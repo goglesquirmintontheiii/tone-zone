@@ -48,7 +48,10 @@ export class NodeView {
     this.g = svg('g', { class: 'node', transform: `translate(${this.block.x},${this.block.y})` });
     this.g.dataset.node = this.block.id;
     const content = svg('g', {}, this.g);
-    const ctx = { g: content, views: new Map(), flip: !!state.settings.flowLeftToRight, block: this.block };
+    // jack keys with something plugged in (couplers draw their plug tips only when free)
+    const connected = new Set();
+    if (d.coupler && state.preset) for (const c of state.preset.cables) { if (c.from.node === this.block.id) connected.add('o' + c.from.port); if (c.to.node === this.block.id) connected.add('i' + c.to.port); }
+    const ctx = { g: content, views: new Map(), flip: !!state.settings.flowLeftToRight, block: this.block, connected };
     const res = renderForm(ctx, rdef);
     this.w = res.w;
     this.h = res.h;
@@ -102,7 +105,7 @@ export class NodeView {
   jackWorld(key) {
     const j = this.jack(key);
     if (!j) return null;
-    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side, kind: j.kind };
+    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side, kind: j.kind, male: !!j.male };
   }
 
   // visual state of all controls from block params
@@ -245,7 +248,7 @@ export class NodeView {
     // load badge: 2 Hz is plenty (text changes are comparatively expensive to repaint)
     if (now - (this._badgeT || 0) > 500) {
       this._badgeT = now;
-      setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false ? (st.load * 100).toFixed(1) + '%' : '');
+      setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false && this.def.cost !== 0 ? (st.load * 100).toFixed(1) + '%' : '');
     }
     // tube heaters: slow, small flicker that brightens with the input level (low rate keeps it cheap)
     if (this.tubeGlows && now - (this._tubeT || 0) > 150) {
