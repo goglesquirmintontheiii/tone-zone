@@ -12,8 +12,22 @@ const registry = new Map();
 const byPlugin = new Map(); // plugin id -> Set(def ids)
 let packDefs = [];
 
+// Tube heads (and their rack preamps) that show their valves poking out of the top: [preamp tubes, power tubes]
+const TUBES_TOP = {
+  'amp.plexi': [3, 4], 'amp.jcm800': [3, 2], 'amp.recto': [5, 4], 'amp.5150': [5, 4], 'amp.slo': [4, 4], 'amp.orange': [2, 4],
+  'amp.hiwatt': [4, 4], 'amp.friedman': [4, 4], 'amp.vh4': [4, 4], 'amp.uber': [4, 4], 'amp.ad200': [3, 4], 'amp.svt': [3, 6],
+  'marshall.amp-jvm': [4, 4], 'bogner.amp-ecstasy': [4, 4], 'engl.amp-powerball': [5, 4], 'peavey.amp-6505plus': [5, 4],
+  'evh.amp-stripe50': [4, 2], 'orange.amp-or50': [3, 2], 'diezel.amp-herbert': [5, 4], 'soldano.amp-hr50': [4, 2],
+  'revv.amp-generator': [4, 4], 'mesa.amp-triplecrown': [5, 4], 'friedman.amp-dirtyshirley': [3, 2], 'victory.amp-v30': [4, 2],
+  'prs.amp-archon': [4, 4], 'marshall.amp-jubilee': [3, 2],
+};
 function finalize(d) {
   d.controls.forEach((c, i) => (c.cid = c.cid ?? 'c' + i));
+  if (d.tubesTop === undefined) {
+    const amp = d.id.replace(/^pre\./, 'amp.').replace(/\.pre-/, '.amp-');
+    const t = TUBES_TOP[d.id] || (amp !== d.id && TUBES_TOP[amp] ? [Math.min(3, TUBES_TOP[amp][0]), 0] : null);
+    if (t) d.tubesTop = t;
+  }
   // baseForm: the generic shape a custom enclosure stands for ('amp', 'cab', …) – used for stacking, z-order, thumbnails
   d.baseForm = d.baseForm || d.form;
   d.search = [d.name, d.ref, d.brand, d.cat, d.code, d.typeName, d.tags && d.tags.join(' ')].filter(Boolean).join(' ').toLowerCase();

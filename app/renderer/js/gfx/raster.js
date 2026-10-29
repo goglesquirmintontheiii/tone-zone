@@ -86,7 +86,8 @@ function svgFor(d) {
   const rdef = Object.create(d);
   rdef.ports = portsFor(d, defaultVariant(d));
   const res = renderForm({ g, views: new Map(), flip: false, thumb: true }, rdef);
-  const vb = [-10, -10, res.w + 20, res.h + 20];
+  const top = d.tubesTop ? 56 : 10; // valves stand above the box
+  const vb = [-10, -top, res.w + 20, res.h + 10 + top];
   s.setAttribute('viewBox', vb.join(' '));
   let body = new XMLSerializer().serializeToString(g);
   const defs = collectDefs(body);

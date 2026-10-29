@@ -14,7 +14,6 @@ import { footCtrl } from './control.js';
 import { hooksFor } from './plugins.js';
 import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
 
-const PLUG_LEN = 30; // sleeve + boot length
 
 export class Editor {
   constructor() {
@@ -234,9 +233,7 @@ export class Editor {
     const g = svg('g', { class: 'cable' + (state.selectedCable === c.id ? ' selected' : '') }, this.layerCables);
     g.dataset.cable = c.id;
     svg('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 16 }, g);
-    svg('path', { d, fill: 'none', stroke: shade(col, -0.6), 'stroke-width': cw + 1.8, 'stroke-linecap': 'round' }, g);
-    svg('path', { d, fill: 'none', stroke: col, 'stroke-width': cw, 'stroke-linecap': 'round', class: 'cable-main' }, g);
-    svg('path', { d, fill: 'none', stroke: shade(col, 0.55), 'stroke-width': Math.max(0.8, cw * 0.25), 'stroke-linecap': 'round', opacity: 0.55, transform: 'translate(-0.6,-1.4)', 'pointer-events': 'none' }, g);
+    cableBody(g, d, col, kind, cw);
     if (kind === 'ctrl' || kind === 'midi') svg('path', { d, fill: 'none', stroke: '#000', 'stroke-width': 1, 'stroke-dasharray': '2 6', opacity: 0.35, 'pointer-events': 'none' }, g);
     const pg = svg('g', {}, this.layerPlugs);
     this.drawPlug(pg, a, col);
@@ -437,8 +434,16 @@ export class Editor {
     else {
       const dx = w.x - a.x, dy = w.y - a.y;
       const len = Math.hypot(dx, dy) || 1;
-      b = { x: w.x - (dx / len) * PLUG_LEN * 0.3, y: w.y, dx: -dx / len, dy: -dy / len * 0.2 };
-      b.x = w.x; b.y = w.y; b.dx = -(dx / len); b.dy = 0.2;
+      b = { x: w.x, y: w.y, dx: -(dx / len), dy: 0.2 };
+    }
+    // the loose plug matches the cable (an interface combo jack takes whatever is plugged in)
+    const kind = a.kind !== 'any' ? a.kind : b.kind && b.kind !== 'any' ? b.kind : 'inst';
+    if (a.kind === 'any') a.kind = kind;
+    if (!b.kind || b.kind === 'any') b.kind = kind;
+    if (d.pathKind !== kind) {
+      d.pathKind = kind;
+      d.path.setAttribute('stroke-width', CABLE_WIDTH[kind] || 5.6);
+      d.path.setAttribute('stroke-dasharray', kind === 'phones' ? '1.4 1.2' : 'none');
     }
     d.target = target;
     d.path.setAttribute('d', this.cablePath(a, b));
@@ -1150,3 +1155,25 @@ function wouldCycle(from, to) {
 }
 
 export { engineParamsFor };
+
+// Cable look per type: 1/4" glossy, XLR thick matte rubber, headphone thin and coiled, control cables dotted.
+function cableBody(g, d, col, kind, cw) {
+  const path = (o) => svg('path', Object.assign({ d, fill: 'none', 'stroke-linecap': 'round' }, o), g);
+  if (kind === 'xlr') {
+    path({ stroke: shade(col, -0.65), 'stroke-width': cw + 2 });
+    path({ stroke: shade(col, -0.2), 'stroke-width': cw, class: 'cable-main' });
+    path({ stroke: shade(col, 0.3), 'stroke-width': cw * 0.22, opacity: 0.3, transform: 'translate(-0.6,-1.8)', 'pointer-events': 'none' });
+    return;
+  }
+  if (kind === 'phones') {
+    path({ stroke: shade(col, -0.6), 'stroke-width': cw + 1.4 });
+    path({ stroke: col, 'stroke-width': cw, class: 'cable-main' });
+    // coil ridges
+    path({ stroke: shade(col, -0.45), 'stroke-width': cw, 'stroke-dasharray': '1.1 1.5', 'pointer-events': 'none' });
+    path({ stroke: shade(col, 0.6), 'stroke-width': 0.8, opacity: 0.45, transform: 'translate(-0.4,-0.9)', 'pointer-events': 'none' });
+    return;
+  }
+  path({ stroke: shade(col, -0.6), 'stroke-width': cw + 1.8 });
+  path({ stroke: col, 'stroke-width': cw, class: 'cable-main' });
+  path({ stroke: shade(col, 0.55), 'stroke-width': Math.max(0.8, cw * 0.25), opacity: 0.55, transform: 'translate(-0.6,-1.4)', 'pointer-events': 'none' });
+}

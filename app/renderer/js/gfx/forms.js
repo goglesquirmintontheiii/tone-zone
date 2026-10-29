@@ -485,6 +485,39 @@ forms.treadle = (ctx, def) => {
 };
 
 // amp head / combo
+
+// Valves standing on top of an enclosure (glass envelope, plate, chrome socket). The heater glows are collected in
+// ctx.tubeGlows so the block view can make them flicker a little.
+function drawTubes(ctx, groups) {
+  const g = svg('g', { 'pointer-events': 'none' }, ctx.g);
+  ctx.tubeGlows = ctx.tubeGlows || [];
+  for (const { x0, n, power } of groups) {
+    const tw = power ? 15 : 10, th = power ? 42 : 27, gap = power ? 6 : 5;
+    for (let i = 0; i < n; i++) {
+      const cx = x0 + i * (tw + gap) + tw / 2;
+      // socket on the chassis top
+      svg('rect', { x: cx - tw / 2 - 2.5, y: -4, width: tw + 5, height: 5, rx: 1.5, fill: 'url(#g-chromeR)', stroke: '#2a2d31', 'stroke-width': 0.4 }, g);
+      svg('rect', { x: cx - tw / 2 - 0.5, y: -7, width: tw + 1, height: 4, rx: 1, fill: '#1b1c1f' }, g);
+      // glass
+      const top = -7 - th, r = tw / 2;
+      const d = power
+        ? `M${cx - r} -7 L${cx - r} ${top + r * 2.2} Q${cx - r} ${top + r * 0.6} ${cx - r * 0.55} ${top + r * 0.3} Q${cx} ${top - 1.5} ${cx + r * 0.55} ${top + r * 0.3} Q${cx + r} ${top + r * 0.6} ${cx + r} ${top + r * 2.2} L${cx + r} -7 Z`
+        : `M${cx - r} -7 L${cx - r} ${top + r} A${r} ${r} 0 0 1 ${cx + r} ${top + r} L${cx + r} -7 Z`;
+      svg('path', { d, fill: '#c9d6e3', 'fill-opacity': 0.16, stroke: '#e8f0f8', 'stroke-opacity': 0.55, 'stroke-width': 0.7 }, g);
+      // plate + getter
+      svg('rect', { x: cx - r * 0.55, y: top + th * 0.32, width: r * 1.1, height: th * 0.5, rx: 0.8, fill: '#3a3d42' }, g);
+      svg('rect', { x: cx - r * 0.55, y: top + th * 0.32, width: r * 0.3, height: th * 0.5, fill: '#5d6168' }, g);
+      svg('ellipse', { cx, cy: top + (power ? 4.5 : 3), rx: r * 0.7, ry: power ? 2.6 : 1.8, fill: '#7f8994', 'fill-opacity': 0.75 }, g);
+      // heater glow (animated)
+      const glow = svg('ellipse', { cx, cy: top + th * 0.62, rx: r * 0.42, ry: th * 0.2, fill: '#ff8a2a', 'fill-opacity': 0.75 }, g);
+      ctx.tubeGlows.push(glow);
+      svg('ellipse', { cx, cy: top + th * 0.62, rx: r * 0.9, ry: th * 0.3, fill: '#ff6a1a', 'fill-opacity': 0.12 }, g);
+      // glass highlight
+      svg('path', { d: `M${cx - r * 0.62} ${top + r * 1.5} L${cx - r * 0.62} -10`, stroke: '#fff', 'stroke-opacity': 0.45, 'stroke-width': power ? 1.6 : 1.1, 'stroke-linecap': 'round', fill: 'none' }, g);
+    }
+  }
+}
+
 forms.amp = (ctx, def) => {
   const combo = def.combo;
   const knobs = def.controls.filter((c) => c.t === 'knob' || c.t === 'sel');
@@ -498,6 +531,10 @@ forms.amp = (ctx, def) => {
   svg('rect', { x: 0.7, y: 0.7, width: w - 1.4, height: h - 1.4, rx: 11.5, fill: 'none', stroke: def.piping || '#000', 'stroke-width': def.piping ? 2.2 : 1, 'stroke-opacity': 0.9 }, g);
   // corners
   for (const [cx, cy] of [[0, 0], [w, 0], [0, h], [w, h]]) svg('circle', { cx: cx ? cx - 9 : 9, cy: cy ? cy - 9 : 9, r: 7, fill: 'url(#g-chromeR)', opacity: def.corners === false ? 0 : 0.9 }, g);
+  if (def.tubesTop && !combo) {
+    const [pre, pow] = def.tubesTop;
+    drawTubes(ctx, [{ x0: 26, n: pre, power: false }, { x0: w - 26 - pow * 21 + 6, n: pow, power: true }]);
+  }
   // handle
   svg('rect', { x: w / 2 - 50, y: -9, width: 100, height: 12, rx: 6, fill: '#0e0e0e', stroke: '#000' }, g);
   svg('rect', { x: w / 2 - 46, y: -7, width: 92, height: 4, rx: 2, fill: '#fff', opacity: 0.08 }, g);
@@ -609,6 +646,7 @@ forms.rack = (ctx, def) => {
     svg('rect', { x, y: 0, width: 24, height: h, fill: shade(col, -0.25) }, g);
     for (const y of [16, h - 16]) svg('rect', { x: x + 6, y: y - 4, width: 12, height: 8, rx: 4, fill: '#050505' }, g);
   }
+  if (def.tubesTop && def.tubesTop[0]) drawTubes(ctx, [{ x0: w - 50 - def.tubesTop[0] * 15, n: def.tubesTop[0], power: false }]);
   const txt = def.text || textColorFor(col);
   const theme = { text: txt, knob: def.knob || 'chrome', labelSize: 6 };
   label(g, 40, 30, def.logo || def.name, { size: 15, fill: def.logoColor || txt, weight: 800, ls: 1, anchor: 'start' });

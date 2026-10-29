@@ -79,7 +79,7 @@ export const originals = [
       K('semis2', 'VOICE 2', { min: -24, max: 24, def: 7, step: 1, display: (v) => (v > 0 ? '+' : '') + Math.round(v) + ' st' }), K('level2', 'LEVEL 2', { def: 0 }), K('dry', 'DRY', { def: 1 }), K('cents', 'DETUNE', { min: -50, max: 50, def: 0, display: (v) => Math.round(v) + ' ct' }),
       SEL('quality', 'LATENCY', ['TIGHT', 'BAL', 'STUDIO'], { def: 1, sweep: 90 })], cost: 0.8 }),
   // volume & utilities
-  def({ id: 'tz.exp', name: 'TZ Volume / Expression', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'VOL', cat: 'Volume', form: 'treadle', color: '#23262e', algo: 'volume', stereo: 'both', controls: [{ t: 'treadle', p: 'pos', def: 1, min: 0, max: 1 }], logo: 'VOLUME', logoFont: "'Oswald', sans-serif", logoColor: '#9aa3b5', noBypassClick: true }),
+  def({ id: 'tz.exp', name: 'TZ Volume / Expression', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'VOL', cat: 'Volume', form: 'tz2-treadle', color: '#23262e', accent: '#9aa3b5', algo: 'volume', stereo: 'both', controls: [{ t: 'treadle', p: 'pos', def: 1, min: 0, max: 1 }, LED({ color: '#9aa3b5' }), FOOT()], logo: 'VOLUME', logoFont: "'Oswald', sans-serif", logoColor: '#9aa3b5', noBypassClick: true }),
   TZ({ id: 'tz.tuner', form: 'tz3-strobe', name: 'TZ Strobe Tuner', cat: 'Utility', color: '#111318', text: '#e9ecf3', logo: 'STROBE', typeName: 'Strobe / chromatic tuner', noStd: true,
     algo: 'tuner', opts: { mute: 1 }, controls: [SCREEN('strobe', { w: 120, h: 70 }), FOOT(), LED({ bind: 'tunerOk', color: '#3ddc84' })], defaultBypass: true, tunerBlock: true }),
   def({ id: 'tz.looper', name: 'TZ Mini Looper', brand: 'Tone Zone', ref: 'Tone Zone original', code: 'LOOP', cat: 'Looper', form: 'tz3-loop', color: '#14161b', text: '#e9ecf3', logo: 'MINI LOOP', typeName: '1-track looper',
@@ -182,6 +182,7 @@ CAB({ id: 'cab.4x10bass', name: '4x10 Bass', brand: 'Tone Zone', ref: 'Tone Zone
 ];
 
 export const ioDefs = [
-  def({ id: '__in', name: 'Audio In', cat: 'I/O', form: 'io', io: 'in', algo: null, ports: { ins: [], outs: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R'] }, controls: [], fixedNode: true }),
-  def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R', 'PHONES'], outs: [] }, jackKinds: { i4: 'phones' }, ioMap: { i4: [0, 1] }, controls: [], fixedNode: true }),
+  // extra jacks share the interface channels (combo XLR / 1/4" inputs, aux = return L/R, XLR outs = main L/R)
+  def({ id: '__in', name: 'Audio In', cat: 'I/O', form: 'io', io: 'in', algo: null, ports: { ins: [], outs: ['GUITAR IN 1', 'GUITAR IN 2', 'RETURN L', 'RETURN R', 'XLR IN 1', 'XLR IN 2', 'AUX IN'] }, jackKinds: { o4: 'xlr', o5: 'xlr', o6: 'phones' }, ioMap: { o4: [0], o5: [1], o6: [2, 3] }, controls: [], fixedNode: true }),
+  def({ id: '__out', name: 'Audio Out', cat: 'I/O', form: 'io', io: 'out', algo: null, ports: { ins: ['MAIN OUT L', 'MAIN OUT R', 'SEND L', 'SEND R', 'PHONES', 'XLR OUT L', 'XLR OUT R'], outs: [] }, jackKinds: { i4: 'phones', i5: 'xlr', i6: 'xlr' }, ioMap: { i4: [0, 1], i5: [0], i6: [1] }, controls: [], fixedNode: true }),
 ];

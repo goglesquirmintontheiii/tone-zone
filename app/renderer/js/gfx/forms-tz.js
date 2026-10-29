@@ -351,13 +351,15 @@ function columns(ctx, def) {
 function treadle(ctx, def) {
   const A = def.art || {};
   const g = ctx.g;
-  const w = def.wide ? 178 : 154, h = 314;
+  const C = def.controls;
+  // a bypass footswitch gets its own strip on the deck
+  const foot = C.find((c) => c.t === 'foot' && free(c));
+  const w = def.wide ? 178 : 154, h = 314 + (foot ? 40 : 0);
   const col = def.color || '#2a2d33';
   const accent = def.accent || '#ff7a2f';
   const txt = def.text || inkFor(col);
-  const C = def.controls;
   const extras = C.filter((c) => (c.t === 'knob' || c.t === 'sel' || c.t === 'toggle') && free(c));
-  const plateH = extras.length ? 66 : 34;
+  const plateH = (extras.length ? 66 : 34) + (foot ? 40 : 0);
   const plateY = h - plateH - 8;
   const b = anod(g, w, h, col, { rx: 16, finish: A.finish });
   // side rails in the accent colour
@@ -382,9 +384,13 @@ function treadle(ctx, def) {
       else { c.orient = 'h'; }
     });
   }
+  if (foot) {
+    Object.assign(foot, { x: w / 2, y: plateY + plateH - 21, r: 11, style: foot.style || 'stomp' });
+    label(g, w / 2 + 22, plateY + plateH - 20, 'BYPASS', { size: 4.6, fill: ptxt, weight: 800, ls: 0.8, anchor: 'start', opacity: 0.8 });
+  }
   const theme = { text: ptxt, knob: def.knob || 'strymon', labelSize: 5.2, toggleTitles: true };
   kit().placeControls(ctx, C, theme);
-  return { w, h, theme: Object.assign({}, theme, { text: txt, jackText: txt }), jacks: kit().jacksSide(def, w, { y0: h - 150, gap: 24, flip: ctx.flip }) };
+  return { w, h, theme: Object.assign({}, theme, { text: txt, jackText: txt }), jacks: kit().jacksSide(def, w, { y0: h - 150 - (foot ? 40 : 0), gap: 24, flip: ctx.flip }) };
 }
 
 // ------------------------------------------------------------------ playful: round "orb" pedal

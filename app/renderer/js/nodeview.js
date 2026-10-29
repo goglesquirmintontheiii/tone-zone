@@ -61,6 +61,7 @@ export class NodeView {
     this.jacks = res.jacks;
     this.views = ctx.views;
     this.ioMeters = ctx.ioMeters;
+    this.tubeGlows = ctx.tubeGlows;
     this.theme = res.theme;
     this.screens = [];
     for (const [cid, v] of this.views) if (v.ctl.t === 'screen') this.screens.push({ ctl: v.ctl, view: v.view, state: {} });
@@ -246,11 +247,23 @@ export class NodeView {
       this._badgeT = now;
       setText(this.badge, typeof st.load === 'number' && state.settings.showLoad !== false ? (st.load * 100).toFixed(1) + '%' : '');
     }
+    // tube heaters: slow, small flicker that brightens with the input level (low rate keeps it cheap)
+    if (this.tubeGlows && now - (this._tubeT || 0) > 150) {
+      this._tubeT = now;
+      const off = this.block.bypass;
+      const lvl = Math.min(1, Math.max(...(state.status.inPeak || [0]).slice(0, 2)) * 2.5);
+      this.tubeGlows.forEach((el, i) => {
+        const v = off ? 0.25 : 0.62 + 0.22 * lvl + 0.08 * Math.sin(now / (380 + i * 57) + i * 1.7) + 0.04 * (Math.random() - 0.5);
+        setA(el, 'fill-opacity', v.toFixed(2));
+      });
+    }
     if (this.ioMeters) {
       const peaks = this.def.io === 'in' ? state.status.inPeak : state.status.outPeak;
       if (peaks)
         this.ioMeters.forEach((segs, i) => {
-          const db = 20 * Math.log10(Math.max(1e-6, peaks[i] || 0));
+          // extra jacks (XLR, aux, phones) show the channel(s) they share
+          const chs = (this.def.ioMap && this.def.ioMap[(this.def.io === 'in' ? 'o' : 'i') + i]) || [i];
+          const db = 20 * Math.log10(Math.max(1e-6, ...chs.map((c) => peaks[c] || 0)));
           const lit = Math.round(clamp((db + 54) / 54, 0, 1) * segs.length);
           segs.forEach((s, k) => {
             const col = k >= 9 ? '#ff4d5e' : k >= 7 ? '#ffc24b' : '#37d6c2';
