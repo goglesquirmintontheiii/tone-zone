@@ -1,8 +1,8 @@
 // Creative / novelty effects:
-//   vocal     – formant "singing" voice that follows your playing (talk box, sing, meow, fart, robot, choir)
-//   lossy     – spectral codec damage (bit-starved streaming audio, packet loss, band limiting)
-//   microloop – a short-term memory sampler: captures the last moments of your playing and loops / stretches /
-//               reverses them (MOOD / Blooper / Onward-style)
+//   vocal:     formant "singing" voice that follows your playing (talk box, sing, meow, fart, robot, choir)
+//   lossy:     spectral codec damage (starved streaming audio, packet loss, band limiting)
+//   microloop: short memory sampler that loops, stretches or reverses the last moments you played
+//              (like a MOOD, Blooper or Onward)
 #include <random>
 
 #include "common.h"

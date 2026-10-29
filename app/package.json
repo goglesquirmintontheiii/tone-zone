@@ -2,7 +2,7 @@
   "name": "tone-zone",
   "productName": "Tone Zone",
   "version": "0.3.0",
-  "description": "Tone Zone - guitar & bass DSP workstation",
+  "description": "Tone Zone - guitar and bass effects for PipeWire",
   "main": "main/main.js",
   "author": "goglesquirmintontheiii <goglesquirmintontheiii@gmail.com>",
   "license": "UNLICENSED",
@@ -72,7 +72,7 @@
       "executableName": "tone-zone",
       "artifactName": "Tone-Zone-${version}-x86_64.${ext}",
       "synopsis": "Guitar & bass DSP pedalboard with NAM support",
-      "description": "Tone Zone: a realtime guitar/bass DSP workstation for PipeWire with pedals, amps, cabs, NAM and IR support.",
+      "description": "Tone Zone: real-time guitar and bass effects for PipeWire, with pedals, amps, cabs, NAM models and IRs.",
       "desktop": {
         "entry": {
           "Name": "Tone Zone",

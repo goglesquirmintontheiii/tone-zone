@@ -1,6 +1,6 @@
-// Plugin QA tool: renders every block of a plugin (gallery + one close-up per block), loads them all into the
-// realtime engine (fake JACK) to catch engine errors, and runs each block offline on a guitar riff to flag
-// silent / clipping / way-too-loud voicings.
+// Plugin QA tool: renders every block of a plugin (a gallery plus a close-up of each), loads them all into the
+// realtime engine (fake JACK) to catch errors, and runs each block offline on a guitar riff to flag ones that
+// are silent, clipping or far too loud.
 //
 // usage (from app/):
 //   NODE_PATH=$(npm root -g) LD_LIBRARY_PATH=../engine/tests/fakejack xvfb-run -a -s "-screen 0 1600x950x24" \

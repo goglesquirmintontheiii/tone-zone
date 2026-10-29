@@ -113,7 +113,7 @@ struct Biquad
   }
 };
 
-// State-variable filter (TPT / Zavalishin) – good for swept filters (wah, envelope).
+// State-variable filter (TPT / Zavalishin), good for swept filters (wah, envelope).
 struct SVF
 {
   float g = 0, k = 1, a1 = 0, a2 = 0, a3 = 0, ic1 = 0, ic2 = 0;

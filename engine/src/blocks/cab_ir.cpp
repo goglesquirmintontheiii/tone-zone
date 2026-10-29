@@ -42,7 +42,7 @@ struct ConvSlot
       if (fading)
       {
         Convolver* old = fading.release();
-        if (Convolver* prevRet = retired.exchange(old)) delete prevRet; // (rare) — still RT-safe-ish fallback
+        if (Convolver* prevRet = retired.exchange(old)) delete prevRet; // rare, and still mostly RT-safe
       }
       fading = std::move(active);
       active.reset(p);

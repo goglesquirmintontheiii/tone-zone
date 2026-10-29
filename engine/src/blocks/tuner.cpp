@@ -1,4 +1,4 @@
-// High-accuracy chromatic + polyphonic tuner.
+// Chromatic and polyphonic tuner.
 // RT thread: anti-alias + decimate to ~6 kHz into a ring buffer.
 // Control thread: YIN period detection (handles missing fundamentals of low strings) followed by
 // phase-regression refinement on the strongest harmonic, giving sub-cent accuracy down to ~25 Hz

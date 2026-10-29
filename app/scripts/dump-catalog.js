@@ -1,5 +1,5 @@
-// Dumps every block definition (id, name, ref, brand, cat, kind, plugin, params) to JSON – used to write presets
-// and to count the catalog. usage: node scripts/dump-catalog.js out.json
+// Dumps every block definition (id, name, ref, brand, cat, kind, plugin, params) to JSON. Handy for writing
+// presets and counting the catalog. usage: node scripts/dump-catalog.js out.json
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');

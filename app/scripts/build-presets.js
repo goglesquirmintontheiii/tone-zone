@@ -1,15 +1,15 @@
-// Builds factory presets from compact specs (scripts/preset-specs.js) inside the running app, so block sizes, port
-// counts and knob ranges come from the real catalog (including plugin blocks).
+// Builds the factory presets from the specs in scripts/preset-specs.js inside the running app, so block sizes,
+// port counts and knob ranges come from the real catalog (plugin blocks included).
 // usage: node scripts/build-presets.js [--only file-prefix] [--check]
 //
 // Spec:
 //   { file, name, tags, desc,
-//     chain: [ 'type' | ['type', {param: value}, {bypass, variant, x, y}] , … ]            – simple series rig, or
+//     chain: [ 'type' | ['type', {param: value}, {bypass, variant, x, y}] , … ]            (simple series rig), or
 //     nodes: { key: ['type', {params}, {bypass, variant}] }, edges: [['in', 'a'], ['a', 'b', outPort, inPort], …],
-//     rows: [['a', 'b'], ['c']]                                                          – any graph, rows laid out R→L
+//     rows: [['a', 'b'], ['c']]                                                          (any graph, rows laid out R→L)
 //   }
-// Knob / slider / treadle values are positions 0..1 (converted with the control's range); selectors and toggles take
-// the option index; anything else is stored as given. Prefix a key with '=' to store a raw value for a knob.
+// Knob, slider and treadle values are positions 0..1 (converted with the control's range). Selectors and toggles
+// take the option index, anything else is stored as is. Prefix a key with '=' to store a raw knob value.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');

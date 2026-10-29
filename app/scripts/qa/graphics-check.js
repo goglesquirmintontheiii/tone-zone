@@ -1,6 +1,5 @@
-// Renders every block and flags detached parts and graphics that stick out of the enclosure.
-// usage (from app/): node scripts/qa/graphics-check.js [--plugin id|core] [--only id1,id2] [--out dir]
-// Block-graphics QA: finds DETACHED parts and OVERFLOW (controls / text / art sticking out of the enclosure).
+// Block graphics QA: renders every block and flags DETACHED parts and OVERFLOW (controls, text or art
+// sticking out of the enclosure).
 // run (from app/):
 //   NODE_PATH=$(npm root -g) LD_LIBRARY_PATH=/home/claude/tone-zone/engine/tests/fakejack \
 //     xvfb-run -a -s "-screen 0 1600x950x24" node <this file> [--plugin id|core] [--only id1,id2] [--out dir] [--no-png] [--all-png]
@@ -375,7 +374,7 @@ const INPAGE = async ({ fontCss, cfg }) => {
     let dist = distTo(SIL, W, H);
     const [, tubeY] = toPx(0, 2);
     const tubeZone = (i) => tubes && Math.floor(i / W) < tubeY;
-    // only these elements, in their own paint (and clip) — for per-element tests
+    // only these elements, in their own paint (and clip), for per-element tests
     const onlyEls = (set, solid = false) => variant((cl) => {
       cl.setAttribute('visibility', 'hidden');
       for (const [i, el] of byIdx(cl)) {
