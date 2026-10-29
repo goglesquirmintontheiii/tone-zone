@@ -1,0 +1,12 @@
+{
+  "id": "source-audio",
+  "name": "Source Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Source Audio: multi-mode delay and reverb, a delay plus reverb combo and a 10-band graphic EQ in gunmetal boxes with coloured accents.",
+  "kind": "brand",
+  "brand": "Source Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#f08a24"
+}

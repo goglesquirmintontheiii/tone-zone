@@ -6,6 +6,7 @@ const fs = require('fs');
 const lib = require('./library');
 const plugins = require('./plugins');
 const offline = require('./offline');
+const capture = require('./capture');
 const { EngineHost, findEngine } = require('./engine-host');
 
 const APP_ROOT = path.join(__dirname, '..');
@@ -140,6 +141,23 @@ function setupIpc() {
   ipcMain.handle('offline:render', (_e, graph, di) => offline.renderPreview(graph, di));
   ipcMain.handle('offline:features', (_e, files, t0, t1) => offline.stemsFeatures(files, t0, t1));
   ipcMain.handle('offline:evalGraphs', (_e, graphs, di) => offline.evalGraphs(graphs, di));
+  // ---- capture (NAM models from presets)
+  capture.init({ dataRoot: lib.dataRoot(), engineBin: () => (engine && engine.binPath) || findEngine(APP_ROOT, app.isPackaged), send: (ev) => send('capture:event', ev) });
+  ipcMain.handle('capture:status', () => capture.status());
+  ipcMain.handle('capture:setup', (_e, opts) => capture.setupTrainer(opts));
+  ipcMain.handle('capture:cancelSetup', () => capture.cancelSetup());
+  ipcMain.handle('capture:removeTrainer', () => capture.removeTrainer());
+  ipcMain.handle('capture:trainerSize', () => capture.trainerSize());
+  ipcMain.handle('capture:downloadInput', () => capture.downloadInput());
+  ipcMain.handle('capture:pickInput', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choose the NAM training signal (v3_0_0.wav)', properties: ['openFile'], filters: [{ name: 'WAV audio', extensions: ['wav'] }] });
+    if (r.canceled || !r.filePaths.length) return null;
+    return capture.useInputFile(r.filePaths[0]);
+  });
+  ipcMain.handle('capture:start', (_e, opts) => capture.start(opts));
+  ipcMain.handle('capture:cancel', () => capture.cancel());
+  ipcMain.handle('capture:finish', () => capture.finishEarly());
+  ipcMain.handle('capture:clear', () => capture.clearJob());
   // ---- plugins
   ipcMain.handle('plugins:list', () => plugins.list(APP_ROOT, lib.dataRoot(), settings.plugins || {}, settings.pluginsRemoved || []));
   ipcMain.handle('plugins:removeBuiltin', (_e, id) => {
@@ -230,4 +248,7 @@ app.on('window-all-closed', () => {
   if (engine) engine.stop();
   app.quit();
 });
-app.on('before-quit', () => engine && engine.stop());
+app.on('before-quit', () => {
+  capture.shutdown();
+  if (engine) engine.stop();
+});

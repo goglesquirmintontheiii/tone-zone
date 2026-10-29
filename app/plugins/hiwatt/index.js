@@ -66,4 +66,64 @@ export default function register(tz) {
       derive: (u) => { const n = u.nv ?? 0.45, b = u.bv ?? 0.35; return { gain: Math.min(1, Math.max(n, b) + 0.25 * Math.min(n, b)), bright: b > n ? 1 : 0 }; },
       desc: 'Huge, clean and punchy 50 W head: Normal and Brilliant channels bridged.' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Hiwatt's valve overdrive.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, SLIDER, def, ten, db, ms } = tz.helpers;
+  // plain stomp box for this brand: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
+  // Jacks sit below the controls so their labels never cover a knob.
+  tz.addForm('hiwatt-stomp', (ctx, d) => {
+    const { svg, label, formKit, shade } = tz.gfx;
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const n = kn.length;
+    const perRow = d.perRow || (n === 4 ? 4 : Math.min(3, n));
+    const w = d.fw || (perRow > 3 || foots.length > 1 ? 176 : 140);
+    const rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const jt = d.jacksTop ? 8 : 0;
+    const deckH = d.deckH || 20 + jt + rows.length * 44 + (tg.length ? 32 : 0);
+    const ly = deckH + 36, h = ly + 106;
+    const txt = d.text || '#f0f0f0';
+    formKit.body(g, w, h, d.color, { rx: d.rx ?? 9, brushed: !!d.brushed });
+    if (d.plate) svg('rect', { x: 8, y: 8, width: w - 16, height: deckH, rx: 6, fill: d.plate, stroke: shade(d.plate, 0.3), 'stroke-opacity': 0.5 }, g);
+    if (d.accent) svg('rect', { x: 8, y: deckH + 12, width: w - 16, height: 2.5, rx: 1.2, fill: d.accent }, g);
+    const big = n <= 2;
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = perRow > 1 ? (x1 - x0) / (perRow - 1) : 0;
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 38 + jt + ri * 44, r: big ? 13 : 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 32 + (i * (w - 64)) / (tg.length - 1), y: 20 + jt + rows.length * 44 + 10, orient: 'h', optSize: 4.2 }));
+    if (d.art) d.art(g, w, h, ly);
+    const logo = d.logo || d.name;
+    label(g, w / 2, ly, logo, { size: d.logoSize || (logo.length > 12 ? 11.5 : 14), fill: d.logoColor || txt, font: d.logoFont || "'Oswald', sans-serif", weight: 700, ls: 1.2 });
+    label(g, w / 2, ly + 12, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.75 });
+    const spots = (k) => (k > 1 ? [w * 0.28, w * 0.72] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 26, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: ly + 64, r: 13, labelDy: foots.length > 1 ? -19 : undefined }));
+    formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
+    const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    return { w, h, theme, jacks };
+  });
+
+  const SP = (o) => def(Object.assign({ form: 'hiwatt-stomp' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff2a1a' })])] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    SP({ id: 'hiwatt.tubeod', name: 'Highwatt Valve OD', ref: 'Hiwatt Tube Overdrive', logo: 'HIGHWATT', typeName: 'Tube Overdrive', cat: 'Overdrive', color: '#141416', accent: '#d8d8d8', knob: 'chrome', text: '#efefef',
+      algo: 'drive', opts: { clip: 'tube', bias: 0.15, preHp: 70, gainMinDb: 4, gainMaxDb: 38, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 900, trebleF: 3200, postLp: 9000, levelMaxDb: 4 }, fixed: { mid: 0.55 },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.5 }), t('bass', 'BASS'), t('treble', 'TREBLE')],
+      desc: 'Valve overdrive with the big, clear British headroom-amp character.' }),
+  ]);
 }

@@ -670,7 +670,7 @@ export default function register(tz) {
       algo: 'flanger', fixed: { mix: 0.5 },
       controls: [K('speed', 'RATE', { def: 0.3 }), K('width', 'RANGE', { def: 0.6 }), K('regen', 'COLOR', { def: 0.55 }), TOG('matrix', 'FILTER MATRIX', ['OFF', 'ON'], { orient: 'h' })],
       derive: (p) => (p.matrix ? { width: 0, manual: p.width ?? 0.6 } : { manual: 0.45 }),
-      desc: 'FILTER MATRIX stops the sweep – RANGE then sets the comb-filter position by hand.',
+      desc: 'FILTER MATRIX stops the sweep, then RANGE sets the comb-filter position by hand.',
     }),
     E({
       id: 'ehx.nanoclone', name: 'Nano Twin', ref: 'Electro-Harmonix Nano Clone', cat: 'Modulation', typeName: 'Chorus',
@@ -917,7 +917,7 @@ export default function register(tz) {
       ctrl: { ins: [{ label: 'EXP', param: 'w.pos', min: 0, max: 1 }] },
       controls: [K('d.gain', 'FUZZ', { def: 0.35 }), K('d.level', 'VOLUME', { def: 0.5 }), K('w.pos', 'FREQ', { def: 0.55 }), TOG('talk', '', ['CRY', 'TALK'], { orient: 'h', virtual: true })],
       derive: (p) => (p.talk ? { 'w.q': 0.85, 'w.range': 0.75 } : { 'w.q': 0.5, 'w.range': 0.5 }),
-      desc: 'Fixed ("cocked") wah into fuzz. FREQ sets the wah position – or plug an expression pedal into EXP.',
+      desc: 'Fixed ("cocked") wah into fuzz. FREQ sets the wah position, or plug an expression pedal into EXP.',
     }),
 
     // ---------------------------------------------------------------- filters / dynamics / EQ
@@ -954,7 +954,7 @@ export default function register(tz) {
         { prefix: 'e', algo: 'geq', opts: { freqs: [100, 200, 400, 800, 1600, 3200], q: 1.3 } },
       ] },
       controls: [
-        K('d.level', 'VOLUME', { x: 40, y: 32, r: 12 }), K('d.gain', 'SUSTAIN', { x: 164, y: 32, r: 12, def: 0.5 }),
+        K('d.level', 'VOLUME', { x: 40, y: 32, r: 12, def: 0.4 }), K('d.gain', 'SUSTAIN', { x: 164, y: 32, r: 12, def: 0.5 }),
         TOG('d.mode', 'MODE', ['SUSTAIN', 'DIST'], { x: 102, y: 34, orient: 'h' }),
         ...['100', '200', '400', '800', '1.6K', '3.2K'].map((l, i) => SLIDER('e.b' + i, l, { x: 34 + i * 27, y: 106, h: 60, min: -15, max: 15, def: 0, display: db, capColor: '#e8eaee', lineColor: '#ff6a2a' })),
       ],
@@ -987,8 +987,8 @@ export default function register(tz) {
       ctrl: { ins: [{ label: 'EXP', param: 'expr', min: 0, max: 1 }] },
       controls: [
         K('blend', 'BLEND', { x: 34, y: 34, r: 12, def: 0.5, virtual: true }),
-        SEL('s1', 'SHIFT 1', semiOpts, { x: 88, y: 36, r: 11, def: 10, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'below', values: semiVals, virtual: true }),
-        SEL('s2', 'SHIFT 2', semiOpts, { x: 142, y: 36, r: 11, def: 1, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'below', values: semiVals, virtual: true }),
+        SEL('s1', 'SHIFT 1', semiOpts, { x: 88, y: 36, r: 11, def: 10, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'none', values: semiVals, virtual: true }),
+        SEL('s2', 'SHIFT 2', semiOpts, { x: 142, y: 36, r: 11, def: 1, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'none', values: semiVals, virtual: true }),
         TOG('pmode', 'VOICES', ['1', '2', '1+2'], { x: 56, y: 104, orient: 'h', def: 0, virtual: true }),
         TOG('latch', 'MODE', ['LATCH', 'MOM'], { x: 124, y: 104, orient: 'h', virtual: true }),
       ],

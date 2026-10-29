@@ -720,7 +720,7 @@ export default function register(tz) {
     }),
     EQ({
       id: 'eqd.blumes', name: 'Bloomer Low Signal Shredder', ref: 'EarthQuaker Devices Blumes', logo: 'BLOOMER', tagline: 'LOW SIGNAL SHREDDER', cat: 'Overdrive',
-      color: '#e9a7c0', ink: '#2a1630', ink2: '#f6e27a', scene: 'flower', size: 'b',
+      color: '#e9a7c0', ink: '#2a1630', ink2: '#f6e27a', scene: 'flower',
       algo: 'drive', opts: { tone: 'ts', toneLo: 600, gainMinDb: 6, gainMaxDb: 40, levelMaxDb: 6, preHp: 25, clipHp: 200, postLp: 7000, cleanSum: true, cleanMix: 0,
         modes: [{ clip: 'led', bias: 0.3 }, { clip: 'clean', gainMaxDb: 30 }, { clip: 'si' }] },
       controls: [K('level', 'LEVEL', { def: 0.5 }), K('tone', 'TONE', { def: 0.5 }), K('gain', 'GAIN', { def: 0.5 }), K('blend', 'BLEND', { def: 0.8 }), TOG('mode', 'MODE', ['1', '2', '3'])],
@@ -747,9 +747,9 @@ export default function register(tz) {
     }),
     EQ({
       id: 'eqd.aqueduct', name: 'Viaduct Vibrato', ref: 'EarthQuaker Devices Aqueduct', logo: 'VIADUCT', tagline: 'VIBRATO MODULATOR', cat: 'Modulation',
-      color: '#5e93c7', ink: '#0f1d2e', ink2: '#f2ecd8', scene: 'arches', size: 'b',
+      color: '#5e93c7', ink: '#0f1d2e', ink2: '#f2ecd8', scene: 'arches',
       algo: 'chorus', fixed: { mix: 1, mode: 1 },
-      controls: [K('rate', 'RATE', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.45 }), SEL('shape', 'MODE', ['SIN', 'TRI', 'RMP', 'SQR', 'RND', 'ENV+', 'ENV-', 'ENVR'], { virtual: true, togRow: true, r: 10 })],
+      controls: [K('rate', 'RATE', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.45 }), SEL('shape', 'MODE', ['SIN', 'TRI', 'RMP', 'SQR', 'RND', 'ENV+', 'ENV-', 'ENVR'], { virtual: true, sweep: 270 })],
       derive: (p) => ({ wave: [0, 0.3, 0.6, 1, 0.5, 0.2, 0.8, 0.4][p.shape ?? 0] }),
       desc: 'Pitch vibrato with eight modulation modes. The envelope modes are approximated with fixed shapes.',
     }),

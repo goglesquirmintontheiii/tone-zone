@@ -89,4 +89,118 @@ export default function register(tz) {
     CAB({ id: 'orange.cab-ppc212', name: '2x12 Citrus', ref: 'Orange PPC212 (V30)', opts: { cab: { hp: 75, hpQ: 1.6, resDb: 4.5, lp: 5200, peaks: [[220, 1, 2], [1000, 1, 1.5], [2600, 1.5, 3.5], [4300, 2.5, 1.5]], seed: 61 } }, cabSize: '2x12', tolex: '#e8731c', grille: 'black', logo: 'CITRUS', logoFont: "'Oswald', sans-serif", logoColor: '#f6f6f6' }),
     CAB({ id: 'orange.cab-obc810', name: '8x10 Citrus Bass', ref: 'Orange OBC810', bass: true, opts: { cab: { hp: 42, hpQ: 1.3, resDb: 4, lp: 4300, peaks: [[85, 1, 3], [600, 1, 2], [1700, 1.3, 2], [3200, 2, -2.5]], seed: 62, detail: 1.5 } }, cabSize: '8x10', tolex: '#e8731c', grille: 'black', logo: 'CITRUS', logoFont: "'Oswald', sans-serif", logoColor: '#f6f6f6' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Orange-style pedals: orange steel box, white knobs, a framed piece of line art per pedal.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, def, ten } = tz.helpers;
+  const { svg, label, formKit } = tz.gfx;
+
+  // simple line art, drawn inside a 92x50 frame at (x, y)
+  const ART = {
+    mirror: (g, x, y, st) => {
+      svg('rect', Object.assign({ x: x + 6, y: y + 6, width: 80, height: 38, rx: 12 }, st), g);
+      svg('path', Object.assign({ d: `M${x + 18} ${y + 34} l6 -10 h40 l8 10 z M${x + 30} ${y + 24} l4 -6 h22 l4 6` }, st), g);
+      svg('circle', { cx: x + 28, cy: y + 35, r: 3, fill: st.stroke }, g);
+      svg('circle', { cx: x + 64, cy: y + 35, r: 3, fill: st.stroke }, g);
+    },
+    fur: (g, x, y, st) => {
+      for (let r = 0; r < 4; r++) svg('path', Object.assign({ d: `M${x + 6} ${y + 10 + r * 10} q8 -7 16 0 t16 0 t16 0 t16 0 t16 0` }, st), g);
+    },
+    squeeze: (g, x, y, st) => {
+      svg('path', Object.assign({ d: `M${x + 8} ${y + 25} h22 m-8 -8 l8 8 l-8 8 M${x + 84} ${y + 25} h-22 m8 -8 l-8 8 l8 8` }, st), g);
+      svg('rect', Object.assign({ x: x + 38, y: y + 12, width: 16, height: 26, rx: 3 }, st), g);
+    },
+    piston: (g, x, y, st) => {
+      svg('rect', Object.assign({ x: x + 30, y: y + 6, width: 32, height: 22, rx: 2 }, st), g);
+      svg('path', Object.assign({ d: `M${x + 30} ${y + 14} h32 M${x + 30} ${y + 20} h32 M${x + 46} ${y + 28} v8 M${x + 46} ${y + 40} m-10 0 a10 4 0 1 0 20 0 a10 4 0 1 0 -20 0` }, st), g);
+    },
+    bolt: (g, x, y, st) => {
+      svg('path', Object.assign({ d: `M${x + 52} ${y + 5} l-16 22 h12 l-8 18 l20 -26 h-12 z` }, st), g);
+      svg('path', Object.assign({ d: `M${x + 10} ${y + 25} h18 M${x + 64} ${y + 25} h18` }, st), g);
+    },
+    cone: (g, x, y, st) => {
+      for (const r of [20, 13, 6]) svg('circle', Object.assign({ cx: x + 46, cy: y + 25, r }, st), g);
+      svg('path', Object.assign({ d: `M${x + 10} ${y + 10} v30 M${x + 82} ${y + 10} v30` }, st), g);
+    },
+  };
+
+  tz.addForm('orange-pedal', (ctx, d) => {
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => c.t === 'knob' && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const perRow = kn.length > 4 ? 3 : kn.length;
+    const w = foots.length > 1 || perRow > 3 ? 170 : 140;
+    const rows = [];
+    for (let i = 0; i < kn.length; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const top = 22 + rows.length * 42 + (tg.length ? 30 : 0);
+    const ay = top + 4, ly = ay + 78, fy = ly + 40, h = fy + 34;
+    formKit.body(g, w, h, d.color || '#f07a1a', { rx: 7 });
+    const ink = '#141414';
+    rows.forEach((r, ri) => {
+      const x0 = 28, x1 = w - 28, step = (x1 - x0) / Math.max(1, perRow - 1);
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 36 + ri * 42, r: 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 34 + (i * (w - 68)) / (tg.length - 1), y: 22 + rows.length * 42 + 6, orient: 'h', optSize: 4.2 }));
+    // art frame
+    const ax = w / 2 - 46;
+    svg('rect', { x: ax, y: ay, width: 92, height: 50, rx: 3, fill: '#fff', 'fill-opacity': 0.12, stroke: ink, 'stroke-width': 1.4 }, g);
+    (ART[d.art] || ART.cone)(g, ax, ay, { fill: 'none', stroke: ink, 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+    label(g, w / 2, ay + 66, d.logo || d.name, { size: (d.logo || d.name).length > 12 ? 11 : 14, fill: ink, font: "'Oswald', sans-serif", weight: 700, ls: 1.4 });
+    label(g, w / 2, ay + 77, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: ink, weight: 700, ls: 1.6, opacity: 0.8 });
+    const spots = (n) => (n > 1 ? [w * 0.28, w * 0.72] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 14, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: fy + 8, r: 12.5, labelDy: foots.length > 1 ? -18 : undefined }));
+    // guard bar over the knobs (the real boxes have one)
+    if (d.guard) svg('rect', { x: 4, y: 12, width: w - 8, height: 5, rx: 2.5, fill: 'url(#g-chromeR)' }, g);
+    formKit.tzBadge(g, w / 2, h - 7, ink, 3.8);
+    const theme = { text: ink, knob: 'white', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: ay + 14, gap: 24, flip: ctx.flip }) };
+  });
+
+  const OP = (o) => def(Object.assign({ form: 'orange-pedal', color: '#ef7a1c' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: '#3d8bff' })])] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    OP({ id: 'orange.furcoat', name: 'Fur Jacket', ref: 'Orange Fur Coat', logo: 'FUR JACKET', typeName: 'Octave Fuzz', cat: 'Fuzz', art: 'fur', guard: true,
+      algo: 'chain', cost: 1.1, noStd: true, opts: { chain: [
+        { prefix: 'f', algo: 'drive', opts: { clip: 'si', preHp: 90, gainMinDb: 16, gainMaxDb: 44, tone: 'lp', toneLo: 900, toneHi: 7500, postLp: 6500, levelMaxDb: -4 } },
+        { prefix: 'o', algo: 'pitch', on: false, params: { semis1: 12, level1: 0.5, dry: 0.9, quality: 0, tone: 0.8 } },
+      ] },
+      controls: [t('f.level', 'VOLUME'), t('f.gain', 'FUZZ', { def: 0.65 }), t('f.tone', 'EQ'), t('o.level1', 'OCTAVE', { def: 0.5 }),
+        FOOT({ action: 'bypass', label: 'FUZZ' }), FOOT({ action: 'param', p: 'o.on', toggle: true, label: 'OCTAVE' }), LED({ color: '#3d8bff' }), LED({ bind: 'param:o.on', color: '#3d8bff' })],
+      desc: 'Wild 70s-style fuzz with an octave-up on its own footswitch.' }),
+    OP({ id: 'orange.getaway', name: 'Escape Driver', ref: 'Orange Getaway Driver', logo: 'ESCAPE DRIVER', typeName: 'Overdrive', cat: 'Overdrive', art: 'mirror', guard: true,
+      algo: 'drive', opts: { clip: 'si', bias: 0.1, preHp: 70, gainMinDb: 4, gainMaxDb: 36, tone: 'lp', toneLo: 1500, toneHi: 10000, postLp: 9000, levelMaxDb: 6 },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.5 }), t('tone', 'BITE')],
+      desc: 'Amp-in-a-box drive, from cranked British combo to big stack crunch.' }),
+    OP({ id: 'orange.kongpressor', name: 'Ape Squeezer', ref: 'Orange Kongpressor', logo: 'APE SQUEEZER', typeName: 'Compressor', cat: 'Dynamics', art: 'squeeze',
+      algo: 'comp', opts: { type: 'opto' },
+      controls: [t('attack', 'ATTACK', { def: 0.3 }), t('release', 'RELEASE', { def: 0.4 }), t('level', 'VOLUME', { def: 0.38 }), t('tone', 'CHIME'), t('sustain', 'SQUASH', { def: 0.5 })],
+      desc: 'Class-A style compressor: Squash sets the amount, Chime keeps the top end sparkling.' }),
+    OP({ id: 'orange.twostroke', name: 'Two Cycle Boost', ref: 'Orange Two Stroke Boost EQ', logo: 'TWO CYCLE', typeName: 'Boost / EQ', cat: 'Boost', art: 'piston',
+      algo: 'chain', cost: 0.5, opts: { chain: [
+        { prefix: 'd', algo: 'drive', opts: { clip: 'clean', gainMinDb: 0, gainMaxDb: 18, tone: 'none', levelMaxDb: 14 } },
+        { prefix: 'p', algo: 'peq', params: { mid1gain: 8 } },
+      ] },
+      controls: [t('d.level', 'VOLUME', { def: 0.5 }), t('d.gain', 'GAIN', { def: 0.25 }), K('p.mid1freq', 'FREQ', { min: 100, max: 4000, def: 800, curve: 'log', display: (v) => Math.round(v) + ' Hz' }), K('p.mid1q', 'Q', { min: 0.3, max: 6, def: 1, curve: 'log', display: (v) => v.toFixed(1) })],
+      desc: 'Clean boost with a sweepable mid peak, to push an amp exactly where you want.' }),
+    OP({ id: 'orange.detonator', name: 'Amp Splitter', ref: 'Orange Amp Detonator', logo: 'AMP SPLITTER', typeName: 'A/B/Y Switcher', cat: 'Utility', kind: 'Utility', art: 'bolt', cost: 0.02,
+      algo: 'split', alwaysOn: true, noStd: true, ports: { ins: ['INPUT'], outs: ['AMP A', 'AMP B'] },
+      controls: [TOG('inv2', 'B PHASE', ['0', '180']), FOOT({ action: 'param', p: 'ab', label: 'A / B' }), FOOT({ action: 'param', p: 'y', label: 'A + B' }), LED({ bind: 'param:ab', color: '#3d8bff' }), LED({ bind: 'param:y', color: '#3d8bff' })],
+      initParams: { ab: 0, y: 0 }, derive: (p) => ({ m1: !p.y && p.ab ? 1 : 0, m2: !p.y && !p.ab ? 1 : 0 }),
+      desc: 'Send your guitar to amp A, amp B or both at once. Flip B phase if the two amps cancel.' }),
+    OP({ id: 'orange.bangeetar', name: 'Bax Bandito', ref: 'Orange Bax Bangeetar Guitar Pre-EQ', logo: 'BAX BANDITO', typeName: 'Guitar Pre-EQ', cat: 'Overdrive', art: 'cone',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 6, preHp: 80, gainMinDb: 6, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 14, bassF: 100, midMin: 250, midMax: 3500, trebleF: 3500, postLp: 8000, levelMaxDb: 2 },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.45 }), t('bass', 'BASS'), t('mid', 'MIDDLE'), t('midfreq', 'FREQ'), t('treble', 'TREBLE')],
+      desc: 'Valve-style guitar preamp with a sweepable mid, clean edge to thick Orange crunch.' }),
+  ]);
 }

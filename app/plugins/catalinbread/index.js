@@ -79,6 +79,17 @@ export default function register(tz) {
       A.f('M50 14a8 8 0 0 1 4.5 14.6L58 46H42L45.5 28.6A8 8 0 0 1 50 14Z', c);
       [[16, 8], [84, 8], [16, 52], [84, 52]].forEach(([x, y]) => A.f(`M${x} ${y - 4}L${x + 1.2} ${y - 1.2}L${x + 4} ${y}L${x + 1.2} ${y + 1.2}L${x} ${y + 4}L${x - 1.2} ${y + 1.2}L${x - 4} ${y}L${x - 1.2} ${y - 1.2}Z`, c));
     },
+    wave(A, c) {
+      A.f('M6 52C20 52 26 40 30 30C34 18 46 10 58 12C70 14 74 26 66 32C60 36 52 32 54 26C48 30 50 40 60 42C72 44 84 36 94 40V52Z', c);
+      A.o('M6 52H94', 1.6);
+    },
+    bat(A, c) {
+      A.f('M50 22C46 22 45 18 46 14L48 18H52L54 14C55 18 54 22 50 22Z M50 22C54 24 56 30 54 36C62 30 72 28 86 32C80 36 78 42 80 48C72 42 62 42 56 46C54 50 52 52 50 54C48 52 46 50 44 46C38 42 28 42 20 48C22 42 20 36 14 32C28 28 38 30 46 36C44 30 46 24 50 22Z', c);
+    },
+    flask(A, c) {
+      A.o('M42 6H58M45 6V22L28 50Q26 56 32 56H68Q74 56 72 50L55 22V6', 2);
+      A.f('M36 40H64L70 50Q72 54 67 54H33Q28 54 30 50Z', c);
+    },
   };
   let seq = 0;
   tz.addForm('cb-ornate', (ctx, d) => {
@@ -139,6 +150,27 @@ export default function register(tz) {
         K('treble', 'TREBLE', { def: 0.6, display: ten }), K('mid', 'MIDDLE', { def: 0.55, display: ten }), K('bass', 'BASS', { def: 0.45, display: ten }),
       ],
       desc: 'A cranked Super Lead preamp in a pedal: open, crunchy and dynamic, built to be run into a clean amp.',
+    }),
+    C({
+      id: 'cb.sabbracadabra', name: 'Abra Sabra', ref: 'Catalinbread Sabbra Cadabra', logo: 'Abra Sabra', tagline: 'SUPERGROUP OVERDRIVE', cat: 'Overdrive', typeName: 'Doom-era British drive',
+      color: '#1d1a1f', ink: '#e9dcc0', gold: '#a8323a', nameColor: '#e9dcc0', emblem: 'bat', rows: [2, 3], knob: 'cream', h: 256,
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 10, bias: 0.3, preHp: 70, gainMinDb: 8, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 700, trebleF: 2600, postLp: 7000, levelMaxDb: 0 },
+      controls: [K('level', 'VOLUME', { def: 0.5, display: ten }), K('gain', 'GAIN', { def: 0.55, display: ten }), K('treble', 'TREBLE', { def: 0.55, display: ten }), K('mid', 'MIDDLE', { def: 0.6, display: ten }), K('bass', 'BASS', { def: 0.5, display: ten })],
+      desc: 'Thick, mid-heavy British crunch of an early doom-rock amp, cranked.',
+    }),
+    C({
+      id: 'cb.topanga', name: 'Canyon Spring Reverb', ref: 'Catalinbread Topanga', logo: 'Canyon', tagline: 'SPRING REVERB', cat: 'Reverb', typeName: 'Spring reverb tank',
+      color: '#2a6f86', ink: '#f4ecd8', gold: '#e8c35a', nameColor: '#f4ecd8', emblem: 'wave', knob: 'cream', cost: 1.1,
+      algo: 'reverb', opts: { fixedMode: 3 }, fixed: { mode: 3 },
+      controls: [K('decay', 'DWELL', { def: 0.5, display: ten }), K('tone', 'TONE', { def: 0.55, display: ten }), K('mix', 'MIX', { def: 0.35, display: ten })],
+      desc: 'Drippy, surf-style spring reverb with dwell, tone and mix.',
+    }),
+    C({
+      id: 'cb.formula55', name: 'Recipe No. 57', ref: 'Catalinbread Formula No. 55', logo: 'Recipe 57', tagline: 'TWEED OVERDRIVE', cat: 'Overdrive', typeName: 'Tweed-style overdrive',
+      color: '#d8c49a', ink: '#3a2412', gold: '#8a5a2a', emblem: 'flask',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 6, bias: 0.3, preHp: 80, gainMinDb: 2, gainMaxDb: 36, tone: 'lp', toneLo: 1500, toneHi: 8000, postLp: 7500, levelMaxDb: 6 },
+      controls: [K('level', 'VOLUME', { def: 0.5, display: ten }), K('tone', 'TONE', { def: 0.5, display: ten }), K('gain', 'DRIVE', { def: 0.45, display: ten })],
+      desc: 'Warm, touch-sensitive tweed amp breakup.',
     }),
   ]);
 }

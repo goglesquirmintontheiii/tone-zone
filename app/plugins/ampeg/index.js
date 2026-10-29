@@ -129,7 +129,7 @@ function registerPedals(tz) {
     return { w, h, theme, jacks };
   });
 
-  const AP = (o) => def(Object.assign({ form: 'ampeg-pedal' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: '#ff2a1a' })])] }));
+  const AP = (o) => def(Object.assign({ form: 'ampeg-pedal', color: '#b9bdc2' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: '#ff2a1a' })])] }));
   const bassDrive = { clip: 'tube', bias: 0.15, preHp: 30, gainMinDb: 6, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 90, midF: 500, trebleF: 2500, postLp: 6500, cleanSum: true, levelMaxDb: 4 };
   const svtPre = { preamp: true, models: ['svt', 'b15'] };
   const DI_OUTS = { ins: ['INPUT'], outs: ['OUTPUT', 'XLR DI OUT'] };

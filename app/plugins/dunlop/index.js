@@ -124,7 +124,7 @@ export default function register(tz) {
         }
       },
       controls: [TREADLE('pos', { def: 0.5 }), LED({ color: '#ff2a1a', r: 2.2 })],
-      desc: 'Signature wah with a narrower, darker sweep (Fasel inductor, custom Q) – great for slow, vocal sweeps.',
+      desc: 'Signature wah with a narrower, darker sweep (Fasel inductor, custom Q). Great for slow, vocal sweeps.',
     })),
     def(Object.assign({}, wahFoot, {
       id: 'dn.sw95', name: 'Top Hat Wah', ref: 'Dunlop Slash Cry Baby SW95', code: 'TH-95', color: '#151515', treadleColor: '#141414', logo: 'Top Hat', logoColor: '#d7b46a', logoFont: "'Oswald', sans-serif",

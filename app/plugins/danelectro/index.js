@@ -1,10 +1,10 @@
 // Built-in Tone Zone plugin: Danelectro.
 // Blocks inspired by Danelectro's tongue-in-cheek "food" mini pedals and the Back Talk reverse delay. Names and
 // artwork are Tone Zone originals (the food puns are our own); control sets follow the real units (see `ref`).
-// One custom "dano-diner" enclosure: 1950s diner look – rounded body in candy metallic paint, a chrome trim strip,
+// One custom "dano-diner" enclosure: 1950s diner look: rounded body in candy metallic paint, a chrome trim strip,
 // a little food doodle (or an atomic starburst) and a retro script name.
 export default function register(tz) {
-  const { K, SLIDER, FOOT, LED, def, ten, ms } = tz.helpers;
+  const { K, TOG, SLIDER, FOOT, LED, def, ten, ms } = tz.helpers;
   const { svg, label, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ shared layout kit
@@ -88,6 +88,44 @@ export default function register(tz) {
       A.f('M24 27m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0Z', '#3a2410');
       [[80, 46], [86, 40], [90, 50], [84, 54]].forEach(([x, y]) => A.f(`M${x} ${y}h3v-12h-3z`, '#f2d27a'));
     },
+    shake(A) {
+      A.f('M36 18 L64 18 L58 56 L42 56 Z', '#f4c6d2');
+      A.f('M33 12 Q50 2 67 12 L67 18 L33 18 Z', '#fbf3f6');
+      A.o('M36 18 L64 18 L58 56 L42 56 Z', 1.4, A.ink);
+      A.o('M56 12 L66 0', 2.2, '#c8262c');
+      A.f('M50 4m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0Z', '#c8262c');
+    },
+    can(A) {
+      A.f('M26 20 H74 V48 Q50 56 26 48 Z', '#9aa3ab');
+      A.f('M50 20m-24 0a24 7 0 1 0 48 0a24 7 0 1 0 -48 0Z', '#d6dce1');
+      A.f('M28 30 H72 V40 H28 Z', '#2e6fb5');
+      A.o('M50 20m-24 0a24 7 0 1 0 48 0a24 7 0 1 0 -48 0', 1.2, A.ink);
+    },
+    drum(A) {
+      A.f('M30 40 Q22 18 46 14 Q68 12 66 30 Q64 44 48 44 Z', '#c97a33');
+      A.f('M48 42 L64 54 Q70 52 70 58 Q64 60 60 56 L44 44 Z', '#f4ecd8');
+      A.o('M30 40 Q22 18 46 14 Q68 12 66 30 Q64 44 48 44 Z', 1.2, A.ink);
+    },
+    sandwich(A) {
+      A.f('M18 40 L50 10 L82 40 Z', '#e8c27a');
+      A.f('M22 40 L50 14 L78 40 Z', '#7a3a8a');
+      A.f('M26 40 L50 18 L74 40 Z', '#c99a5a');
+      A.f('M18 40 H82 V46 H18 Z', '#e8c27a');
+      A.o('M18 40 L50 10 L82 40 Z', 1.2, A.ink);
+    },
+    coffee(A) {
+      A.f('M30 22 H66 L62 54 H34 Z', '#f4ecd8');
+      A.f('M33 26 H63 V32 H33 Z', '#3a2210');
+      A.o('M66 30 Q78 30 76 40 Q74 48 64 46', 2, A.ink);
+      A.o('M30 22 H66 L62 54 H34 Z', 1.2, A.ink);
+      A.o('M42 18 Q38 12 42 6 M52 18 Q48 12 52 6', 1.4, A.ink);
+    },
+    cheese(A) {
+      A.f('M20 46 L80 46 L80 30 L28 18 Z', '#f2c53d');
+      A.f('M80 30 L28 18 L20 30 L80 30 Z', '#f8dc6e');
+      [[40, 38, 4], [62, 40, 3], [70, 34, 2.5], [32, 40, 2.5]].forEach(([x, y, r]) => A.f(`M${x} ${y}m-${r} 0a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 -${2 * r} 0Z`, '#d9a51a'));
+      A.o('M20 46 L80 46 L80 30 L28 18 L20 30 Z', 1.2, A.ink);
+    },
     atom(A) {
       [0, 60, 120].forEach((a) => A.o(`M50 30m-34 0a34 11 0 1 0 68 0a34 11 0 1 0 -68 0`, 1.8, A.ink, `rotate(${a} 50 30)`));
       A.f('M50 30m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0Z', A.ink);
@@ -165,7 +203,7 @@ export default function register(tz) {
       color: '#2d6fa8', ink: '#fdf6e3', nameColor: '#fdf6e3', disc: '#fdf3d6', doodle: 'fish', w: 116, h: 212, cost: 0.4,
       algo: 'geq', opts: { freqs: BANDS, q: 1.1 },
       controls: BANDS.map((f, i) => SLIDER('b' + i, f >= 1000 ? f / 1000 + 'K' : String(f), { min: -15, max: 15, def: 0, h: 38, labelSize: 4.2 })),
-      desc: 'Seven sliders of cut / boost (100 Hz – 6.4 kHz) in a lunchbox-sized pedal.',
+      desc: 'Seven sliders of cut / boost (100 Hz to 6.4 kHz) in a lunchbox-sized pedal.',
     }),
     DN({
       id: 'dano.backtalk', name: 'Talkback Reverse Delay', ref: 'Danelectro Back Talk', logo: 'Talkback', tagline: 'REVERSE DELAY', cat: 'Delay', typeName: 'Reverse delay',
@@ -174,6 +212,55 @@ export default function register(tz) {
       controls: [K('mix', 'MIX', { def: 0.5 }), K('time', 'SPEED', { min: 120, max: 1500, def: 500, curve: 'log', display: ms }), K('feedback', 'REPEAT', { min: 0, max: 0.9, def: 0.25 })],
       fixed: { mode: 5 },
       desc: 'Backwards repeats for instant psychedelia. SPEED sets the length of each reversed chunk.',
+    }),
+  ]);
+
+  // ---- v0.4 additions
+  tz.addDefs([
+    DN({
+      id: 'dano.milkshake', name: 'Malted Shake Chorus', ref: 'Danelectro Milkshake Chorus', logo: 'Malted Shake', tagline: 'CHORUS', cat: 'Modulation', typeName: 'Chorus',
+      color: '#e8a3b6', ink: '#3a1420', doodle: 'shake', rows: [2],
+      algo: 'chorus', fixed: { mode: 0, mix: 0.5 },
+      controls: [K('rate', 'SPEED', { def: 0.35 }), K('depth', 'DEPTH', { def: 0.5 })],
+      desc: 'Simple, sweet chorus in a tiny box.',
+    }),
+    DN({
+      id: 'dano.tunamelt', name: 'Salmon Melt Tremolo', ref: 'Danelectro Tuna Melt Tremolo', logo: 'Salmon Melt', tagline: 'TREMOLO', cat: 'Modulation', typeName: 'Tremolo',
+      color: '#3f7fb8', ink: '#f6f1e2', nameColor: '#f6f1e2', disc: '#f6f1e2', doodle: 'can', rows: [3], knobR: 9,
+      algo: 'tremolo', fixed: { mode: 0 },
+      controls: [K('rate', 'SPEED', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.6 }), K('level', 'TONE', { def: 0.5 }), TOG('hard', '', ['SOFT', 'HARD'], { virtual: true })],
+      derive: (p) => ({ wave: p.hard ? 0.9 : 0.25 }),
+      desc: 'Tremolo with a soft (sine) or hard (square) pulse. TONE trims the output level here.',
+    }),
+    DN({
+      id: 'dano.chickensalad', name: 'Turkey Club Vibrato', ref: 'Danelectro Chicken Salad Vibrato', logo: 'Turkey Club', tagline: 'VIBRATO', cat: 'Modulation', typeName: 'Vibrato',
+      color: '#e2c35a', ink: '#2a1e06', doodle: 'drum', rows: [2],
+      algo: 'chorus', fixed: { mode: 1, mix: 1 },
+      controls: [K('rate', 'SPEED', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.45 })],
+      desc: 'Pitch-wobble vibrato, from subtle to seasick.',
+    }),
+    DN({
+      id: 'dano.pbj', name: 'Jam Sandwich Delay', ref: 'Danelectro PB&J Delay', logo: 'Jam Sandwich', tagline: 'DELAY', cat: 'Delay', typeName: 'Analog-style delay',
+      color: '#8a4aa0', ink: '#f8eefc', nameColor: '#f8eefc', disc: '#fbf3dc', doodle: 'sandwich', rows: [3], knobR: 9,
+      algo: 'delay', opts: { maxMs: 600 }, fixed: { mode: 1, tone: 0.4 },
+      controls: [K('time', 'DELAY', { min: 30, max: 600, def: 300, display: ms }), K('feedback', 'REPEAT', { def: 0.35, max: 1.0 }), K('mix', 'MIX', { def: 0.4 })],
+      desc: 'Warm, short-to-medium delay.',
+    }),
+    DN({
+      id: 'dano.blackcoffee', name: 'Dark Roast Metal', ref: 'Danelectro Black Coffee Metal Distortion', logo: 'Dark Roast', tagline: 'METAL DISTORTION', cat: 'Distortion', typeName: 'Metal distortion',
+      color: '#2a1d16', ink: '#f2e3c8', nameColor: '#f2e3c8', disc: '#f2e3c8', doodle: 'coffee', rows: [2, 2], knobR: 9, h: 212,
+      algo: 'drive', opts: { clip: 'si', stages: 2, stage2Db: 16, preHp: 110, gainMinDb: 18, gainMaxDb: 56, tone: 'eq3', eqRangeDb: 14, bassF: 100, midF: 800, trebleF: 3200, postLp: 7500, levelMaxDb: -8, levelMinDb: -36 },
+      fixed: { mid: 0.4 },
+      controls: [K('level', 'VOL', { def: 0.5 }), K('gain', 'DRIVE', { def: 0.6 }), K('bass', 'LOW', { def: 0.6 }), K('treble', 'HIGH', { def: 0.55 })],
+      desc: 'Heavy, scooped metal distortion with low and high EQ.',
+    }),
+    DN({
+      id: 'dano.grilledcheese', name: 'Toasted Cheese Dist', ref: 'Danelectro Grilled Cheese Distortion', logo: 'Toasted Cheese', tagline: 'DISTORTION', cat: 'Distortion', typeName: 'Distortion',
+      color: '#e07b2a', ink: '#2a1404', doodle: 'cheese', rows: [2],
+      algo: 'drive', opts: { clip: 'diode', preHp: 90, gainMinDb: 10, gainMaxDb: 44, tone: 'none', postLp: 6500, levelMaxDb: -7, levelMinDb: -36,
+        modes: [{ postLp: 5000 }, { postLp: 8500, preEq: [{ type: 'peak', f: 1200, q: 0.8, db: 4 }] }] },
+      controls: [K('level', 'VOL', { def: 0.55 }), K('gain', 'DIST', { def: 0.55 }), TOG('mode', '', ['MILD', 'HOT'])],
+      desc: 'Crunchy distortion with a MILD or HOT voice.',
     }),
   ]);
 }

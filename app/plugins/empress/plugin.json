@@ -1,0 +1,12 @@
+{
+  "id": "empress",
+  "name": "Empress Effects",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Empress Effects: a dual engine delay, a multi-mode reverb, a parametric EQ, a studio compressor and a tap tremolo in flat matte boxes with thin white print.",
+  "kind": "brand",
+  "brand": "Empress Effects",
+  "main": "index.js",
+  "api": 1,
+  "color": "#4aa8ff"
+}

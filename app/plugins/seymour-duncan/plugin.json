@@ -1,0 +1,12 @@
+{
+  "id": "seymour-duncan",
+  "name": "Seymour Duncan",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Seymour Duncan pedals: a high gain boost, a rock distortion, an analog delay and a 3-band EQ overdrive in textured powder-coat boxes.",
+  "kind": "brand",
+  "brand": "Seymour Duncan",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b8322a"
+}

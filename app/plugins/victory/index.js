@@ -111,4 +111,23 @@ export default function register(tz) {
       sw: [TOG('channel', 'GAIN', ['LO', 'HI'], { def: 1 }), TOG('bright', 'BRIGHT', ['OFF', 'ON'])],
       desc: 'Real-valve preamp pedal with the V30 head voicing: rich crunch to singing lead.' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// V1 valve drive pedals: same rugged box and valve window as the V4 preamps, used as stomp drives.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, def, ten } = tz.helpers;
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+  const V1 = (o) => def(Object.assign({ form: 'victory-v4', algo: 'drive', typeName: 'V1 valve drive', cost: 0.6 }, o, {
+    controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.55 }), t('tone', 'TONE'), TOG('mode', 'GAIN', ['LO', 'HI'], { def: 1 }), TOG('bright', 'BRIGHT', ['OFF', 'ON'], { values: [0, 0.5] }), LED({ color: '#ff8a2a' }), FOOT()],
+  }));
+  tz.addDefs([
+    V1({ id: 'victory.v1kraken', name: 'V1 The Leviathan', ref: 'Victory V1 The Kraken', logo: 'LEVIATHAN', color: '#1f2628', text: '#7fe0d6',
+      opts: { clip: 'tube', stages: 3, stage2Db: 8, preHp: 120, tone: 'lp', toneLo: 1300, toneHi: 9000, postLp: 7200, levelMaxDb: -6, modes: [{ gainMinDb: 8, gainMaxDb: 40 }, { gainMinDb: 12, gainMaxDb: 50 }] },
+      desc: 'Real-valve high-gain drive pedal: tight, modern and aggressive.' }),
+    V1({ id: 'victory.v1jack', name: 'V1 The Jackal', ref: 'Victory V1 The Jack', logo: 'THE JACKAL', color: '#3a3a3e', text: '#f0d8a8',
+      opts: { clip: 'tube', stages: 2, stage2Db: 6, preHp: 90, tone: 'lp', toneLo: 1300, toneHi: 9500, postLp: 8000, levelMaxDb: -2, modes: [{ gainMinDb: 4, gainMaxDb: 34 }, { gainMinDb: 8, gainMaxDb: 44 }] },
+      desc: 'Real-valve British rock drive pedal, from crunch to hot-rodded lead.' }),
+  ]);
 }

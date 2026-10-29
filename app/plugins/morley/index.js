@@ -104,4 +104,39 @@ export default function register(tz) {
       desc: 'Send your guitar to amp A, amp B or both. Left switch flips A ↔ B (red LED = B), right switch turns on Y (both outputs, green LED).',
     }),
   ]);
+
+  // ---- v0.4 additions
+  const swl = (pre) => (p) => ({ [pre + '.on']: (p[pre + '.pos'] ?? 0) > 0.03 ? 1 : 0 });
+  tz.addDefs([
+    MO({
+      id: 'mo.classicwah', name: 'Classic Glide Wah', ref: 'Morley Classic Switchless Wah', code: 'CG-W', cat: 'Wah', color: '#151517', treadleColor: '#1c1c1f', logo: 'GLIDE WAH', logoColor: '#d9d9d9', logoSize: 16,
+      algo: 'chain', alwaysOn: true, noBypassClick: true,
+      opts: { chain: [{ prefix: 'w', algo: 'wah', opts: { fLo: 340, fHi: 2300, q: 5.4, mode: 0 }, params: { level: 0.36 } }] },
+      controls: [TREADLE('w.pos', { def: 0 })],
+      derive: swl('w'),
+      desc: 'Switchless optical wah: rock it forward and it turns on, park it at the heel and it turns off.',
+    }),
+    MO({
+      id: 'mo.miniwah', name: 'Mini Glide Wah', ref: 'Morley Mini Morley Wah', code: 'MG-W', cat: 'Wah', color: '#151517', treadleColor: '#1c1c1f', logo: 'MINI', logoColor: '#d9d9d9', logoSize: 12,
+      tw: 112, th: 214, rx: 11, jackY: 118,
+      algo: 'chain', alwaysOn: true, noBypassClick: true,
+      opts: { chain: [{ prefix: 'w', algo: 'wah', opts: { fLo: 350, fHi: 2300, q: 5.4, mode: 0 }, params: { level: 0.36 } }] },
+      controls: [TREADLE('w.pos', { def: 0 })],
+      derive: swl('w'),
+      desc: 'Half-size switchless wah.',
+    }),
+    MO({
+      id: 'mo.cliffburton', name: 'Power Fuzz Glide Wah', ref: 'Morley Cliff Burton Power Fuzz Wah', code: 'PFW', cat: 'Wah', color: '#141416', treadleColor: '#1a1a1d', logo: 'POWER FUZZ', logoColor: '#c9c9c9', logoSize: 15,
+      algo: 'chain', alwaysOn: true, noBypassClick: true, cost: 1,
+      opts: { chain: [
+        { prefix: 'd', algo: 'drive', on: false, opts: { clip: 'si', bias: 0.3, preHp: 40, gainMinDb: 14, gainMaxDb: 46, tone: 'none', postLp: 5500, levelMaxDb: -2 } },
+        { prefix: 'w', algo: 'wah', opts: { fLo: 220, fHi: 2000, q: 5, mode: 0 }, params: { level: 0.36 } },
+      ] },
+      panel: { w: 48, y: 60, h: 210, title: 'FUZZ' },
+      controls: [TREADLE('w.pos', { def: 0 }), K('d.level', 'LEVEL', { panel: true, def: 0.5 }), K('d.gain', 'FUZZ', { panel: true, def: 0.6 }),
+        FOOT({ panel: true, action: 'param', p: 'd.on', label: 'FUZZ' }), LED({ x: 176, y: 252, bind: 'param:d.on', color: '#ff2a1a', r: 2.4 })],
+      derive: swl('w'),
+      desc: 'Switchless wah with a fuzz in front, voiced low for bass. The side switch turns the fuzz on.',
+    }),
+  ]);
 }

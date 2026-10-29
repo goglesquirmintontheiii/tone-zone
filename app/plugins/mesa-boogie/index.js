@@ -94,4 +94,85 @@ export default function register(tz) {
     CAB({ id: 'mesa.cab-2x12recto', name: '2x12 Cali V30', ref: 'Mesa Rectifier 2x12 (V30)', opts: { cab: { hp: 78, hpQ: 1.6, resDb: 4.5, lp: 5600, peaks: [[120, 1, 1.5], [1500, 1.2, 2], [2900, 1.6, 5], [4600, 2.5, 2.5]], seed: 51 } }, cabSize: '2x12', grille: 'black', logo: 'Rectifire', logoFont: "'Oswald', sans-serif", logoColor: '#d9dde2', piping: '#9ea4ab' }),
     CAB({ id: 'mesa.cab-subway2x10', name: '2x10 Cali Tube-way', ref: 'Mesa/Boogie Subway 2x10', bass: true, opts: { cab: { hp: 48, hpQ: 1.1, resDb: 2.5, lp: 7500, peaks: [[95, 1, 2], [700, 1, 0.8], [4000, 1.2, 3]], seed: 52, detail: 1.2 } }, cabSize: '2x10', grille: 'black', logo: 'Tube-way', logoFont: "'Oswald', sans-serif", logoColor: '#d9dde2' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Mesa's stomp line: black boxes with a dark control plate, plus the classic five-band EQ.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, SLIDER, def, ten, db, ms } = tz.helpers;
+  // plain stomp box for this brand: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
+  // Jacks sit below the controls so their labels never cover a knob.
+  tz.addForm('mesa-stomp', (ctx, d) => {
+    const { svg, label, formKit, shade } = tz.gfx;
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const n = kn.length;
+    const perRow = d.perRow || (n === 4 ? 4 : Math.min(3, n));
+    const w = d.fw || (perRow > 3 || foots.length > 1 ? 176 : 140);
+    const rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const jt = d.jacksTop ? 8 : 0;
+    const deckH = d.deckH || 20 + jt + rows.length * 44 + (tg.length ? 32 : 0);
+    const ly = deckH + 36, h = ly + 106;
+    const txt = d.text || '#f0f0f0';
+    formKit.body(g, w, h, d.color, { rx: d.rx ?? 9, brushed: !!d.brushed });
+    if (d.plate) svg('rect', { x: 8, y: 8, width: w - 16, height: deckH, rx: 6, fill: d.plate, stroke: shade(d.plate, 0.3), 'stroke-opacity': 0.5 }, g);
+    if (d.accent) svg('rect', { x: 8, y: deckH + 12, width: w - 16, height: 2.5, rx: 1.2, fill: d.accent }, g);
+    const big = n <= 2;
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = perRow > 1 ? (x1 - x0) / (perRow - 1) : 0;
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 38 + jt + ri * 44, r: big ? 13 : 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 32 + (i * (w - 64)) / (tg.length - 1), y: 20 + jt + rows.length * 44 + 10, orient: 'h', optSize: 4.2 }));
+    if (d.art) d.art(g, w, h, ly);
+    const logo = d.logo || d.name;
+    label(g, w / 2, ly, logo, { size: d.logoSize || (logo.length > 12 ? 11.5 : 14), fill: d.logoColor || txt, font: d.logoFont || "'Oswald', sans-serif", weight: 700, ls: 1.2 });
+    label(g, w / 2, ly + 12, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.75 });
+    const spots = (k) => (k > 1 ? [w * 0.28, w * 0.72] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 26, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: ly + 64, r: 13, labelDy: foots.length > 1 ? -19 : undefined }));
+    formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
+    const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    return { w, h, theme, jacks };
+  });
+
+  const SP = (o) => def(Object.assign({ form: 'mesa-stomp' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff2a1a' })])] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    SP({ id: 'mesa.throttlebox', name: 'Choke Box', ref: 'Mesa/Boogie Throttle Box', logo: 'CHOKE BOX', typeName: 'High-Gain Distortion', cat: 'Distortion', color: '#1d1d1f', plate: '#0c0c0d', accent: '#e8792a', knob: 'mesa',
+      algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 6, preHp: 110, tone: 'lp', toneLo: 1300, toneHi: 9000, postLp: 7200, levelMaxDb: -6,
+        modes: [{ gainMinDb: 6, gainMaxDb: 38 }, { gainMinDb: 12, gainMaxDb: 50 }, { gainMinDb: 6, gainMaxDb: 38, preEq: [{ type: 'peak', f: 750, q: 0.8, db: -6 }] }, { gainMinDb: 12, gainMaxDb: 50, preEq: [{ type: 'peak', f: 750, q: 0.8, db: -6 }] }] },
+      controls: [t('level', 'LEVEL'), t('tone', 'TONE'), t('gain', 'GAIN', { def: 0.55 }), TOG('hi', 'GAIN', ['LO', 'HI'], { virtual: true, def: 1 }), TOG('cut', 'MID CUT', ['OFF', 'ON'], { virtual: true })],
+      derive: (u) => ({ mode: (u.hi ?? 1) + 2 * (u.cut ?? 0) }), desc: 'Tight, saturated high-gain distortion with Lo / Hi gain and a mid-cut switch.' }),
+    SP({ id: 'mesa.gridslammer', name: 'Grid Smasher', ref: 'Mesa/Boogie Grid Slammer', logo: 'GRID SMASHER', typeName: 'Overdrive', cat: 'Overdrive', color: '#2f6a3a', plate: '#0c0c0d', knob: 'mesa',
+      algo: 'drive', opts: { clip: 'ts', preHp: 120, gainMinDb: 0, gainMaxDb: 36, tone: 'eq3', eqRangeDb: 12, bassF: 120, midF: 720, trebleF: 3000, postLp: 9000, cleanSum: true, levelMaxDb: 8, preEq: [{ type: 'peak', f: 720, q: 0.7, db: 4 }] }, fixed: { mid: 0.5 },
+      controls: [t('level', 'LEVEL'), t('gain', 'GAIN', { def: 0.45 }), t('treble', 'TONE'), t('bass', 'BASS')],
+      desc: 'Mid-hump overdrive with an extra Bass control, great for pushing a lead channel.' }),
+    SP({ id: 'mesa.toneburst', name: 'Tone-Blast', ref: 'Mesa/Boogie Tone-Burst', logo: 'TONE-BLAST', typeName: 'Boost', cat: 'Boost', color: '#a02424', plate: '#0c0c0d', knob: 'mesa',
+      algo: 'boost', fixed: { mode: 0 },
+      controls: [t('level', 'LEVEL', { def: 0.8 }), t('gain', 'GAIN', { def: 0.15 }), t('treble', 'TREBLE'), t('bass', 'BASS')],
+      desc: 'Clean boost with treble and bass, to tighten or fatten your amp.' }),
+    SP({ id: 'mesa.fluxdrive', name: 'Flux Overdrive', ref: 'Mesa/Boogie Flux-Drive', logo: 'FLUX-OD', typeName: 'Overdrive', cat: 'Overdrive', color: '#4a3a7a', plate: '#0c0c0d', knob: 'mesa',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.2, preHp: 80, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3200, postLp: 8500, levelMaxDb: 4, modes: [{ gainMinDb: 2, gainMaxDb: 32 }, { gainMinDb: 8, gainMaxDb: 42 }] }, fixed: { mid: 0.5 },
+      controls: [t('level', 'LEVEL'), t('gain', 'GAIN', { def: 0.5 }), t('treble', 'TREBLE'), t('bass', 'BASS'), TOG('mode', 'GAIN', ['LO', 'HI'])],
+      desc: 'Open, amp-like overdrive with Lo and Hi gain ranges.' }),
+    SP({ id: 'mesa.fiveband', name: 'Five-Slider EQ', ref: 'Mesa/Boogie Five-Band Graphic EQ', logo: 'FIVE-SLIDER', typeName: 'Graphic EQ', cat: 'EQ', color: '#1d1d1f', plate: '#0c0c0d', deckH: 116, cost: 0.2,
+      algo: 'geq', opts: { freqs: [80, 240, 750, 2200, 6600], q: 1.1 },
+      controls: [...['80', '240', '750', '2200', '6600'].map((l, i) => SLIDER('b' + i, l, { min: -12, max: 12, def: [3, -1, -4, 1, 3][i], x: 24 + i * 18.5, y: 68, h: 70, display: db })), SLIDER('level', 'LVL', { min: -12, max: 12, def: 0, x: 118, y: 68, h: 70, display: db })],
+      desc: 'The famous five-band V curve in a pedal: 80, 240, 750, 2200 and 6600 Hz plus level.' }),
+    SP({ id: 'mesa.vtwin', name: 'Twin-V Tube Preamp', ref: 'Mesa/Boogie V-Twin', logo: 'TWIN-V', typeName: 'Tube Preamp', cat: 'Preamp', kind: 'Pedal', color: '#26272b', plate: '#0c0c0d', accent: '#c9a24a', knob: 'mesa', cost: 1.6, perRow: 3,
+      algo: 'amp', opts: { preamp: true, models: ['twin', 'markiic'] },
+      controls: [K('level', 'VOLUME', { min: -24, max: 12, def: -9, display: db }), t('gain', 'GAIN', { def: 0.5 }), t('treble', 'TREBLE'), t('mid', 'MIDDLE'), t('bass', 'BASS'), TOG('channel', 'CHANNEL', ['CLEAN', 'DRIVE'], { values: [0, 1], def: 1 })],
+      desc: 'Two-channel tube preamp pedal: sparkly clean or a singing, compressed lead.' }),
+  ]);
 }

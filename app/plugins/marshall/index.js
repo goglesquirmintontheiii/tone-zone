@@ -139,7 +139,7 @@ function registerPedals(tz) {
     return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: panelH + 30, gap: 26, flip: ctx.flip }) };
   });
 
-  const MP = (o) => def(Object.assign({ form: 'marshall-pedal' }, o, { controls: [...o.controls, FOOT(), LED({ color: '#ff2a1a' })] }));
+  const MP = (o) => def(Object.assign({ form: 'marshall-pedal', color: '#1d1d1f' }, o, { controls: [...o.controls, FOOT(), LED({ color: '#ff2a1a' })] }));
   const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
 
   tz.addDefs([

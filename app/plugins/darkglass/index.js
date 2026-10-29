@@ -3,7 +3,7 @@
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
-  const { BOSS, NINE, MXRD, lvl, tone, gain, S, onFoot, onLed, k, AMP, CAB, preampPair, preampOf, marshallKnobs, fenderKnobs } = tz.builders;
+  const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, preampPair, stomp } = tz.builders;
   // ---- amp helpers (same pattern in every amp-brand plugin)
   // ampFit: explicit panel layout so mini toggles never collide with the knob row / power LED.
   // AMPX: amp + matching rack preamp; controls named 'r.*' / 't.*' add an onboard spring reverb / tremolo (chain).
@@ -21,12 +21,15 @@ export default function register(tz) {
   }
   function AMPX(o) {
     const a = ampFit(AMP(o));
+    // trim: output level offset (dB) for voicings that come out hot
+    if (o.trim !== undefined) a.fixed = Object.assign({}, a.fixed, { level: o.trim });
     const pre = preampOf(Object.assign({}, a, { controls: a.controls.filter((c) => !isFx(c)) }));
     const sw = a.controls.filter((c) => (c.t === 'toggle' || c.t === 'sel') && !isFx(c)).map((c) => SEL(c.p, c.label, c.options, { values: c.values, def: c.def ?? 0, virtual: c.virtual, sweep: c.options.length > 2 ? 90 : 60, optSize: 4.2 }));
     const pc = pre.controls.filter((c) => !(c.t === 'knob' && !c.p));
     const li = pc.findIndex((c) => c.p === 'level');
     pc.splice(li, 0, ...sw);
     pre.controls = pc;
+    if (o.trim !== undefined) pc.forEach((c) => { if (c.p === 'level') c.def = o.trim; });
     if (o.derive) pre.derive = o.derive;
     if (o.preFixed) pre.fixed = o.preFixed;
     if (a.controls.some(isFx)) {
@@ -56,6 +59,19 @@ export default function register(tz) {
     return [a, pre];
   }
   const fk = (p, label, o = {}) => k(p, label, Object.assign({ scale: 10, style: 'fender' }, o));
+  // cab with a preset mic setup. mics: [{ type, spk, pos, dist, lvl }], pos = fraction of the cone radius from the dust cap
+  const { cabGeom } = tz.gfx.cabgeom;
+  function CABM(o, mics = [{ type: 0, pos: 0.3 }]) {
+    const d = CAB(o), g = cabGeom(d.cabSize || '4x12'), ip = {};
+    mics.forEach((m, i) => {
+      const n = i + 1, [cx, cy] = g.centers[Math.min(g.centers.length - 1, m.spk || 0)];
+      Object.assign(ip, { [`m${n}on`]: 1, [`m${n}type`]: m.type ?? 0, [`m${n}dist`]: m.dist ?? 0.15, [`m${n}lvl`]: m.lvl ?? 0,
+        [`_m${n}x`]: (cx + (m.pos ?? 0.3) * g.sr - g.gx) / g.gw, [`_m${n}y`]: (cy - g.gy) / g.gh });
+    });
+    d.initParams = Object.assign({}, d.initParams, ip);
+    return d;
+  }
+  const cl = (v) => Math.max(0, Math.min(1, v));
   tz.addDefs([
     def({ id: 'pre.b7k', name: 'Dark Bass Pre', ref: 'Darkglass Microtubes B7K', cat: 'Preamp', form: 'tz', color: '#5c5f63', text: '#111', logo: 'DARK B7', typeName: 'Bass preamp', knob: 'mxr',
         algo: 'drive', opts: { clip: 'mosfet', bias: 0.15, preHp: 60, gainMinDb: 4, gainMaxDb: 40, tone: 'eq3', useHiMid: true, eqRangeDb: 12, bassF: 80, midF: 500, hiMidF: 1500, trebleF: 5000, postLp: 10000, levelMaxDb: 8 },
@@ -80,5 +96,9 @@ export default function register(tz) {
       controls: [k('gain', 'GAIN', { def: 0.45 }), k('bass', 'BASS'), k('mid', 'MIDS'), k('midfreq', 'MID FREQ'), k('treble', 'TREBLE'), k('master', 'MASTER'), TOG('channel', 'MICROTUBES', ['OFF', 'ON']), TOG('ultralo', 'GRUNT', ['OFF', 'ON']), TOG('ultrahi', 'ATTACK', ['OFF', 'ON'])],
       desc: '900 W class-D bass head with the Microtubes overdrive circuit on tap.' }),
     CAB({ id: 'darkglass.cab-dg410', name: '4x10 Dark DG', ref: 'Darkglass DG410N', bass: true, opts: { cab: { hp: 42, hpQ: 1.2, resDb: 3, lp: 7500, peaks: [[85, 1, 2.5], [800, 1, 0.5], [4200, 1.1, 3]], seed: 131, detail: 1.1 } }, cabSize: '4x10', grille: 'black', logo: 'DARK', logoFont: "'Oswald', sans-serif", logoColor: '#cfcfcf', piping: '#6a6d72' }),
+  ]);
+  tz.addDefs([
+    CABM({ id: 'darkglass.cab-dg212', name: '2x12 Dark DG', ref: 'Darkglass DG212N', bass: true, opts: { cab: { hp: 45, hpQ: 1.2, resDb: 3, lp: 7200, peaks: [[90, 1, 2.5], [800, 1, 0.5], [4200, 1.1, 3]], seed: 132, detail: 1.1 } }, cabSize: '2x12', grille: 'black', logo: 'DARK', logoFont: "'Oswald', sans-serif", logoColor: '#cfcfcf', piping: '#6a6d72' },
+      [{ type: 3, spk: 0, pos: 0.3 }]),
   ]);
 }

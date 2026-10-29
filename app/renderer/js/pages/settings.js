@@ -1,6 +1,7 @@
 // Settings: audio engine (buffer, quality, DSP budget), PipeWire routing, board preferences, about.
 import { el, esc, bus, toast } from '../util.js';
 import { state, CABLE_COLORS } from '../state.js';
+import { captureSettingsPanel } from './capture.js';
 
 let portsData = null;
 
@@ -141,6 +142,9 @@ export function renderSettings() {
       sw.querySelectorAll('i').forEach((x) => x.classList.toggle('on', x === i));
     };
   }
+
+  // ---------------- capture trainer
+  captureSettingsPanel(grid);
 
   // ---------------- about
   const ab = el('div', { class: 'panel' }, grid);

@@ -198,7 +198,7 @@ export function installMini(tz, formName, st = {}) {
 
     // brand band
     if (st.band === 'bottom') {
-      const by = h - 46;
+      const by = h - 38;
       svg('path', { d: `M0 ${by} H${w} V${h - rx} Q${w} ${h} ${w - rx} ${h} H${rx} Q0 ${h} 0 ${h - rx} Z`, fill: st.bandColor || shade(col, -0.55) }, g);
       svg('rect', { x: 0, y: by, width: w, height: 1.2, fill: acc }, g);
     } else if (st.band === 'top') {

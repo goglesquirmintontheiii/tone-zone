@@ -1,0 +1,12 @@
+{
+  "id": "xotic",
+  "name": "Xotic",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Xotic Effects: transparent boosters, preamps, drives and compressors in small die-cast boxes.",
+  "kind": "brand",
+  "brand": "Xotic",
+  "main": "index.js",
+  "api": 1,
+  "color": "#3a4f9a"
+}

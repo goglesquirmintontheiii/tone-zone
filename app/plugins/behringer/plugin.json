@@ -3,7 +3,7 @@
   "name": "Behringer",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Budget stompboxes inspired by Behringer gear: shiny plastic compact pedals in signature colours (drives, fuzz, delays, modulation, reverb, dynamics), the V-Tone amp-modeling DI preamps, an acoustic DI, a tuner, an A/B switch and a multi-FX.",
+  "description": "Budget stompboxes inspired by Behringer gear: shiny plastic compact pedals in signature colours (drives, bass overdrive, fuzz, delays, modulation, octaver and pitch shifter, reverb, dynamics, graphic EQs), a wah, the V-Tone amp-modeling DI preamps, an acoustic DI, a tuner, an A/B switch and a multi-FX.",
   "kind": "brand",
   "brand": "Behringer",
   "main": "index.js",

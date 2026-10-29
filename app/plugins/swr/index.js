@@ -3,7 +3,7 @@
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
-  const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, stomp } = tz.builders;
+  const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, preampPair, stomp } = tz.builders;
   // ---- amp helpers (same pattern in every amp-brand plugin)
   // ampFit: explicit panel layout so mini toggles never collide with the knob row / power LED.
   // AMPX: amp + matching rack preamp; controls named 'r.*' / 't.*' add an onboard spring reverb / tremolo (chain).
@@ -21,12 +21,15 @@ export default function register(tz) {
   }
   function AMPX(o) {
     const a = ampFit(AMP(o));
+    // trim: output level offset (dB) for voicings that come out hot
+    if (o.trim !== undefined) a.fixed = Object.assign({}, a.fixed, { level: o.trim });
     const pre = preampOf(Object.assign({}, a, { controls: a.controls.filter((c) => !isFx(c)) }));
     const sw = a.controls.filter((c) => (c.t === 'toggle' || c.t === 'sel') && !isFx(c)).map((c) => SEL(c.p, c.label, c.options, { values: c.values, def: c.def ?? 0, virtual: c.virtual, sweep: c.options.length > 2 ? 90 : 60, optSize: 4.2 }));
     const pc = pre.controls.filter((c) => !(c.t === 'knob' && !c.p));
     const li = pc.findIndex((c) => c.p === 'level');
     pc.splice(li, 0, ...sw);
     pre.controls = pc;
+    if (o.trim !== undefined) pc.forEach((c) => { if (c.p === 'level') c.def = o.trim; });
     if (o.derive) pre.derive = o.derive;
     if (o.preFixed) pre.fixed = o.preFixed;
     if (a.controls.some(isFx)) {
@@ -56,11 +59,35 @@ export default function register(tz) {
     return [a, pre];
   }
   const fk = (p, label, o = {}) => k(p, label, Object.assign({ scale: 10, style: 'fender' }, o));
+  // cab with a preset mic setup. mics: [{ type, spk, pos, dist, lvl }], pos = fraction of the cone radius from the dust cap
+  const { cabGeom } = tz.gfx.cabgeom;
+  function CABM(o, mics = [{ type: 0, pos: 0.3 }]) {
+    const d = CAB(o), g = cabGeom(d.cabSize || '4x12'), ip = {};
+    mics.forEach((m, i) => {
+      const n = i + 1, [cx, cy] = g.centers[Math.min(g.centers.length - 1, m.spk || 0)];
+      Object.assign(ip, { [`m${n}on`]: 1, [`m${n}type`]: m.type ?? 0, [`m${n}dist`]: m.dist ?? 0.15, [`m${n}lvl`]: m.lvl ?? 0,
+        [`_m${n}x`]: (cx + (m.pos ?? 0.3) * g.sr - g.gx) / g.gw, [`_m${n}y`]: (cy - g.gy) / g.gh });
+    });
+    d.initParams = Object.assign({}, d.initParams, ip);
+    return d;
+  }
+  const cl = (v) => Math.max(0, Math.min(1, v));
   tz.addDefs([
     AMPX({ id: 'swr.amp-sm500', name: 'SWX Studio 500', ref: 'SWR SM-500', cat: 'Bass Amp', tolex: '#151515', panel: '#2a2b2d', panelText: '#e2e2e2', grille: 'black', headGrille: false, corners: false, logo: 'SWX', logoFont: "'Oswald', sans-serif", logoColor: '#c4c8cc', knob: 'chrome',
       opts: { voice: { base: 'gk800', stages: [[18, 3.2, 0.1, 14000, 15]], tsType: 3, baxBass: 60, baxTreble: 5000, baxRange: 15, otLp: 11000 } },
       controls: [k('gain', 'GAIN', { def: 0.45 }), k('aural', 'AURAL ENH', { def: 0.3, virtual: true }), k('bass', 'BASS'), k('mid', 'MIDRANGE'), k('midfreq', 'FREQ'), k('treble', 'TREBLE'), k('master', 'MASTER')],
       derive: (u) => { const a = u.aural ?? 0.3; return { bass: Math.min(1, (u.bass ?? 0.5) + 0.15 * a), treble: Math.min(1, (u.treble ?? 0.5) + 0.2 * a), mid: (u.mid ?? 0.5) * (1 - 0.3 * a) }; },
       desc: 'Tube-preamp, solid-state power bass head with the Aural Enhancer.' }),
+  ]);
+  tz.addDefs([
+    AMPX({ id: 'swr.amp-redhead', name: 'SWX Redtop', ref: 'SWR Redhead', cat: 'Bass Amp', combo: true, speakers: 2, tolex: '#151515', panel: '#2a2b2d', panelText: '#e2e2e2', grille: 'oxblood', corners: false, logo: 'SWX', logoFont: "'Oswald', sans-serif", logoColor: '#e0e0e0', knob: 'chrome',
+      opts: { voice: { base: 'gk800', stages: [[18, 3.2, 0.1, 14000, 15]], tsType: 3, baxBass: 60, baxTreble: 5000, baxRange: 15, otLp: 11000 } },
+      controls: [k('gain', 'GAIN', { def: 0.45 }), k('aural', 'AURAL ENH', { def: 0.3, virtual: true }), k('bass', 'BASS'), k('mid', 'MIDRANGE'), k('midfreq', 'FREQ'), k('treble', 'TREBLE'), k('r.mix', 'REVERB', { def: 0 }), k('master', 'MASTER'), TOG('ultralo', 'INTENSIFY', ['OFF', 'ON'])],
+      derive: (u) => { const a = u.aural ?? 0.3; return { bass: Math.min(1, (u.bass ?? 0.5) + 0.15 * a), treble: Math.min(1, (u.treble ?? 0.5) + 0.2 * a), mid: (u.mid ?? 0.5) * (1 - 0.3 * a) }; },
+      verb: { decay: 0.35, tone: 0.5 }, desc: '2x10 bass combo with tweeter, Aural Enhancer, Bass Intensifier and a built-in reverb.' }),
+    CABM({ id: 'swr.cab-goliath3', name: '4x10 SWX Giant III', ref: 'SWR Goliath III (4x10 + tweeter)', bass: true, opts: { cab: { hp: 42, hpQ: 1.2, resDb: 3, lp: 8000, peaks: [[90, 1, 2.5], [500, 1, 0.5], [2000, 1.2, 1.5], [6500, 1.2, 2.5]], seed: 181, detail: 1.1 } }, cabSize: '4x10', grille: 'black', corners: false, logo: 'SWX', logoFont: "'Oswald', sans-serif", logoColor: '#c4c8cc' },
+      [{ type: 3, spk: 1, pos: 0.25 }]),
+    CABM({ id: 'swr.cab-bigben', name: '1x18 SWX Big Bell', ref: 'SWR Big Ben 1x18', bass: true, opts: { cab: { hp: 32, hpQ: 1.4, resDb: 5, lp: 2200, peaks: [[60, 1, 3.5], [250, 1, 1], [900, 1.2, -1.5]], seed: 182, detail: 1.5 } }, cabSize: '1x18', grille: 'black', corners: false, logo: 'SWX', logoFont: "'Oswald', sans-serif", logoColor: '#c4c8cc' },
+      [{ type: 5, pos: 0.4, dist: 0.1 }]),
   ]);
 }

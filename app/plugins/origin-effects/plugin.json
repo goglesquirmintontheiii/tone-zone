@@ -1,0 +1,12 @@
+{
+  "id": "origin-effects",
+  "name": "Origin Effects",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Origin Effects: a studio FET compressor and a valve-amp overdrive with black face plates and chrome knobs.",
+  "kind": "brand",
+  "brand": "Origin Effects",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8ea3b5"
+}

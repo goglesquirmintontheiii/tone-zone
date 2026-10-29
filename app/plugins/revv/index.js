@@ -66,4 +66,76 @@ export default function register(tz) {
       controls: [k('gain', 'GAIN', { def: 0.6 }), k('bass', 'BASS'), k('mid', 'MID'), k('treble', 'TREBLE'), k('presence', 'PRESENCE'), k('master', 'VOLUME'), SEL('channel', 'CHANNEL', ['GREEN', 'PURPLE', 'RED'], { def: 2, sweep: 90, optSize: 4 }), TOG('aggr', 'AGGRESSION', ['OFF', 'ON'], { virtual: true })],
       derive: (u) => (u.aggr ? { gain: Math.min(1, (u.gain ?? 0.6) + 0.15), mid: Math.min(1, (u.mid ?? 0.5) + 0.15) } : {}), desc: 'Modern Canadian high gain: huge clean, crunchy Purple and a tight, saturated Red.' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Revv G-series channel pedals and the G8 gate.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, SLIDER, def, ten, db, ms } = tz.helpers;
+  // plain stomp box for this brand: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
+  // Jacks sit below the controls so their labels never cover a knob.
+  tz.addForm('revv-stomp', (ctx, d) => {
+    const { svg, label, formKit, shade } = tz.gfx;
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const n = kn.length;
+    const perRow = d.perRow || (n === 4 ? 4 : Math.min(3, n));
+    const w = d.fw || (perRow > 3 || foots.length > 1 ? 176 : 140);
+    const rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const jt = d.jacksTop ? 8 : 0;
+    const deckH = d.deckH || 20 + jt + rows.length * 44 + (tg.length ? 32 : 0);
+    const ly = deckH + 36, h = ly + 106;
+    const txt = d.text || '#f0f0f0';
+    formKit.body(g, w, h, d.color, { rx: d.rx ?? 9, brushed: !!d.brushed });
+    if (d.plate) svg('rect', { x: 8, y: 8, width: w - 16, height: deckH, rx: 6, fill: d.plate, stroke: shade(d.plate, 0.3), 'stroke-opacity': 0.5 }, g);
+    if (d.accent) svg('rect', { x: 8, y: deckH + 12, width: w - 16, height: 2.5, rx: 1.2, fill: d.accent }, g);
+    const big = n <= 2;
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = perRow > 1 ? (x1 - x0) / (perRow - 1) : 0;
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 38 + jt + ri * 44, r: big ? 13 : 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 32 + (i * (w - 64)) / (tg.length - 1), y: 20 + jt + rows.length * 44 + 10, orient: 'h', optSize: 4.2 }));
+    if (d.art) d.art(g, w, h, ly);
+    const logo = d.logo || d.name;
+    label(g, w / 2, ly, logo, { size: d.logoSize || (logo.length > 12 ? 11.5 : 14), fill: d.logoColor || txt, font: d.logoFont || "'Oswald', sans-serif", weight: 700, ls: 1.2 });
+    label(g, w / 2, ly + 12, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.75 });
+    const spots = (k) => (k > 1 ? [w * 0.28, w * 0.72] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 26, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: ly + 64, r: 13, labelDy: foots.length > 1 ? -19 : undefined }));
+    formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
+    const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    return { w, h, theme, jacks };
+  });
+
+  const SP = (o) => def(Object.assign({ form: 'revv-stomp' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff2a1a' })])] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    ...[['g2', 'R2 Green', 'Revv G2', 'R2', '#2e7d4a', 'Crunch / Overdrive', 'Overdrive', TOG('mode', 'DRIVE', ['OFF', 'BLUE', 'RED'], { values: [0, 1, 2] }),
+      { clip: 'asym', bias: 0.2, preHp: 80, gainMinDb: 4, gainMaxDb: 36, levelMaxDb: 2, modes: [{}, { preEq: [{ type: 'peak', f: 900, q: 0.8, db: 3 }] }, { gainMaxDb: 42, preEq: [{ type: 'peak', f: 900, q: 0.8, db: 4 }] }] },
+      'Organic crunch from the green channel of the big Canadian head. Drive switch adds Blue or Red boost.'],
+    ['g3', 'R3 Purple', 'Revv G3', 'R3', '#5b3a8c', 'Distortion', 'Distortion', TOG('mode', 'AGGRESSION', ['1', '2', '3'], { values: [0, 1, 2] }),
+      { clip: 'diode', stages: 2, stage2Db: 6, preHp: 110, gainMinDb: 10, gainMaxDb: 48, levelMaxDb: -5, modes: [{}, { preEq: [{ type: 'peak', f: 800, q: 0.8, db: 3 }] }, { preHp: 180, preEq: [{ type: 'peak', f: 800, q: 0.8, db: 5 }] }] },
+      'Tight, mid-focused high gain from the purple channel, with a 3-way aggression switch.'],
+    ['g4', 'R4 Red', 'Revv G4', 'R4', '#a5222a', 'Distortion', 'Distortion', TOG('mode', 'AGGRESSION', ['1', '2', '3'], { values: [0, 1, 2] }),
+      { clip: 'diode', stages: 3, stage2Db: 8, preHp: 100, gainMinDb: 12, gainMaxDb: 50, levelMaxDb: -6, modes: [{ preEq: [{ type: 'ls', f: 250, q: 0.7, db: 3 }] }, {}, { preHp: 170 }] },
+      'Thick, saturated red-channel distortion with extra low-mid punch.']].map(([m, name, ref, logo, color, typeName, cat, sw, v, desc]) =>
+      SP({ id: 'revv.' + m, name, ref, logo, typeName, cat, color, knob: 'chrome', plate: '#0e0e10', jacksTop: true, perRow: 3,
+        algo: 'drive', opts: Object.assign({ tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3200, postLp: 7800 }, v),
+        controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.55 }), t('bass', 'BASS'), t('mid', 'MIDDLE'), t('treble', 'TREBLE'), sw], desc })),
+    SP({ id: 'revv.g8', name: 'R8 Gate', ref: 'Revv G8 Noise Gate', logo: 'R8 GATE', typeName: 'Noise Gate', cat: 'Dynamics', color: '#1d1e21', knob: 'chrome', plate: '#0e0e10', jacksTop: true, cost: 0.1,
+      algo: 'gate', ports: { ins: ['INPUT', 'RETURN'], outs: ['OUTPUT', 'SEND'] },
+      controls: [t('threshold', 'THRESHOLD', { def: 0.4 }), t('decay', 'RELEASE', { def: 0.4 }), TOG('mode', 'MODE', ['SOFT', 'HARD'], { values: [0, 1] })],
+      desc: 'Fast, transparent gate. Put your drives in the send / return loop; detection stays on the input.' }),
+  ]);
 }

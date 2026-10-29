@@ -1,0 +1,12 @@
+{
+  "id": "joyo",
+  "name": "Joyo",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Budget pedals inspired by Joyo gear: the classic JF series (drives, chorus, phase, delay, compressor and amp-in-a-box preamps) and the R series (overdrives, British distortion, multi-mode delay and reverb).",
+  "kind": "brand",
+  "brand": "Joyo",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e7b51f"
+}

@@ -2,11 +2,11 @@
 // Blocks inspired by Behringer gear. Names, logos and artwork are Tone Zone originals; control layouts and
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
 //
-// Custom form `bh-stomp`: the shiny moulded-plastic compact – narrow knob deck, a pedal flap with a rounded lower
+// Custom form `bh-stomp`: the shiny moulded-plastic compact: narrow knob deck, a pedal flap with a rounded lower
 // edge, the printed model code, a glossy highlight streak and the ridged battery door at the toe. One or two knob
 // rows (V-Tone units), optional toggle row, screen (tuner) and a custom A/B LED screen.
 export default function register(tz) {
-  const { K, SEL, TOG, FOOT, LED, SCREEN, def, ten, db, ms, MONO, STEREO, MONO_TO_ST } = tz.helpers;
+  const { K, SEL, TOG, FOOT, LED, SCREEN, SLIDER, TREADLE, def, ten, db, ms, MONO, STEREO, MONO_TO_ST } = tz.helpers;
   const { svg, label, formKit, softShadow, luminance, textColorFor, haloFill, shade } = tz.gfx;
 
   const spread = (list, x0, x1, y) => list.forEach((c, i) => {
@@ -159,7 +159,7 @@ export default function register(tz) {
       id: 'bh.nr300', name: 'NQ300 Noise Reducer', ref: 'Behringer NR300 Noise Reducer', code: 'NQ300', typeName: 'Noise Reducer', cat: 'Dynamics', color: '#d6d8da', text: '#151515',
       algo: 'gate', ports: { ins: ['INPUT', 'RETURN'], outs: ['OUTPUT', 'SEND'] },
       controls: [k('threshold', 'THRESHOLD', { def: 0.4 }), k('decay', 'DECAY', { def: 0.4 }), SEL('mode', 'MODE', ['REDUCTION', 'MUTE'], { sweep: 70, optSize: 4.4 })],
-      desc: 'Patch other pedals into SEND / RETURN – detection stays on INPUT.',
+      desc: 'Patch other pedals into SEND / RETURN, detection stays on INPUT.',
     }),
 
     // ---------------------------------------------------------------- modulation
@@ -278,6 +278,84 @@ export default function register(tz) {
         return o;
       },
       desc: 'Six effects on one knob: chorus, flanger, phaser, tremolo, delay and pitch shifter (DEPTH sets the interval, RATE fine-detunes).',
+    }),
+
+    // ---------------------------------------------------------------- more drives / bass
+    BH({
+      id: 'bh.od300', name: 'DO300 Overdrive/Distortion', ref: 'Behringer OD300 Overdrive/Distortion', code: 'DO300', typeName: 'Overdrive / Distortion', cat: 'Overdrive', color: '#f2c21b', text: '#1f1802',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.2, cleanSum: true, clipHp: 700, gainMinDb: 2, gainMaxDb: 38, tone: 'ts', toneLo: 700, postLp: 5600, levelMaxDb: 6,
+        modes: [{}, { clip: 'diode', cleanSum: false, preHp: 90, gainMinDb: 8, gainMaxDb: 46, tone: 'blend', blendLp: 650, blendHp: 1150, postLp: 7500, levelMaxDb: 4, outTrim: 0.5 }] },
+      controls: [lvl(), k('tone', 'TONE'), k('gain', 'DRIVE'), SEL('mode', 'MODE', ['OD', 'DS'], { sweep: 70, optSize: 5 })],
+      desc: 'Two pedals in one: OD is a smooth overdrive, DS a crunchy distortion.',
+    }),
+    BH({
+      id: 'bh.bod400', name: 'BDO400 Bass Overdrive', ref: 'Behringer BOD400 Bass Overdrive', code: 'BDO400', typeName: 'Bass Overdrive', cat: 'Overdrive', color: '#a8c43a', text: '#141c03', tags: ['bass'],
+      algo: 'drive', opts: { clip: 'asym', bias: 0.15, preHp: 30, gainMinDb: 4, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 90, midF: 600, trebleF: 2500, postLp: 7000, levelMaxDb: 8 },
+      fixed: { mid: 0.5 },
+      controls: [lvl(), k('blend', 'BALANCE', { def: 0.6 }), k('bass', 'BASS'), k('treble', 'TREBLE'), k('gain', 'GAIN', { def: 0.45 })],
+      desc: 'Bass overdrive. BALANCE mixes the clean low end back in.',
+    }),
+
+    // ---------------------------------------------------------------- more modulation / pitch
+    BH({
+      id: 'bh.co600', name: 'OC600 Chorus Orchestra', ref: 'Behringer CO600 Chorus Orchestra', code: 'OC600', typeName: 'Chorus Orchestra', cat: 'Modulation', color: '#6cc3e6', text: '#03161f',
+      algo: 'chorus', opts: { style: 'bbd' }, ports: { ins: ['INPUT'], outs: ['OUT A', 'OUT B'] }, stereo: 'fixed',
+      controls: [k('mix', 'LEVEL', { def: 0.5 }), k('tone', 'EQ'), k('rate', 'RATE', { def: 0.3 }), k('depth', 'DEPTH', { def: 0.5 })],
+      desc: 'Wide stereo chorus in the style of the classic blue compact.',
+    }),
+    BH({
+      id: 'bh.uo300', name: 'OU300 Ultra Octaver', ref: 'Behringer UO300 Ultra Octaver', code: 'OU300', typeName: 'Ultra Octaver', cat: 'Pitch', color: '#3f5fb8', text: '#eef2ff',
+      algo: 'pitch', cost: 1, fixed: { semis1: -12, semis2: -24, level3: 0, quality: 0, tone: 0.6 },
+      controls: [k('level2', 'OCT 2', { def: 0.3 }), k('level1', 'OCT 1', { def: 0.6 }), k('dry', 'DIRECT', { def: 0.8 }), TOG('octup', 'MODE', ['DOWN', 'UP'])],
+      derive: (p) => ({ semis1: p.octup ? 12 : -12, semis2: p.octup ? -12 : -24 }),
+      desc: 'Analog-style octave divider: one and two octaves down. UP swaps OCT 1 for an octave up.',
+    }),
+    BH({
+      id: 'bh.us600', name: 'SU600 Ultra Shifter/Harmonist', ref: 'Behringer US600 Ultra Shifter/Harmonist', code: 'SU600', typeName: 'Ultra Shifter / Harmonist', cat: 'Pitch', color: '#8b72c6', text: '#f4f0ff',
+      algo: 'pitch', cost: 1, fixed: { level2: 0, level3: 0, quality: 1, tone: 0.9 },
+      controls: [k('mix', 'BALANCE', { def: 0.5, virtual: true }), K('semis1', 'SHIFT', { min: -12, max: 12, step: 1, def: 7, display: (v) => (v > 0 ? '+' : '') + Math.round(v) }),
+        K('cents', 'FINE', { min: -50, max: 50, def: 0, display: (v) => Math.round(v) + ' ct' }), SEL('mode', 'MODE', ['SHIFT', 'DETUNE'], { sweep: 70, optSize: 4.6 })],
+      derive: (p) => { const m = p.mix ?? 0.5; return { level1: Math.min(1, m * 2) * 0.75, dry: Math.min(1, (1 - m) * 2) * 0.75, semis1: p.mode === 1 ? 0 : p.semis1 ?? 7, cents: p.mode === 1 ? (p.cents ?? 0) || 12 : p.cents ?? 0 }; },
+      desc: 'Pitch shifter: SHIFT up to an octave either way, FINE for detune. DETUNE mode adds a thickening voice.',
+    }),
+    BH({
+      id: 'bh.tp300', name: 'PT300 Tremolo/Pan', ref: 'Behringer TP300 Tremolo/Panner', code: 'PT300', typeName: 'Tremolo / Panner', cat: 'Modulation', color: '#1f7fa6', text: '#eaf7ff',
+      algo: 'tremolo', stereo: 'stereo', ports: { ins: ['INPUT'], outs: ['OUT A', 'OUT B'] },
+      controls: [k('rate', 'RATE', { def: 0.45 }), k('depth', 'DEPTH', { def: 0.65 }), k('wave', 'WAVE', { def: 0.3 }), SEL('stereo', 'MODE', ['TREM', 'PAN'], { sweep: 70, optSize: 4.6 })],
+      desc: 'Tremolo, or an auto-panner across the two outputs.',
+    }),
+    BH({
+      id: 'bh.vm1', name: 'TM1 Vintage Time Machine', ref: 'Behringer VM1 Vintage Time Machine', code: 'TM1', typeName: 'Analog Delay / Chorus', cat: 'Delay', color: '#b9bcc1', text: '#121315',
+      algo: 'delay', opts: { maxMs: 550 }, fixed: { mode: 1, tone: 0.33, modrate: 0.35 }, ports: { ins: ['INPUT'], outs: ['OUTPUT', 'DIRECT'] }, stereo: 'fixed',
+      controls: [k('level', 'LEVEL', { def: 0.5 }), k('mix', 'BLEND', { def: 0.45 }), k('feedback', 'FEEDBACK', { def: 0.4, max: 1.05 }), K('time', 'DELAY', { min: 30, max: 550, def: 300, display: ms }), TOG('mod', 'MOD', ['CHO', 'VIB'])],
+      derive: (p) => ({ moddepth: p.mod ? 0.55 : 0.25, modrate: p.mod ? 0.55 : 0.3 }),
+      desc: 'Analog delay with a built-in chorus / vibrato on the repeats, in the style of the famous memory echo.',
+    }),
+    BH({
+      id: 'bh.sm200', name: 'SW200 Slow Motion', ref: 'Behringer SM200 Slow Motion', code: 'SW200', typeName: 'Slow Motion', cat: 'Volume', color: '#54a6d6', text: '#04131c',
+      algo: 'swell', fixed: { level: 3.5 },
+      controls: [k('sens', 'SENS', { def: 0.5 }), k('attack', 'ATTACK', { def: 0.45 })],
+      desc: 'Fades every note in like a volume swell.',
+    }),
+
+    // ---------------------------------------------------------------- graphic EQs (7 sliders + level)
+    ...[['bh.eq700', 'QE700 Graphic Equalizer', 'Behringer EQ700 Graphic Equalizer', 'QE700', 'Graphic Equalizer', '#e9e9e7', '#151515', [100, 200, 400, 800, 1600, 3200, 6400], ['100', '200', '400', '800', '1.6k', '3.2k', '6.4k'], []],
+      ['bh.beq700', 'QB700 Bass Graphic EQ', 'Behringer BEQ700 Bass Graphic Equalizer', 'QB700', 'Bass Graphic EQ', '#252528', '#e9e9e9', [50, 120, 400, 500, 800, 4500, 10000], ['50', '120', '400', '500', '800', '4.5k', '10k'], ['bass']]]
+      .map(([id, name, ref, code, typeName, color, text, freqs, labs, tags]) => BH({
+        id, name, ref, code, typeName, cat: 'EQ', color, text, tags,
+        algo: 'geq', opts: { freqs, q: 1.1 },
+        controls: [...labs.map((l, i) => SLIDER('b' + i, l, { min: -15, max: 15, def: 0, x: 24 + i * 13.2, y: 54, h: 56, w: 6, marks: false, labelSize: 4.4, display: db })),
+          SLIDER('level', 'LVL', { min: -15, max: 15, def: 0, x: 124, y: 54, h: 56, w: 6, marks: false, labelSize: 4.4, display: db, capColor: '#c8262b' })],
+        desc: 'Seven-band graphic EQ with +/-15 dB per band and a level slider.',
+      })),
+
+    // ---------------------------------------------------------------- wah
+    def({
+      id: 'bh.hb01', name: 'HL01 Hell Child Wah', ref: 'Behringer HB01 Hellbabe', brand: 'Behringer', code: 'HL01', cat: 'Wah', form: 'treadle', color: '#151517', treadleColor: '#2a2a2d', text: '#f28c28',
+      algo: 'wah', opts: { fLo: 380, fHi: 2400, q: 4.5, mode: 0 },
+      controls: [TREADLE('pos', { def: 0.5 }), LED({ color: '#ff2a1a', r: 2.2 })],
+      logo: 'Hell Child', logoColor: '#f28c28', logoFont: "'Oswald', sans-serif", toeSwitch: true,
+      desc: 'Optical wah. Drag the treadle (heel to toe); click it without dragging to switch it on or off.',
     }),
 
     // ---------------------------------------------------------------- utilities

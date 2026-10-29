@@ -1,0 +1,12 @@
+{
+  "id": "maxon",
+  "name": "Maxon",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Nine-series and 808 style pedals inspired by Maxon gear: green overdrives, distortion, analog delay, compressor, analog chorus, phaser, auto filter and flanger.",
+  "kind": "brand",
+  "brand": "Maxon",
+  "main": "index.js",
+  "api": 1,
+  "color": "#4f8f41"
+}

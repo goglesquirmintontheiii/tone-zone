@@ -1,0 +1,12 @@
+{
+  "id": "two-notes",
+  "name": "Two Notes",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Dual-channel tube preamp pedals inspired by the Two Notes Le series: clean, crunch, lead and bass, with Fusion mode.",
+  "kind": "brand",
+  "brand": "Two Notes",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d8352e"
+}

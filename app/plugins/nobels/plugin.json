@@ -1,0 +1,12 @@
+{
+  "id": "nobels",
+  "name": "Nobels",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Overdrives inspired by Nobels gear: the famous green studio overdrive with its SPECTRUM control, the bass-cut version and the mini.",
+  "kind": "brand",
+  "brand": "Nobels",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2f6b34"
+}

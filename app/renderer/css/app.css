@@ -653,3 +653,93 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .sb-hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
 .sb-reset { position: absolute; right: 60px; top: 16px; }
 .sb-svg .sel-ring, .sb-svg .load-badge { display: none; }
+
+/* ------------------------------------------------------------ capture tab (NAM models from presets) */
+.cap-page { max-width: 1500px; }
+.cap-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.cap-tile { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+.cap-tile.ok { border-color: rgba(61, 220, 132, 0.25); }
+.cap-tile-ic { width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center; background: rgba(255, 255, 255, 0.05); color: var(--text2); }
+.cap-tile.ok .cap-tile-ic { background: rgba(61, 220, 132, 0.12); color: var(--good); }
+.cap-tile-ic .ic { width: 18px; height: 18px; }
+.cap-tile-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cap-tile-body b { font-size: 13px; }
+.cap-tile-body span { color: var(--muted); font-size: 12px; }
+.cap-tile-body span.err { color: #ff9aa5; }
+.cap-tile-body span.warn { color: var(--warn); }
+.cap-tile-act { display: flex; gap: 6px; flex: none; }
+.cap-bar { height: 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); overflow: hidden; margin-top: 6px; }
+.cap-bar i { display: block; height: 100%; width: 0; background: var(--accent-grad); transition: width 0.3s; }
+.cap-bar.soft i { background: linear-gradient(90deg, #37d6c2, #8ff0e2); }
+.cap-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.cap-form.busy { opacity: 0.55; pointer-events: none; }
+.cap-row { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: start; padding: 11px 0; border-top: 1px solid var(--line); }
+.cap-lbl b { display: block; font-size: 12.5px; font-weight: 600; }
+.cap-lbl small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.cap-ctl { min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cap-ctl > select, .cap-ctl > input { width: 100%; max-width: 420px; }
+.seg.disabled { opacity: 0.45; pointer-events: none; }
+.cap-range { display: flex; gap: 12px; margin: 0 0 10px 184px; }
+.cap-range label { display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 240px; font-size: 11.5px; color: var(--muted); }
+.cap-chain { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px 184px; }
+.cap-chip { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); color: var(--muted); border: 1px solid var(--line); }
+.cap-chip.in { color: var(--text); background: rgba(255, 122, 47, 0.12); border-color: rgba(255, 122, 47, 0.35); }
+.cap-chip.in.off { text-decoration: line-through; color: var(--muted); background: rgba(255, 255, 255, 0.03); border-color: var(--line); }
+.cap-warn { margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 194, 75, 0.07); border: 1px solid rgba(255, 194, 75, 0.25); }
+.cap-warn > b { color: var(--warn); font-size: 12.5px; }
+.cap-warn > p { margin: 4px 0 8px; color: var(--text2); font-size: 12px; }
+.cap-check { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; color: var(--text2); cursor: pointer; }
+.cap-check input { margin: 0; accent-color: var(--accent); }
+.cap-check em { font-style: normal; color: var(--muted); }
+.cap-archs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; width: 100%; }
+.cap-arch { all: unset; cursor: pointer; padding: 9px 11px; border-radius: 10px; background: rgba(0, 0, 0, 0.22); border: 1px solid var(--line); transition: border-color 0.15s, background 0.15s; }
+.cap-arch:hover { border-color: var(--line2); }
+.cap-arch.on { border-color: rgba(255, 122, 47, 0.7); background: rgba(255, 122, 47, 0.1); }
+.cap-arch b { display: block; font-size: 12.5px; }
+.cap-arch b em { font-style: normal; font-size: 9.5px; font-weight: 700; margin-left: 5px; padding: 1px 6px; border-radius: 6px; background: rgba(55, 214, 194, 0.15); color: #8ff0e2; vertical-align: 1px; }
+.cap-arch span { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.cap-foot { display: flex; align-items: center; gap: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cap-go { padding: 9px 18px; }
+.cap-go:disabled { opacity: 0.45; cursor: default; }
+.cap-note { color: var(--muted); font-size: 12px; }
+.cap-note.err { color: #ff9aa5; }
+.cap-steps { display: grid; gap: 8px; }
+.cap-step { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.025); border: 1px solid var(--line); }
+.cap-dot { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: rgba(255, 255, 255, 0.07); color: var(--muted); }
+.cap-dot .ic { width: 14px; height: 14px; }
+.cap-step.run { border-color: rgba(255, 122, 47, 0.35); background: rgba(255, 122, 47, 0.05); }
+.cap-step.run .cap-dot { background: var(--accent-grad); color: #fff; }
+.cap-step.done .cap-dot { background: rgba(61, 220, 132, 0.16); color: var(--good); }
+.cap-step.error .cap-dot, .cap-step.cancel .cap-dot { background: rgba(255, 77, 94, 0.16); color: var(--bad); }
+.cap-step.error span { color: #ff9aa5; }
+.cap-step-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cap-step-body b { font-size: 12.5px; }
+.cap-step-body > span { color: var(--muted); font-size: 11.5px; }
+.cap-step.wait b { color: var(--muted); }
+.cap-train { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+.cap-spark { width: 160px; height: 40px; flex: none; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.cap-spark polyline { fill: none; stroke: var(--teal); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.cap-train-txt { font-size: 11.5px; color: var(--muted); display: grid; gap: 1px; }
+.cap-train-txt b { color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+.cap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.cap-result { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: rgba(0, 0, 0, 0.22); border: 1px solid var(--line); }
+.cap-score { width: 92px; height: 92px; flex: none; border-radius: 50%; display: grid; place-content: center; text-align: center; border: 3px solid var(--line2); }
+.cap-score b { font: 18px 'Share Tech Mono', monospace; color: var(--text); }
+.cap-score span { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
+.cap-score.good { border-color: rgba(61, 220, 132, 0.6); }
+.cap-score.ok { border-color: rgba(55, 214, 194, 0.55); }
+.cap-score.warn { border-color: rgba(255, 194, 75, 0.6); }
+.cap-score.bad { border-color: rgba(255, 77, 94, 0.6); }
+.cap-result-txt { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text2); }
+.cap-result-txt small { color: var(--muted); font-size: 11.5px; }
+.cap-rating { display: inline-block; margin-right: 6px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, 0.06); }
+.cap-rating.good { background: rgba(61, 220, 132, 0.15); color: #8ef0b6; }
+.cap-rating.ok { background: rgba(55, 214, 194, 0.14); color: #8ff0e2; }
+.cap-rating.warn { background: rgba(255, 194, 75, 0.14); color: var(--warn); }
+.cap-rating.bad { background: rgba(255, 77, 94, 0.15); color: #ff9aa5; }
+.cap-logbox { margin-top: 12px; }
+.cap-logbox summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.cap-log { max-height: 320px; overflow: auto; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, 0.35); font: 11px/1.45 'Share Tech Mono', monospace; color: var(--text2); white-space: pre-wrap; user-select: text; }
+@media (max-width: 1250px) {
+  .cap-grid, .cap-top { grid-template-columns: 1fr; }
+}

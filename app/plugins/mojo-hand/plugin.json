@@ -1,0 +1,12 @@
+{
+  "id": "mojo-hand",
+  "name": "Mojo Hand FX",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Mojo Hand FX: big fuzzes and a rodent-style distortion in bright gloss boxes with woodcut emblems.",
+  "kind": "brand",
+  "brand": "Mojo Hand FX",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e2a62a"
+}

@@ -3,7 +3,7 @@
   "name": "Korg",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Pedals inspired by Korg stompboxes: the vocal-synth singing stomp that turns single-note lines into a sung Vocaloid-style voice (eleven syllable patterns, peak LED).",
+  "description": "Pedals inspired by Korg stompboxes: the vocal-synth singing stomp, the Pitchblack-style pedal tuner, a vibe with a speed treadle, a studio digital delay pedal and a compact multi-effect.",
   "kind": "brand",
   "brand": "Korg",
   "main": "index.js",

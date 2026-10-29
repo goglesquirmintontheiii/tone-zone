@@ -1,0 +1,12 @@
+{
+  "id": "jackson-audio",
+  "name": "Jackson Audio",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Jackson Audio: a clean-blend overdrive, a compressor with EQ and a preamp boost in gloss metal-flake boxes with ornate frames.",
+  "kind": "brand",
+  "brand": "Jackson Audio",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c9a44a"
+}

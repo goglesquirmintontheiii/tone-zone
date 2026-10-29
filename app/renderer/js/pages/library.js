@@ -133,7 +133,7 @@ export function renderLibrary() {
       const art = el('div', { class: 'card-art' }, card);
       art.appendChild(thumbImg(d, 200));
       el('h3', {}, card).textContent = p.name;
-      el('div', { class: 'sub' }, card).textContent = `${p.models.length} ${p.models.length === 1 ? 'model' : 'configurations'} · ${kind === 'nam' ? p.category : 'cab IR'} · ${p.origin === 'tone3000' ? 'TONE3000' : 'imported'}`;
+      el('div', { class: 'sub' }, card).textContent = `${p.models.length} ${p.models.length === 1 ? 'model' : 'configurations'} · ${kind === 'nam' ? p.category : 'cab IR'} · ${p.origin === 'tone3000' ? 'TONE3000' : p.origin === 'capture' ? 'captured' : 'imported'}`;
       const tags = el('div', { class: 'row' }, card);
       const archs = [...new Set(p.models.map((m) => m.meta?.architecture).filter(Boolean))];
       for (const a of archs) el('span', { class: 'pill teal' }, tags).textContent = a;

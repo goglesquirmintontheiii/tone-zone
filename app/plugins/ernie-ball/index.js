@@ -45,7 +45,7 @@ function treadleForm(tz) {
 }
 
 export default function register(tz) {
-  const { K, TOG, LED, TREADLE, def, ms } = tz.helpers;
+  const { K, TOG, LED, TREADLE, def, ms, STEREO } = tz.helpers;
   const { svg } = tz.gfx;
   tz.addForm('eb-treadle', treadleForm(tz));
   // cast-aluminium look: black crackle body with a polished edge strip
@@ -71,7 +71,7 @@ export default function register(tz) {
         const s = p.sweep ?? 0.5;
         return p.target ? { mix: 0.4, feedback: 0.1 + 0.9 * s, mode: 1, moddepth: 0.15 } : { mix: 0.7 * s, mode: 1, moddepth: 0.15 };
       },
-      desc: 'Analog-voiced delay where the treadle sweeps the delay level (or the repeats with EXP = RPT) – swell echoes in and out with your foot.',
+      desc: 'Analog-voiced delay where the treadle sweeps the delay level (or the repeats with EXP = RPT). Swell echoes in and out with your foot.',
     }),
     EB({
       id: 'eb.exptrem', name: 'Tremolo Sweep', ref: 'Ernie Ball Expression Tremolo', code: 'TRS-1', cat: 'Modulation', logo: 'TREMOLO', logoSize: 18,
@@ -91,6 +91,39 @@ export default function register(tz) {
       controls: [TREADLE('gain', { def: 0.5 }), LED({ color: '#ff2a1a', r: 2.2 }),
         K('level', 'LEVEL', { panel: true, def: 0.45 }), K('tone', 'TONE', { panel: true, def: 0.55 })],
       desc: 'Overdrive whose gain follows the treadle: heel = clean boost, toe = full crunch.',
+    }),
+  ]);
+
+  // ---- v0.4 additions
+  tz.addDefs([
+    EB({
+      id: 'eb.vp6166', name: 'Volu-Max Big', ref: 'Ernie Ball Volume Pedal 6166 (250K)', code: 'VMX-250', cat: 'Volume', tw: 164, th: 318, logo: 'VOLU-MAX', logoSize: 19,
+      algo: 'volume', noBypassClick: true, fixed: { min: 0, taper: 1 },
+      controls: [TREADLE('pos', { def: 1 })],
+      desc: 'Full-size volume pedal with a long, smooth sweep.',
+    }),
+    EB({
+      id: 'eb.vpjr25', name: 'Volu-Max Jr Active', ref: 'Ernie Ball VP Jr 25K', code: 'VMX-25K', cat: 'Volume', tw: 124, th: 300, logo: 'VOLU-MAX', logoSize: 17, logoColor: '#7fc4ff',
+      algo: 'volume', noBypassClick: true, stereo: 'both', fixed: { min: 0, taper: 0.7 },
+      controls: [TREADLE('pos', { def: 1 })],
+      desc: 'Compact volume pedal for active pickups or after effects (low impedance, smoother taper).',
+    }),
+    EB({
+      id: 'eb.mvp', name: 'Most Valued Volume', ref: 'Ernie Ball MVP Most Valuable Pedal', code: 'MVV', cat: 'Volume', logo: 'M.V.V.', logoSize: 19,
+      algo: 'chain', noBypassClick: true,
+      opts: { chain: [{ prefix: 'g', algo: 'utility', opts: { kind: 'gain' } }, { prefix: 'v', algo: 'volume', params: { taper: 1 } }] },
+      ports: { ins: ['INPUT'], outs: ['OUTPUT', 'TUNER OUT'] }, stereo: 'fixedDual',
+      panel: { w: 46, y: 120, h: 150 },
+      controls: [TREADLE('v.pos', { def: 1 }), K('g.level', 'GAIN', { panel: true, min: -12, max: 12, def: 0, r: 8.5 }), K('v.min', 'MIN', { panel: true, def: 0, r: 8.5 })],
+      desc: 'Volume pedal with a GAIN knob (pad or up to +12 dB boost), a minimum-volume knob and a tuner output.',
+    }),
+    EB({
+      id: 'eb.stereovp', name: 'Volu-Max Stereo Pan', ref: 'Ernie Ball Stereo Volume / Pan 6165', code: 'VMX-ST', cat: 'Volume', tw: 160, th: 312, logo: 'STEREO', logoSize: 18,
+      algo: 'chain', noBypassClick: true, stereo: 'stereo', ports: STEREO,
+      opts: { chain: [{ prefix: 'v', algo: 'volume', params: { taper: 1 } }, { prefix: 'p', algo: 'stereo', params: { mode: 6 } }] },
+      controls: [TREADLE('pos', { def: 1, virtual: true }), TOG('pan', '', ['VOL', 'PAN'], { x: 80, y: 290, orient: 'h', virtual: true })],
+      derive: (p) => { const x = p.pos ?? 1; return p.pan ? { 'v.pos': 1, 'p.on': 1, 'p.pan': 2 * x - 1 } : { 'v.pos': x, 'p.on': 0 }; },
+      desc: 'Stereo volume pedal. In PAN mode the treadle moves the sound from left to right.',
     }),
   ]);
 }

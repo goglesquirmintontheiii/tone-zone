@@ -1,0 +1,12 @@
+{
+  "id": "synergy",
+  "name": "Synergy",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Two-channel tube preamp modules inspired by Synergy: famous amp preamps (Friedman, Soldano, Bogner, Diezel, Engl, Fryette and more) in a desktop dock.",
+  "kind": "brand",
+  "brand": "Synergy",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8a8f98"
+}

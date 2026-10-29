@@ -1,0 +1,12 @@
+{
+  "id": "fulltone",
+  "name": "Fulltone",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Fulltone: the famous overdrives, fuzzes, vibe and tremolo in heavy hand-built boxes.",
+  "kind": "brand",
+  "brand": "Fulltone",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b5262a"
+}

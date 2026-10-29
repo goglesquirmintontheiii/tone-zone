@@ -91,7 +91,7 @@ export default function register(tz) {
     H({
       id: 'hb.shaft', name: 'Funk Tube Wah', ref: 'Harley Benton MiniStomp Shaft', logo: 'FUNK TUBE', typeName: 'Auto-wah', cat: 'Wah',
       color: '#8a3fb3', text: '#f8eeff', art: { kind: 'scope', c1: '#f0d6ff' },
-      algo: 'wah', opts: { mode: 2, fLo: 300, fHi: 2400 }, fixed: { mode: 2, level: 0.5 },
+      algo: 'wah', opts: { mode: 2, fLo: 300, fHi: 2400 }, fixed: { mode: 2, level: 0.34 },
       controls: [k('sens', 'SENS', { def: 0.55 }), k('q', 'PEAK', { def: 0.55 }), TOG('filter', '', ['LP', 'BP', 'HP'], { def: 1 })],
       desc: 'Envelope filter: the harder you pick, the more it opens. Three filter types.',
     }),

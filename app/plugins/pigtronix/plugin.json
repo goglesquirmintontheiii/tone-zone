@@ -1,0 +1,12 @@
+{
+  "id": "pigtronix",
+  "name": "Pigtronix",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Pigtronix: a parallel compressor, a tube-style overdrive and an analog chorus in brushed metal boxes with painted name bands.",
+  "kind": "brand",
+  "brand": "Pigtronix",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c8202a"
+}

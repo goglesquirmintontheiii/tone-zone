@@ -1,0 +1,12 @@
+{
+  "id": "lovepedal",
+  "name": "Lovepedal",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Inspired by Lovepedal: small, hand-built overdrives in gloss boxes with a painted heart emblem.",
+  "kind": "brand",
+  "brand": "Lovepedal",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d8202a"
+}

@@ -51,14 +51,18 @@ export default function register(tz) {
   tz.addForm('dt-treadle', treadleForm(tz));
 
   // DigiTech-style stompbox: knob row(s) on top, optional centre selector, dark name band, footswitch.
+  // controls this form positions (forms run more than once, so the layout is redone on every call)
+  const owned = new WeakSet();
   tz.addForm('dt-stomp', (ctx, d) => {
     const g = ctx.g, mini = d.mini;
-    const w = mini ? 100 : 132, h = mini ? 184 : 236;
+    d.controls.forEach((c) => { if (c.x === undefined) owned.add(c); });
+    const mine = (c) => owned.has(c);
+    const w = mini ? 100 : 132;
+    let h = mini ? 184 : 236;
     const col = d.color, txt = d.text || '#f2f2f2';
-    formKit.body(g, w, h, col, { rx: 7 });
-    svg('rect', { x: 0, y: 0, width: w, height: mini ? 6 : 8, rx: 3, fill: d.accent || shade(col, -0.3), opacity: 0.9 }, g);
+    const bodyG = svg('g', {}, g); // body is drawn once the height is known
     const theme = { text: txt, knob: d.knob || 'boss', labelSize: 6 };
-    const knobs = d.controls.filter((c) => c.t === 'knob' && c.x === undefined);
+    const knobs = d.controls.filter((c) => c.t === 'knob' && mine(c));
     const per = knobs.length > 4 ? Math.ceil(knobs.length / 2) : 4;
     for (let r = 0; r * per < knobs.length; r++) {
       const row = knobs.slice(r * per, r * per + per);
@@ -66,27 +70,33 @@ export default function register(tz) {
       knobs.forEach((k) => (k.labelPos = 'below'));
     }
     const rowsUsed = Math.ceil(knobs.length / per);
-    const sel = d.controls.find((c) => c.t === 'sel' && c.x === undefined);
+    const sel = d.controls.find((c) => c.t === 'sel' && mine(c));
     const selY = 34 + rowsUsed * 42 + 6;
     if (sel) Object.assign(sel, { x: w / 2, y: selY, r: sel.r || 11, labelPos: 'none', optSize: sel.optSize || 4.3, labelRadius: sel.labelRadius || 6.5 });
-    d.controls.filter((c) => c.t === 'toggle' && c.x === undefined).forEach((t, i) => Object.assign(t, { x: i ? w - 20 : 20, y: selY + 4, orient: 'v', optSize: 4.4, labelSide: i ? 'left' : 'right' }));
-    const by = mini ? 90 : sel ? selY + 30 : 34 + rowsUsed * 42 + 6;
+    const togs = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    // toggles flank the selector, or sit centred when there is none
+    if (sel) togs.forEach((t, i) => Object.assign(t, { x: i ? w - 20 : 20, y: selY + 4, orient: 'v', optSize: 4.4, labelSide: i ? 'left' : 'right' }));
+    else togs.forEach((t, i) => Object.assign(t, { x: togs.length === 1 ? w / 2 : 36 + i * (w - 72), y: selY, orient: 'h', optSize: 4.6 }));
+    const by = mini ? 90 : sel || togs.length ? selY + (sel ? 30 : 20) : 34 + rowsUsed * 42 + 6;
     const bh = mini ? 30 : 38;
+    if (!mini) h = Math.max(h, by + bh + 84);
+    formKit.body(bodyG, w, h, col, { rx: 7 });
+    svg('rect', { x: 0, y: 0, width: w, height: mini ? 6 : 8, rx: 3, fill: d.accent || shade(col, -0.3), opacity: 0.9 }, bodyG);
     svg('rect', { x: 8, y: by, width: w - 16, height: bh, rx: 3, fill: d.band || '#0f0f10', opacity: 0.92 }, g);
     svg('rect', { x: 8, y: by, width: w - 16, height: bh * 0.45, rx: 3, fill: '#fff', opacity: 0.06 }, g);
     label(g, w / 2, by + bh * 0.42, d.logo, { size: d.logoSize || (mini ? 14 : 19), fill: d.logoColor || '#fff', font: "'Oswald', sans-serif", weight: 700, ls: 1.4 });
     label(g, w / 2, by + bh - 7, (d.typeName || d.cat).toUpperCase(), { size: mini ? 4.4 : 5, fill: '#d0d0d0', weight: 700, ls: 1.4 });
     formKit.tzBadge(g, w / 2, h - 9, txt, 4.2);
     d.controls.forEach((c) => {
-      if (c.t === 'foot' && c.x === undefined) Object.assign(c, { style: 'stomp', x: w / 2, y: h - (mini ? 34 : 40), r: mini ? 11 : 12.5 });
-      if (c.t === 'led' && c.x === undefined) Object.assign(c, { x: w / 2, y: h - (mini ? 62 : 70), r: 2.8 });
+      if (c.t === 'foot' && mine(c)) Object.assign(c, { style: 'stomp', x: w / 2, y: h - (mini ? 34 : 40), r: mini ? 11 : 12.5 });
+      if (c.t === 'led' && mine(c)) Object.assign(c, { x: w / 2, y: mini ? h - 62 : Math.max(h - 70, by + bh + 9), r: 2.8 });
     });
     formKit.placeControls(ctx, d.controls, theme);
     return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: mini ? 44 : 52, gap: 26, flip: ctx.flip }) };
   });
   const DT = (o) => def(Object.assign({ form: 'dt-stomp', brand: 'DigiTech' }, o, { controls: [...o.controls, ...(o.noStd ? [] : STD(o.led || '#ff2a1a'))] }));
 
-  // Whammy-style modes: [name, heel semis, toe semis, kind] — kind w = whammy (wet only), d = detune, h = harmony (dry + voice)
+  // Whammy-style modes: [name, heel semis, toe semis, kind]. kind: w = whammy (wet only), d = detune, h = harmony (dry + voice)
   const WMODES = [
     ['2 OCT UP', 0, 24, 'w'], ['OCT UP', 0, 12, 'w'], ['5TH UP', 0, 7, 'w'], ['4TH UP', 0, 5, 'w'], ['2ND DN', 0, -2, 'w'], ['4TH DN', 0, -5, 'w'], ['5TH DN', 0, -7, 'w'],
     ['OCT DN', 0, -12, 'w'], ['2 OCT DN', 0, -24, 'w'], ['DIVE BOMB', 0, -24, 'w'], ['DETUNE SHAL', 0, 0, 'd'], ['DETUNE DEEP', 0, 0, 'd'],
@@ -116,7 +126,7 @@ export default function register(tz) {
       },
       momentaryWhen: (p) => p.momentary === 1,
       dropLeds: true,
-      desc: 'Polyphonic drop tune 1–7 semitones, octave, octave+dry. MOMENTARY ON = active only while the footswitch is held.',
+      desc: 'Polyphonic drop tune 1 to 7 semitones, octave, octave+dry. MOMENTARY ON = active only while the footswitch is held.',
     }),
     def({
       id: 'dt.whammy5', name: 'Wham-O-Matic 5', ref: 'DigiTech Whammy 5', brand: 'DigiTech', code: 'WOM-5', cat: 'Pitch', form: 'dt-treadle', color: '#c0141b', text: '#ffffff',
@@ -169,12 +179,141 @@ export default function register(tz) {
       id: 'dt.grunge', name: 'Grungy', ref: 'DigiTech Grunge', code: 'GRUNGY', logo: 'GRUNGY', typeName: 'Analog distortion', cat: 'Distortion', color: '#c4651d',
       algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 12, preHp: 90, gainMinDb: 14, gainMaxDb: 50, tone: 'eq3', eqRangeDb: 14, bassF: 110, midF: 900, trebleF: 3000, postLp: 6500, levelMaxDb: 2 },
       fixed: { mid: 0.45 },
-      controls: [K('level', 'LEVEL', { def: 0.45 }), K('bass', 'LOW'), K('treble', 'HIGH'), K('gain', 'GRUNGE', { def: 0.6 })],
+      controls: [K('level', 'LEVEL', { def: 0.4 }), K('bass', 'LOW'), K('treble', 'HIGH'), K('gain', 'GRUNGE', { def: 0.6 })],
     }),
     DT({
       id: 'dt.deathmetal', name: 'Doom Metal', ref: 'DigiTech Death Metal', code: 'DOOM METAL', logo: 'DOOM METAL', logoSize: 16, typeName: 'Distortion', cat: 'Distortion', color: '#1c1c1c', accent: '#b3141b', band: '#7a0d10',
       algo: 'drive', opts: { clip: 'si', stages: 3, stage2Db: 16, preHp: 110, gainMinDb: 20, gainMaxDb: 60, tone: 'eq3', eqRangeDb: 15, bassF: 100, midF: 750, trebleF: 3500, postLp: 7000, levelMaxDb: 0 },
       controls: [K('level', 'LEVEL', { def: 0.45 }), K('bass', 'LOW', { def: 0.6 }), K('mid', 'MID', { def: 0.35 }), K('treble', 'HIGH', { def: 0.6 }), K('gain', 'DISTORTION', { def: 0.7 })],
+    }),
+  ]);
+
+  // ---- v0.4 additions
+  const DROPS = ['OFF', '-1', '-2', '-3', '-4', '-5', '-6', '-7', '-12'];
+  const pre = (o, k) => Object.fromEntries(Object.entries(o).map(([a, b]) => [k + a, b]));
+  const BASS_MODES = [0, 1, 7, 8, 6, 5, 9, 10, 12];
+  const HW = (o) => DT(Object.assign({ color: '#1d1d20', accent: '#8c9299', band: '#2b2c30', knob: 'chrome' }, o));
+  tz.addDefs([
+    def({
+      id: 'dt.whammydt', name: 'Wham-O-Matic DT', ref: 'DigiTech Whammy DT', brand: 'DigiTech', code: 'WOM-DT', cat: 'Pitch', form: 'dt-treadle', color: '#c0141b', text: '#ffffff',
+      treadleColor: '#161616', logo: 'WHAM-O-MATIC', logoFont: "'Oswald', sans-serif", logoColor: '#ffffff', logoSize: 16, cost: 1.5, toeSwitch: true,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'd', algo: 'pitch', on: false, params: { dry: 0, level1: 1, level2: 0, quality: 2 } },
+        { prefix: 'w', algo: 'pitch', params: { quality: 1 } },
+      ] },
+      panel: { w: 60, y: 24, h: 252, gap: 44, title: 'WHAMMY / DROP' },
+      controls: [TREADLE('w.expr', { def: 0 }), LED({ color: '#ff2a1a', r: 2.2 }),
+        SCREEN('modelName', { panel: true, names: WMODES.map((m) => m[0]), w: 52, h: 14 }),
+        SEL('model', 'WHAMMY', WMODES.map((m) => m[0]), { panel: true, def: 1, sweep: 300, printLabels: false, ring: true, virtual: true, r: 11, labelPos: 'none' }),
+        SEL('drop', 'DROP TUNE', DROPS, { panel: true, def: 2, sweep: 260, virtual: true, r: 9.5, optSize: 3.8, labelRadius: 6 }),
+        FOOT({ panel: true, action: 'param', p: 'd.on', label: '' }), LED({ x: 182, y: 258, bind: 'param:d.on', color: '#ff2a1a', r: 2.4, label: 'DROP' })],
+      derive: (p) => {
+        const dv = [0, -1, -2, -3, -4, -5, -6, -7, -12][p.drop ?? 2];
+        return Object.assign(pre(whammyDerive({ model: p.model, expr: p['w.expr'] }), 'w.'), { 'd.semis1': dv || -1, 'w.quality': 2 });
+      },
+      desc: 'Whammy modes on the treadle plus a separate drop tune with its own footswitch (one to seven semitones or an octave down).',
+    }),
+    def({
+      id: 'dt.whammybass', name: 'Wham-O-Matic Bass', ref: 'DigiTech Whammy Bass', brand: 'DigiTech', code: 'WOM-B', cat: 'Pitch', form: 'dt-treadle', color: '#1e3f8a', text: '#ffffff',
+      treadleColor: '#161616', logo: 'WHAM-O-MATIC', logoFont: "'Oswald', sans-serif", logoColor: '#ffffff', logoSize: 16, cost: 0.8, toeSwitch: true,
+      algo: 'pitch', fixed: { quality: 2 },
+      panel: { w: 58, y: 40, h: 220, gap: 48, title: 'BASS MODE' },
+      controls: [TREADLE('expr', { def: 0 }), LED({ color: '#ff2a1a', r: 2.2 }),
+        SCREEN('modelName', { panel: true, names: BASS_MODES.map((i) => WMODES[i][0]), w: 52, h: 14 }),
+        SEL('bmodel', 'MODE', BASS_MODES.map((i) => WMODES[i][0]), { panel: true, def: 2, sweep: 280, printLabels: false, ring: true, virtual: true, r: 12, labelPos: 'none' })],
+      derive: (p) => whammyDerive({ model: BASS_MODES[p.bmodel ?? 2], expr: p.expr }),
+      desc: 'Whammy voiced for bass, with octave, interval, dive and detune modes.',
+    }),
+    DT({
+      id: 'dt.freqout', name: 'Feedback Maker', ref: 'DigiTech FreqOut', code: 'FBK', logo: 'FEEDBACK', typeName: 'Natural feedback creator', cat: 'Pitch', color: '#d8d9d6', text: '#151515', accent: '#c0141b', band: '#c0141b', cost: 0.7,
+      algo: 'pitch', fixed: { dry: 1, quality: 1 },
+      controls: [K('level1', 'GAIN', { def: 0.45 }), K('glide', 'ONSET', { def: 0.6 }),
+        SEL('fmode', 'MODE', ['SUB', '1ST', 'OCT', '5TH', '2ND'], { def: 2, sweep: 180, virtual: true })],
+      derive: (p) => ({ semis1: [-12, 0, 12, 19, 24][p.fmode ?? 2], cents: (p.fmode ?? 2) === 1 ? 6 : 0 }),
+      desc: 'Adds a feedback-like harmonic over held notes. ONSET sets how slowly it slides in (approximated with a gliding pitch voice).',
+    }),
+    DT({
+      id: 'dt.luxe', name: 'Lux Detune', ref: 'DigiTech Luxe', code: 'LUX', logo: 'LUX', typeName: 'Polyphonic detune', cat: 'Modulation', color: '#7a2a8c', text: '#f6eefa', cost: 0.7,
+      algo: 'pitch', fixed: { semis1: 0, dry: 1, quality: 1 }, stereo: 'both', monoPorts: MONO, stereoPorts: { ins: ['INPUT'], outs: ['OUTPUT L', 'OUTPUT R'] },
+      controls: [K('cents', 'DETUNE', { min: 0, max: 30, def: 10 }), K('level1', 'LEVEL', { def: 0.6 }), TOG('dir', '', ['SHARP', 'FLAT'], { virtual: true })],
+      derive: (p) => ({ cents: (p.dir ? -1 : 1) * (p.cents ?? 10) }),
+      desc: 'Anti-chorus: a steady detuned copy for width without wobble.',
+    }),
+    DT({
+      id: 'dt.venturavibe', name: 'Venture Vibe', ref: 'DigiTech Ventura Vibe', code: 'VV', logo: 'VENTURE', typeName: 'Rotary / vibe', cat: 'Modulation', color: '#2d6a3e', text: '#f1f7ee', stereo: 'both', cost: 0.8,
+      algo: 'chain',
+      opts: { chain: [{ prefix: 'v', algo: 'vibe' }, { prefix: 'r', algo: 'rotary', on: false, params: { mix: 1 } }] },
+      controls: [K('speed', 'SPEED', { def: 0.4, virtual: true }), K('depth', 'DEPTH', { def: 0.7, virtual: true }), K('v.level', 'LEVEL', { def: 0.5 }),
+        SEL('vmode', 'MODE', ['VIBE', 'CHORUS', 'ROTARY'], { def: 0, sweep: 140, virtual: true })],
+      derive: (p) => {
+        const m = p.vmode ?? 0, sp = p.speed ?? 0.4, dp = p.depth ?? 0.7;
+        return { 'v.on': m < 2 ? 1 : 0, 'r.on': m === 2 ? 1 : 0, 'v.mode': m === 1 ? 0 : 1, 'v.speed': sp, 'v.intensity': dp, 'r.speed': sp > 0.5 ? 1 : 0, 'r.mix': dp };
+      },
+      desc: 'Vibe, chorus-vibe or rotary speaker. In ROTARY mode SPEED switches between slow and fast.',
+    }),
+    DT({
+      id: 'dt.nautila', name: 'Nautilus', ref: 'DigiTech Nautila', code: 'NAUT', logo: 'NAUTILUS', logoSize: 17, typeName: 'Chorus / flanger', cat: 'Modulation', color: '#1f6f8b', text: '#effaff', stereo: 'both', cost: 1,
+      algo: 'chain',
+      opts: { chain: [{ prefix: 'c', algo: 'chorus', opts: { invertR: true }, params: { mix: 0.5 } }, { prefix: 'f', algo: 'flanger', on: false, params: { mix: 0.5 } }] },
+      controls: [K('speed', 'SPEED', { def: 0.3, virtual: true }), K('depth', 'DEPTH', { def: 0.5, virtual: true }), K('emph', 'EMPHASIS', { def: 0.3, virtual: true }), K('mix', 'MIX', { def: 0.5, virtual: true }),
+        SEL('voices', 'VOICES', ['2', '4', '6', '8'], { def: 1, sweep: 150, virtual: true }), TOG('nmode', '', ['CHO', 'FLG'], { virtual: true })],
+      derive: (p) => {
+        const fl = p.nmode ? 1 : 0, v = p.voices ?? 1;
+        return { 'c.on': fl ? 0 : 1, 'f.on': fl, 'c.rate': p.speed ?? 0.3, 'f.speed': p.speed ?? 0.3, 'c.depth': p.depth ?? 0.5, 'f.width': p.depth ?? 0.5,
+          'c.feedback': 0.6 * (p.emph ?? 0.3), 'f.regen': p.emph ?? 0.3, 'c.mix': p.mix ?? 0.5, 'f.mix': p.mix ?? 0.5, 'c.mode': v >= 2 ? 2 : 0 };
+      },
+      desc: 'Chorus or flanger with up to eight voices. EMPHASIS adds resonance.',
+    }),
+    DT({
+      id: 'dt.mosaic', name: 'Mosaic Twelve', ref: 'DigiTech Mosaic', code: 'MOS-12', logo: 'MOSAIC', typeName: '12-string effect', cat: 'Pitch', color: '#e5dccb', text: '#151515', accent: '#b3141b', cost: 0.8,
+      algo: 'pitch', fixed: { semis1: 12, semis2: 0, dry: 1, quality: 1, cents: 4 },
+      controls: [K('level1', 'LEVEL', { def: 0.5 }), K('tone', 'TONE', { def: 0.7 }), TOG('mmode', '', ['12-STR', 'OCT'], { virtual: true })],
+      derive: (p) => (p.mmode ? { level2: 0, cents: 0 } : { level2: 0.25 * (p.level1 ?? 0.5) }),
+      desc: 'Adds the octave strings of a 12-string guitar.',
+    }),
+    DT({
+      id: 'dt.dirtyrobot', name: 'Grimy Robot', ref: 'DigiTech Dirty Robot', code: 'GRIMY', logo: 'GRIMY BOT', logoSize: 16, typeName: 'Stereo mini synth', cat: 'Synth', color: '#9aa1a8', text: '#151515', band: '#1b1b1d', cost: 1, stereo: 'both',
+      algo: 'synth', fixed: { sens: 0.5, mode: 7, level: -9 },
+      controls: [K('wet', 'MIX', { def: 0.7 }), K('filter', 'START', { def: 0.3 }), K('reso', 'STOP', { def: 0.6 }), K('attack', 'TIME', { def: 0.3 }),
+        SEL('voice', 'VOICE', ['V1', 'V2'], { def: 0, sweep: 80, virtual: true })],
+      derive: (p) => ({ octave: p.voice ? -1 : 0, dry: 1 - (p.wet ?? 0.7) * 0.6 }),
+      desc: 'Filter-sweep synth sounds. START and STOP set where the sweep begins and ends (approximated with filter and resonance).',
+    }),
+    // ---- Hardwire series
+    HW({
+      id: 'dt.cm2', name: 'Hardline Tube OD', ref: 'DigiTech Hardwire CM-2 Tube Overdrive', code: 'HL-OD2', logo: 'TUBE OD', typeName: 'Hardline overdrive', cat: 'Overdrive',
+      algo: 'drive', opts: { clip: 'tube', bias: 0.2, preHp: 90, gainMinDb: 2, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 120, midF: 800, trebleF: 3000, postLp: 8000, levelMaxDb: 6,
+        modes: [{}, { preEq: [{ type: 'hs', f: 2000, q: 0.7, db: 4 }] }] },
+      fixed: { mid: 0.5 },
+      controls: [K('level', 'LEVEL'), K('bass', 'LOW'), K('treble', 'HIGH'), K('gain', 'DRIVE', { def: 0.45 }), TOG('mode', '', ['WARM', 'BRIGHT'])],
+    }),
+    HW({
+      id: 'dt.sc2', name: 'Hardline Valve Dist', ref: 'DigiTech Hardwire SC-2 Valve Distortion', code: 'HL-SC2', logo: 'VALVE DIST', logoSize: 16, typeName: 'Hardline distortion', cat: 'Distortion',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 12, bias: 0.25, preHp: 100, gainMinDb: 10, gainMaxDb: 48, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3000, postLp: 7500, levelMaxDb: 3,
+        modes: [{}, { gainMaxDb: 54, postEq: [{ type: 'peak', f: 700, q: 0.7, db: -4 }] }] },
+      fixed: { mid: 0.5 },
+      controls: [K('level', 'LEVEL', { def: 0.36 }), K('bass', 'LOW'), K('treble', 'HIGH'), K('gain', 'GAIN', { def: 0.55 }), TOG('mode', '', ['1', '2'])],
+    }),
+    HW({
+      id: 'dt.tl2', name: 'Hardline Metal', ref: 'DigiTech Hardwire TL-2 Metal Distortion', code: 'HL-TL2', logo: 'METAL', typeName: 'Hardline distortion', cat: 'Distortion',
+      algo: 'drive', opts: { clip: 'si', stages: 3, stage2Db: 16, preHp: 120, gainMinDb: 18, gainMaxDb: 58, tone: 'eq3', eqRangeDb: 15, bassF: 100, midF: 800, trebleF: 3500, postLp: 7500, levelMaxDb: 0,
+        modes: [{}, { postEq: [{ type: 'peak', f: 750, q: 0.7, db: -6 }] }] },
+      controls: [K('level', 'LEVEL', { def: 0.33 }), K('bass', 'LOW', { def: 0.6 }), K('mid', 'MID', { def: 0.45 }), K('treble', 'HIGH', { def: 0.6 }), K('gain', 'GAIN', { def: 0.65 }), TOG('mode', '', ['TIGHT', 'SCOOP'])],
+    }),
+    HW({
+      id: 'dt.rv7', name: 'Hardline Verb', ref: 'DigiTech Hardwire RV-7 Reverb', code: 'HL-RV7', logo: 'REVERB', typeName: 'Hardline stereo reverb', cat: 'Reverb', stereo: 'both', cost: 1.3,
+      algo: 'reverb',
+      controls: [K('mix', 'LEVEL', { def: 0.35 }), K('live', 'LIVELINESS', { def: 0.5, virtual: true }), K('decay', 'DECAY', { def: 0.5 }),
+        SEL('type', 'TYPE', ['ROOM', 'SPRING', 'PLATE', 'HALL', 'MOD', 'REVERSE', 'HALO'], { def: 3, sweep: 270, virtual: true })],
+      derive: (p) => { const l = p.live ?? 0.5; return { mode: [0, 3, 2, 1, 6, 9, 4][p.type ?? 3], tone: 0.3 + 0.6 * l, diffusion: 0.5 + 0.4 * l, predelay: 5 + 40 * l }; },
+    }),
+    HW({
+      id: 'dt.cr7', name: 'Hardline Chorus', ref: 'DigiTech Hardwire CR-7 Stereo Chorus', code: 'HL-CR7', logo: 'CHORUS', typeName: 'Hardline stereo chorus', cat: 'Modulation', stereo: 'both',
+      algo: 'chorus', opts: { invertR: true },
+      controls: [K('mix', 'LEVEL', { def: 0.5 }), K('rate', 'SPEED', { def: 0.3 }), K('depth', 'DEPTH', { def: 0.5 }), K('tone', 'TONE', { def: 0.6 }),
+        SEL('ctype', 'TYPE', ['CLASSIC', 'TRI', 'DIM', 'VIB'], { def: 0, sweep: 150, virtual: true })],
+      derive: (p) => [{ mode: 0 }, { mode: 2 }, { mode: 3 }, { mode: 1, mix: 1 }][p.ctype ?? 0],
     }),
   ]);
 }

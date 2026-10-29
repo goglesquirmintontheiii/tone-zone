@@ -3,7 +3,7 @@
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
-  const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, stomp } = tz.builders;
+  const { lvl, tone, gain, onFoot, onLed, k, AMP, CAB, preampOf, preampPair, stomp } = tz.builders;
   // ---- amp helpers (same pattern in every amp-brand plugin)
   // ampFit: explicit panel layout so mini toggles never collide with the knob row / power LED.
   // AMPX: amp + matching rack preamp; controls named 'r.*' / 't.*' add an onboard spring reverb / tremolo (chain).
@@ -21,12 +21,15 @@ export default function register(tz) {
   }
   function AMPX(o) {
     const a = ampFit(AMP(o));
+    // trim: output level offset (dB) for voicings that come out hot
+    if (o.trim !== undefined) a.fixed = Object.assign({}, a.fixed, { level: o.trim });
     const pre = preampOf(Object.assign({}, a, { controls: a.controls.filter((c) => !isFx(c)) }));
     const sw = a.controls.filter((c) => (c.t === 'toggle' || c.t === 'sel') && !isFx(c)).map((c) => SEL(c.p, c.label, c.options, { values: c.values, def: c.def ?? 0, virtual: c.virtual, sweep: c.options.length > 2 ? 90 : 60, optSize: 4.2 }));
     const pc = pre.controls.filter((c) => !(c.t === 'knob' && !c.p));
     const li = pc.findIndex((c) => c.p === 'level');
     pc.splice(li, 0, ...sw);
     pre.controls = pc;
+    if (o.trim !== undefined) pc.forEach((c) => { if (c.p === 'level') c.def = o.trim; });
     if (o.derive) pre.derive = o.derive;
     if (o.preFixed) pre.fixed = o.preFixed;
     if (a.controls.some(isFx)) {
@@ -56,11 +59,28 @@ export default function register(tz) {
     return [a, pre];
   }
   const fk = (p, label, o = {}) => k(p, label, Object.assign({ scale: 10, style: 'fender' }, o));
+  // cab with a preset mic setup. mics: [{ type, spk, pos, dist, lvl }], pos = fraction of the cone radius from the dust cap
+  const { cabGeom } = tz.gfx.cabgeom;
+  function CABM(o, mics = [{ type: 0, pos: 0.3 }]) {
+    const d = CAB(o), g = cabGeom(d.cabSize || '4x12'), ip = {};
+    mics.forEach((m, i) => {
+      const n = i + 1, [cx, cy] = g.centers[Math.min(g.centers.length - 1, m.spk || 0)];
+      Object.assign(ip, { [`m${n}on`]: 1, [`m${n}type`]: m.type ?? 0, [`m${n}dist`]: m.dist ?? 0.15, [`m${n}lvl`]: m.lvl ?? 0,
+        [`_m${n}x`]: (cx + (m.pos ?? 0.3) * g.sr - g.gx) / g.gw, [`_m${n}y`]: (cy - g.gy) / g.gh });
+    });
+    d.initParams = Object.assign({}, d.initParams, ip);
+    return d;
+  }
+  const cl = (v) => Math.max(0, Math.min(1, v));
   tz.addDefs([
     AMPX({ id: 'traceelliot.amp-ah500', name: 'Tracer AH 500', ref: 'Trace Elliot AH500-12', cat: 'Bass Amp', tolex: '#151515', panel: '#141414', panelText: '#4fd18b', grille: 'black', headGrille: false, logo: 'TRACER', logoFont: "'Oswald', sans-serif", logoColor: '#4fd18b', knob: 'chrome',
       opts: { voice: { base: 'gk800', stages: [[12, 4.5, 0.05, 15000, 15]], tsType: 3, baxBass: 60, baxTreble: 5000, baxRange: 15, otLp: 12000 } },
       controls: [k('gain', 'GAIN', { def: 0.45 }), k('bass', 'BASS'), k('mid', 'MID'), k('midfreq', 'MID FREQ'), k('treble', 'TREBLE'), k('master', 'OUTPUT'), TOG('shape', 'PRE-SHAPE', ['OFF', 'ON'], { virtual: true }), TOG('ultralo', 'DEEP', ['OFF', 'ON'])],
       derive: (u) => (u.shape ? { mid: (u.mid ?? 0.5) * 0.5, bass: Math.min(1, (u.bass ?? 0.5) + 0.1), treble: Math.min(1, (u.treble ?? 0.5) + 0.1) } : {}), desc: 'The 80s/90s British bass sound: hi-fi, punchy, with the Pre-Shape mid scoop.' }),
     CAB({ id: 'traceelliot.cab-1048', name: '4x10 Tracer 1048', ref: 'Trace Elliot 1048', bass: true, opts: { cab: { hp: 42, hpQ: 1.2, resDb: 3.5, lp: 6000, peaks: [[85, 1, 2.5], [500, 1, 1], [2000, 1.3, 2], [5500, 1.2, 2]], seed: 161, detail: 1.3 } }, cabSize: '4x10', grille: 'black', logo: 'TRACER', logoFont: "'Oswald', sans-serif", logoColor: '#4fd18b' }),
+  ]);
+  tz.addDefs([
+    CABM({ id: 'traceelliot.cab-1153', name: '1x15 Tracer 1153', ref: 'Trace Elliot 1153 (1x15)', bass: true, opts: { cab: { hp: 38, hpQ: 1.3, resDb: 4, lp: 4300, peaks: [[75, 1, 3], [400, 1, 1], [1600, 1.2, 1.5], [3200, 1.5, -1]], seed: 162, detail: 1.3 } }, cabSize: '1x15', grille: 'black', logo: 'TRACER', logoFont: "'Oswald', sans-serif", logoColor: '#4fd18b' },
+      [{ type: 5, pos: 0.3 }]),
   ]);
 }

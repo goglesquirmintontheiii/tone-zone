@@ -78,4 +78,84 @@ export default function register(tz) {
       desc: 'Three-channel boutique classic; Variac softens the power section.' }),
     CAB({ id: 'bogner.cab-2x12', name: '2x12 Bogart', ref: 'Bogner 2x12 (V30 / G12M)', opts: { cab: { hp: 80, hpQ: 1.5, resDb: 4, lp: 5400, peaks: [[130, 1, 1.5], [900, 1, 1], [2300, 1.4, 3.5], [3800, 2, 2.5]], seed: 71 } }, cabSize: '2x12', grille: 'salt', logo: 'Bogart', logoColor: '#e6e6e6', piping: '#bdbdbd' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Bogner's pedal line, from the Ecstasy channels to the transformer drives.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, SLIDER, def, ten, db, ms } = tz.helpers;
+  // plain stomp box for this brand: knob rows (optionally on a dark plate), toggles, logo, LED, footswitch.
+  // Jacks sit below the controls so their labels never cover a knob.
+  tz.addForm('bogner-stomp', (ctx, d) => {
+    const { svg, label, formKit, shade } = tz.gfx;
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const n = kn.length;
+    const perRow = d.perRow || (n === 4 ? 4 : Math.min(3, n));
+    const w = d.fw || (perRow > 3 || foots.length > 1 ? 176 : 140);
+    const rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const jt = d.jacksTop ? 8 : 0;
+    const deckH = d.deckH || 20 + jt + rows.length * 44 + (tg.length ? 32 : 0);
+    const ly = deckH + 36, h = ly + 106;
+    const txt = d.text || '#f0f0f0';
+    formKit.body(g, w, h, d.color, { rx: d.rx ?? 9, brushed: !!d.brushed });
+    if (d.plate) svg('rect', { x: 8, y: 8, width: w - 16, height: deckH, rx: 6, fill: d.plate, stroke: shade(d.plate, 0.3), 'stroke-opacity': 0.5 }, g);
+    if (d.accent) svg('rect', { x: 8, y: deckH + 12, width: w - 16, height: 2.5, rx: 1.2, fill: d.accent }, g);
+    const big = n <= 2;
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = perRow > 1 ? (x1 - x0) / (perRow - 1) : 0;
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 38 + jt + ri * 44, r: big ? 13 : 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 32 + (i * (w - 64)) / (tg.length - 1), y: 20 + jt + rows.length * 44 + 10, orient: 'h', optSize: 4.2 }));
+    if (d.art) d.art(g, w, h, ly);
+    const logo = d.logo || d.name;
+    label(g, w / 2, ly, logo, { size: d.logoSize || (logo.length > 12 ? 11.5 : 14), fill: d.logoColor || txt, font: d.logoFont || "'Oswald', sans-serif", weight: 700, ls: 1.2 });
+    label(g, w / 2, ly + 12, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.75 });
+    const spots = (k) => (k > 1 ? [w * 0.28, w * 0.72] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 26, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: ly + 64, r: 13, labelDy: foots.length > 1 ? -19 : undefined }));
+    formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
+    const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    return { w, h, theme, jacks };
+  });
+
+  const SP = (o) => def(Object.assign({ form: 'bogner-stomp' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff2a1a' })])] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    SP({ id: 'bogner.ecstasyblue', name: 'Euphoria Blue', ref: 'Bogner Ecstasy Blue', logo: 'EUPHORIA BLUE', typeName: 'Overdrive', cat: 'Overdrive', color: '#2b4f8f', knob: 'chrome', fw: 170, perRow: 3,
+      algo: 'drive', opts: { preHp: 80, gainMinDb: 4, gainMaxDb: 38, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3200, postLp: 8500, levelMaxDb: 2, modes: [{ clip: 'asym', bias: 0.2 }, { clip: 'si', bias: 0.1, preEq: [{ type: 'peak', f: 700, q: 0.7, db: 3 }] }] },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.5 }), t('treble', 'TREBLE'), t('mid', 'MIDDLE'), t('bass', 'BASS'), TOG('variac', 'VARIAC', ['OFF', 'ON'], { virtual: true }), TOG('mode', 'MODE', ['BLUE', 'PLEXI']), TOG('pre', 'PRE EQ', ['FLAT', 'BRIGHT'], { virtual: true })],
+      derive: (u) => ({ sag: u.variac ? 0.6 : 0, bright: u.pre ? 0.4 : 0 }), desc: 'The blue channel of the boutique amp: rich crunch with Variac sag, Blue / Plexi modes and a bright Pre EQ.' }),
+    SP({ id: 'bogner.ecstasyred', name: 'Euphoria Red', ref: 'Bogner Ecstasy Red', logo: 'EUPHORIA RED', typeName: 'Distortion', cat: 'Distortion', color: '#9a2226', knob: 'chrome', fw: 170, perRow: 3,
+      algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 6, preHp: 90, gainMinDb: 8, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 750, trebleF: 3200, postLp: 7800, levelMaxDb: -3, modes: [{}, { preHp: 160 }] },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.55 }), t('treble', 'TREBLE'), t('mid', 'MIDDLE'), t('bass', 'BASS'), TOG('variac', 'VARIAC', ['OFF', 'ON'], { virtual: true }), TOG('mode', 'STRUCTURE', ['FAT', 'TIGHT']), TOG('pre', 'PRE EQ', ['FLAT', 'BRIGHT'], { virtual: true })],
+      derive: (u) => ({ sag: u.variac ? 0.6 : 0, bright: u.pre ? 0.4 : 0 }), desc: 'The red lead channel: smooth, saturated high gain with Variac sag and a Structure switch.' }),
+    SP({ id: 'bogner.uberschall', name: 'Ultraschall', ref: 'Bogner Uberschall (pedal)', logo: 'ULTRASCHALL', typeName: 'High-Gain Distortion', cat: 'Distortion', color: '#1c1d20', knob: 'chrome', accent: '#8a8f96',
+      algo: 'drive', opts: { clip: 'diode', stages: 3, stage2Db: 8, preHp: 120, gainMinDb: 12, gainMaxDb: 50, tone: 'eq3', eqRangeDb: 14, bassF: 100, midF: 650, trebleF: 3000, postLp: 7000, levelMaxDb: -6, modes: [{}, { preEq: [{ type: 'ls', f: 120, q: 0.7, db: 4 }] }] },
+      controls: [t('level', 'VOLUME'), t('gain', 'GAIN', { def: 0.6 }), t('treble', 'TREBLE'), t('mid', 'MIDDLE'), t('bass', 'BASS'), TOG('mode', 'THICK', ['OFF', 'ON'])],
+      desc: 'Brutal, tight high gain from the metal monster amp.' }),
+    SP({ id: 'bogner.burnley', name: 'Burnside', ref: 'Bogner Burnley', logo: 'BURNSIDE', typeName: 'Distortion', cat: 'Distortion', color: '#3d5a3a', knob: 'chrome',
+      algo: 'drive', opts: { clip: 'si', preHp: 80, gainMinDb: 8, gainMaxDb: 44, tone: 'lp', toneLo: 1000, toneHi: 8000, postLp: 7500, levelMaxDb: -2, modes: [{ preEq: [{ type: 'ls', f: 150, q: 0.7, db: 4 }] }, { preHp: 160 }] },
+      controls: [t('level', 'LEVEL'), t('gain', 'GAIN', { def: 0.55 }), t('tone', 'TONE'), TOG('mode', 'VOICE', ['FAT', 'TIGHT'])],
+      desc: 'Classic rodent-style distortion with a transformer-fed output and a Fat / Tight switch.' }),
+    SP({ id: 'bogner.wessex', name: 'Wexford', ref: 'Bogner Wessex', logo: 'WEXFORD', typeName: 'Overdrive', cat: 'Overdrive', color: '#2f4a6b', knob: 'chrome',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.15, preHp: 80, gainMinDb: 2, gainMaxDb: 34, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3200, postLp: 9000, levelMaxDb: 6, modes: [{ postEq: [{ type: 'hs', f: 4000, q: 0.7, db: 2 }] }, {}] }, fixed: { mid: 0.5 },
+      controls: [t('level', 'LEVEL'), t('gain', 'GAIN', { def: 0.45 }), t('treble', 'TREBLE'), t('bass', 'BASS'), TOG('mode', 'MODE', ['ENHANCE', 'NORMAL'])],
+      desc: 'Open, touch-sensitive overdrive with an Enhance mode for extra sparkle.' }),
+    SP({ id: 'bogner.harlow', name: 'Harrow Boost', ref: 'Bogner Harlow', logo: 'HARROW', typeName: 'Boost / Compressor', cat: 'Boost', color: '#7a2a2a', knob: 'chrome',
+      algo: 'drive', opts: { clip: 'clean', gainMinDb: 0, gainMaxDb: 14, tone: 'lp', toneLo: 2000, toneHi: 14000, postLp: 14000, levelMaxDb: 16 },
+      controls: [t('level', 'LEVEL', { def: 0.45 }), t('tone', 'TONE', { def: 0.6 }), t('sag', 'BLOOM', { def: 0.3 })],
+      desc: 'Clean boost with gentle compression. Bloom adds a soft swell to each note.' }),
+  ]);
 }
