@@ -3,7 +3,7 @@
   "name": "Hiwatt",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps and preamps inspired by Hiwatt: DR103 and Custom 50.",
+  "description": "Amps and preamps inspired by Hiwatt: DR103 and Custom 50. Plus the Tube Overdrive pedal.",
   "kind": "brand",
   "brand": "Hiwatt",
   "main": "index.js",

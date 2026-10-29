@@ -3,7 +3,7 @@
   "name": "Diezel",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps and preamps inspired by Diezel: VH4 and Herbert.",
+  "description": "Amps and preamps inspired by Diezel: VH4 and Herbert. Plus the VH4 pedal.",
   "kind": "brand",
   "brand": "Diezel",
   "main": "index.js",

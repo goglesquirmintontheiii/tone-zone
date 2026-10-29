@@ -3,7 +3,7 @@
   "name": "Revv",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps and preamps inspired by Revv: modern multi-channel high-gain heads.",
+  "description": "Amps and preamps inspired by Revv: modern multi-channel high-gain heads. Pedals: G2, G3, G4 channel pedals and the G8 gate.",
   "kind": "brand",
   "brand": "Revv",
   "main": "index.js",

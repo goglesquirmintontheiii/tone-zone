@@ -125,7 +125,7 @@ function registerPedals(tz) {
     formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
     const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
     formKit.placeControls(ctx, d.controls, theme);
-    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 62, gap: 24, flip: ctx.flip });
     return { w, h, theme, jacks };
   });
 
@@ -155,7 +155,7 @@ function registerPedals(tz) {
       desc: 'Open, touch-sensitive overdrive with an Enhance mode for extra sparkle.' }),
     SP({ id: 'bogner.harlow', name: 'Harrow Boost', ref: 'Bogner Harlow', logo: 'HARROW', typeName: 'Boost / Compressor', cat: 'Boost', color: '#7a2a2a', knob: 'chrome',
       algo: 'drive', opts: { clip: 'clean', gainMinDb: 0, gainMaxDb: 14, tone: 'lp', toneLo: 2000, toneHi: 14000, postLp: 14000, levelMaxDb: 16 },
-      controls: [t('level', 'LEVEL', { def: 0.45 }), t('tone', 'TONE', { def: 0.6 }), t('sag', 'BLOOM', { def: 0.3 })],
+      controls: [t('level', 'LEVEL', { def: 0.6 }), t('tone', 'TONE', { def: 0.6 }), t('sag', 'BLOOM', { def: 0.3 })],
       desc: 'Clean boost with gentle compression. Bloom adds a soft swell to each note.' }),
   ]);
 }

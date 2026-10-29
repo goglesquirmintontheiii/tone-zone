@@ -3,7 +3,7 @@
   "name": "Vox",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps, preamps and cabs inspired by Vox: AC30 / AC15 Top Boost combos and the Night Train.",
+  "description": "Amps, preamps and cabs inspired by Vox: AC30 / AC15 Top Boost combos and the Night Train. Pedals: V847 wah, Tone Bender, Ice 9 and the Nutube Valvenergy drives.",
   "kind": "brand",
   "brand": "Vox",
   "main": "index.js",

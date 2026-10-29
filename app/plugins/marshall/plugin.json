@@ -3,7 +3,7 @@
   "name": "Marshall",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps, preamps and cabs inspired by Marshall: Plexi, JCM800 / 900, Jubilee, JVM, DSL and the Bluesbreaker combo.",
+  "description": "Amps, preamps and cabs inspired by Marshall: Plexi, JCM800 / 900, Jubilee, JVM, DSL and the Bluesbreaker combo. Pedals: ShredMaster, BluesBreaker, Guv'nor, DriveMaster, Jackhammer and Edward compressor.",
   "kind": "brand",
   "brand": "Marshall",
   "main": "index.js",

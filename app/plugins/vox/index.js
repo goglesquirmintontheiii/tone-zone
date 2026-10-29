@@ -149,7 +149,7 @@ function registerPedals(tz) {
     formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
     const theme = { text: txt, knob: d.knob || 'chrome', labelSize: 5.4 };
     formKit.placeControls(ctx, d.controls, theme);
-    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 42, gap: 24, flip: ctx.flip });
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: deckH + 62, gap: 24, flip: ctx.flip });
     return { w, h, theme, jacks };
   });
   const VS = (o) => def(Object.assign({ form: 'vox-stomp' }, o, { controls: [...o.controls, FOOT(), LED({ color: o.led || '#ff2a1a' })] }));

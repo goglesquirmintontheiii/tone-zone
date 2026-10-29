@@ -3,7 +3,7 @@
   "name": "Soldano",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps and preamps inspired by Soldano: SLO-100 and Hot Rod 50+.",
+  "description": "Amps and preamps inspired by Soldano: SLO-100 and Hot Rod 50+. Plus the SLO pedal and Super Charger GTO.",
   "kind": "brand",
   "brand": "Soldano",
   "main": "index.js",

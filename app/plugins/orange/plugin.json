@@ -3,7 +3,7 @@
   "name": "Orange",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps, preamps and cabs inspired by Orange: Rockerverb, OR50, Tiny Terror, Thunderverb, AD200 / Terror Bass and the PPC / OBC cabs.",
+  "description": "Amps, preamps and cabs inspired by Orange: Rockerverb, OR50, Tiny Terror, Thunderverb, AD200 / Terror Bass and the PPC / OBC cabs. Pedals: Fur Coat, Getaway Driver, Kongpressor, Two Stroke, Amp Detonator and Bax Bangeetar.",
   "kind": "brand",
   "brand": "Orange",
   "main": "index.js",

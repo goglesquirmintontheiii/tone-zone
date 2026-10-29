@@ -3,7 +3,7 @@
   "name": "Supro",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Amps and preamps inspired by Supro: vintage-style American combos with tremolo.",
+  "description": "Amps and preamps inspired by Supro: vintage-style American combos with tremolo. Pedals: Drive, Fuzz, Tremolo, Analog Delay and Flanger.",
   "kind": "brand",
   "brand": "Supro",
   "main": "index.js",
