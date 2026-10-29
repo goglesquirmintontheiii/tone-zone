@@ -103,9 +103,10 @@ export default function register(tz) {
     label(tub ? g : box, tub ? w / 2 : bw / 2, tub ? h - 5 : bh - 8, 'TONE ZONE', { size: 4.2, fill: tub ? '#6b7680' : txt, weight: 800, ls: 1.2, opacity: 0.7 });
     if (tub) {
       // rubber ducks perched on the rim + bubbles
-      duck(g, 26, 22, 1.25);
-      duck(g, w - 24, h - 22, 1.1, true);
-      duck(g, 22, h - 40, 0.9);
+      // kept inside the tub's rounded corners
+      duck(g, 34, 30, 1.2);
+      duck(g, w - 32, h - 30, 1.05, true);
+      duck(g, 28, h - 48, 0.9);
       bubbles(g, [[w - 22, 26, 4], [w - 32, 18, 2.6], [w - 14, 44, 2.2], [30, h - 16, 3], [12, 60, 2]]);
     }
     // controls: three knobs across the top, the 3-way under the middle, footswitch at the bottom

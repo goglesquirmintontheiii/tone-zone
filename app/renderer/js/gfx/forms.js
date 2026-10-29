@@ -694,7 +694,8 @@ forms.util = (ctx, def) => {
   const g = ctx.g;
   const col = def.color || '#2a2f3a';
   body(g, w, h, col, { rx: 10, brushed: true });
-  svg('rect', { x: 0, y: 0, width: w, height: 6, rx: 3, fill: def.accent || '#ff7a2f' }, g);
+  // accent strip clipped to the body's rounded top corners
+  svg('path', { d: `M0.84 6A10 10 0 0 1 10 0H${w - 10}A10 10 0 0 1 ${w - 0.84} 6Z`, fill: def.accent || '#ff7a2f' }, g);
   const txt = def.text || '#e8ebf2';
   const theme = { text: txt, knob: 'strymon', labelSize: 6 };
   label(g, w / 2, 22, def.logo || def.name, { size: 9.5, fill: txt, weight: 800, ls: 0.8 });
@@ -948,7 +949,7 @@ forms.paraeq = (ctx, def) => {
   const w = 540, h = 340, g = ctx.g;
   const txt = '#dfe4ee';
   body(g, w, h, def.color || '#16191f', { rx: 14, brushed: true });
-  svg('rect', { x: 0, y: 0, width: w, height: 5, rx: 2.5, fill: def.accent || '#ff7a2f' }, g);
+  svg('path', { d: `M3.28 5A14 14 0 0 1 14 0H${w - 14}A14 14 0 0 1 ${w - 3.28} 5Z`, fill: def.accent || '#ff7a2f' }, g);
   label(g, 22, 24, def.logo || 'PARAMETRIC', { size: 13, fill: txt, weight: 800, ls: 2, anchor: 'start', font: "'Oswald', sans-serif" });
   label(g, 22, 36, (def.typeName || '').toUpperCase(), { size: 5.6, fill: txt, weight: 700, ls: 1.6, anchor: 'start', opacity: 0.6 });
   tzBadge(g, w / 2, h - 9, txt, 4.4);

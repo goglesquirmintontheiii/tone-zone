@@ -457,7 +457,7 @@ export default function register(tz) {
     J({
       id: 'jhs.morningglory', name: 'Daybreak Bloom', ref: 'JHS Morning Glory V4', cat: 'Overdrive', typeName: 'Transparent overdrive',
       color: '#2f6fb5', text: '#f6f1e4', kstyle: 'cream', art: { kind: 'flower', ink: '#13243f', fill: '#9b6fe0', fill2: '#5fbf6a', accent: '#fff3a8' },
-      logo: 'Daybreak Bloom', logoFont: "'Dancing Script', cursive", logoSize: 22, logoColor: '#fff6e0', logoStroke: '#13243f', logoStrokeW: 2.4,
+      logo: 'Daybreak Bloom', logoFont: "'Dancing Script', cursive", logoSize: 18, logoColor: '#fff6e0', logoStroke: '#13243f', logoStrokeW: 2.4,
       algo: 'drive', opts: Object.assign({}, mgV, { modes: [{}, { postLp: 4200 }] }),
       controls: [vk('level', 'VOLUME'), vk('gain', 'DRIVE', { def: 0.45 }), vk('tone', 'TONE', { def: 0.55 }), TOG('mode', 'HI-CUT', ['OFF', 'ON'])],
     }),

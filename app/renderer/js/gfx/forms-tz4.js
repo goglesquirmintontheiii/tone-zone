@@ -720,8 +720,8 @@ const haloForm = form((g, def, A) => {
   for (let k = 0; k < 9; k++) C(t, 74 + k * 8.25, 46 + Math.sin((k / 8) * Math.PI) * 6, 6, { fill: '#fff', stroke: '#c9ccd6', 'stroke-width': 0.6 });
   b.edge();
   // halo
-  E(g, 107, 16, 40, 9, { fill: 'none', stroke: lin('halo', [[0, '#fff2b0'], [0.5, '#e8b93a'], [1, '#a8781a']]), 'stroke-width': 5, 'pointer-events': 'none' });
-  E(g, 107, 16, 40, 9, { fill: 'none', stroke: '#fff', 'stroke-opacity': 0.5, 'stroke-width': 1, 'pointer-events': 'none' });
+  E(g, 107, 38, 40, 9, { fill: 'none', stroke: lin('halo', [[0, '#fff2b0'], [0.5, '#e8b93a'], [1, '#a8781a']]), 'stroke-width': 5, 'pointer-events': 'none' });
+  E(g, 107, 38, 40, 9, { fill: 'none', stroke: '#fff', 'stroke-opacity': 0.5, 'stroke-width': 1, 'pointer-events': 'none' });
   // music notes
   for (const [x, y] of [[44, 120], [168, 112]]) { E(g, x, y, 3.4, 2.4, { fill: col, transform: `rotate(-20 ${x} ${y})`, 'pointer-events': 'none' }); P(g, `M${x + 3} ${y - 1}V${y - 14}l5 3`, { stroke: col, 'stroke-width': 1.2, fill: 'none', 'pointer-events': 'none' }); }
   txt(g, 107, 96, def.logo || def.name, { size: 18, maxW: 116, fill: def.logoColor || col, weight: 700, ls: 2 });
@@ -832,7 +832,7 @@ const watchForm = form((g, def, A) => {
   const acc = def.accent || '#ff3b5c';
   const cx = 107, cy = 166, R0 = 104;
   // stem + lap button
-  R(g, 98, 14, 18, 44, 3, { fill: lin('stem', [[0, '#9aa0aa'], [0.5, '#eef1f5'], [1, '#7a808a']], 0, 0, 1, 0) });
+  R(g, 98, 14, 18, 52, 3, { fill: lin('stem', [[0, '#9aa0aa'], [0.5, '#eef1f5'], [1, '#7a808a']], 0, 0, 1, 0) });
   const lb = G(g, { transform: `rotate(42 ${cx} ${cy})` });
   R(lb, cx - 7, cy - R0 - 12, 14, 16, 3, { fill: lin('stem', [[0, '#9aa0aa'], [0.5, '#eef1f5'], [1, '#7a808a']], 0, 0, 1, 0) });
   const d = circ(cx, cy, R0);

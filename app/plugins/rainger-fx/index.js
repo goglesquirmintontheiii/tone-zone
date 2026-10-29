@@ -120,7 +120,12 @@ export default function register(tz) {
       // carnival stripes on the top end + a lid-colour band
       const cols = d.stripes || ['#e2322b', '#ffd23f', '#2b8be2', '#3ddc84'];
       const sw = w / (cols.length * 2);
-      for (let i = 0; i < cols.length * 2; i++) svg('path', { d: `M${i * sw} 0 h${sw} l-6 16 h-${sw} Z`, fill: cols[i % cols.length], 'fill-opacity': 0.92 }, g);
+      // keep the slanted stripes inside the rounded body
+      const cid = `rgr-clip-${d.box || 'micro'}`;
+      const cp = svg('clipPath', { id: cid }, g);
+      svg('rect', { width: w, height: h, rx }, cp);
+      const sg = svg('g', { 'clip-path': `url(#${cid})` }, g);
+      for (let i = 0; i < cols.length * 2 + 1; i++) svg('path', { d: `M${i * sw} 0 h${sw} l-6 16 h-${sw} Z`, fill: cols[i % cols.length], 'fill-opacity': 0.92 }, sg);
       svg('rect', { width: w, height: 16, rx, fill: 'url(#rgr-gloss)' }, g);
       svg('line', { x1: 0, y1: 16, x2: w, y2: 16, stroke: '#000', 'stroke-opacity': 0.4, 'stroke-width': 0.8 }, g);
     } else if (fin === 'leather') {
