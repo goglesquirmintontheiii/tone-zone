@@ -139,7 +139,7 @@ export default function register(tz) {
     formKit.tzBadge(g, d.badgeAt ? d.badgeAt[0] : w / 2, d.badgeAt ? d.badgeAt[1] : h - 7, txt, 4);
     const theme = { text: d.panelText || txt, knob: d.knob || 'mxr', labelSize: 5.6, labelFont: "'Barlow Condensed', sans-serif", toggleTitles: true };
     formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme: Object.assign({}, theme, { text: txt }), jacks: d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jy0 ?? 50, gap: 26 }) };
+    return { w, h, theme: Object.assign({}, theme, { text: txt, jackText: d.jacksTop && p ? d.panelText : txt }), jacks: d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jy0 ?? 50, gap: 26 }) };
   });
   const at = (c, x, y, o = {}) => Object.assign(c, { x, y }, o);
   const kk = (p, l, o = {}) => KK(p, l, Object.assign({ display: ten }, o));
@@ -147,7 +147,7 @@ export default function register(tz) {
   tz.addDefs([
     def({
       id: 'korg.pitchblack', name: 'Pitch Noir', code: 'PN-1', logo: 'PITCH NOIR', ref: 'Korg Pitchblack', brand: 'Korg', cat: 'Utility', kind: 'Utility',
-      typeName: 'Chromatic pedal tuner', form: 'korg-box', fw: 120, fh: 214, color: '#18181a', text: '#d8d8d8', accent: '#ff3b30', logoAt: [60, 118], logoSize: 13, tagline: 'CHROMATIC TUNER',
+      typeName: 'Chromatic pedal tuner', form: 'korg-box', jy0: 150, fw: 120, fh: 214, color: '#18181a', text: '#d8d8d8', accent: '#ff3b30', logoAt: [60, 118], logoSize: 13, tagline: 'CHROMATIC TUNER',
       algo: 'tuner', opts: { mute: 1 },
       controls: [
         at(SCREEN('tu3'), 60, 52, { w: 100, h: 50 }),
@@ -184,7 +184,7 @@ export default function register(tz) {
         at(kk('modrate', 'MOD SPEED', { def: 0.25 }), 65, 90, { r: 9 }),
         at(kk('moddepth', 'MOD WIDTH', { def: 0.15 }), 115, 90, { r: 9 }),
         at(TOG('dmode', 'MODE', ['DIGI', 'TAPE', 'PING']), 175, 92),
-        at(FOOT({ style: 'stomp', r: 12, label: 'ON/OFF' }), 66, 180), at(FOOT({ style: 'stomp', r: 12, action: 'tap', label: 'TAP' }), 170, 180),
+        at(FOOT({ style: 'stomp', r: 12 }), 66, 180), at(FOOT({ style: 'stomp', r: 12, action: 'tap' }), 170, 180),
         at(LED({ color: '#3ddc84', r: 2.6 }), 66, 156), at(LED({ bind: 'tap:time', color: '#ff3b30', r: 2.6 }), 170, 156),
       ],
       derive: (p) => ({ mode: [0, 2, 7][p.dmode ?? 0], age: 0.2 }),
