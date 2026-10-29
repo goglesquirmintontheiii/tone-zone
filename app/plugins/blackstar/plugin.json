@@ -1,0 +1,12 @@
+{
+  "id": "blackstar",
+  "name": "Blackstar",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Blackstar: British valve amps with the ISF tone shaping control.",
+  "kind": "brand",
+  "brand": "Blackstar",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b8975a"
+}

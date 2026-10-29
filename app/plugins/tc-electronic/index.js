@@ -7,6 +7,8 @@
 //    `mini` (mini series, top jacks), `budget` (newer 3-knob line, top jacks), `wide` (2-footswitch looper).
 //    Per-block artwork via def.art (printed graphic behind the name) and the small "TP" mini button (tp: true).
 //  * `tc-x5` – five-slot multi pedal (one display, knob and footswitch per slot).
+import { registerMore } from './more.js';
+
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SCREEN, def, ten, db, ms, MONO, STEREO } = tz.helpers;
   const { svg, label, formKit, luminance, textColorFor } = tz.gfx;
@@ -159,7 +161,8 @@ export default function register(tz) {
   }
 
   // ------------------------------------------------------------------ TC die-cast enclosure
-  const SIZES = { std: [134, 236], mini: [96, 190], budget: [124, 216], wide: [186, 234] };
+  // x3 / x4: three or four footswitch boxes, pre: two-channel preamp pedals
+  const SIZES = { std: [134, 236], mini: [96, 190], budget: [124, 216], wide: [186, 234], x3: [228, 234], x4: [276, 234], pre: [214, 236] };
   const spread = (list, x0, x1, y) => list.forEach((c, i) => {
     c.x = list.length === 1 ? (x0 + x1) / 2 : x0 + ((x1 - x0) * i) / (list.length - 1);
     c.y = y;
@@ -196,23 +199,41 @@ export default function register(tz) {
       if (row2.length && tps.length) tps.forEach((b) => (b.x = w - 16));
       foots.forEach((f) => Object.assign(f, { style: 'stomp', x: w / 2, y: h - 30, r: 12 }));
       leds.forEach((l) => Object.assign(l, { x: w / 2, y: h - 56, r: 2.6 }));
-      nameY -= 4;
+      nameY = d.nameY ?? nameY - 4;
     } else {
-      const big = size === 'std' || size === 'wide';
-      const y1 = big ? 42 : 40;
+      const big = size !== 'budget';
+      const y1 = (d.knobY ?? (big ? 42 : 40));
       const n = knobs.length;
-      const m = n >= 4 ? 20 : size === 'wide' ? 40 : 28;
-      spread(knobs, m, w - m, y1);
-      knobs.forEach((k) => { k.r = k.r || (n >= 4 ? 9.5 : n === 1 ? 15 : 12); k.labelPos = k.labelPos || 'below'; });
+      const multi = size === 'x3' || size === 'x4';
+      let y2 = n ? y1 + 46 : 52;
+      let yk = y1;
+      if (n > 5 || d.krows) {
+        // two knob rows
+        const r1 = d.krows ? d.krows[0] : Math.ceil(n / 2);
+        const a = knobs.slice(0, r1), b = knobs.slice(r1);
+        const m1 = a.length >= 4 ? 24 : 34;
+        spread(a, m1, w - m1, y1);
+        spread(b, b.length >= 4 ? 24 : 40, w - (b.length >= 4 ? 24 : 40), y1 + 40);
+        knobs.forEach((k) => { k.r = k.r || 10; k.labelPos = k.labelPos || 'below'; });
+        y2 = y1 + 84;
+        yk = y1 + 40;
+      } else {
+        const m = multi ? (n >= 4 ? 34 : 56) : n >= 4 ? 20 : size === 'wide' || size === 'pre' ? 40 : 28;
+        spread(knobs, m, w - m, y1);
+        knobs.forEach((k) => { k.r = k.r || (n >= 4 ? 9.5 : n === 1 ? 15 : 12); k.labelPos = k.labelPos || 'below'; });
+      }
       const row2 = [...smalls, ...toggles];
-      const y2 = n ? y1 + 46 : 52;
       spread(row2, row2.length > 2 ? 26 : 38, w - (row2.length > 2 ? 26 : 38), y2);
       smalls.forEach((k) => { k.r = k.r || 8.5; k.labelPos = k.labelPos || 'below'; });
       toggles.forEach((t) => (t.orient = t.orient || 'h'));
       tps.forEach((b) => Object.assign(b, { x: w - 17, y: 15, r: 3.4 }));
       screens.forEach((s) => Object.assign(s, { x: w / 2, y: s.y ?? 56, w: s.w || w - 30, h: s.h || 50 }));
-      nameY = (row2.length ? y2 + 34 : n ? y1 + 50 : 70) + (big ? 6 : 0);
-      if (foots.length === 2) {
+      nameY = d.nameY ?? (row2.length ? y2 + 34 : n ? yk + 50 : 70) + (big ? 6 : 0);
+      if (foots.length >= 3) {
+        const fx = (i) => w * (0.14 + (0.72 * i) / (foots.length - 1));
+        foots.forEach((f, i) => Object.assign(f, { style: 'stomp', x: fx(i), y: h - 40, r: 12.5 }));
+        leds.forEach((l, i) => Object.assign(l, { x: i < foots.length ? fx(i) : w / 2, y: h - 72, r: 2.8 }));
+      } else if (foots.length === 2) {
         foots.forEach((f, i) => Object.assign(f, { style: 'stomp', x: [w * 0.27, w * 0.73][i], y: h - 40, r: 12.5 }));
         leds.forEach((l, i) => Object.assign(l, { x: [w * 0.27, w * 0.73][i] ?? w / 2, y: h - 74, r: 2.8 }));
       } else {
@@ -652,4 +673,5 @@ export default function register(tz) {
       desc: 'Always-on buffer: restores the high end long cable runs eat. Optional +3 dB output trim.',
     }),
   ]);
+  registerMore(tz, { TC, TP, k, NOTES });
 }

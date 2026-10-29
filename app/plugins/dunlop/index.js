@@ -54,7 +54,7 @@ export default function register(tz) {
 
   // round "smiley" fuzz enclosure: two knobs as eyes, logo, footswitch as the mouth
   tz.addForm('dn-round', (ctx, d) => {
-    const g = ctx.g, w = 176, h = 176, cx = w / 2, cy = h / 2, R = 86;
+    const mini = !!d.mini, g = ctx.g, w = mini ? 140 : 176, h = w, cx = w / 2, cy = h / 2, R = w / 2 - 2;
     tz.gfx.softShadow(g, { w, h, rx: R, dy: 12, blur: 9, opacity: 0.6 });
     svg('circle', { cx, cy, r: R + 2, fill: '#1a1a1a' }, g); // rubber base ring
     svg('circle', { cx, cy, r: R, fill: d.color }, g);
@@ -68,15 +68,15 @@ export default function register(tz) {
       svg('circle', { cx: cx + Math.cos(a) * (R - 5), cy: cy + Math.sin(a) * (R - 5), r: 0.7, fill: d.text || '#fff', opacity: 0.55 }, g);
     }
     const txt = d.text || '#fff';
-    label(g, cx, cy + 6, d.logo, { size: 21, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.5 });
-    if (d.tagline) label(g, cx, cy + 22, d.tagline, { size: 9, fill: txt, font: "'Dancing Script', cursive", weight: 700 });
-    formKit.tzBadge(g, cx, h - 26, txt, 4);
+    label(g, cx, cy + (mini ? 4 : 6), d.logo, { size: mini ? 15 : 21, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.5 });
+    if (d.tagline) label(g, cx, cy + (mini ? 16 : 22), d.tagline, { size: mini ? 7.5 : 9, fill: txt, font: "'Dancing Script', cursive", weight: 700 });
+    formKit.tzBadge(g, cx, h - (mini ? 20 : 26), txt, mini ? 3.4 : 4);
     const theme = { text: txt, knob: d.knob || 'chicken', labelSize: 6.4 };
     const knobs = d.controls.filter((c) => c.t === 'knob');
-    knobs.forEach((k, i) => Object.assign(k, { x: cx + (i ? 30 : -30), y: 46, r: 12, labelPos: 'above' }));
+    knobs.forEach((k, i) => Object.assign(k, mini ? { x: cx + (i ? 24 : -24), y: 38, r: 10, labelPos: 'above' } : { x: cx + (i ? 30 : -30), y: 46, r: 12, labelPos: 'above' }));
     d.controls.forEach((c) => {
-      if (c.t === 'foot') Object.assign(c, { style: 'stomp', x: cx, y: 132, r: 12 });
-      if (c.t === 'led') Object.assign(c, { x: cx, y: 22, r: 2.4 });
+      if (c.t === 'foot') Object.assign(c, mini ? { style: 'stomp', x: cx, y: 104, r: 10 } : { style: 'stomp', x: cx, y: 132, r: 12 });
+      if (c.t === 'led') Object.assign(c, { x: cx, y: mini ? 17 : 22, r: 2.4 });
     });
     formKit.placeControls(ctx, d.controls, theme);
     return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: cy, gap: 26, flip: ctx.flip }) };
@@ -176,6 +176,122 @@ export default function register(tz) {
       controls: [K('f.level', 'VOLUME', { def: 0.5 }), K('f.gain', 'FUZZ', { def: 0.7 })],
       fixed: { 'o.semis1': 12, 'o.quality': 0 },
       desc: 'Octave-up fuzz: play above the 12th fret for the ringing upper octave.',
+    }),
+  ]);
+
+  // ---- v0.4 additions
+  // four knobs in a 2 x 2 grid that leaves room for the logo
+  const quad = (list) => list.map((k, i) => Object.assign(k, { x: i % 2 ? 92 : 36, y: i < 2 ? 30 : 68, r: 10 }));
+  const wah = (o) => def(Object.assign({}, wahFoot, { algo: 'wah', fixed: { level: 0.36 }, controls: [TREADLE('pos', { def: 0.5 }), LED({ color: '#ff2a1a', r: 2.2 }), ...(o.extra || [])] }, o));
+  tz.addDefs([
+    wah({
+      id: 'dn.95q', name: 'Weep Baby 95-Q', ref: 'Dunlop Cry Baby 95Q', code: 'WB-95Q', color: '#141416', logo: 'Weep Baby', logoColor: '#d8d8d8',
+      opts: { fLo: 340, fHi: 2200, q: 5.2, mode: 0 },
+      panel: { w: 48, y: 60, h: 200, title: '95-Q' },
+      extra: [K('q', 'Q', { panel: true, def: 0.5 }), K('boost', 'VOLUME', { panel: true, def: 0, virtual: true })],
+      derive: (p) => ({ level: 0.36 + 0.4 * (p.boost ?? 0) }),
+      desc: 'Wah with a Q knob for a narrow or wide sweep and a volume boost of up to +10 dB.',
+    }),
+    wah({
+      id: 'dn.gcb95f', name: 'Weep Baby Classic', ref: 'Dunlop Cry Baby Classic GCB95F', code: 'WB-95F', color: '#101012', treadleColor: '#141416', logo: 'Weep Baby', logoColor: '#cfcfcf', logoFont: "'Oswald', sans-serif",
+      opts: { fLo: 380, fHi: 2100, q: 5.6, mode: 0 },
+      desc: 'Wah with the classic red Fasel-style inductor: smooth, throaty and a little more vocal than the standard model.',
+    }),
+    wah({
+      id: 'dn.105q', name: 'Weep Baby Bass', ref: 'Dunlop Cry Baby Bass Wah 105Q', code: 'WB-105Q', color: '#141416', logo: 'Weep Baby', logoColor: '#d8d8d8',
+      opts: { fLo: 180, fHi: 1400, q: 4.6, mode: 0 },
+      panel: { w: 48, y: 60, h: 200, title: 'BASS' },
+      extra: [K('q', 'Q', { panel: true, def: 0.45 }), K('boost', 'VOLUME', { panel: true, def: 0, virtual: true })],
+      derive: (p) => ({ level: 0.36 + 0.4 * (p.boost ?? 0) }),
+      desc: 'Wah voiced for bass: a lower sweep, a Q knob and a volume boost.',
+    }),
+    wah({
+      id: 'dn.cbm535q', name: 'Weep Baby Mini Multi', ref: 'Dunlop Cry Baby Mini 535Q', code: 'M535', color: '#121214', logo: 'Weep Baby', logoColor: '#d8d8d8', logoSize: 11,
+      tw: 112, th: 214, rx: 11, jackY: 118,
+      opts: { fLo: 330, fHi: 2300, q: 5, mode: 0 },
+      panel: { w: 60, y: 14, h: 186, top: 34 },
+      extra: [SEL('range', 'RANGE', ['1', '2', '3', '4', '5', '6'], { panel: true, values: [0, 0.2, 0.4, 0.6, 0.8, 1], def: 3, sweep: 200, optSize: 4.4, labelRadius: 6, r: 8.5 }),
+        K('q', 'Q', { panel: true, def: 0.5, r: 8.5 }), K('boost', 'BOOST', { panel: true, def: 0, virtual: true, r: 8.5 })],
+      derive: (p) => ({ level: 0.36 + 0.45 * (p.boost ?? 0) }),
+      desc: 'Half-size multi-wah: six frequency ranges, Q and a volume boost.',
+    }),
+    wah({
+      id: 'dn.kh95', name: 'Thrash Wah', ref: 'Dunlop Kirk Hammett Cry Baby KH95', code: 'TW-95', color: '#121212', treadleColor: '#161616', logo: 'Thrash', logoColor: '#b8bcc2', logoFont: "'Oswald', sans-serif", logoSize: 18,
+      opts: { fLo: 420, fHi: 2500, q: 6.2, mode: 0 },
+      art: (g, w, h) => { for (const x of [10, w - 10]) svg('path', { d: `M${x} 30 V${h - 50}`, stroke: '#8a8f96', 'stroke-width': 1.2, opacity: 0.5 }, g); },
+      desc: 'Signature wah with a brighter, more aggressive sweep made for high-gain solos.',
+    }),
+    wah({
+      id: 'dn.db01', name: 'Weep Baby From Below', ref: 'Dunlop Dimebag Cry Baby From Hell DB01', code: 'WB-666', color: '#1a1a1a', treadleColor: '#202020', logo: 'From Below', logoColor: '#9fd14a', logoFont: "'Oswald', sans-serif", logoSize: 15,
+      text: '#c9e6a0',
+      opts: { fLo: 300, fHi: 2500, q: 5.5, mode: 0 },
+      art: (g, w) => { svg('path', { d: `M14 18 L${w / 2} 30 L${w - 14} 18`, stroke: '#9fd14a', 'stroke-width': 1.4, fill: 'none', opacity: 0.7 }, g); },
+      panel: { w: 50, y: 40, h: 230, title: 'FROM BELOW' },
+      extra: [SEL('range', 'RANGE', ['1', '2', '3', '4', '5', '6'], { panel: true, values: [0, 0.2, 0.4, 0.6, 0.8, 1], def: 3, sweep: 200, optSize: 4.6, labelRadius: 6.5 }),
+        K('q', 'Q', { panel: true, def: 0.55 }), K('boost', 'VOLUME', { panel: true, def: 0.4, virtual: true }), TOG('bst', 'BOOST', ['OFF', 'ON'], { panel: true, def: 0, virtual: true })],
+      derive: (p) => ({ level: 0.36 + (p.bst ? 0.5 * (p.boost ?? 0.4) : 0) }),
+      desc: 'Signature multi-wah: six ranges, Q, and a switchable volume boost.',
+    }),
+    def({
+      id: 'dn.jd4s', name: 'Rotoswirl', ref: 'Dunlop Rotovibe JD-4S', brand: 'Dunlop', code: 'RS-4S', cat: 'Modulation', form: 'dn-treadle', color: '#a9adb3', treadleColor: '#1a1a1c', brushed: true,
+      logo: 'ROTOSWIRL', logoFont: "'Oswald', sans-serif", logoColor: '#d8d8d8', text: '#e6e6e6', toeSwitch: true,
+      algo: 'vibe', panel: { w: 48, y: 60, h: 200, title: 'ROTO', color: '#1d1e20' },
+      controls: [TREADLE('speed', { def: 0.4 }), LED({ color: '#ff2a1a', r: 2.2 }),
+        K('level', 'VOLUME', { panel: true, def: 0.5 }), TOG('mode', '', ['CHO', 'VIB'], { panel: true })],
+      fixed: { intensity: 0.75 },
+      desc: 'Rotating-speaker style vibe: the treadle sets the speed. Click the treadle to bypass.',
+    }),
+    def({
+      id: 'dn.dvp4', name: 'Volume XL Mini', ref: 'Dunlop DVP4 Volume (X) Mini', brand: 'Dunlop', code: 'VX-4', cat: 'Volume', form: 'dn-treadle', color: '#17181a', treadleColor: '#121314',
+      tw: 112, th: 214, rx: 11, jackY: 118,
+      logo: 'VOLUME', logoFont: "'Oswald', sans-serif", logoColor: '#bfc3c9', logoSize: 12, algo: 'volume', fixed: { taper: 1, min: 0 }, noBypassClick: true,
+      ctrl: { outs: [{ label: 'EXP OUT', source: 'param:pos' }] },
+      controls: [TREADLE('pos', { def: 1 })],
+      desc: 'Mini volume pedal. The EXP OUT jack sends the treadle position to another pedal.',
+    }),
+    def({
+      id: 'dn.dvp1', name: 'Volume Big', ref: 'Dunlop DVP1 Volume Pedal', brand: 'Dunlop', code: 'VB-1', cat: 'Volume', form: 'dn-treadle', color: '#1a1a1c', treadleColor: '#141416', tw: 160, th: 312,
+      logo: 'VOLUME', logoFont: "'Oswald', sans-serif", logoColor: '#d8d8d8', algo: 'volume', fixed: { taper: 1, min: 0 }, noBypassClick: true,
+      controls: [TREADLE('pos', { def: 1 })],
+      desc: 'Large, smooth volume pedal.',
+    }),
+    def({
+      id: 'dn.ffm1', name: 'Fuzzy Face Mini Si', ref: 'Dunlop Fuzz Face Mini Silicon FFM1', brand: 'Dunlop', code: 'FFM-1', cat: 'Fuzz', form: 'dn-round', mini: true, color: '#2a6fc4', text: '#ffffff', knob: 'chicken',
+      logo: 'FUZZY FACE', tagline: 'Silicon',
+      algo: 'drive', opts: { clip: 'si', bias: 0.25, preHp: 70, gainMinDb: 12, gainMaxDb: 46, tone: 'none', postLp: 5400, levelMaxDb: 0, outTrim: 0.4 },
+      controls: [K('level', 'VOLUME', { def: 0.55 }), K('gain', 'FUZZ', { def: 0.7 }), FOOT()],
+      desc: 'Bright, aggressive silicon fuzz in a small round box.',
+    }),
+    def({
+      id: 'dn.ffm2', name: 'Fuzzy Face Mini Ge', ref: 'Dunlop Fuzz Face Mini Germanium FFM2', brand: 'Dunlop', code: 'FFM-2', cat: 'Fuzz', form: 'dn-round', mini: true, color: '#c41a22', text: '#ffffff', knob: 'chicken',
+      logo: 'FUZZY FACE', tagline: 'Germanium',
+      algo: 'drive', opts: { clip: 'ge', bias: 0.35, preHp: 60, gainMinDb: 10, gainMaxDb: 40, tone: 'none', postLp: 4800, levelMaxDb: 0, outTrim: 0.5 },
+      controls: [K('level', 'VOLUME', { def: 0.55 }), K('gain', 'FUZZ', { def: 0.7 }), FOOT()],
+      desc: 'Warm, round germanium fuzz that cleans up when you roll back the guitar volume.',
+    }),
+    mxr({
+      id: 'dn.qz1', name: 'Weep Baby Fixed Zone', ref: 'Dunlop Cry Baby Q Zone QZ1', brand: 'Dunlop', code: 'QZ-1', logo: 'Fixed Zone', logoFont: "'Oswald', sans-serif", logoSize: 18,
+      cat: 'Wah', color: '#151517', text: '#e6e6e6', led: '#ff2a1a',
+      algo: 'wah', opts: { fLo: 300, fHi: 2400, q: 5.5, mode: 0 }, fixed: { mode: 0 },
+      controls: quad([K('pos', 'SWEEP', { def: 0.55 }), K('q', 'Q', { def: 0.5 }), K('level', 'VOLUME', { def: 0.36 }), K('range', 'BASS', { def: 0.5 })]),
+      desc: 'A wah parked at one spot: SWEEP picks the frequency, Q the peak, BASS shifts the range.',
+    }),
+    mxr({
+      id: 'dn.ep103', name: 'Echo-Flex Delay', ref: 'Dunlop Echoplex Delay EP103', brand: 'Dunlop', code: 'EF-103', logo: 'ECHO-FLEX', logoFont: "'Oswald', sans-serif", logoSize: 19,
+      cat: 'Delay', color: '#6c6f73', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'delay', opts: { maxMs: 1500 }, fixed: { mode: 2, heads: 4, tone: 0.42, modrate: 0.3 }, tapTarget: 'time',
+      ctrl: { ins: [{ label: 'TAP', action: 'tap' }] },
+      controls: quad([K('mix', 'VOLUME', { def: 0.4 }), K('feedback', 'REPEATS', { def: 0.4, max: 1.05 }), K('time', 'DELAY', { min: 60, max: 1500, def: 380, display: ms }), K('age', 'AGE', { def: 0.3, virtual: true })]),
+      derive: (p) => ({ age: p.age ?? 0.3, moddepth: 0.1 + 0.4 * (p.age ?? 0.3) }),
+      desc: 'Tape echo voice with wow and flutter. AGE makes the repeats darker and wobblier. Plug a tap switch into the TAP jack.',
+    }),
+    mxr({
+      id: 'dn.ep101', name: 'Echo-Flex Pre', ref: 'Dunlop Echoplex Preamp EP101', brand: 'Dunlop', code: 'EF-101', logo: 'ECHO-FLEX', logoFont: "'Oswald', sans-serif", logoSize: 19,
+      cat: 'Boost', color: '#6c6f73', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'tube', preHp: 40, gainMinDb: 0, gainMaxDb: 20, tone: 'none', postLp: 12000, cleanSum: true, cleanMix: 0.7, levelMaxDb: 0, preEq: [{ type: 'hs', f: 3000, q: 0.7, db: 2 }] },
+      fixed: { level: 0.9 },
+      controls: [K('gain', 'VOLUME', { def: 0.35 })],
+      desc: 'Preamp from a vintage tape echo: a fat, slightly bright boost.',
     }),
   ]);
 }

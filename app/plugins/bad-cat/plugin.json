@@ -1,0 +1,12 @@
+{
+  "id": "bad-cat",
+  "name": "Bad Cat",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Bad Cat: class-A EF86 / EL84 combos.",
+  "kind": "brand",
+  "brand": "Bad Cat",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e2b33c"
+}

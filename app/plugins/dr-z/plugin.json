@@ -1,0 +1,12 @@
+{
+  "id": "dr-z",
+  "name": "Dr. Z",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Dr. Z: hand-wired EL84 combos.",
+  "kind": "brand",
+  "brand": "Dr. Z",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b08a3e"
+}

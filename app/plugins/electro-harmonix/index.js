@@ -336,6 +336,61 @@ export default function register(tz) {
       [[0.7, 8], [0.52, 7], [0.34, 6]].forEach(([fw, h], i) => svg('rect', { x: b.cx - (b.w * fw) / 2, y: cy + 8 - i * 9, width: b.w * fw, height: h, rx: 2, fill: i === 2 ? a.accent : a.ink, opacity: 1 - i * 0.12 }, g));
       return { logoY: b.y + b.h * 0.72, subY: b.y + b.h * 0.72 + 15 };
     },
+    // triangle frame (the knobs of the 1970s Triangle sit inside it)
+    tri(g, b, a) {
+      const top = a.ty ?? 14, bot = a.by ?? 104;
+      svg('path', { d: poly([[b.cx, top], [b.x + b.w - 8, bot], [b.x + 8, bot]], true), fill: 'none', stroke: a.accent, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, g);
+      return { logoY: b.y + b.h * 0.5, subY: b.y + b.h * 0.5 + 16 };
+    },
+    // bird in flight with a sound burst
+    bird(g, b, a) {
+      const cx = b.cx, cy = b.y + b.h * 0.3;
+      svg('path', { d: `M${cx - 30} ${cy} Q${cx - 16} ${cy - 16} ${cx} ${cy + 2} Q${cx + 16} ${cy - 16} ${cx + 30} ${cy} Q${cx + 14} ${cy - 6} ${cx} ${cy + 8} Q${cx - 14} ${cy - 6} ${cx - 30} ${cy} Z`, fill: a.accent }, g);
+      for (let i = 0; i < 3; i++) svg('path', { d: `M${cx - 8 - i * 5} ${cy + 14 + i * 4} Q${cx} ${cy + 18 + i * 5} ${cx + 8 + i * 5} ${cy + 14 + i * 4}`, fill: 'none', stroke: a.ink, 'stroke-width': 1.3, opacity: 0.9 - i * 0.25 }, g);
+      return { logoY: b.y + b.h * 0.72, subY: b.y + b.h * 0.72 + 15 };
+    },
+    // tape reels joined by the tape
+    reels(g, b, a) {
+      const cy = b.y + b.h * 0.3, d = Math.min(26, b.w * 0.22), R = Math.min(15, b.h * 0.2);
+      for (const s of [-1, 1]) {
+        svg('circle', { cx: b.cx + s * d, cy, r: R, fill: a.accent, stroke: a.ink, 'stroke-width': 1.2 }, g);
+        svg('circle', { cx: b.cx + s * d, cy, r: R * 0.28, fill: a.ink }, g);
+        for (let i = 0; i < 3; i++) { const t = (i / 3) * Math.PI * 2; svg('circle', { cx: b.cx + s * d + Math.cos(t) * R * 0.6, cy: cy + Math.sin(t) * R * 0.6, r: R * 0.17, fill: a.ink }, g); }
+      }
+      L(g, b.cx - d, cy + R, b.cx + d, cy + R, a.ink, 1.4);
+      return { logoY: b.y + b.h * 0.74, subY: b.y + b.h * 0.74 + 14 };
+    },
+    // suspension bridge
+    bridge(g, b, a) {
+      const base = b.y + b.h * 0.42, x0 = b.x + 6, x1 = b.x + b.w - 6, t1 = x0 + (x1 - x0) * 0.25, t2 = x0 + (x1 - x0) * 0.75;
+      svg('rect', { x: x0, y: base, width: x1 - x0, height: 2.2, fill: a.ink }, g);
+      for (const t of [t1, t2]) svg('rect', { x: t - 2, y: base - 26, width: 4, height: 28, fill: a.ink }, g);
+      svg('path', { d: `M${x0} ${base - 14} Q${(x0 + t1) / 2} ${base - 4} ${t1} ${base - 26} Q${b.cx} ${base} ${t2} ${base - 26} Q${(t2 + x1) / 2} ${base - 4} ${x1} ${base - 14}`, fill: 'none', stroke: a.accent, 'stroke-width': 1.8 }, g);
+      return { logoY: base + 17, subY: base + 31 };
+    },
+    // square and triangle waves
+    pulse(g, b, a) {
+      const y = b.y + b.h * 0.3, x0 = b.x + 10, x1 = b.x + b.w - 10, s = (x1 - x0) / 4;
+      svg('path', { d: poly([[x0, y + 8], [x0, y - 8], [x0 + s, y - 8], [x0 + s, y + 8], [x0 + 2 * s, y + 8], [x0 + 2 * s, y - 8]]), fill: 'none', stroke: a.accent, 'stroke-width': 2 }, g);
+      svg('path', { d: poly([[x0 + 2 * s, y - 8], [x0 + 2.5 * s, y + 8], [x0 + 3 * s, y - 8], [x0 + 3.5 * s, y + 8], [x1, y - 8]]), fill: 'none', stroke: a.ink, 'stroke-width': 2 }, g);
+      return { logoY: b.y + b.h * 0.7, subY: b.y + b.h * 0.7 + 15 };
+    },
+    // gothic window
+    arch(g, b, a) {
+      const cx = b.cx, top = b.y + 4, w2 = Math.min(26, b.w * 0.2), base = b.y + b.h * 0.56;
+      svg('path', { d: `M${cx - w2} ${base} V${top + w2} Q${cx - w2} ${top} ${cx} ${top - 2} Q${cx + w2} ${top} ${cx + w2} ${top + w2} V${base} Z`, fill: a.accent, stroke: a.ink, 'stroke-width': 1.4 }, g);
+      L(g, cx, top + 6, cx, base, a.ink, 1.2);
+      L(g, cx - w2, top + w2 + 8, cx + w2, top + w2 + 8, a.ink, 1.2);
+      svg('circle', { cx, cy: top + w2 * 0.6, r: w2 * 0.35, fill: 'none', stroke: a.ink, 'stroke-width': 1.2 }, g);
+      return { logoY: base + 16, subY: base + 31 };
+    },
+    // swirl for vibes
+    swirl(g, b, a) {
+      const cy = b.y + b.h * 0.32, R = Math.min(22, b.h * 0.26);
+      svg('path', { d: spiral(b.cx, cy, R, 2.2, 1), fill: 'none', stroke: a.accent, 'stroke-width': 3, 'stroke-linecap': 'round' }, g);
+      svg('path', { d: spiral(b.cx, cy, R * 0.86, 2.2, 1, Math.PI), fill: 'none', stroke: a.ink, 'stroke-width': 1.4, 'stroke-linecap': 'round' }, g);
+      return { logoY: b.y + b.h * 0.74, subY: b.y + b.h * 0.74 + 15 };
+    },
   };
 
   // ------------------------------------------------------------------ knob styles (drawn into the rotating group)
@@ -393,6 +448,7 @@ export default function register(tz) {
     big: { w: 236, h: 320, rx: 7 },
     nine: { w: 192, h: 256, rx: 6 },
     wide: { w: 290, h: 236, rx: 7 },
+    pico: { w: 112, h: 258, rx: 5 },
   };
   let seq = 0;
   function steel(g, w, h, col, rx) {
@@ -419,9 +475,10 @@ export default function register(tz) {
     const knobs = C.filter((c) => (c.t === 'knob' || c.t === 'sel') && c.x === undefined);
     const n = knobs.length;
     const big = box === 'big';
-    const rows = d.rows || (n <= (box === 'nano' ? 3 : 4) ? [n] : n === 4 ? [2, 2] : [Math.ceil(n / 2), Math.floor(n / 2)]);
-    const r0 = d.kr || (big ? 17 : n === 1 ? 14 : rows[0] >= 4 ? 10.5 : rows[0] === 3 ? 11.5 : 13);
-    const ys = big ? [52, 104] : [30, 76];
+    const rows = d.rows || (box === 'pico' ? (n <= 2 ? [n] : [2, n - 2]) : n <= (box === 'nano' ? 3 : 4) ? [n] : n === 4 ? [2, 2] : [Math.ceil(n / 2), Math.floor(n / 2)]);
+    const pico = box === 'pico';
+    const r0 = d.kr || (big ? 17 : pico ? 9.5 : n === 1 ? 14 : rows[0] >= 4 ? 10.5 : rows[0] === 3 ? 11.5 : 13);
+    const ys = big ? [52, 104] : pico ? [40, 80] : [30, 76];
     let k = 0, bottom = 8;
     rows.forEach((cnt, ri) => {
       const row = knobs.slice(k, k + cnt);
@@ -451,7 +508,7 @@ export default function register(tz) {
     const leds = C.filter((c) => c.t === 'led' && c.x === undefined);
     leds.forEach((l, i) => Object.assign(l, { r: big ? 3.4 : 3, y: big ? h - 62 : h - 50, x: leds.length === 1 ? w / 2 : [w * 0.27, w * 0.73][i] }));
     const top = d.artTop ?? bottom + 2;
-    const bot = d.artBottom ?? (big ? h - 74 : h - 58);
+    const bot = d.artBottom ?? (big ? h - 74 : box === 'pico' ? h - 66 : h - 58);
     return { x: 6, y: top, w: w - 12, h: bot - top, cx: w / 2, cy: (top + bot) / 2 };
   }
   function drawLogo(g, d, w, band, hint, txt) {
@@ -496,7 +553,7 @@ export default function register(tz) {
     const theme = { text: txt, labelFont: d.labelFont || "'Barlow Condensed', sans-serif", labelSize: d.labelSize || 7, labelLs: 0.7, knob: 'mxr', jackText: txt };
     formKit.placeControls(ctx, d.controls, theme);
     restyleKnobs(ctx, d);
-    const jacks = d.jacksTop || box === 'nine' ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jackY ?? (box === 'big' ? 130 : 112), gap: 30 });
+    const jacks = d.jacksTop || box === 'nine' || box === 'pico' ?formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { flip: ctx.flip, y0: d.jackY ?? (box === 'big' ? 130 : 112), gap: 30 });
     return { w, h, theme, jacks };
   });
 
@@ -511,7 +568,7 @@ export default function register(tz) {
       return true;
     },
   });
-  tz.blockHooks('ehx.superego', {
+  const egoHook = {
     foot(view, ctl, down) {
       if (ctl.t !== 'foot') return false;
       const m = view.block.params.smode ?? 0; // 0 latch, 1 momentary, 2 auto (switch = bypass)
@@ -520,7 +577,9 @@ export default function register(tz) {
       else send(view.block, down ? 1 : 2);
       return true;
     },
-  });
+  };
+  tz.blockHooks('ehx.superego', egoHook);
+  tz.blockHooks('ehx.picofreeze', egoHook);
 
   // ------------------------------------------------------------------ blocks
   const E = (o) => def(Object.assign({ form: 'ehx', brand: 'Electro-Harmonix' }, o, { controls: [...(o.controls || []), ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff2a1a' })])] }));
@@ -911,6 +970,357 @@ export default function register(tz) {
 
     // ---------------------------------------------------------------- the 9-series machines
     ...nineSeries(),
+  ]);
+
+  // ---------------------------------------------------------------- v0.4 additions
+  const semiOpts = ['-24', '-12', '-7', '-5', '-3', '0', '+3', '+4', '+5', '+7', '+12', '+24'];
+  const semiVals = [-24, -12, -7, -5, -3, 0, 3, 4, 5, 7, 12, 24];
+  const P = (o) => E(Object.assign({ box: 'pico', kstyle: 'dot', labelSize: 6.2 }, o));
+  tz.addDefs([
+    // ---- pitch
+    E({
+      id: 'ehx.pitchforkplus', name: 'Tuning Prong+', ref: 'Electro-Harmonix Pitch Fork+', cat: 'Pitch', typeName: 'Dual polyphonic pitch shifter',
+      box: 'xo', bh: 270, color: '#dfe2e6', text: '#14213d', cost: 1,
+      art: { kind: 'fork', ink: '#14213d', accent: '#2f6fd0' },
+      logo: 'TUNING PRONG+', logoSize: 18, logoLs: 1, sub: 'POLYPHONIC PITCH SHIFTER', subSize: 6, artTop: 128,
+      algo: 'pitch', fixed: { quality: 1 },
+      ctrl: { ins: [{ label: 'EXP', param: 'expr', min: 0, max: 1 }] },
+      controls: [
+        K('blend', 'BLEND', { x: 34, y: 34, r: 12, def: 0.5, virtual: true }),
+        SEL('s1', 'SHIFT 1', semiOpts, { x: 88, y: 36, r: 11, def: 10, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'below', values: semiVals, virtual: true }),
+        SEL('s2', 'SHIFT 2', semiOpts, { x: 142, y: 36, r: 11, def: 1, sweep: 300, optSize: 3.8, labelRadius: 8, labelPos: 'below', values: semiVals, virtual: true }),
+        TOG('pmode', 'VOICES', ['1', '2', '1+2'], { x: 56, y: 104, orient: 'h', def: 0, virtual: true }),
+        TOG('latch', 'MODE', ['LATCH', 'MOM'], { x: 124, y: 104, orient: 'h', virtual: true }),
+      ],
+      derive: (p) => {
+        const b = p.blend ?? 0.5, wet = Math.sin(b * Math.PI / 2), m = p.pmode ?? 0;
+        return { semis1: semiVals[p.s1 ?? 10] ?? 12, semis2: semiVals[p.s2 ?? 1] ?? -12, level1: m === 1 ? 0 : wet, level2: m === 0 ? 0 : wet, dry: Math.cos(b * Math.PI / 2), cents: 0 };
+      },
+      momentaryWhen: (ui) => (ui.latch ?? 0) === 1,
+      desc: 'Two pitch voices, each set from two octaves down to two octaves up. Play one voice or both. EXP sweeps into the shift.',
+    }),
+    E({
+      id: 'ehx.ihm', name: 'Smart Harmony Box', ref: 'Electro-Harmonix Pico Intelligent Harmony Machine', cat: 'Pitch', typeName: 'Intelligent harmony',
+      box: 'pico', color: '#5a3d8a', text: '#f1e9ff', kstyle: 'dot', labelSize: 6.2, cost: 0.9,
+      art: { kind: 'pog', accent: '#c7a8ff', ink: '#f1e9ff' },
+      logo: 'HARMONY', logoSize: 17, logoLs: 1.4, sub: 'SMART HARMONY', subSize: 5.6,
+      algo: 'pitch', fixed: { quality: 1 },
+      controls: [
+        SEL('key', 'KEY', ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], { def: 9, sweep: 300, optSize: 3.6, labelRadius: 7, labelPos: 'none' }),
+        SEL('harm', 'HARMONY', ['-8', '-6', '-5', '-4', '-3', '+3', '+4', '+5', '+6', '+8'], { def: 5, sweep: 300, optSize: 3.6, labelRadius: 7, labelPos: 'none', virtual: true }),
+        K('blend', 'BLEND', { def: 0.5, virtual: true }), TOG('minor', '', ['MAJ', 'MIN'], { virtual: true }),
+      ],
+      derive: (p) => { const b = p.blend ?? 0.5; return { scale: p.minor ? 2 : 1, deg1: [-7, -5, -4, -3, -2, 2, 3, 4, 5, 7][p.harm ?? 5], level1: Math.sin(b * Math.PI / 2), dry: Math.cos(b * Math.PI / 2), level2: 0 }; },
+      desc: 'Adds a harmony that stays in key. Pick the key, the interval and major or minor.',
+    }),
+    // ---- delays / reverbs
+    E({
+      id: 'ehx.grandcanyon', name: 'Grand Gorge', ref: 'Electro-Harmonix Grand Canyon', cat: 'Delay', typeName: 'Delay & looper',
+      box: 'xo', bw: 200, bh: 256, color: '#c86f32', text: '#2a1608', cost: 1.3, noStd: true, stereo: 'both', jacksTop: true,
+      monoPorts: MONO, stereoPorts: STEREO,
+      art: { kind: 'canyon', accent: '#8d3f17', ink: '#4a1f0b', sun: '#f5d27a' },
+      logo: 'GRAND GORGE', logoSize: 19, logoLs: 3, sub: 'DELAY & LOOPER', subSize: 6, artTop: 120, artBottom: 194,
+      algo: 'delay', opts: { maxMs: 3000 }, tapTarget: 'time',
+      controls: [
+        K('mix', 'FX LVL', { x: 30, y: 32, r: 11, def: 0.4 }), K('feedback', 'FEEDBACK', { x: 77, y: 32, r: 11, def: 0.35, max: 1.05 }), K('time', 'DELAY', { x: 124, y: 32, r: 11, min: 20, max: 3000, def: 450, curve: 'log', display: ms }),
+        K('moddepth', 'DEPTH', { x: 171, y: 32, r: 11, def: 0.2 }),
+        SEL('gmode', 'MODE', ['ECHO', 'MOD', 'MULTI', 'REV', 'DMM', 'TAPE', 'VERB', 'OCT', 'S/H', 'SHIM', 'LOFI', 'SOS'], { x: 70, y: 94, r: 13, sweep: 300, optSize: 4, labelRadius: 9, labelPos: 'none', virtual: true }),
+        K('modrate', 'RATE', { x: 150, y: 92, r: 10, def: 0.3 }),
+        FOOT({ x: 50, y: 226, r: 12 }), LED({ x: 50, y: 204, color: '#ff2a1a' }), FOOT({ action: 'tap', label: 'TAP', x: 150, y: 226, r: 12, labelDy: -24 }), LED({ x: 176, y: 226, bind: 'tap:time', color: '#3ddc84' }),
+      ],
+      derive: (p) => {
+        const m = p.gmode ?? 0;
+        const T = [{ mode: 0 }, { mode: 4 }, { mode: 2, heads: 7 }, { mode: 5 }, { mode: 1 }, { mode: 2, heads: 4, age: 0.55 }, { mode: 10 }, { mode: 6 }, { mode: 4, moddepth: 0.85, modrate: 0.75 }, { mode: 6 }, { mode: 3 }, { mode: 0, feedback: 1.0 }][m];
+        return Object.assign({ heads: 4, age: 0.2 }, T);
+      },
+      desc: 'Twelve delay modes with tap tempo. SOS (the looper) is approximated as a 3 s sound-on-sound delay.',
+    }),
+    E({
+      id: 'ehx.oceans12', name: 'Seas Twelve', ref: 'Electro-Harmonix Oceans 12', cat: 'Reverb', typeName: 'Dual stereo reverb',
+      box: 'wide', bw: 280, bh: 250, color: '#153d63', text: '#eef6fb', cost: 2.2, noStd: true, stereo: 'both', jacksTop: true, alwaysOn: true,
+      monoPorts: MONO, stereoPorts: STEREO,
+      art: { kind: 'ocean', accent: '#7fc4e8', ink: '#eef6fb' },
+      logo: 'SEAS 12', logoSize: 22, logoLs: 4, sub: 'DUAL STEREO REVERB', subSize: 6, artTop: 120, artBottom: 186,
+      panels: [{ x: 139.4, y: 12, width: 1.2, height: 98, fill: '#eef6fb', opacity: 0.35 }],
+      algo: 'chain',
+      opts: { chain: [{ prefix: 'a', algo: 'reverb', params: { lowcut: 0.15 } }, { prefix: 'b', algo: 'reverb', params: { lowcut: 0.15 } }] },
+      controls: [
+        K('a.mix', 'FX LVL', { x: 28, y: 32, r: 10.5, def: 0.35 }), K('a.decay', 'TIME', { x: 70, y: 32, r: 10.5, def: 0.5 }), K('a.tone', 'TONE', { x: 112, y: 32, r: 10.5, def: 0.55 }),
+        K('b.mix', 'FX LVL', { x: 168, y: 32, r: 10.5, def: 0.3 }), K('b.decay', 'TIME', { x: 210, y: 32, r: 10.5, def: 0.65 }), K('b.tone', 'TONE', { x: 252, y: 32, r: 10.5, def: 0.5 }),
+        SEL('am', 'MODE A', ['HALL', 'SPRING', 'PLATE', 'ROOM', 'MOD', 'SHIM'], { x: 70, y: 88, r: 11, sweep: 220, optSize: 4, labelRadius: 8, labelPos: 'none', virtual: true }),
+        SEL('bm', 'MODE B', ['HALL', 'SPRING', 'PLATE', 'ROOM', 'MOD', 'SHIM'], { x: 210, y: 88, r: 11, def: 1, sweep: 220, optSize: 4, labelRadius: 8, labelPos: 'none', virtual: true }),
+        FOOT({ action: 'param', p: 'a.on', label: 'A', x: 70, y: 220, r: 12, labelDy: -24 }), FOOT({ action: 'param', p: 'b.on', label: 'B', x: 210, y: 220, r: 12, labelDy: -24 }),
+        LED({ x: 100, y: 220, bind: 'param:a.on', color: '#3fa9ff' }), LED({ x: 240, y: 220, bind: 'param:b.on', color: '#3fa9ff' }),
+      ],
+      initParams: { 'a.on': 1, 'b.on': 0 },
+      derive: (p) => {
+        const M = [1, 3, 2, 0, 6, 4];
+        return { 'a.mode': M[p.am ?? 0], 'b.mode': M[p.bm ?? 1] };
+      },
+      desc: 'Two reverbs in series, each with its own footswitch and six modes.',
+    }),
+    E({
+      id: 'ehx.cathedral', name: 'Minster', ref: 'Electro-Harmonix Cathedral', cat: 'Reverb', typeName: 'Stereo reverb',
+      box: 'xo', bw: 196, bh: 250, color: '#cbcdd0', text: '#1b1b1d', cost: 1.3, noStd: true, stereo: 'both', monoPorts: MONO, stereoPorts: STEREO,
+      art: { kind: 'arch', accent: '#b8342a', ink: '#1b1b1d' },
+      logo: 'MINSTER', logoSize: 22, logoLs: 4, sub: 'STEREO REVERB', subSize: 6, artTop: 120, artBottom: 196,
+      algo: 'reverb', fixed: { lowcut: 0.15 },
+      controls: [
+        K('mix', 'BLEND', { x: 30, y: 34, r: 11, def: 0.35 }), K('decay', 'TIME', { x: 76, y: 34, r: 11, def: 0.55 }), K('predelay', 'PRE-DLY', { x: 122, y: 34, r: 11, min: 0, max: 300, def: 20, display: ms }), K('tone', 'DAMP', { x: 166, y: 34, r: 11, def: 0.55 }),
+        SEL('cmode', 'MODE', ['HALL', 'ROOM', 'PLATE', 'SPRING', 'SHIM', 'ECHO', 'REV', 'MOD'], { x: 98, y: 94, r: 13, sweep: 280, optSize: 4, labelRadius: 9, labelPos: 'none', virtual: true }),
+        FOOT({ x: 52, y: 222, r: 12 }), LED({ x: 52, y: 200, color: '#ff2a1a' }), FOOT({ action: 'param', p: 'inf', label: 'INFINITE', x: 144, y: 222, r: 12, labelDy: -24 }), LED({ x: 170, y: 222, bind: 'param:inf', color: '#3ddc84' }),
+      ],
+      derive: (p) => {
+        const T = [{ mode: 1 }, { mode: 0 }, { mode: 2 }, { mode: 3 }, { mode: 4 }, { mode: 8, predelay: Math.max(p.predelay ?? 20, 180) }, { mode: 9 }, { mode: 6, mod: 0.8 }][p.cmode ?? 0];
+        return Object.assign({ mod: 0.3 }, T, p.inf ? { decay: 0.99 } : {});
+      },
+      desc: 'Eight reverbs. The INFINITE switch holds the tail. REVERSE is approximated with the swell reverb.',
+    }),
+    E({
+      id: 'ehx.memoryboy', name: 'Recall Boy', ref: 'Electro-Harmonix Memory Boy', cat: 'Delay', typeName: 'Analog delay with chorus / vibrato',
+      box: 'xo', bh: 270, color: '#c4c6c9', text: '#3a1414',
+      art: { kind: 'echo', accent: '#a5241f', r: 9, n: 7, top: true },
+      logo: 'RECALL BOY', logoSize: 19, logoLs: 1.4, sub: 'ANALOG DELAY', subSize: 6,
+      algo: 'delay', opts: { maxMs: 600, fixedMode: 1 }, fixed: { tone: 0.38, age: 0.35 },
+      controls: [K('mix', 'BLEND', { def: 0.45 }), K('feedback', 'FEEDBACK', { def: 0.4, max: 1.05 }), K('time', 'DELAY', { min: 30, max: 550, def: 300, display: ms }),
+        K('moddepth', 'DEPTH', { def: 0.15 }), K('modrate', 'RATE', { def: 0.3 }), TOG('vib', '', ['CHORUS', 'VIB'], { orient: 'h', virtual: true })],
+      rows: [3, 2],
+      derive: (p) => (p.vib ? { mix: Math.max(p.mix ?? 0.45, 0.85) } : {}),
+      desc: 'Compact analog delay with chorus or vibrato on the repeats.',
+    }),
+    P({
+      id: 'ehx.picocanyon', name: 'Pico Gorge Echo', ref: 'Electro-Harmonix Pico Canyon Echo', cat: 'Delay', typeName: 'Digital delay',
+      color: '#d07a36', text: '#2a1608', art: { kind: 'canyon', accent: '#8d3f17', ink: '#4a1f0b', sun: '#f5d27a' },
+      logo: 'GORGE ECHO', logoSize: 15, logoLs: 1.4, sub: 'DIGITAL DELAY', subSize: 5.6,
+      algo: 'delay', opts: { maxMs: 3000 }, fixed: { mode: 0 }, tapFoot: true,
+      controls: [K('mix', 'FX LVL', { def: 0.4 }), K('feedback', 'FDBK', { def: 0.35, max: 1.05 }), K('time', 'DELAY', { min: 20, max: 3000, def: 420, curve: 'log', display: ms }), K('tone', 'FILTER', { def: 0.6 })],
+      desc: 'Simple digital delay with a filter knob. Hold the footswitch to tap the tempo.',
+    }),
+    P({
+      id: 'ehx.picorerun', name: 'Pico Replay Tape', ref: 'Electro-Harmonix Pico Rerun Tape Delay', cat: 'Delay', typeName: 'Tape delay',
+      color: '#6b4a32', text: '#f3e6d2', art: { kind: 'reels', accent: '#d9b98a', ink: '#2a1a0e' },
+      logo: 'REPLAY', logoSize: 17, logoLs: 2, sub: 'TAPE DELAY', subSize: 5.6,
+      algo: 'delay', opts: { maxMs: 1200 }, fixed: { mode: 2, heads: 4, tone: 0.45, modrate: 0.35 },
+      controls: [K('mix', 'MIX', { def: 0.4 }), K('feedback', 'FDBK', { def: 0.4, max: 1.05 }), K('time', 'DELAY', { min: 40, max: 1200, def: 360, display: ms }), K('sat', 'SAT', { def: 0.35 }),
+        TOG('flutter', 'FLUTTER', ['1', '2', '3'], { orient: 'h', virtual: true })],
+      derive: (p) => { const f = p.flutter ?? 0; return { moddepth: [0.1, 0.3, 0.55][f], age: [0.3, 0.5, 0.7][f] }; },
+    }),
+    P({
+      id: 'ehx.picooceans', name: 'Pico Seas 3-Verb', ref: 'Electro-Harmonix Pico Oceans 3-Verb', cat: 'Reverb', typeName: 'Reverb', cost: 1.1,
+      color: '#5b9fd0', text: '#0f2436', art: { kind: 'ocean', accent: '#d8eefa', ink: '#0f2436' },
+      logo: 'SEAS 3', logoSize: 17, logoLs: 2, sub: 'REVERB', subSize: 5.6,
+      algo: 'reverb', fixed: { lowcut: 0.15 },
+      controls: [K('mix', 'FX LVL', { def: 0.35 }), K('decay', 'TIME', { def: 0.5 }), K('tone', 'TONE', { def: 0.55 }), K('predelay', 'PRE-DLY', { min: 0, max: 250, def: 20, display: ms }),
+        TOG('omode', '', ['SPRING', 'PLATE', 'HALL'], { orient: 'h', def: 2, virtual: true })],
+      derive: (p) => ({ mode: [3, 2, 1][p.omode ?? 2] }),
+    }),
+    P({
+      id: 'ehx.picoshimmer', name: 'Pico Glimmer', ref: 'Electro-Harmonix Pico Shimmer', cat: 'Reverb', typeName: 'Shimmer reverb', cost: 1.2,
+      color: '#ece7da', text: '#3a2c0e', art: { kind: 'cosmos', accent: '#d6a83a', ink: '#3a2c0e' },
+      logo: 'GLIMMER', logoSize: 17, logoLs: 2, sub: 'SHIMMER REVERB', subSize: 5.6,
+      algo: 'reverb', fixed: { mode: 4, lowcut: 0.2 },
+      controls: [K('mix', 'FX LVL', { def: 0.35 }), K('decay', 'TIME', { def: 0.6 }), K('tone', 'TONE', { def: 0.55 }), K('shimmer', 'SHIMMER', { def: 0.5 })],
+    }),
+    // ---- modulation
+    E({
+      id: 'ehx.smallclone', name: 'Small Twin', ref: 'Electro-Harmonix Small Clone', cat: 'Modulation', typeName: 'Analog chorus',
+      box: 'nano', color: '#c6c8cb', text: '#121a2c',
+      art: { kind: 'clone', ink: '#121a2c', accent: '#2c64b4' },
+      logo: 'small twin', logoSize: 22, logoFont: "'Inter', sans-serif", logoWeight: 800, logoLs: -0.4, sub: 'CHORUS', subSize: 6.4,
+      algo: 'chorus', fixed: { mix: 0.5, mode: 0 },
+      controls: [K('rate', 'RATE', { def: 0.35, r: 14 }), TOG('deep', 'DEPTH', ['LO', 'HI'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ depth: p.deep ? 0.8 : 0.4 }),
+      desc: 'The classic grunge chorus: one RATE knob and a DEPTH switch.',
+    }),
+    E({
+      id: 'ehx.goodvibes', name: 'Groovy Vibes', ref: 'Electro-Harmonix Good Vibes', cat: 'Modulation', typeName: 'Analog modulator',
+      box: 'xo', color: '#5c3a86', text: '#f4ecff',
+      art: { kind: 'swirl', accent: '#f2b84b', ink: '#f4ecff' },
+      logo: 'GROOVY VIBES', logoSize: 18, logoLs: 1.4, sub: 'ANALOG MODULATOR', subSize: 6,
+      algo: 'vibe', ctrl: { ins: [{ label: 'EXP', param: 'speed', min: 0, max: 1 }] },
+      controls: [K('level', 'VOLUME', { def: 0.5 }), K('intensity', 'DEPTH', { def: 0.7 }), K('speed', 'RATE', { def: 0.4 }), K('tone', 'TONE', { def: 0.6 }), TOG('mode', '', ['CHORUS', 'VIBRATO'], { orient: 'h' })],
+      desc: 'Photocell vibe in chorus or vibrato mode. An expression pedal can control the speed.',
+    }),
+    E({
+      id: 'ehx.pulsar', name: 'Nano Pulse', ref: 'Electro-Harmonix Nano Pulsar', cat: 'Modulation', typeName: 'Tremolo',
+      box: 'nano', color: '#c9cbce', text: '#141414',
+      art: { kind: 'pulse', accent: '#c8161d', ink: '#141414' },
+      logo: 'NANO PULSE', logoSize: 18, logoLs: 1.2, sub: 'TREMOLO', subSize: 6.4,
+      algo: 'tremolo', fixed: { mode: 0 },
+      controls: [K('rate', 'RATE', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.6 }), K('shape', 'SHAPE', { def: 0.5, virtual: true }), TOG('sq', 'WAVE', ['TRI', 'SQR'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ wave: p.sq ? 0.7 + 0.3 * (p.shape ?? 0.5) : 0.4 * (p.shape ?? 0.5) }),
+    }),
+    // ---- drives / fuzz / boost
+    E({
+      id: 'ehx.satisfaction', name: 'Content Fuzz', ref: 'Electro-Harmonix Satisfaction Fuzz', cat: 'Fuzz', typeName: 'Vintage fuzz',
+      box: 'nano', color: '#e8dfc6', text: '#2a1608',
+      art: { kind: 'rise', ink: '#2a1608', accent: '#e06a1a' },
+      logo: 'CONTENT', logoSize: 21, logoLs: 2, logoColor: '#d0561a', sub: 'FUZZ', subSize: 7, subLs: 3,
+      algo: 'drive', opts: { clip: 'ge', bias: 0.45, preHp: 150, gainMinDb: 20, gainMaxDb: 46, tone: 'none', postLp: 4200, levelMaxDb: 0, outTrim: 0.5 },
+      controls: [K('level', 'VOLUME', { def: 0.55, display: ten }), K('gain', 'ATTACK', { def: 0.7, display: ten })],
+      desc: 'Buzzy 1960s fuzz-tone sound with VOLUME and ATTACK.',
+    }),
+    E({
+      id: 'ehx.trianglemuff', name: 'Nano Triangle Murk', ref: 'Electro-Harmonix Nano Triangle Big Muff Pi', cat: 'Fuzz', typeName: 'Distortion / sustainer',
+      box: 'nano', color: '#dadad5', text: '#141414', kstyle: 'muff',
+      art: { kind: 'tri', accent: '#c8161d', ty: 12, by: 120 },
+      logo: 'TRIANGLE', logoSize: 18, logoLs: 2, logoColor: '#141414', sub: 'MURK π', subSize: 8, subLs: 3,
+      algo: 'drive', opts: muffV({ blendLp: 480, blendHp: 1250, gainMaxDb: 50, postLp: 9500 }),
+      controls: [K('level', 'VOLUME', { display: ten, x: 36, y: 86, r: 11.5 }), K('tone', 'TONE', { display: ten, x: 70, y: 40, r: 11.5 }), K('gain', 'SUSTAIN', { display: ten, def: 0.6, x: 104, y: 86, r: 11.5 })],
+      artTop: 124,
+      desc: 'Early-70s Big Muff voice with the knobs in a triangle. Scooped, smooth and loud.',
+    }),
+    E({
+      id: 'ehx.deluxemuff', name: 'Deluxe Murk π', ref: 'Electro-Harmonix Deluxe Big Muff Pi', cat: 'Fuzz', typeName: 'Distortion / sustainer',
+      box: 'wide', bw: 270, bh: 250, color: '#d4d4cf', text: '#141414', kstyle: 'muff', cost: 1, noStd: true,
+      art: { kind: 'muff', noPi: true, accent: '#c8161d', ink: '#141414' },
+      logo: 'DELUXE MURK π', logoSize: 22, logoColor: '#f7f5ef', logoStroke: '#141414', logoStrokeW: 3, logoLs: 1.4, artTop: 122, artBottom: 182,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'g', algo: 'gate', on: true, params: { threshold: 0.2, decay: 0.3 } },
+        { prefix: 'd', algo: 'drive', opts: muffV({ modes: [{}, { preHp: 160, gainMaxDb: 46 }] }) },
+        { prefix: 'e', algo: 'peq', on: false, params: { mid1q: 1 } },
+      ] },
+      controls: [
+        K('d.level', 'VOLUME', { x: 34, y: 36, r: 12, display: ten }), K('d.tone', 'TONE', { x: 84, y: 36, r: 12, display: ten }), K('d.gain', 'SUSTAIN', { x: 134, y: 36, r: 12, def: 0.6, display: ten }),
+        K('g.threshold', 'GATE', { x: 184, y: 36, r: 12, def: 0.2 }), K('e.mid1gain', 'MIDS', { x: 236, y: 36, r: 12, min: -15, max: 15, def: 6, display: db }),
+        K('e.mid1freq', 'FREQ', { x: 184, y: 92, r: 10, min: 200, max: 3000, def: 800, curve: 'log' }), K('e.mid1q', 'Q', { x: 236, y: 92, r: 10, min: 0.4, max: 4, def: 1 }),
+        TOG('d.mode', 'ATTACK', ['NORM', 'HI'], { x: 70, y: 96, orient: 'h' }),
+        FOOT({ x: 70, y: 216, r: 12 }), LED({ x: 70, y: 194, color: '#ff2a1a' }), FOOT({ action: 'param', p: 'e.on', label: 'MIDS', x: 200, y: 216, r: 12, labelDy: -24 }), LED({ x: 226, y: 216, bind: 'param:e.on', color: '#3ddc84' }),
+      ],
+      ctrl: { ins: [{ label: 'EXP', param: 'd.gain', min: 0, max: 1 }] },
+      desc: 'Big Muff with a noise gate, an attack switch and a footswitchable mid EQ.',
+    }),
+    E({
+      id: 'ehx.eastriver', name: 'East Bank Drive', ref: 'Electro-Harmonix East River Drive', cat: 'Overdrive', typeName: 'Classic overdrive',
+      box: 'nano', color: '#3a8a4e', text: '#f2f7ef',
+      art: { kind: 'bridge', accent: '#bfe3c4', ink: '#f2f7ef' },
+      logo: 'EAST BANK', logoSize: 19, logoLs: 1.6, sub: 'OVERDRIVE', subSize: 6.4,
+      algo: 'drive', opts: { clip: 'ts', cleanSum: true, clipHp: 720, gainMinDb: 0, gainMaxDb: 41, tone: 'ts', toneLo: 720, postLp: 5000, levelMaxDb: 5 },
+      controls: [K('level', 'VOLUME', { display: ten, def: 0.6 }), K('tone', 'TONE', { display: ten }), K('gain', 'DRIVE', { display: ten, def: 0.45 })],
+      desc: 'Green-box style overdrive: mid push, smooth clipping.',
+    }),
+    E({
+      id: 'ehx.screamingbird', name: 'Shrieking Bird', ref: 'Electro-Harmonix Screaming Bird', cat: 'Boost', typeName: 'Treble booster',
+      box: 'nano', color: '#c9cbce', text: '#141414',
+      art: { kind: 'bird', accent: '#c8161d', ink: '#141414' },
+      logo: 'SHRIEKING BIRD', logoSize: 15.5, logoLs: 0.8, sub: 'TREBLE BOOSTER', subSize: 6,
+      algo: 'boost', opts: { gainMaxDb: 22 }, fixed: { mode: 1, level: 1 },
+      controls: [K('gain', 'VOLUME', { def: 0.18, display: ten })],
+    }),
+    E({
+      id: 'ehx.hottubes', name: 'Nano Warm Tubes', ref: 'Electro-Harmonix Nano Hot Tubes', cat: 'Overdrive', typeName: 'Tube-style overdrive',
+      box: 'nano', color: '#c9cbce', text: '#2a1404',
+      art: { kind: 'wax', accent: '#e06a1a', ink: '#2a1404', candles: [0] },
+      logo: 'WARM TUBES', logoSize: 18, logoLs: 1.2, sub: 'OVERDRIVE', subSize: 6.4,
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 10, bias: 0.25, preHp: 60, gainMinDb: 4, gainMaxDb: 42, tone: 'lp', toneLo: 1500, toneHi: 9000, postLp: 8000, levelMaxDb: 6 },
+      controls: [K('level', 'VOLUME', { display: ten }), K('tone', 'TONE', { display: ten }), K('gain', 'TUBES', { display: ten, def: 0.45 })],
+    }),
+    E({
+      id: 'ehx.octavix', name: 'Octavox', ref: 'Electro-Harmonix Octavix', cat: 'Fuzz', typeName: 'Octave fuzz',
+      box: 'nano', color: '#c9cbce', text: '#0f2a3c', cost: 1,
+      art: { kind: 'pog', accent: '#1f8fc4', ink: '#0f2a3c' },
+      logo: 'OCTAVOX', logoSize: 21, logoLs: 2, sub: 'OCTAVE FUZZ', subSize: 6.4,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'f', algo: 'drive', opts: { clip: 'si', preHp: 120, gainMinDb: 14, gainMaxDb: 40, tone: 'none', postLp: 6500, levelMaxDb: 0, outTrim: 0.7 } },
+        { prefix: 'o', algo: 'pitch', params: { semis1: 12, level1: 0.6, dry: 0.85, quality: 0, tone: 0.8 } },
+      ] },
+      fixed: { 'o.semis1': 12, 'o.quality': 0 },
+      controls: [K('f.level', 'VOLUME', { def: 0.5 }), K('o.level1', 'OCTAVE', { def: 0.6 }), K('f.gain', 'BOOST', { def: 0.6 }), TOG('v24', '', ['9V', '24V'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ 'f.sag': p.v24 ? 0 : 0.35 }),
+      desc: 'Octave-up fuzz. The 24V setting gives more headroom and a cleaner octave.',
+    }),
+    // ---- filters / dynamics
+    E({
+      id: 'ehx.doctorq', name: 'Professor Q', ref: 'Electro-Harmonix Doctor Q', cat: 'Filter', typeName: 'Envelope follower',
+      box: 'nano', color: '#c9cbce', text: '#141414',
+      art: { kind: 'env', accent: '#2a2a2a', ink: '#141414' },
+      logo: 'PROFESSOR Q', logoSize: 17, logoLs: 1, sub: 'ENVELOPE FOLLOWER', subSize: 6,
+      algo: 'wah', opts: { mode: 2, fLo: 250, fHi: 2600, q: 4.5 }, fixed: { mode: 2, filter: 1, q: 0.55, level: 0.36 },
+      controls: [K('sens', 'RANGE', { def: 0.55, r: 14 }), TOG('bass', '', ['NORM', 'BASS'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ range: p.bass ? 0.25 : 0.5 }),
+      desc: 'Funky envelope filter. BASS shifts the sweep lower.',
+    }),
+    E({
+      id: 'ehx.bassballs', name: 'Nano Bass Orbs', ref: 'Electro-Harmonix Nano Bassballs', cat: 'Filter', typeName: 'Twin envelope filter',
+      box: 'nano', color: '#c9cbce', text: '#2a0f0f',
+      art: { kind: 'env', accent: '#c8161d', ink: '#2a0f0f' },
+      logo: 'BASS ORBS', logoSize: 19, logoLs: 1.4, sub: 'TWIN ENVELOPE FILTER', subSize: 5.8,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'd', algo: 'drive', on: false, opts: { clip: 'si', preHp: 40, gainMinDb: 12, gainMaxDb: 30, tone: 'none', postLp: 5000, levelMaxDb: -2 } },
+        { prefix: 'w', algo: 'wah', opts: { mode: 2, fLo: 150, fHi: 1800, q: 5 }, params: { mode: 2, filter: 1 } },
+      ] },
+      fixed: { 'w.level': 0.38 },
+      controls: [K('w.sens', 'SENS', { def: 0.55 }), K('w.q', 'RESPONSE', { def: 0.5 }), TOG('d.on', 'DIST', ['OFF', 'ON'], { orient: 'h' })],
+      desc: 'Twin resonant envelope filter for bass, with an optional fuzz before it.',
+    }),
+    E({
+      id: 'ehx.soulpreacher', name: 'Nano Spirit Preacher', ref: 'Electro-Harmonix Nano Soul Preacher', cat: 'Dynamics', typeName: 'Compressor / sustainer',
+      box: 'nano', color: '#c9cbce', text: '#13213f',
+      art: { kind: 'platform', ink: '#13213f', accent: '#2f6fd0' },
+      logo: 'SPIRIT PREACHER', logoSize: 14.5, logoLs: 0.6, sub: 'COMPRESSOR / SUSTAINER', subSize: 5.6,
+      algo: 'comp', opts: { type: 'ota' },
+      controls: [K('level', 'VOLUME', { def: 0.4 }), K('sustain', 'SUSTAIN', { def: 0.55 }), TOG('att', 'ATTACK', ['FAST', 'SLOW'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ attack: p.att ? 0.6 : 0.15 }),
+    }),
+    E({
+      id: 'ehx.tonecorset', name: 'Tone Bodice', ref: 'Electro-Harmonix Tone Corset', cat: 'Dynamics', typeName: 'Analog compressor',
+      box: 'nano', bh: 262, color: '#d8b39f', text: '#2a1410',
+      art: { kind: 'platform', ink: '#2a1410', accent: '#8a2f4a' },
+      logo: 'TONE BODICE', logoSize: 17, logoLs: 1, sub: 'ANALOG COMPRESSOR', subSize: 6,
+      algo: 'comp', opts: { type: 'vca' }, fixed: { release: 0.4 },
+      controls: [K('level', 'VOLUME', { def: 0.36 }), K('blend', 'BLEND', { def: 0.8 }), K('sustain', 'SUSTAIN', { def: 0.5 }), K('attack', 'ATTACK', { def: 0.3 }), TOG('ratio', 'RATIO', ['LO', 'HI'], { orient: 'h', values: [0.35, 0.75] })],
+    }),
+    E({
+      id: 'ehx.mole', name: 'Nano Burrow', ref: 'Electro-Harmonix Nano Mole', cat: 'Boost', typeName: 'Bass booster',
+      box: 'nano', color: '#c9cbce', text: '#141414',
+      art: { kind: 'rise', ink: '#141414', accent: '#5a3a1a' },
+      logo: 'BURROW', logoSize: 22, logoLs: 3, sub: 'BASS BOOSTER', subSize: 6.4,
+      algo: 'boost', opts: { gainMaxDb: 18 }, fixed: { mode: 3, level: 1, treble: 0.4 },
+      controls: [K('gain', 'VOLUME', { def: 0.18, display: ten }), K('bass', 'BASS', { def: 0.6, display: ten })],
+      desc: 'Low-end booster that adds weight under the guitar or bass.',
+    }),
+    // ---- pico line
+    P({
+      id: 'ehx.picopitchfork', name: 'Pico Tuning Prong', ref: 'Electro-Harmonix Pico Pitch Fork', cat: 'Pitch', typeName: 'Pitch shifter', cost: 0.8,
+      color: '#d7d9dc', text: '#14213d', art: { kind: 'fork', ink: '#14213d', accent: '#2f6fd0' },
+      logo: 'PRONG', logoSize: 18, logoLs: 2, sub: 'PITCH SHIFTER', subSize: 5.6,
+      algo: 'pitch', fixed: { quality: 1 },
+      controls: [K('blend', 'BLEND', { def: 0.5, virtual: true }), SEL('shift', 'SHIFT', ['1', '2', '3', '4', '5', '7', 'OCT', '2OCT'], { def: 6, sweep: 280, optSize: 3.6, labelRadius: 7, labelPos: 'none', virtual: true }),
+        TOG('dir', '', ['UP', 'DOWN', 'DUAL'], { orient: 'h', virtual: true })],
+      derive: (p) => {
+        const iv = [1, 2, 3, 4, 5, 7, 12, 24][p.shift ?? 6], b = p.blend ?? 0.5, wet = Math.sin(b * Math.PI / 2), dir = p.dir ?? 0;
+        return { semis1: dir === 1 ? -iv : iv, semis2: -iv, level1: wet, level2: dir === 2 ? wet : 0, dry: Math.cos(b * Math.PI / 2), cents: 0 };
+      },
+    }),
+    P({
+      id: 'ehx.picopog', name: 'Pico Poly Octaver', ref: 'Electro-Harmonix Pico POG', cat: 'Pitch', typeName: 'Polyphonic octave', cost: 0.8,
+      color: '#d2d4d6', text: '#151617', art: { kind: 'pog', accent: '#c8161d', ink: '#151617' },
+      logo: 'POLY OCT', logoSize: 17, logoLs: 1.6, sub: 'OCTAVE GENERATOR', subSize: 5.4,
+      algo: 'pitch', fixed: { semis1: 12, semis2: -12, quality: 1 },
+      controls: [K('dry', 'DRY', { def: 0.9 }), K('level2', 'SUB', { def: 0.5 }), K('level1', 'OCT UP', { def: 0.4 }), TOG('filt', 'TONE', ['1', '2', '3'], { orient: 'h', values: [1, 0.6, 0.3] })],
+      derive: (p) => ({ tone: p.filt ?? 1 }),
+    }),
+    P({
+      id: 'ehx.picofreeze', name: 'Pico Deep Ice', ref: 'Electro-Harmonix Pico Deep Freeze', cat: 'Synth', typeName: 'Sound retainer', cost: 1,
+      color: '#e6eef5', text: '#1b4a85', art: { kind: 'snow', accent: '#3f86d6', ink: '#1b4a85' },
+      logo: 'DEEP ICE', logoSize: 17, logoLs: 2, sub: 'SOUND RETAINER', subSize: 5.6,
+      algo: 'freeze', fixed: { decay: 1 },
+      controls: [K('mix', 'EFFECT', { def: 0.7 }), K('dry', 'DRY', { def: 1 }), K('speed', 'SPEED', { def: 0.35 }), K('layer', 'GLISS', { def: 0.2 }),
+        TOG('smode', '', ['LATCH', 'MOM', 'AUTO'], { orient: 'h', virtual: true })],
+      derive: (p) => ({ mode: [0, 1, 2][p.smode ?? 0] }),
+      desc: 'LATCH: press to freeze. MOM: hold to sustain. AUTO: every new note is held (footswitch = bypass).',
+    }),
+    P({
+      id: 'ehx.picotriboro', name: 'Pico Three Borough', ref: 'Electro-Harmonix Pico Triboro Bridge', cat: 'Overdrive', typeName: 'Overdrive / distortion / fuzz',
+      color: '#e2b43a', text: '#1d1606', art: { kind: 'bridge', accent: '#7a4a10', ink: '#1d1606' },
+      logo: '3 BOROUGH', logoSize: 15, logoLs: 1.2, sub: 'DRIVE', subSize: 5.6,
+      algo: 'drive', opts: { preHp: 80, tone: 'tilt', eqRangeDb: 9, levelMaxDb: 6,
+        modes: [{ clip: 'ts', gainMinDb: 2, gainMaxDb: 36 }, { clip: 'diode', gainMinDb: 8, gainMaxDb: 46, levelMaxDb: 3 }, { clip: 'si', bias: 0.3, gainMinDb: 16, gainMaxDb: 48, postLp: 5500, levelMaxDb: 0 }] },
+      controls: [K('level', 'VOL', { def: 0.5 }), K('gain', 'GAIN', { def: 0.45 }), K('tone', 'EQ', { def: 0.5 }), TOG('mode', '', ['OD', 'DIST', 'FUZZ'], { orient: 'h' })],
+    }),
   ]);
 
   function nineSeries() {

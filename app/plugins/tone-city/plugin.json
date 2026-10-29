@@ -1,0 +1,12 @@
+{
+  "id": "tone-city",
+  "name": "Tone City",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Mini pedals inspired by Tone City gear: matte boxes with hand-drawn pictures (overdrives, plexi and fire distortion, compressor, spring reverb, chorus).",
+  "kind": "brand",
+  "brand": "Tone City",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8cc63f"
+}

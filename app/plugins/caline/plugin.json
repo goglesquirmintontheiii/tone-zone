@@ -1,0 +1,12 @@
+{
+  "id": "caline",
+  "name": "Caline",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Budget mini pedals inspired by Caline gear: small aluminium boxes with full-face pictures (overdrives, fuzz, distortion, delay, reverb and a compressor).",
+  "kind": "brand",
+  "brand": "Caline",
+  "main": "index.js",
+  "api": 1,
+  "color": "#7cc3ea"
+}

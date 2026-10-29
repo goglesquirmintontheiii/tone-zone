@@ -1,0 +1,12 @@
+{
+  "id": "harley-benton",
+  "name": "Harley Benton",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Budget MiniStomp pedals inspired by Harley Benton gear: drives, fuzz, distortion, delay, reverb, auto-wah and a bit crusher.",
+  "kind": "brand",
+  "brand": "Harley Benton",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d9b22e"
+}

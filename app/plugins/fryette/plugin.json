@@ -1,0 +1,12 @@
+{
+  "id": "fryette",
+  "name": "Fryette",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Fryette: big American high-gain tube heads.",
+  "kind": "brand",
+  "brand": "Fryette",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c99a2e"
+}

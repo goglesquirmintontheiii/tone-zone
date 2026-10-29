@@ -66,7 +66,7 @@ export default function register(tz) {
     const foots = d.controls.filter((c) => c.t === 'foot' && (c.x === undefined || c._fa));
     const tg = d.controls.filter((c) => c.t === 'toggle' && (c.x === undefined || c._fa));
     const wide = d.wide || kn.length > 4 || foots.length > 1;
-    const w = wide ? 190 : 140;
+    const w = d.fw || (wide ? 190 : 140);
     const txt = d.text || '#f2f2f2';
     const perRow = kn.length === 4 && !wide ? 2 : kn.length <= 3 ? kn.length : Math.ceil(kn.length / 2);
     const rows = [];
@@ -84,7 +84,8 @@ export default function register(tz) {
     tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 34 + (i * (w - 68)) / (tg.length - 1), y: 22 + rows.length * 46 + 10, orient: 'h', optSize: 4.4 }));
     // amp jewel
     const leds = d.controls.filter((c) => c.t === 'led' && (c.x === undefined || c._fa));
-    const jx = leds.length > 1 ? [w * 0.27, w * 0.73] : [w / 2];
+    const spots = (n) => (n > 2 ? [w * 0.2, w * 0.5, w * 0.8] : n > 1 ? [w * 0.27, w * 0.73] : [w / 2]);
+    const jx = spots(leds.length);
     jx.forEach((x) => {
       svg('circle', { cx: x, cy: ly, r: 8.5, fill: 'url(#g-chromeR)' }, g);
       svg('circle', { cx: x, cy: ly, r: 6.2, fill: '#2a0505' }, g);
@@ -92,11 +93,13 @@ export default function register(tz) {
     leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: jx[i] ?? w / 2, y: ly, r: 5, color: l.color || '#ff2a1a' }));
     label(g, w / 2, ly + 24, d.logo || d.name, { size: d.logoSize || ((d.logo || d.name).length > 11 ? 12 : 15), fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.4 });
     label(g, w / 2, ly + 37, (d.typeName || d.cat).toUpperCase(), { size: 5.4, fill: txt, weight: 700, ls: 1.8, opacity: 0.75 });
-    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', r: 13, y: fy, x: foots.length === 1 ? w / 2 : [w * 0.27, w * 0.73][i], labelDy: -20 }));
+    const fx = spots(foots.length);
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', r: 13, y: fy, x: fx[i], labelDy: -20 }));
+    if (d.art) d.art(g, w, h, ly);
     formKit.tzBadge(g, w / 2, h - 9, txt, 4.2);
     const theme = { text: txt, knob: d.knob || 'fender', labelSize: 5.6 };
     formKit.placeControls(ctx, d.controls, theme);
-    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 56, gap: 28, flip: ctx.flip }) };
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: deckH + 24, gap: 26, flip: ctx.flip }) };
   });
 
   // ---- Hammertone series: slim enclosure with a hammered finish and coloured knobs
@@ -246,5 +249,218 @@ export default function register(tz) {
       controls: [K('mix', 'MIX', { display: ten, def: 0.32 }), K('decay', 'TIME', { display: ten, def: 0.5 }), K('highdamp', 'DAMP', { display: ten, def: 0.45 }),
         TOG('mode', 'TYPE', ['HALL', 'ROOM', 'MOD'], { values: [1, 0, 6] }), TOG('tilt', 'TONE', ['DARK', 'BRIGHT'], { virtual: true, def: 1 })],
       derive: (u) => ({ tone: u.tilt ? 0.65 : 0.35 }) }),
+  ]);
+  registerPedals(tz, FP, HT);
+}
+
+// ================================================================ pedals (v0.4)
+// More of the current Fender pedal line: Hammertone series plus the anodised 2018+ family.
+function registerPedals(tz, FP, HT) {
+  const { K, TOG, FOOT, LED, SCREEN, TREADLE, def, ten, db, ms, STEREO } = tz.helpers;
+  const { svg, label, formKit } = tz.gfx;
+  const ON = (o = {}) => FOOT(Object.assign({ action: 'bypass', label: 'ON' }, o));
+  const RED = (o = {}) => LED(Object.assign({ color: '#ff2a1a' }, o));
+
+  // tooled leather scrollwork for the Waylon phaser
+  const leather = (g, w, h, ly) => {
+    const st = { fill: 'none', stroke: '#e8dcc0', 'stroke-opacity': 0.5, 'stroke-width': 1.1, 'stroke-linecap': 'round' };
+    for (const sx of [1, -1]) {
+      const x = sx > 0 ? 14 : w - 14;
+      svg('path', Object.assign({ d: `M${x} ${ly - 14} q${sx * 10} 10 0 22 q${-sx * 8} 9 ${sx * 4} 20 q${sx * 9} 6 ${sx * 2} 16` }, st), g);
+      svg('circle', { cx: x + sx * 5, cy: ly + 4, r: 2.4, fill: '#e8dcc0', 'fill-opacity': 0.45 }, g);
+      svg('circle', { cx: x + sx * 4, cy: ly + 38, r: 2, fill: '#e8dcc0', 'fill-opacity': 0.45 }, g);
+    }
+    svg('rect', { x: 10, y: h - 22, width: w - 20, height: 1.2, fill: '#e8dcc0', 'fill-opacity': 0.35 }, g);
+  };
+
+  // '63 outboard reverb: small tolex box with a silver panel
+  tz.addForm('fender-63verb', (ctx, d) => {
+    const g = ctx.g, w = 230, h = 128;
+    formKit.body(g, w, h, d.tolex || '#2a1a10', { rx: 6 });
+    svg('rect', { x: 0, y: 0, width: w, height: h, rx: 6, fill: 'url(#p-grain)' }, g);
+    svg('rect', { x: 10, y: 10, width: w - 20, height: 62, rx: 3, fill: d.panel || '#c9c1ad', stroke: '#000', 'stroke-opacity': 0.4 }, g);
+    svg('rect', { x: 10, y: 80, width: w - 20, height: 38, rx: 3, fill: d.grille || '#5a3a22' }, g);
+    for (let i = 0; i < 9; i++) svg('line', { x1: 14, y1: 84 + i * 4, x2: w - 14, y2: 84 + i * 4, stroke: '#000', 'stroke-opacity': 0.25 }, g);
+    label(g, w / 2, 103, d.logo, { size: 14, fill: '#efe6d0', font: "'Dancing Script', cursive", weight: 700 });
+    const kn = d.controls.filter((c) => c.t === 'knob');
+    kn.forEach((c, i) => Object.assign(c, { x: 50 + i * 50, y: 44, r: 12, labelPos: 'above', labelSize: 5.4 }));
+    d.controls.forEach((c) => {
+      if (c.t === 'led') Object.assign(c, { x: w - 34, y: 30, r: 3 });
+      if (c.t === 'foot') Object.assign(c, { style: 'soft', x: w - 34, y: 52, r: 9 });
+    });
+    formKit.tzBadge(g, w - 34, 66, '#2a1d10', 3.4);
+    const theme = { text: '#2a1d10', knob: 'chicken', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 40, gap: 26, flip: ctx.flip }) };
+  });
+
+  const muffish = { clip: 'muff', preHp: 70, gainMinDb: 18, gainMaxDb: 48, tone: 'lp', toneLo: 700, toneHi: 7000, postLp: 6500 };
+
+  tz.addDefs([
+    // ---------------- Hammertone
+    HT({ id: 'fender.ht-fuzz', name: 'Hammerstone Fuzz', ref: 'Fender Hammertone Fuzz', logo: 'FUZZ', typeName: 'Hammerstone', cat: 'Fuzz', knobColor: '#9b59b6',
+      algo: 'chain', cost: 1.1, opts: { chain: [
+        { prefix: 'f', algo: 'drive', opts: Object.assign({}, muffish, { levelMaxDb: -3 }) },
+        { prefix: 'o', algo: 'pitch', on: false, params: { semis1: 12, level1: 0.55, dry: 0.9, quality: 0, tone: 0.8 } },
+      ] },
+      controls: [K('f.tone', 'TONE', { display: ten }), K('f.gain', 'FUZZ', { display: ten, def: 0.6 }), K('f.level', 'LEVEL', { display: ten }), TOG('oct', 'OCTAVE', ['OFF', 'ON'], { virtual: true })],
+      derive: (u) => ({ 'o.on': u.oct ? 1 : 0 }), desc: 'Thick silicon fuzz with an octave-up switch.' }),
+    HT({ id: 'fender.ht-metal', name: 'Hammerstone Metal', ref: 'Fender Hammertone Metal', logo: 'METAL', typeName: 'Hammerstone', cat: 'Distortion', knobColor: '#c8ccd0',
+      algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 10, preHp: 120, gainMinDb: 14, gainMaxDb: 52, tone: 'eq3', eqRangeDb: 14, bassF: 100, midF: 750, trebleF: 3600, postLp: 7200, levelMaxDb: -6, preEq: [{ type: 'peak', f: 700, q: 0.8, db: -3 }] },
+      controls: [K('treble', 'HIGH', { display: ten }), K('bass', 'LOW', { display: ten }), K('level', 'LEVEL', { display: ten }), K('gain', 'GAIN', { display: ten, def: 0.6 })],
+      desc: 'High-gain metal distortion with active high and low EQ.' }),
+    HT({ id: 'fender.ht-chorus', name: 'Hammerstone Chorus', ref: 'Fender Hammertone Chorus', logo: 'CHORUS', typeName: 'Hammerstone', cat: 'Modulation', knobColor: '#58b4e8', stereo: 'both',
+      algo: 'chorus', opts: { style: 'bbd' },
+      controls: [K('depth', 'DEPTH', { display: ten, def: 0.5 }), K('rate', 'RATE', { display: ten, def: 0.35 }), K('mix', 'LEVEL', { display: ten, def: 0.5 }),
+        TOG('mode', 'TYPE', ['CHORUS', 'VIBRATO'], { values: [0, 1] }), TOG('tilt', 'TONE', ['DARK', 'BRIGHT'], { virtual: true, def: 1 })],
+      derive: (u) => ({ tone: u.tilt ? 0.65 : 0.35, ...(u.mode ? { mix: 1 } : {}) }), desc: 'Lush analog-style chorus or vibrato with a dark / bright switch.' }),
+    HT({ id: 'fender.ht-flanger', name: 'Hammerstone Flanger', ref: 'Fender Hammertone Flanger', logo: 'FLANGER', typeName: 'Hammerstone', cat: 'Modulation', knobColor: '#e84a8a', stereo: 'both',
+      algo: 'flanger',
+      controls: [K('manual', 'MANUAL', { display: ten }), K('speed', 'RATE', { display: ten, def: 0.3 }), K('width', 'DEPTH', { display: ten, def: 0.6 }),
+        TOG('res', 'RES', ['LO', 'HI'], { virtual: true }), TOG('mode', 'TYPE', ['CLASSIC', 'THRU-0'], { values: [0, 3] })],
+      derive: (u) => ({ regen: u.res ? 0.8 : 0.45, mix: 0.5 }), desc: 'Jet flanger with a resonance switch and a through-zero mode.' }),
+    HT({ id: 'fender.ht-spacedelay', name: 'Hammerstone Space Echo', ref: 'Fender Hammertone Space Delay', logo: 'SPACE DELAY', typeName: 'Hammerstone', cat: 'Delay', knobColor: '#2c5fb5', stereo: 'both',
+      algo: 'delay', opts: { maxMs: 1000 }, cost: 1,
+      controls: [K('time', 'TIME', { min: 40, max: 1000, def: 330, curve: 'log', display: ms }), K('feedback', 'FEEDBACK', { display: ten, def: 0.4 }), K('mix', 'LEVEL', { display: ten, def: 0.35 }),
+        TOG('heads', 'PATTERN', ['1', '2', '3'], { values: [4, 6, 7] }), TOG('mod', 'MOD', ['OFF', 'ON'], { virtual: true })],
+      derive: (u) => ({ mode: 2, moddepth: u.mod ? 0.4 : 0.08, modrate: 0.3, age: 0.35 }), desc: 'Multi-head tape echo with three head patterns and wow and flutter.' }),
+    HT({ id: 'fender.ht-boost', name: 'Hammerstone Boost', ref: 'Fender Hammertone Boost', logo: 'BOOST', typeName: 'Hammerstone', cat: 'Boost', knobColor: '#e6c229',
+      algo: 'boost',
+      controls: [K('gain', 'BOOST', { display: ten, def: 0.12 }), K('bass', 'BASS', { display: ten }), K('treble', 'TREBLE', { display: ten }), TOG('mode', 'TYPE', ['OP-AMP', 'JFET'], { values: [0, 3] })],
+      desc: 'Clean op-amp or JFET boost with centre-detent bass and treble.' }),
+    HT({ id: 'fender.ht-breakup', name: 'Hammerstone Breakup', ref: 'Fender Hammertone Breakup Drive', logo: 'BREAKUP', typeName: 'Hammerstone', cat: 'Overdrive', knobColor: '#f08a3a',
+      algo: 'drive', opts: { gainMinDb: 0, gainMaxDb: 28, tone: 'lp', toneLo: 1500, toneHi: 11000, postLp: 9500, levelMaxDb: 14,
+        modes: [{ clip: 'jfet', bias: 0.1 }, { clip: 'asym', bias: 0.25 }, { clip: 'jfet', bias: 0.1, preEq: [{ type: 'peak', f: 850, q: 0.7, db: 5 }] }, { clip: 'asym', bias: 0.25, preEq: [{ type: 'peak', f: 850, q: 0.7, db: 5 }] }] },
+      controls: [K('tone', 'TONE', { display: ten }), K('gain', 'GAIN', { display: ten, def: 0.4 }), K('level', 'LEVEL', { display: ten }), TOG('clip', 'CLIP', ['A', 'B'], { virtual: true }), TOG('mid', 'PRE-MID', ['OFF', 'BOOST'], { virtual: true })],
+      derive: (u) => ({ mode: (u.clip ?? 0) + 2 * (u.mid ?? 0) }), desc: 'Low-gain, amp-like breakup with two clipping modes and a mid boost.' }),
+    HT({ id: 'fender.ht-kaiju', name: 'Kaiju Distortion', ref: 'Fender Godzilla Distortion', logo: 'KAIJU', typeName: 'Distortion', cat: 'Distortion', color: '#2f4a2c', knobColor: '#7fd34a',
+      algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 8, preHp: 100, gainMinDb: 10, gainMaxDb: 48, tone: 'eq3', eqRangeDb: 14, bassF: 110, midF: 800, trebleF: 3400, postLp: 7500, levelMaxDb: -6 },
+      controls: [K('gain', 'DISTORTION', { display: ten, def: 0.6 }), K('treble', 'TREBLE', { display: ten }), K('bass', 'BASS', { display: ten })], fixed: { level: 0.5 },
+      desc: 'Monster-movie themed high-gain distortion with active bass and treble.' }),
+
+    // ---------------- anodised 2018+ family
+    FP({ id: 'fender.pelt', name: 'The Hide Fuzz', ref: 'Fender The Pelt Fuzz', logo: 'THE HIDE', typeName: 'Fuzz', cat: 'Fuzz', color: '#7a4b2a',
+      algo: 'drive', opts: Object.assign({}, muffish, { cleanSum: true, levelMaxDb: -2, modes: [{}, { postEq: [{ type: 'peak', f: 800, q: 0.7, db: 4 }] }, { preEq: [{ type: 'ls', f: 150, q: 0.7, db: 5 }] }, { preEq: [{ type: 'ls', f: 150, q: 0.7, db: 5 }], postEq: [{ type: 'peak', f: 800, q: 0.7, db: 4 }] }] }),
+      controls: [K('level', 'LEVEL', { display: ten }), K('blend', 'BLEND', { display: ten, def: 1 }), K('gain', 'FUZZ', { display: ten, def: 0.6 }), K('tone', 'TONE', { display: ten }),
+        TOG('bloom', 'BLOOM', ['OFF', 'ON'], { virtual: true }), TOG('mids', 'MIDS', ['SCOOP', 'FLAT'], { virtual: true }), TOG('thick', 'THICK', ['OFF', 'ON'], { virtual: true })],
+      derive: (u) => ({ mode: (u.mids ?? 0) + 2 * (u.thick ?? 0), sag: u.bloom ? 0.6 : 0 }), desc: 'Big, woolly fuzz with a dry blend. Bloom adds sag, Mids fills the scoop, Thick adds bass.' }),
+    FP({ id: 'fender.bends', name: 'The Curves Comp', ref: 'Fender The Bends Compressor', logo: 'THE CURVES', typeName: 'Compressor', cat: 'Dynamics', color: '#3c6aa8',
+      algo: 'comp', opts: { type: 'ota' },
+      controls: [K('sustain', 'DRIVE', { display: ten, def: 0.5 }), K('level', 'RECOVERY', { display: ten, def: 0.38 }), K('blend', 'BLEND', { display: ten, def: 0.8 }), TOG('fast', 'ATTACK', ['SLOW', 'FAST'], { virtual: true })],
+      derive: (u) => ({ attack: u.fast ? 0.1 : 0.45 }), desc: 'Smooth compressor with a dry blend and a slow / fast attack switch.' }),
+    FP({ id: 'fender.pinwheel', name: 'The Whirligig', ref: 'Fender The Pinwheel Rotary Speaker Emulator', logo: 'WHIRLIGIG', typeName: 'Rotary Speaker', cat: 'Modulation', color: '#7c2230', stereo: 'stereo', ports: { ins: ['IN L (MONO)', 'IN R'], outs: ['OUT L (MONO)', 'OUT R'] }, cost: 1.2, wide: true,
+      algo: 'rotary', ctrl: { ins: [{ label: 'EXP', param: 'speed', min: 0, max: 1 }] },
+      controls: [K('accel', 'RAMP', { display: ten, def: 0.5 }), K('drive', 'DRIVE', { display: ten, def: 0.25 }), K('balance', 'BALANCE', { display: ten, def: 0.5 }), K('mix', 'MIX', { display: ten, def: 1 }), K('level', 'LEVEL', { display: ten, def: 0.4 }),
+        TOG('keys', 'VOICE', ['GUITAR', 'KEYS'], { virtual: true }), TOG('dyn', 'DYNAMIC', ['OFF', 'ON'], { virtual: true }),
+        ON(), FOOT({ action: 'param', p: 'fast', toggle: true, label: 'SLOW / FAST', virtual: true }), RED(), RED({ bind: 'param:fast' })],
+      noStd: true, derive: (u) => ({ speed: u.fast ? 1 : 0, drive: Math.min(1, (u.drive ?? 0.25) * (u.keys ? 1.4 : 1) + (u.dyn ? 0.1 : 0)) }),
+      desc: 'Rotary speaker with horn / drum balance, drive and a slow / fast footswitch. EXP jack sweeps the speed.' }),
+    FP({ id: 'fender.losthighway', name: 'Long Road Phaser', ref: 'Fender Lost Highway Phaser', logo: 'LONG ROAD', typeName: 'Phaser', cat: 'Modulation', color: '#a35a2a', stereo: 'both', wide: true,
+      algo: 'phaser',
+      controls: [K('r1', 'RATE 1', { display: ten, def: 0.3, virtual: true }), K('r2', 'RATE 2', { display: ten, def: 0.7, virtual: true }), K('depth', 'DEPTH', { display: ten, def: 0.8 }), K('feedback', 'FEEDBACK', { display: ten, def: 0.4 }),
+        TOG('stages', 'STAGES', ['4', '8'], { values: [4, 8] }), TOG('wave', 'WAVE', ['TRI', 'SINE'], { virtual: true }),
+        ON(), FOOT({ action: 'param', p: 'alt', toggle: true, label: 'RATE 1 / 2', virtual: true }), RED(), RED({ bind: 'param:alt' })],
+      noStd: true, derive: (u) => ({ rate: u.alt ? u.r2 ?? 0.7 : u.r1 ?? 0.3, mix: 0.5, center: u.wave ? 0.55 : 0.5 }), desc: 'Four or eight stage phaser with two rates on a second footswitch.' }),
+    FP({ id: 'fender.waylon', name: 'Outlaw Phaser', ref: 'Fender Waylon Jennings Phaser', logo: 'OUTLAW', typeName: 'Phaser', cat: 'Modulation', color: '#1f1b17', text: '#e8dcc0', art: leather,
+      algo: 'phaser',
+      controls: [K('rate', 'RATE', { display: ten, def: 0.45 }), K('center', 'RANGE', { display: ten, def: 0.4 }), K('feedback', 'FEEDBACK', { display: ten, def: 0.55 }),
+        TOG('stages', 'STAGES', ['2', '4', '6'], { values: [2, 4, 6], def: 1 }), TOG('sweet', 'SWEET', ['OFF', 'ON'], { virtual: true, def: 1 })],
+      derive: (u) => ({ depth: u.sweet ? 0.6 : 0.9, mix: 0.5 }), desc: 'Classic country phaser with 2, 4 or 6 stages. Sweet keeps the sweep gentle.' }),
+    FP({ id: 'fender.shields', name: 'Mixer Fuzz', ref: 'Fender Shields Blender', logo: 'MIXER', typeName: 'Octave Fuzz', cat: 'Fuzz', color: '#8f9aa6', text: '#141414', wide: true,
+      algo: 'chain', cost: 1.4, opts: { chain: [
+        { prefix: 'p', algo: 'pitch', params: { semis1: 12, level1: 0, semis2: -12, level2: 0, level3: 0, dry: 1, quality: 0, tone: 0.8 } },
+        { prefix: 'f', algo: 'drive', opts: Object.assign({}, muffish, { cleanSum: true, levelMaxDb: -2 }) },
+      ] },
+      controls: [K('f.level', 'VOLUME', { display: ten }), K('f.gain', 'FUZZ', { display: ten, def: 0.65 }), K('f.tone', 'TONE', { display: ten }), K('f.blend', 'BLEND', { display: ten, def: 1 }), K('sub', 'SUB VOL', { display: ten, def: 0.5, virtual: true }), K('f.sag', 'SAG', { display: ten, def: 0 }),
+        TOG('oct', 'OCTAVE', ['OFF', 'ON'], { virtual: true, def: 1 }),
+        ON(), FOOT({ action: 'param', p: 'subon', toggle: true, label: 'SUB', virtual: true }), FOOT({ action: 'param', p: 'expand', toggle: true, label: 'EXPAND', virtual: true }), RED(), RED({ bind: 'param:subon' }), RED({ bind: 'param:expand' })],
+      noStd: true, derive: (u) => ({ 'p.level1': u.oct ? 0.55 : 0, 'p.level2': u.subon ? 0.9 * (u.sub ?? 0.5) : 0, 'p.on': u.oct || u.subon ? 1 : 0, ...(u.expand ? { 'f.level': Math.min(1, (u['f.level'] ?? 0.5) + 0.2) } : {}) }),
+      desc: 'Octave-up fuzz with a footswitched sub-octave, sag and an Expand boost.' }),
+    FP({ id: 'fender.trapper', name: 'The Prowler Dual Fuzz', ref: 'Fender The Trapper Dual Fuzz', logo: 'THE PROWLER', typeName: 'Dual Fuzz', cat: 'Fuzz', color: '#5b1f24', wide: true,
+      algo: 'chain', cost: 1.5, opts: { chain: [
+        { prefix: 'a', algo: 'drive', opts: Object.assign({}, muffish, { clip: 'si', levelMaxDb: -2, tone: 'eq3', eqRangeDb: 10, bassF: 120, midF: 650, trebleF: 2800 }) },
+        { prefix: 'o', algo: 'pitch', on: false, params: { semis1: 12, level1: 0.5, dry: 0.9, quality: 0, tone: 0.8 } },
+        { prefix: 'b', algo: 'drive', on: false, opts: { clip: 'ge', preHp: 60, gainMinDb: 10, gainMaxDb: 34, tone: 'none', postLp: 6000, levelMaxDb: 0 } },
+      ] },
+      controls: [K('a.mid', 'CONTOUR', { display: ten, def: 0.4 }), K('a.treble', 'TONE', { display: ten }), K('a.level', 'LEVEL 1', { display: ten }), K('b.gain', 'FUZZ 2', { display: ten, def: 0.5 }), K('b.level', 'LEVEL 2', { display: ten }),
+        TOG('oct', 'OCTAVE', ['OFF', 'ON'], { virtual: true }),
+        ON(), FOOT({ action: 'param', p: 'b.on', toggle: true, label: 'FUZZ 2' }), RED(), RED({ bind: 'param:b.on' })],
+      noStd: true, alwaysOn: false, derive: (u) => ({ 'o.on': u.oct ? 1 : 0 }), desc: 'Two fuzzes in one box: a sculpted silicon fuzz with octave, then a germanium-style fuzz stacked on the second switch.' }),
+    FP({ id: 'fender.levelset', name: 'Set Point Buffer', ref: 'Fender Level Set Buffer', logo: 'SET POINT', typeName: 'Buffer', cat: 'Utility', kind: 'Utility', color: '#bfc3c7', text: '#141414', cost: 0.1,
+      algo: 'boost', fixed: { mode: 0, bass: 0.5 },
+      controls: [K('gain', 'LEVEL', { def: 0.04, display: ten }), K('treble', 'HI CUT', { def: 0.5, invert: true, display: ten }), TOG('load', 'LOAD', ['HI-Z', 'LO-Z'], { virtual: true })],
+      derive: (u) => ({ treble: Math.max(0, (u.treble ?? 0.5) - (u.load ? 0.08 : 0)) }), desc: 'Buffer with a level trim and treble roll-off to match long cable runs.' }),
+    FP({ id: 'fender.pourover', name: 'Drip Envelope Filter', ref: 'Fender Pour Over Envelope Filter', logo: 'DRIP', typeName: 'Envelope Filter', cat: 'Filter', color: '#6b4226',
+      algo: 'wah', opts: { fLo: 250, fHi: 2800 }, fixed: { mode: 2 },
+      controls: [K('sens', 'SENS', { display: ten, def: 0.55 }), K('q', 'RES', { display: ten, def: 0.6 }), K('range', 'RANGE', { display: ten, def: 0.5 }), K('level', 'LEVEL', { display: ten, def: 0.32 }),
+        TOG('filter', 'FILTER', ['LP', 'BP', 'HP'], { values: [0, 1, 2], def: 1 }), TOG('direction', 'SWEEP', ['UP', 'DOWN'], { values: [0, 1] })],
+      desc: 'Funky envelope filter with LP / BP / HP modes and up or down sweeps.' }),
+    FP({ id: 'fender.fullmoon', name: 'Night Sky Distortion', ref: 'Fender Full Moon Distortion', logo: 'NIGHT SKY', typeName: 'Distortion', cat: 'Distortion', color: '#22305a', wide: true,
+      algo: 'drive', opts: { clip: 'diode', preHp: 90, gainMinDb: 8, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 750, trebleF: 3300, postLp: 7600, levelMaxDb: 0, modes: [{}, { preEq: [{ type: 'ls', f: 160, q: 0.7, db: 5 }] }] },
+      controls: [K('level', 'LEVEL', { display: ten }), K('gain', 'GAIN', { display: ten, def: 0.55 }), K('bright', 'BITE', { display: ten, def: 0.2 }), K('bass', 'BASS', { display: ten }), K('mid', 'MID', { display: ten }), K('treble', 'TREBLE', { display: ten }),
+        TOG('mode', 'FAT', ['OFF', 'ON']), TOG('btype', 'BOOST', ['LEVEL', 'GAIN'], { virtual: true }),
+        ON(), FOOT({ action: 'param', p: 'boost', toggle: true, label: 'BOOST', virtual: true }), RED(), RED({ bind: 'param:boost' })],
+      noStd: true, derive: (u) => (u.boost ? (u.btype ? { gain: Math.min(1, (u.gain ?? 0.55) + 0.25) } : { level: Math.min(1, (u.level ?? 0.5) + 0.2) }) : {}), desc: 'Versatile distortion with a full EQ, Bite, a Fat switch and a footswitched boost.' }),
+    FP({ id: 'fender.mtgla', name: 'MTG:SoCal Tube Dist', ref: 'Fender MTG:LA Tube Distortion', logo: 'MTG:SOCAL', typeName: 'Tube Distortion', cat: 'Distortion', color: '#6a2c5a', wide: true,
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 6, preHp: 80, gainMinDb: 10, gainMaxDb: 44, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 700, trebleF: 3200, postLp: 7800, levelMaxDb: 2, modes: [{}, { preHp: 180 }] },
+      controls: [K('level', 'LEVEL', { display: ten }), K('gain', 'GAIN', { display: ten, def: 0.55 }), K('bass', 'BASS', { display: ten }), K('mid', 'MID', { display: ten }), K('treble', 'TREBLE', { display: ten }),
+        TOG('mode', 'TIGHT', ['OFF', 'ON']), ON(), FOOT({ action: 'param', p: 'boost', toggle: true, label: 'BOOST', virtual: true }), RED(), RED({ bind: 'param:boost' })],
+      noStd: true, derive: (u) => (u.boost ? { gain: Math.min(1, (u.gain ?? 0.55) + 0.2) } : {}), desc: 'Real-tube style distortion voiced for LA hard rock, with a Tight switch and gain boost.' }),
+    FP({ id: 'fender.mtg', name: 'MTG Valve Dist', ref: 'Fender MTG Tube Distortion', logo: 'MTG VALVE', typeName: 'Tube Distortion', cat: 'Distortion', color: '#2b2b2d',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 6, preHp: 70, gainMinDb: 8, gainMaxDb: 42, tone: 'lp', toneLo: 1200, toneHi: 9000, postLp: 8000, levelMaxDb: 2, modes: [{}, { preHp: 180 }, { postEq: [{ type: 'hs', f: 3000, q: 0.7, db: -4 }] }, { preHp: 180, postEq: [{ type: 'hs', f: 3000, q: 0.7, db: -4 }] }] },
+      controls: [K('level', 'LEVEL', { display: ten }), K('gain', 'GAIN', { display: ten, def: 0.55 }), K('tone', 'TONE', { display: ten }), TOG('tight', 'TIGHT', ['OFF', 'ON'], { virtual: true }), TOG('dark', 'VOICE', ['BRIGHT', 'DARK'], { virtual: true })],
+      derive: (u) => ({ mode: (u.tight ?? 0) + 2 * (u.dark ?? 0) }), desc: 'Tube-driven distortion with Tight and Dark voicing switches.' }),
+    FP({ id: 'fender.compugilist', name: 'Comp-Brawler', ref: 'Fender Compugilist Compressor / Distortion', logo: 'COMP-BRAWLER', typeName: 'Compressor / Distortion', cat: 'Distortion', color: '#2b2620', text: '#e6c27a', wide: true,
+      algo: 'chain', cost: 1, opts: { chain: [
+        { prefix: 'c', algo: 'comp', opts: { type: 'vca' } },
+        { prefix: 'd', algo: 'drive', opts: { clip: 'diode', preHp: 80, gainMinDb: 6, gainMaxDb: 42, tone: 'lp', toneLo: 1200, toneHi: 9000, postLp: 8000, levelMaxDb: -2 } },
+      ] },
+      controls: [K('c.sustain', 'COMP', { display: ten, def: 0.5 }), K('c.level', 'COMP LVL', { display: ten, def: 0.5 }), K('c.blend', 'BLEND', { display: ten, def: 0.8 }), K('d.gain', 'GAIN', { display: ten, def: 0.5 }), K('d.tone', 'TONE', { display: ten }), K('d.level', 'LEVEL', { display: ten }),
+        TOG('c.attack', 'ATTACK', ['FAST', 'SLOW'], { values: [0.1, 0.45] }),
+        FOOT({ action: 'param', p: 'c.on', toggle: true, label: 'COMP' }), FOOT({ action: 'param', p: 'd.on', toggle: true, label: 'DIST' }), RED({ bind: 'param:c.on' }), RED({ bind: 'param:d.on' })],
+      noStd: true, alwaysOn: true, initParams: { 'c.on': 1, 'd.on': 1 }, desc: 'Compressor and distortion in one box, each on its own footswitch.' }),
+    FP({ id: 'fender.engager', name: 'Igniter Boost', ref: 'Fender Engager Boost', logo: 'IGNITER', typeName: 'Boost', cat: 'Boost', color: '#c2411f',
+      algo: 'boost',
+      controls: [K('gain', 'BOOST', { display: ten, def: 0.12 }), K('bass', 'BASS', { display: ten }), K('treble', 'TREBLE', { display: ten }), TOG('mode', 'VOICE', ['FLAT', 'MID'], { values: [0, 2] })],
+      desc: 'Clean JFET boost with bass and treble and a mid-push voice.' }),
+    FP({ id: 'fender.dualmarine', name: 'Twin Sea Mist Reverb', ref: 'Fender Dual Marine Layer Reverb', logo: 'TWIN SEA MIST', typeName: 'Dual Reverb', cat: 'Reverb', color: '#4b8f88', text: '#0f2622', stereo: 'both', wide: true,
+      algo: 'chain', cost: 2.6, opts: { chain: [{ prefix: 'a', algo: 'reverb', params: { mode: 0 } }, { prefix: 'b', algo: 'reverb', params: { mode: 1 } }] },
+      controls: [K('a.decay', 'TIME A', { display: ten, def: 0.4 }), K('a.highdamp', 'DAMP A', { display: ten, def: 0.4 }), K('a.mix', 'LEVEL A', { display: ten, def: 0.28 }), K('b.decay', 'TIME B', { display: ten, def: 0.6 }), K('b.highdamp', 'DAMP B', { display: ten, def: 0.45 }), K('b.mix', 'LEVEL B', { display: ten, def: 0.3 }),
+        TOG('a.mode', 'TYPE A', ['ROOM', 'HALL', 'SPEC'], { values: [0, 1, 4] }), TOG('b.mode', 'TYPE B', ['ROOM', 'HALL', 'SPEC'], { values: [0, 1, 4], def: 1 }),
+        FOOT({ action: 'param', p: 'a.on', toggle: true, label: 'A' }), FOOT({ action: 'param', p: 'b.on', toggle: true, label: 'B' }), RED({ bind: 'param:a.on' }), RED({ bind: 'param:b.on' })],
+      noStd: true, alwaysOn: true, initParams: { 'a.on': 1, 'b.on': 0 }, desc: 'Two independent reverbs (room, hall or special), one per footswitch.' }),
+    FP({ id: 'fender.downtown', name: 'Uptown Local Bass FX', ref: 'Fender Downtown Express Bass Multi-Effect', logo: 'UPTOWN LOCAL', typeName: 'Bass Multi-Effect', cat: 'Multi-FX', kind: 'Pedal', color: '#2a3a5a', fw: 240,
+      algo: 'chain', cost: 1.4, opts: { chain: [
+        { prefix: 'c', algo: 'comp', opts: { type: 'vca' } },
+        { prefix: 'd', algo: 'drive', opts: { clip: 'opamp', preHp: 40, gainMinDb: 6, gainMaxDb: 36, tone: 'lp', toneLo: 1000, toneHi: 8000, postLp: 6000, cleanSum: true, levelMaxDb: 2 }, params: { blend: 0.6 } },
+        { prefix: 'e', algo: 'peq' },
+      ] },
+      controls: [K('c.sustain', 'THRESH', { display: ten, def: 0.45 }), K('c.level', 'GAIN', { display: ten, def: 0.38 }), K('c.blend', 'BLEND', { display: ten, def: 0.8 }), K('d.gain', 'DRIVE', { display: ten, def: 0.45 }), K('d.tone', 'TONE', { display: ten }),
+        K('d.level', 'LEVEL', { display: ten }), K('e.lowgain', 'BASS', { min: -15, max: 15, def: 0, display: db }), K('e.mid1gain', 'MID', { min: -15, max: 15, def: 0, display: db }), K('e.highgain', 'TREBLE', { min: -15, max: 15, def: 0, display: db }),
+        FOOT({ action: 'param', p: 'c.on', toggle: true, label: 'COMP' }), FOOT({ action: 'param', p: 'd.on', toggle: true, label: 'DRIVE' }), FOOT({ action: 'param', p: 'e.on', toggle: true, label: 'EQ' }), RED({ bind: 'param:c.on' }), RED({ bind: 'param:d.on' }), RED({ bind: 'param:e.on' })],
+      noStd: true, alwaysOn: true, initParams: { 'c.on': 1, 'd.on': 0, 'e.on': 1 }, fixed: { 'e.lowfreq': 80, 'e.mid1freq': 600, 'e.highfreq': 4000 },
+      desc: 'Bass compressor, blendable overdrive and 3-band EQ, each on its own footswitch.' }),
+    def({ id: 'fender.strobosonic', name: 'Strobe-O-Matic Pro', ref: 'Fender Strobo-Sonic Pro Tuner', logo: 'STROBE-O-MATIC', typeName: 'Strobe Tuner', cat: 'Utility', kind: 'Utility', form: 'tz', color: '#18191b', text: '#ececec', accent: '#c9a24a',
+      algo: 'tuner', opts: { mute: 1 }, ports: { ins: ['INPUT'], outs: ['OUTPUT', 'BYPASS'] },
+      controls: [SCREEN('strobe', { w: 94, h: 64, y: 84 }), FOOT(), LED({ bind: 'tunerOk', color: '#3ddc84' })], defaultBypass: true, tunerBlock: true,
+      desc: 'Strobe tuner. The pedal mutes OUTPUT while tuning; BYPASS always passes the signal.' }),
+    def({ id: 'fender.verb63', name: "'63 Outboard Verb", ref: "Fender '63 Tube Reverb", logo: 'Outboard Reverb', cat: 'Reverb', form: 'fender-63verb', tolex: '#3b2414', panel: '#c9c1ad', grille: '#5a3a22',
+      algo: 'reverb', cost: 1.2, fixed: { mode: 3, lowcut: 0.15, predelay: 8 },
+      controls: [K('decay', 'DWELL', { display: ten, def: 0.55 }), K('mix', 'MIXER', { display: ten, def: 0.35 }), K('tone', 'TONE', { display: ten, def: 0.55 }), FOOT(), RED()],
+      desc: 'Stand-alone tube spring reverb: Dwell, Mixer and Tone, drippy surf to subtle splash.' }),
+    def({ id: 'fender.fuzzwah', name: 'Fuzz-Wahzer', ref: 'Fender Fuzz-Wah (1970s)', code: 'FZW', logo: 'Fuzz-Wahzer', logoColor: '#e0e0e0', cat: 'Wah', form: 'treadle', color: '#202022', treadleColor: '#3a3a3c',
+      algo: 'chain', cost: 0.8, opts: { chain: [
+        { prefix: 'f', algo: 'drive', on: false, opts: { clip: 'ge', preHp: 70, gainMinDb: 18, gainMaxDb: 40, tone: 'none', postLp: 6000, levelMaxDb: -2 }, params: { gain: 0.7 } },
+        { prefix: 'w', algo: 'wah', opts: { fLo: 380, fHi: 2100, q: 5 }, params: { level: 0.38 } },
+      ] },
+      controls: [TREADLE('w.pos', { def: 0.5 }), Object.assign(TOG('f.on', '', ['FUZZ OFF', 'FUZZ ON']), { x: 56, y: 283, orient: 'v', optSize: 4.4 }), LED({ color: '#ff2a1a', r: 2.2, x: 76, y: 11 })],
+      toeSwitch: true, desc: 'Vintage wah with a switchable fuzz. Drag the treadle; click it to switch the wah on or off.' }),
+    FP({ id: 'fender.blender', name: 'Mixmaster 69', ref: 'Fender Blender (1968)', logo: 'MIXMASTER', typeName: 'Octave Fuzz', cat: 'Fuzz', color: '#3a3f46',
+      algo: 'chain', cost: 1.1, opts: { chain: [
+        { prefix: 'f', algo: 'drive', opts: Object.assign({}, muffish, { clip: 'si', cleanSum: true, levelMaxDb: -4 }) },
+        { prefix: 'o', algo: 'pitch', on: false, params: { semis1: 12, level1: 0.5, dry: 0.9, quality: 0, tone: 0.8 } },
+      ] },
+      controls: [K('f.level', 'VOLUME', { display: ten }), K('f.gain', 'SUSTAIN', { display: ten, def: 0.65 }), K('f.tone', 'TONE', { display: ten }), K('f.blend', 'BLEND', { display: ten, def: 1 }), TOG('oct', 'OCTAVE', ['OFF', 'ON'], { virtual: true })],
+      derive: (u) => ({ 'o.on': u.oct ? 1 : 0 }), desc: 'Late-60s octave fuzz with a blend control: raw, buzzy and huge.' }),
   ]);
 }

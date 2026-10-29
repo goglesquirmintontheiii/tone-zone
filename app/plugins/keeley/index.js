@@ -236,5 +236,52 @@ export default function register(tz) {
       ],
       derive: (p) => ({ mode: p.echo ? 8 : 1, spread: 0.5, modrate: 0.3 }),
     }),
+    KY({
+      id: 'kly.neutrino', name: 'Quark Envelope Filter', ref: 'Keeley Neutrino V2', code: 'QUARK', logo: 'Quark', typeName: 'Envelope filter', cat: 'Wah', color: '#3fb6c9', text: '#10262b',
+      algo: 'wah', opts: { mode: 2 }, fixed: { mode: 2 },
+      controls: [k('level', 'LEVEL', { def: 0.4 }), k('sens', 'SENS', { def: 0.55 }), k('q', 'Q', { def: 0.6 }), k('range', 'RANGE', { def: 0.5 }),
+        TOG('direction', 'SWEEP', ['up', 'down']), TOG('filter', 'FILTER', ['lp', 'bp', 'hp'], { def: 1 })],
+      desc: 'Funky auto-wah that follows your picking. Pick the sweep direction and low, band or high pass filter.',
+    }),
+    KY({
+      id: 'kly.seafoam', name: 'Sea Spray Chorus', ref: 'Keeley Seafoam Plus', code: 'SEA SPRAY', logo: 'Sea Spray', typeName: 'Chorus / vibrato', cat: 'Modulation', color: '#8fd1b8', text: '#11302a', stereo: 'both',
+      algo: 'chorus',
+      controls: [k('rate', 'RATE', { def: 0.35 }), k('depth', 'DEPTH', { def: 0.5 }), k('level', 'LEVEL', { def: 0.5 }),
+        TOG('vib', 'MODE', ['chorus', 'vibrato'], { virtual: true }), TOG('tone', 'VOICE', ['dark', 'bright'], { values: [0.35, 0.7], def: 1 })],
+      derive: (p) => (p.vib ? { mode: 1, mix: 1 } : { mode: 0, mix: 0.5 }),
+      desc: 'Lush stereo chorus that also does pitch vibrato. VOICE picks a darker or brighter sound.',
+    }),
+    KY({
+      id: 'kly.noblescreamer', name: 'Royal Screamer', ref: 'Keeley Noble Screamer', code: 'ROYAL', logo: 'Royal Screamer', logoSize: 10, typeName: 'Dual-mode overdrive', cat: 'Overdrive', color: '#2c3f7a', led: '#3d8bff',
+      algo: 'drive', opts: { tone: 'lp', toneLo: 900, toneHi: 7500, levelMaxDb: 8, preHp: 70, modes: [
+        { clip: 'ts', cleanSum: true, clipHp: 720, gainMaxDb: 40 }, { clip: 'ts', cleanSum: true, clipHp: 720, gainMaxDb: 40, bias: 0.2 }, { clip: 'clean', cleanSum: true, clipHp: 720, gainMaxDb: 26 },
+        { clip: 'ge', cleanSum: true, cleanMix: 0.5, gainMaxDb: 36 }, { clip: 'ge', cleanSum: true, cleanMix: 0.5, gainMaxDb: 36, bias: 0.2 }, { clip: 'clean', cleanSum: true, cleanMix: 0.5, gainMaxDb: 26 },
+        { clip: 'si', gainMaxDb: 42, preEq: [{ type: 'peak', f: 900, q: 0.7, db: 2 }] }, { clip: 'asym', gainMaxDb: 42, preEq: [{ type: 'peak', f: 900, q: 0.7, db: 2 }] }, { clip: 'clean', gainMaxDb: 30 },
+      ] },
+      controls: [k('level', 'LEVEL'), k('gain', 'DRIVE', { def: 0.45 }), k('tone', 'TONE'), k('bass', 'BASS', { virtual: true }),
+        TOG('voice', 'MODE', ['ts', 'noble', 'mod'], { virtual: true }), TOG('clip', 'CLIP', ['sym', 'asym', 'off'], { virtual: true })],
+      derive: (p) => ({ mode: (p.voice ?? 0) * 3 + (p.clip ?? 0), sag: 0, bright: 0.5 - (p.bass ?? 0.5) * 0.5 }),
+      desc: 'Screamer and clean-blend "noble" drive in one. MODE picks the circuit, CLIP picks the clipping.',
+    }),
+    KY({
+      id: 'kly.1962x', name: '1962-X British Drive', ref: 'Keeley 1962X', code: '1962-X', logo: '1962-X', typeName: 'British overdrive', cat: 'Overdrive', color: '#1b1b1d', text: '#e7c76a', led: '#ff3b2f',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 8, bias: 0.25, preHp: 90, gainMinDb: 6, gainMaxDb: 44, tone: 'lp', toneLo: 1600, toneHi: 8500, postLp: 7500, levelMaxDb: 4,
+        modes: [{ preEq: [{ type: 'hs', f: 2200, q: 0.7, db: -2 }] }, {}, { preEq: [{ type: 'hs', f: 2000, q: 0.7, db: 4 }], gainMaxDb: 48 }] },
+      controls: [k('level', 'LEVEL'), k('gain', 'DRIVE', { def: 0.5 }), k('tone', 'TONE'), TOG('mode', 'MODE', ['norm', 'jump', 'brt'], { def: 1 })],
+      desc: 'Plexi-style crunch. MODE picks the normal, jumped or bright channel feel.',
+    }),
+    KY({
+      id: 'kly.30ms', name: '30 Echo Double Tracker', ref: 'Keeley 30ms Automatic Double Tracker', code: '30 ECHO', logo: '30 Echo', typeName: 'Doubler', cat: 'Modulation', color: '#f1ede3', text: '#9a1b1b', stereo: 'both',
+      algo: 'deco', fixed: { satOn: 0, dtOn: 1, saturation: 0 },
+      controls: [k('lag', 'TIME', { def: 0.35 }), k('blend', 'BLEND', { def: 0.5 }), k('wobble', 'MOD', { def: 0.25 }), k('volume', 'LEVEL', { def: 0.5 }),
+        TOG('type', 'MODE', ['adt', 'slap', 'wide'])],
+      desc: 'Automatic double tracking: a short, slightly wobbly second voice, from tight doubling to slapback.',
+    }),
+    KY({
+      id: 'kly.hooke', name: 'Hook Reverb', ref: 'Keeley Hooke Reverb', code: 'HOOK', logo: 'Hook', typeName: 'Spring / plate / hall reverb', cat: 'Reverb', color: '#20304a', stereo: 'both', cost: 1.1,
+      algo: 'reverb',
+      controls: [k('mix', 'MIX', { def: 0.35 }), k('decay', 'DECAY', { def: 0.5 }), k('tone', 'TONE', { def: 0.55 }), TOG('mode', 'MODE', ['spring', 'plate', 'hall'], { values: [3, 2, 1] })],
+      desc: 'Simple stereo reverb with spring, plate and hall modes.',
+    }),
   ]);
 }

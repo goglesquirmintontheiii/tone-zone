@@ -273,6 +273,24 @@ export default function register(tz) {
       ink(g, poly(wob([[x0, y0], [x0 + w, y0], [x0 + w, y0 + h * 1.2], [x0, y0 + h * 1.2]], 0.5), true), a, { w: 1.4 });
       return { logoY: y0 + h * 1.2 + 16 };
     },
+    // zig-zag shirt stripe
+    zigzag(g, b, a) {
+      const y = b.y + b.h * 0.3, amp = Math.min(9, b.h * 0.12), n = 5, step = (b.w + 12) / n;
+      const top = [], bot = [];
+      for (let i = 0; i <= n * 2; i++) { const x = b.x - 6 + (i * step) / 2; top.push([x, y + (i % 2 ? amp : -amp)]); bot.push([x, y + (i % 2 ? amp : -amp) + amp * 1.6]); }
+      ink(g, poly(wob([...top, ...bot.reverse()], 0.4), true), a, { fill: a.fill, w: 1.6 });
+      return { logoY: b.y + b.h * 0.78 };
+    },
+    // moonshine jug under a crescent moon
+    jug(g, b, a) {
+      const cx = b.cx - 8, base = b.y + b.h * 0.64, s = Math.min(1, b.h / 70);
+      ink(g, smooth(wob([[cx - 15 * s, base], [cx - 18 * s, base - 14 * s], [cx - 12 * s, base - 26 * s], [cx - 5 * s, base - 30 * s], [cx - 5 * s, base - 36 * s], [cx + 5 * s, base - 36 * s], [cx + 5 * s, base - 30 * s], [cx + 12 * s, base - 26 * s], [cx + 18 * s, base - 14 * s], [cx + 15 * s, base]], 0.4), true), a, { fill: a.fill, w: 1.6 });
+      ink(g, smooth(wob([[cx + 10 * s, base - 27 * s], [cx + 22 * s, base - 26 * s], [cx + 21 * s, base - 14 * s], [cx + 16 * s, base - 12 * s]], 0.3)), a, { w: 1.6 });
+      ink(g, `M${f1(cx - 10 * s)} ${f1(base - 15 * s)} H${f1(cx + 10 * s)} M${f1(cx - 9 * s)} ${f1(base - 10 * s)} H${f1(cx + 9 * s)}`, a, { w: 1.2, single: true });
+      const mx = b.cx + 26 * s, my = b.y + b.h * 0.2, mr = 9 * s;
+      ink(g, `M${f1(mx)} ${f1(my - mr)} A${f1(mr)} ${f1(mr)} 0 1 0 ${f1(mx)} ${f1(my + mr)} A${f1(mr * 0.7)} ${f1(mr * 0.8)} 0 1 1 ${f1(mx)} ${f1(my - mr)} Z`, a, { fill: a.accent, w: 1.2 });
+      return { logoY: b.y + b.h * 0.86 };
+    },
     // Trio Series: a big outlined "3" and a stripe
     three(g, b, a) {
       const t = label(g, b.x + b.w - 13, b.y - 8, '3', { size: 44, fill: 'none', font: "'Inter', sans-serif", weight: 900 });
@@ -692,5 +710,54 @@ export default function register(tz) {
         return { 'p.on': sp > 0.02 ? 1 : 0, 'p.rate': sp, 'r.decay': 0.1 + len * 0.9, 'r.size': 0.25 + len * 0.75, 'r.predelay': 5 + len * 120, 'k.on': brk, 'b.on': brk };
       },
       desc: 'Reverb into a vintage 4-stage phaser, blended with your dry signal by MIX. SPEED sets the phaser rate (fully down = reverb only), LENGTH sets the decay and pre-delay together. BREAK puts an asymmetric bitcrusher with analog-style clipping in front for broken, fuzzy washes.' }),
+    J({
+      id: 'jhs.charliebrown', name: 'Good Grief', ref: 'JHS Charlie Brown V4', cat: 'Overdrive', typeName: 'British crunch',
+      color: '#7a4a2a', text: '#f6eccf', kstyle: 'cream', art: { kind: 'zigzag', ink: '#1d120a', fill: '#f2c230' },
+      logo: 'GOOD GRIEF', logoSize: 19, logoLs: 1.6, logoColor: '#f6eccf', logoStroke: '#1d120a',
+      algo: 'drive', opts: { clip: 'tube', stages: 2, stage2Db: 8, bias: 0.25, preHp: 90, gainMinDb: 6, gainMaxDb: 42, tone: 'lp', toneLo: 1500, toneHi: 8000, postLp: 7500, levelMaxDb: 4, modes: [{}, { preEq: [{ type: 'ls', f: 150, q: 0.7, db: 4 }] }] },
+      controls: [vk('level', 'VOLUME'), vk('gain', 'GAIN', { def: 0.5 }), vk('tone', 'TONE'), TOG('mode', 'BASS', ['OFF', 'ON'])],
+      desc: 'Plexi-style crunch in a box. The BASS switch fattens the low end.',
+    }),
+    J({
+      id: 'jhs.moonshine', name: 'Hooch', ref: 'JHS Moonshine V2', cat: 'Overdrive', typeName: 'Screamer-style overdrive',
+      color: '#1d2a3c', text: '#efe6cc', kstyle: 'cream', art: { kind: 'jug', ink: '#efe6cc', fill: '#b9844a', accent: '#f4e7a0' },
+      logo: 'HOOCH', logoSize: 24, logoLs: 4, logoColor: '#f4e7a0',
+      algo: 'drive', opts: tsV({ gainMaxDb: 44, modes: [{}, { clipHp: 480, postLp: 6200 }] }),
+      controls: [vk('level', 'VOLUME'), vk('gain', 'GAIN', { def: 0.45 }), vk('tone', 'TONE'), TOG('mode', 'VOICE', ['TIGHT', 'FULL'])],
+      desc: 'Smooth screamer drive with more gain and a fuller low end on the VOICE switch.',
+    }),
+    // newer Trio boxes come in the white enclosure
+    T3({ id: 'jhs.3flanger', name: 'Trio Flanger', ref: 'JHS 3 Series Flanger', cat: 'Modulation', typeName: 'Flanger', color: '#f1f0eb', text: '#151515', logo: 'flanger', logoSize: 20,
+      algo: 'flanger', fixed: { mix: 0.5, manual: 0.5 }, controls: [vk('speed', 'RATE', { def: 0.3 }), vk('width', 'DEPTH', { def: 0.6 }), vk('regen', 'FEEDBACK', { def: 0.55 }), TOG('mode', 'MODE', ['NORM', 'JET'], { values: [0, 1] })] }),
+    T3({ id: 'jhs.3hall', name: 'Trio Hall Verb', ref: 'JHS 3 Series Hall Reverb', cat: 'Reverb', typeName: 'Hall reverb', color: '#f1f0eb', text: '#151515', logo: 'hall verb', logoSize: 18, cost: 1.1,
+      algo: 'reverb', opts: { fixedMode: 1 }, fixed: { mode: 1 }, controls: [vk('mix', 'VERB', { def: 0.35 }), vk('decay', 'DECAY', { def: 0.6 }), vk('tone', 'TONE', { def: 0.55 }), TOG('mod', 'MOD', ['OFF', 'ON'], { values: [0.05, 0.5] })] }),
+    T3({ id: 'jhs.3octverb', name: 'Trio Octave Verb', ref: 'JHS 3 Series Octave Reverb', cat: 'Reverb', typeName: 'Octave reverb', color: '#f1f0eb', text: '#151515', logo: 'octave verb', logoSize: 16, cost: 1.6,
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'p', algo: 'pitch', on: false, params: { semis1: -12, level1: 0.5, level2: 0, level3: 0, dry: 1, quality: 1 } },
+        { prefix: 'r', algo: 'reverb', opts: { mode: 4 }, params: { mode: 4, tone: 0.55, mod: 0.3 } },
+      ] },
+      controls: [vk('r.mix', 'VERB', { def: 0.35 }), vk('oct', 'OCTAVE', { def: 0.5, virtual: true }), vk('r.decay', 'DECAY', { def: 0.6 }), TOG('dir', 'MODE', ['UP', 'DOWN'], { virtual: true })],
+      derive: (p) => { const o = p.oct ?? 0.5, dn = p.dir === 1; return { 'r.mode': dn ? 1 : 4, 'r.shimmer': dn ? 0 : o, 'p.on': dn ? 1 : 0, 'p.level1': o * 0.7 }; },
+      desc: 'Reverb with an octave in the tail. UP is a shimmer, DOWN blends an octave below into the reverb.' }),
+    T3({ id: 'jhs.3harmtrem', name: 'Trio Harmonic Trem', ref: 'JHS 3 Series Harmonic Trem', cat: 'Modulation', typeName: 'Harmonic tremolo', color: '#f1f0eb', text: '#151515', logo: 'harm trem', logoSize: 18,
+      algo: 'tremolo', controls: [vk('level', 'VOLUME'), vk('rate', 'RATE', { def: 0.4 }), vk('depth', 'DEPTH', { def: 0.6 }), TOG('mode', 'MODE', ['HARM', 'STD'], { values: [1, 0] })] }),
+    T3({ id: 'jhs.3rotary', name: 'Trio Rotary Chorus', ref: 'JHS 3 Series Rotary Chorus', cat: 'Modulation', typeName: 'Rotary chorus', color: '#f1f0eb', text: '#151515', logo: 'rotary', logoSize: 21, cost: 1.4,
+      algo: 'chain',
+      opts: { chain: [{ prefix: 'r', algo: 'rotary', params: { drive: 0.1, accel: 0.4 } }, { prefix: 'v', algo: 'reverb', on: false, opts: { mode: 0 }, params: { mode: 0, mix: 0.22, decay: 0.3, size: 0.3 } }] },
+      controls: [vk('r.level', 'VOLUME'), vk('r.speed', 'SPEED', { def: 0.3 }), vk('r.mix', 'INTENSITY', { def: 0.8 }), TOG('v.on', 'AMBIENCE', ['OFF', 'ROOM'])],
+      desc: 'Rotating speaker chorus. AMBIENCE adds a small room around it.' }),
+    T3({ id: 'jhs.3tape', name: 'Trio Tape Delay', ref: 'JHS 3 Series Tape Delay', cat: 'Delay', typeName: 'Tape delay', color: '#f1f0eb', text: '#151515', logo: 'tape delay', logoSize: 17,
+      algo: 'delay', opts: { maxMs: 1000, fixedMode: 2 }, fixed: { mode: 2, heads: 4, tone: 0.45, age: 0.4 },
+      controls: [vk('mix', 'MIX', { def: 0.35 }), K('time', 'TAPE SPD', { min: 60, max: 1000, def: 360, display: ms, curve: 'log' }), vk('feedback', 'REPEATS', { def: 0.4, max: 1.05 }), TOG('moddepth', 'FLUTTER', ['OFF', 'ON'], { values: [0.05, 0.35] })] }),
+    T3({ id: 'jhs.3oilcan', name: 'Trio Oil Drum Delay', ref: 'JHS 3 Series Oil Can Delay', cat: 'Delay', typeName: 'Oil can delay', color: '#f1f0eb', text: '#151515', logo: 'oil drum', logoSize: 19,
+      algo: 'delay', opts: { maxMs: 600, fixedMode: 4 }, fixed: { mode: 4, tone: 0.4, modrate: 0.55, age: 0.5 },
+      controls: [vk('mix', 'MIX', { def: 0.4 }), K('time', 'SPEED', { min: 40, max: 600, def: 240, display: ms }), vk('feedback', 'FEEDBACK', { def: 0.45, max: 1.05 }), TOG('moddepth', 'MOD', ['LIGHT', 'HEAVY'], { values: [0.3, 0.7] })] }),
+    T3({ id: 'jhs.3bitcrush', name: 'Trio Bit Smasher', ref: 'JHS 3 Series Bit Crusher', cat: 'Synth', kind: 'Pedal', typeName: 'Bit crusher', color: '#f1f0eb', text: '#151515', logo: 'bit smash', logoSize: 18,
+      algo: 'crusher', controls: [vk('mix', 'MIX', { def: 0.8 }), vk('bits', 'BITS', { def: 0.45 }), vk('rate', 'SAMPLE', { def: 0.35 }), TOG('hard', 'MODE', ['SOFT', 'HARD'], { virtual: true })],
+      derive: (p) => (p.hard ? { bits: (p.bits ?? 0.45) * 0.6 } : {}) }),
+    T3({ id: 'jhs.3ringmod', name: 'Trio Ring Mod', ref: 'JHS 3 Series Ring Modulator', cat: 'Synth', kind: 'Pedal', typeName: 'Ring modulator', color: '#f1f0eb', text: '#151515', logo: 'ring mod', logoSize: 20,
+      algo: 'ringmod', controls: [vk('mix', 'MIX', { def: 0.35 }), vk('freq', 'FREQ', { def: 0.4 }), vk('fine', 'FINE', { def: 0.5 }), TOG('range', 'RANGE', ['LO', 'HI'], { virtual: true })],
+      derive: (p) => ({ freq: (p.range ? 0.5 : 0) + (p.freq ?? 0.4) * 0.5 }) }),
   ]);
 }

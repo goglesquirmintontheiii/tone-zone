@@ -1,0 +1,12 @@
+{
+  "id": "suhr",
+  "name": "Suhr",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Suhr: boutique British-voiced tube heads.",
+  "kind": "brand",
+  "brand": "Suhr",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8c1d1d"
+}

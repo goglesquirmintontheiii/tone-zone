@@ -158,4 +158,137 @@ export default function register(tz) {
       controls: [K('level', 'OUTPUT', { def: 0.5 }), K('tone', 'TONE', { def: 0.55 }), K('gain', 'GAIN', { def: 0.5 }), BTN('HOT', { p: 'mode', toggle: true, led: true, ledColor: '#ff2a1a' })],
       art: 'flames', desc: 'Hot-rodded British overdrive; HOT adds a second gain stage.' }),
   ]);
+
+  // ---- v0.4 additions
+  // MXR mini enclosure (Dyna Comp Mini, Carbon Copy Mini, Phase 95): narrow box, script logo, small stomp
+  const { svg, label, formKit, textColorFor } = tz.gfx;
+  const placed = new WeakSet();
+  tz.addForm('mx-mini', (ctx, d) => {
+    const g = ctx.g, w = 92, h = 200;
+    const col = d.color, txt = d.text || textColorFor(col);
+    formKit.body(g, w, h, col, { rx: 6 });
+    const theme = { text: txt, knob: 'mxr', labelSize: 6 };
+    d.controls.forEach((c) => { if (c.x === undefined) placed.add(c); });
+    const mine = d.controls.filter((c) => placed.has(c));
+    const knobs = mine.filter((c) => c.t === 'knob' || c.t === 'sel');
+    const pos = knobs.length === 1 ? [[w / 2, 36, 13]] : knobs.length === 2 ? [[24, 32, 11], [68, 32, 11]] : [[24, 30, 10], [68, 30, 10], [46, 64, 10]];
+    knobs.forEach((k, i) => Object.assign(k, { x: pos[i][0], y: pos[i][1], r: pos[i][2], labelPos: 'below' }));
+    const sw = mine.filter((c) => c.t === 'toggle' || c.t === 'button');
+    const sy = knobs.length === 3 ? 96 : 74;
+    sw.forEach((c, i) => {
+      Object.assign(c, { x: sw.length === 1 ? w / 2 : [26, 66][i], y: sy });
+      if (c.t === 'button') Object.assign(c, { r: 4.5, led: c.led ?? true, ledDy: -8 });
+      if (c.t === 'toggle') c.orient = c.orient || 'v';
+    });
+    const ly = sw.length ? sy + 30 : knobs.length === 3 ? 98 : 84;
+    label(g, w / 2, ly, d.logo, { size: d.logoSize || 15, fill: d.logoColor || txt, font: d.logoFont || "'Dancing Script', cursive", weight: 700 });
+    label(g, w / 2, ly + 12, d.code, { size: 6, fill: txt, weight: 700, ls: 1.4, opacity: 0.85 });
+    mine.forEach((c) => {
+      if (c.t === 'foot') Object.assign(c, { style: 'stomp', x: w / 2, y: h - 30, r: 11 });
+      if (c.t === 'led') Object.assign(c, { x: w / 2, y: h - 54, r: 2.6 });
+    });
+    formKit.tzBadge(g, w / 2, h - 8, txt, 3.8);
+    formKit.placeControls(ctx, d.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: 40, gap: 26, flip: ctx.flip }) };
+  });
+  const MINI = (o) => MXRD(Object.assign({ form: 'mx-mini' }, o));
+  // 5 or 6 knobs in two rows, small enough to leave room for the logo
+  const rows2 = (list) => list.map((k, i) => Object.assign(k, i < 3 ? { x: 30 + i * 34, y: 32, r: 10 } : { x: (list.length === 5 ? 47 : 30) + (i - 3) * 34, y: 70, r: 10 }));
+  const bassDrive = (o = {}) => Object.assign({ clip: 'opamp', preHp: 40, gainMinDb: 6, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 14, bassF: 100, midF: 700, trebleF: 2800, cleanSum: true, postLp: 6000, levelMaxDb: 4 }, o);
+
+  tz.addDefs([
+    // ---- minis
+    MINI({ id: 'mx.m291', name: 'Dyno Comp Mini', ref: 'MXR M291 Dyna Comp Mini', code: 'MX291', logo: 'Dyno Comp', cat: 'Dynamics', color: '#c8202a', text: '#f4f4f4', led: '#ff2a1a',
+      algo: 'comp', opts: { type: 'ota' },
+      controls: [K('level', 'OUTPUT', { def: 0.4 }), K('sustain', 'SENS', { def: 0.55 }), TOG('att', '', ['FAST', 'SLOW'], { virtual: true, orient: 'h' })],
+      derive: (p) => ({ attack: p.att ? 0.6 : 0.15 }),
+      desc: 'The classic red squeeze in a mini box, with a fast or slow attack switch.' }),
+    MINI({ id: 'mx.m299', name: 'Carbon Echo Mini', ref: 'MXR M299 Carbon Copy Mini', code: 'MX299', logo: 'Carbon Echo', logoSize: 14, cat: 'Delay', color: '#3d4a2e', text: '#f0f0f0', led: '#3d8bff',
+      algo: 'delay', opts: { maxMs: 650 }, fixed: { mode: 1, tone: 0.32, modrate: 0.25 },
+      controls: [K('feedback', 'REGEN', { def: 0.35, max: 1.05 }), K('mix', 'MIX', { def: 0.4 }), K('time', 'DELAY', { min: 20, max: 600, def: 300, display: ms }),
+        BTN('MOD', { p: 'mod', toggle: true, ledColor: '#3d8bff' })],
+      derive: (p) => ({ moddepth: p.mod ? 0.45 : 0 }),
+      desc: 'Analog BBD delay up to 600 ms with a MOD switch, in a mini box.' }),
+    MINI({ id: 'mx.m290', name: 'Phase Ninety-Five', ref: 'MXR M290 Phase 95', code: 'MX290', logo: 'Phase 95', cat: 'Modulation', color: '#f0731e', text: '#111', led: '#ff2a1a',
+      algo: 'phaser', fixed: { mix: 0.5, depth: 0.85 },
+      controls: [K('rate', 'SPEED', { def: 0.35 }), BTN('45/90', { p: 'p90', toggle: true, def: 1, ledColor: '#ff2a1a' }), BTN('SCRIPT', { p: 'script', toggle: true, ledColor: '#ff2a1a' })],
+      initParams: { p90: 1 },
+      derive: (p) => (p.p90 ? { stages: 4, feedback: p.script ? 0 : 0.35 } : { stages: 2, feedback: p.script ? 0 : 0.15 }),
+      desc: 'Phase 45 and Phase 90 in one mini box. SCRIPT gives the smoother vintage voice.' }),
+    // ---- standard boxes
+    MXRD({ id: 'mx.m173', name: 'Classic 108 Fuzzer', ref: 'MXR M173 Classic 108 Fuzz', code: 'MX173', logo: 'Classic 108', logoSize: 18, cat: 'Fuzz', color: '#6d7177', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'si', bias: 0.25, preHp: 70, gainMinDb: 12, gainMaxDb: 46, tone: 'none', postLp: 5400, levelMaxDb: 0, outTrim: 0.4 },
+      controls: [K('level', 'VOLUME', { def: 0.55 }), K('gain', 'FUZZ', { def: 0.7 }), BTN('BUFFER', { p: 'buf', toggle: true, led: true, ledColor: '#ff2a1a' })],
+      derive: (p) => ({ preHp: p.buf ? 110 : 70 }),
+      desc: 'Silicon Fuzz Face circuit in an MXR box. BUFFER keeps the tone tight with a wah in front.' }),
+    MXRD({ id: 'mx.m148', name: 'Micro Chorus 148', ref: 'MXR M148 Micro Chorus', code: 'MX148', logo: 'Micro Chorus', logoSize: 18, cat: 'Modulation', color: '#5aa0c8', text: '#111', led: '#ff2a1a',
+      algo: 'chorus', fixed: { mix: 0.5, depth: 0.55, mode: 0 }, controls: [K('rate', 'RATE', { def: 0.35 })],
+      desc: 'One-knob analog chorus.' }),
+    MXRD({ id: 'mx.m152', name: 'Micro Flanger 152', ref: 'MXR M152 Micro Flanger', code: 'MX152', logo: 'Micro Flanger', logoSize: 17, cat: 'Modulation', color: '#3c4b6e', text: '#f0f0f0', led: '#ff2a1a',
+      algo: 'flanger', fixed: { manual: 0.45, width: 0.6, mix: 0.5 }, controls: [K('regen', 'REGEN', { def: 0.5 }), K('speed', 'RATE', { def: 0.3 })] }),
+    MXRD({ id: 'mx.m132', name: 'Super Squeeze', ref: 'MXR M132 Super Comp', code: 'MX132', logo: 'Super Comp', logoSize: 19, cat: 'Dynamics', color: '#2b6aa8', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'comp', opts: { type: 'ota' }, controls: [K('level', 'OUTPUT', { def: 0.38 }), K('attack', 'ATTACK', { def: 0.3 }), K('sustain', 'SENSITIVITY', { def: 0.5 })] }),
+    MXRD({ id: 'mx.m76', name: 'Studio Squeeze', ref: 'MXR M76 Studio Compressor', code: 'MX76', logo: 'Studio Comp', logoSize: 18, cat: 'Dynamics', color: '#2a2c30', text: '#ececec', led: '#3d8bff',
+      algo: 'comp', opts: { type: 'vca' },
+      controls: rows2([K('level', 'OUTPUT', { def: 0.36 }), K('sustain', 'SUSTAIN', { def: 0.5 }), K('ratio', 'RATIO', { def: 0.5 }), K('attack', 'ATTACK', { def: 0.3 }), K('release', 'RELEASE', { def: 0.4 })]),
+      desc: 'Studio-style VCA compressor with ratio, attack and release.' }),
+    MXRD({ id: 'mx.m87', name: 'Bass Squeeze', ref: 'MXR M87 Bass Compressor', code: 'MX87', logo: 'Bass Comp', logoSize: 19, cat: 'Dynamics', color: '#18181a', text: '#ececec', led: '#3d8bff',
+      algo: 'comp', opts: { type: 'vca' }, fixed: { tone: 0.5 },
+      controls: rows2([K('sustain', 'INPUT', { def: 0.5 }), K('ratio', 'RATIO', { def: 0.5 }), K('attack', 'ATTACK', { def: 0.3 }), K('release', 'RELEASE', { def: 0.4 }), K('level', 'OUTPUT', { def: 0.36 })]),
+      desc: 'Bass compressor with full controls.' }),
+    MXRD({ id: 'mx.m115', name: 'Dist Three', ref: 'MXR M115 Distortion III', code: 'MX115', logo: 'Dist III', cat: 'Distortion', color: '#1c3b6e', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'diode', preHp: 90, gainMinDb: 8, gainMaxDb: 44, tone: 'lp', toneLo: 1400, toneHi: 9000, postLp: 7500, levelMaxDb: 4 },
+      controls: [K('level', 'OUTPUT', { def: 0.42 }), K('tone', 'TONE', { def: 0.55 }), K('gain', 'DISTORTION', { def: 0.5 })] }),
+    MXRD({ id: 'mx.m78', name: "Custom Bad '78", ref: "MXR M78 Custom Badass '78 Distortion", code: 'MX78', logo: "Bad '78", logoSize: 21, cat: 'Distortion', color: '#b3141b', text: '#f4f4f4', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'diode', preHp: 80, gainMinDb: 8, gainMaxDb: 46, tone: 'lp', toneLo: 1200, toneHi: 8000, postLp: 7500, levelMaxDb: 3, modes: [{}, { clip: 'led', levelMaxDb: 5 }] },
+      controls: [K('level', 'OUTPUT', { def: 0.42 }), K('tone', 'FILTER', { def: 0.5 }), K('gain', 'DISTORTION', { def: 0.5 }), BTN('CRUNCH', { p: 'mode', toggle: true, led: true, ledColor: '#ff2a1a' })],
+      desc: 'Late-70s style distortion. CRUNCH swaps in LED clipping for more volume and an open sound.' }),
+    MXRD({ id: 'mx.m77', name: 'Custom Bad Mod OD', ref: 'MXR M77 Custom Badass Modified O.D.', code: 'MX77', logo: 'Bad Mod OD', logoSize: 19, cat: 'Overdrive', color: '#5d6b2e', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.15, preHp: 70, gainMinDb: 2, gainMaxDb: 38, tone: 'lp', toneLo: 1300, toneHi: 9000, levelMaxDb: 6, modes: [{}, { preEq: [{ type: 'peak', f: 100, q: 0.8, db: 5 }] }] },
+      controls: [K('level', 'OUTPUT', { def: 0.5 }), K('tone', 'TONE', { def: 0.55 }), K('gain', 'GAIN', { def: 0.45 }), BTN('BUMP', { p: 'mode', toggle: true, led: true, ledColor: '#ff2a1a' })],
+      desc: 'Tube Screamer-flavoured overdrive with more range. BUMP adds low end at 100 Hz.' }),
+    MXRD({ id: 'mx.m193', name: 'GT-Drive', ref: 'MXR M193 GT-OD', code: 'MX193', logo: 'GT-Drive', cat: 'Overdrive', color: '#2d6b3a', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.1, preHp: 100, gainMinDb: 4, gainMaxDb: 40, tone: 'lp', toneLo: 1200, toneHi: 8000, levelMaxDb: 6 },
+      controls: [K('level', 'OUTPUT', { def: 0.5 }), K('tone', 'TONE', { def: 0.5 }), K('gain', 'GAIN', { def: 0.45 })] }),
+    MXRD({ id: 'mx.zw44', name: 'Wild Overdrive', ref: 'MXR ZW44 Wylde Overdrive', code: 'ZW44', logo: 'Wild OD', cat: 'Overdrive', color: '#141414', text: '#f2f2f2', logoColor: '#f2f2f2', led: '#ff2a1a',
+      algo: 'drive', opts: { clip: 'diode', preHp: 120, gainMinDb: 4, gainMaxDb: 40, tone: 'lp', toneLo: 1100, toneHi: 8000, postLp: 7000, levelMaxDb: 7 },
+      controls: [K('level', 'OUTPUT', { def: 0.5 }), K('tone', 'TONE', { def: 0.5 }), K('gain', 'GAIN', { def: 0.4 })],
+      desc: 'Signature overdrive made to push an already driven amp.' }),
+    MXRD({ id: 'mx.m279', name: 'Deep Phaser', ref: 'MXR M279 Deep Phase', code: 'MX279', logo: 'Deep Phase', logoSize: 19, cat: 'Modulation', color: '#6a2c8a', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'phaser', opts: { stages: 4 }, fixed: { stages: 4, mix: 0.5 },
+      controls: [K('rate', 'SPEED', { def: 0.3 }), K('depth', 'INTENSITY', { def: 0.8 }), BTN('VINTAGE', { p: 'vint', toggle: true, led: true, ledColor: '#ff2a1a' })],
+      derive: (p) => ({ feedback: p.vint ? 0.15 : 0.5, script: p.vint ? 1 : 0 }),
+      desc: 'Deep four-stage phaser. VINTAGE gives a softer, older sweep.' }),
+    MXRD({ id: 'mx.m159', name: 'Stereo Shiver', ref: 'MXR M159 Stereo Tremolo', code: 'MX159', logo: 'Stereo Trem', logoSize: 18, cat: 'Modulation', color: '#1d6b6b', text: '#f2f2f2', led: '#ff2a1a',
+      algo: 'tremolo', stereo: 'both', monoPorts: MONO, stereoPorts: { ins: ['INPUT'], outs: ['OUTPUT A', 'OUTPUT B'] },
+      controls: [K('rate', 'SPEED', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.6 }), K('wave', 'SHAPE', { def: 0.3 }), BTN('PAN', { p: 'stereo', toggle: true, led: true, ledColor: '#ff2a1a' })],
+      fixed: { mode: 0 },
+      desc: 'Tremolo with a shape knob. PAN bounces the sound between the two outputs.' }),
+    // ---- bass
+    MXRD({ id: 'mx.m89', name: 'Bass Drive', ref: 'MXR M89 Bass Overdrive', code: 'MX89', logo: 'Bass Drive', logoSize: 19, cat: 'Overdrive', color: '#26303a', text: '#ececec', led: '#ff2a1a',
+      algo: 'drive', opts: bassDrive({ clip: 'asym', bias: 0.15, gainMinDb: 4, gainMaxDb: 34 }), fixed: { mid: 0.5 },
+      controls: rows2([K('level', 'VOLUME', { def: 0.62 }), K('blend', 'BLEND', { def: 0.6 }), K('gain', 'GAIN', { def: 0.45 }), K('bass', 'BASS', { def: 0.5 }), K('treble', 'TREBLE', { def: 0.5 })]),
+      desc: 'Bass overdrive with clean blend and two-band EQ.' }),
+    MXRD({ id: 'mx.m85', name: 'Bass Dist', ref: 'MXR M85 Bass Distortion', code: 'MX85', logo: 'Bass Dist', logoSize: 19, cat: 'Distortion', color: '#141414', text: '#ececec', led: '#ff2a1a',
+      algo: 'drive', opts: bassDrive({ clip: 'diode', gainMinDb: 12, gainMaxDb: 46, levelMaxDb: 2 }),
+      controls: rows2([K('level', 'VOLUME', { def: 0.5 }), K('blend', 'BLEND', { def: 0.5 }), K('gain', 'DIST', { def: 0.55 }), K('bass', 'BASS', { def: 0.5 }), K('mid', 'MID', { def: 0.5 }), K('treble', 'TREBLE', { def: 0.5 })]),
+      desc: 'Bass distortion with a clean blend to keep the low end solid.' }),
+    MXRD({ id: 'mx.m83', name: 'Bass Chorus DLX', ref: 'MXR M83 Bass Chorus Deluxe', code: 'MX83', logo: 'Bass Chorus', logoSize: 18, cat: 'Modulation', color: '#3a3d8f', text: '#f2f2f2', led: '#3d8bff', cost: 1.1,
+      algo: 'chain',
+      opts: { chain: [{ prefix: 'c', algo: 'chorus', params: { mode: 0, mix: 0.5 } }, { prefix: 'f', algo: 'flanger', on: false, params: { mix: 0.5, manual: 0.45 } }] },
+      stereo: 'both', monoPorts: MONO, stereoPorts: { ins: ['INPUT'], outs: ['OUTPUT A', 'OUTPUT B'] },
+      controls: [K('mix', 'MIX', { def: 0.5, virtual: true }), K('rate', 'RATE', { def: 0.3, virtual: true }), K('depth', 'DEPTH', { def: 0.5, virtual: true }), K('xover', 'X-OVER', { def: 0.3, virtual: true }),
+        BTN('FLANGER', { p: 'fl', toggle: true, led: true, ledColor: '#3d8bff' })],
+      derive: (p) => {
+        const fl = p.fl ? 1 : 0, m = p.mix ?? 0.5;
+        return { 'c.on': fl ? 0 : 1, 'f.on': fl, 'c.mix': m, 'f.mix': m, 'c.rate': p.rate ?? 0.3, 'f.speed': p.rate ?? 0.3, 'c.depth': p.depth ?? 0.5, 'f.width': p.depth ?? 0.5, 'c.tone': 0.3 + 0.6 * (p.xover ?? 0.3) };
+      },
+      desc: 'Bass chorus or flanger. X-OVER keeps the lows dry (approximated with the chorus tone).' }),
+    MXRD({ id: 'mx.m81', name: 'Bass Pre', ref: 'MXR M81 Bass Preamp', code: 'MX81', logo: 'Bass Pre', logoFont: "'Oswald', sans-serif", logoSize: 19, cat: 'Preamp', kind: 'Preamp', color: '#1a1a1a', text: '#ececec', led: '#3d8bff',
+      algo: 'peq', ports: { ins: ['INPUT'], outs: ['OUTPUT', 'DI OUT'] }, jackKinds: { o1: 'xlr' }, stereo: 'fixedDual',
+      fixed: { lowfreq: 80, highfreq: 4000, mid1q: 0.8 },
+      controls: rows2([K('level', 'VOLUME', { min: -12, max: 12, def: 0, display: db }), K('highgain', 'TREBLE', { min: -15, max: 15, def: 0, display: db }), K('mid1gain', 'MID', { min: -15, max: 15, def: 0, display: db }),
+        K('mid1freq', 'FREQ', { min: 200, max: 3000, def: 600, curve: 'log' }), K('lowgain', 'BASS', { min: -15, max: 15, def: 0, display: db })]),
+      desc: 'Clean bass preamp with sweepable mid and a balanced DI output.' }),
+  ]);
 }

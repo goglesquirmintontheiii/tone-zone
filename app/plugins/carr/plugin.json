@@ -1,0 +1,12 @@
+{
+  "id": "carr",
+  "name": "Carr",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps and preamps inspired by Carr: hand-built class-A combos with reverb and tremolo.",
+  "kind": "brand",
+  "brand": "Carr",
+  "main": "index.js",
+  "api": 1,
+  "color": "#7d5a3c"
+}

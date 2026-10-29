@@ -280,6 +280,65 @@ export default function register(tz) {
         A.o(`M${x - 15} ${y - 18} Q${x} ${y - 25} ${x + 15} ${y - 18}`, 2.4);
       });
     },
+    flower(A) {
+      A.fi('M0 54 Q50 48 100 54 V60 H0Z');
+      A.o(curve([[50, 56], [48, 44], [52, 34]], false, A.r), 2.2);
+      A.k(curve([[48, 48], [38, 42], [34, 46], [44, 52]], true, A.r, 0.3));
+      for (let i = 0; i < 8; i++) {
+        const t = (i / 8) * Math.PI * 2, x = 52 + Math.cos(t) * 11, y = 22 + Math.sin(t) * 11;
+        A.f2(curve(circlePts(x, y, 6.5, 6.5, 8), true, A.r, 0.5));
+      }
+      A.c(52, 22, 6.5, 'ink');
+      [[16, 14, 3], [86, 12, 3.4], [82, 40, 2.4], [18, 40, 2.2]].forEach(([x, y, r]) => A.fi(star(x, y, r, 4, 0.35)));
+    },
+    claws(A) {
+      A.dots('M0 0H100V60H0Z');
+      for (let i = 0; i < 4; i++) {
+        const x = 22 + i * 18;
+        A.f2(curve([[x - 5, 4], [x + 4, 8], [x + 8, 26], [x + 3, 50], [x + 1, 52], [x - 1, 30], [x - 6, 10]], true, A.r, 0.4));
+      }
+    },
+    silo(A) {
+      A.c(80, 14, 7, 'bg');
+      for (const [x, w, h] of [[18, 16, 40], [38, 18, 48], [60, 16, 36]]) {
+        A.f2(`M${x} 56V${56 - h}a${w / 2} ${w / 2.6} 0 0 1 ${w} 0V56Z`);
+        for (let y = 56 - h + 8; y < 54; y += 7) A.o(`M${x} ${y}H${x + w}`, 1);
+      }
+      A.fi('M0 55H100V60H0Z');
+    },
+    arches(A) {
+      A.dots('M0 0H100V30H0Z');
+      A.f2('M2 18H98V26H2Z');
+      A.fi('M0 52 Q50 46 100 52 V60 H0Z');
+      for (let i = 0; i < 5; i++) {
+        const x = 6 + i * 18.5;
+        A.f2(`M${x} 26H${x + 16}V54H${x + 13}V40a5 6 0 0 0 -10 0V54H${x}Z`);
+      }
+      A.o('M2 22H98', 1, A.bg);
+    },
+    aztec(A) {
+      A.c(50, 30, 22, 'ink2');
+      A.c(50, 30, 15, 'bg');
+      A.c(50, 30, 8, 'ink');
+      for (let i = 0; i < 12; i++) {
+        const t = (i / 12) * Math.PI * 2, t2 = t + Math.PI / 12;
+        A.fi(`M${50 + Math.cos(t) * 23} ${30 + Math.sin(t) * 23}L${50 + Math.cos(t + Math.PI / 24) * 31} ${30 + Math.sin(t + Math.PI / 24) * 31}L${50 + Math.cos(t2) * 23} ${30 + Math.sin(t2) * 23}Z`);
+      }
+    },
+    ledge(A) {
+      A.c(22, 14, 7, 'bg');
+      A.f2('M100 10H58L52 18H100Z'); A.f2('M100 26H44L38 34H100Z'); A.f2('M100 42H30L22 50H100Z');
+      A.o('M0 58 Q20 54 40 58 T80 58 T100 58', 1.4);
+    },
+    gears(A) {
+      const gear = (cx, cy, r, n, fill) => {
+        let d = '';
+        for (let i = 0; i < n * 2; i++) { const t = (i / (n * 2)) * Math.PI * 2, rr = i % 2 ? r : r * 0.8; d += `${i ? 'L' : 'M'}${(cx + Math.cos(t) * rr).toFixed(2)} ${(cy + Math.sin(t) * rr).toFixed(2)}`; }
+        A[fill](d + 'Z');
+        A.c(cx, cy, r * 0.3, 'bg');
+      };
+      gear(36, 30, 20, 10, 'f2'); gear(70, 22, 14, 8, 'fi'); gear(72, 48, 9, 7, 'f2');
+    },
     pipes(A) {
       const hs = [20, 28, 36, 44, 50, 44, 36, 28, 20];
       hs.forEach((h, i) => {
@@ -649,6 +708,65 @@ export default function register(tz) {
       rows: [2],
       derive: (p) => ({ select: p.aby ? 2 : p.ab ? 1 : 0, level: p.bst ? p.boost ?? 6 : 0, levelB: (p.levelB ?? 0) + (p.bst ? p.boost ?? 6 : 0) }),
       desc: 'A/B or A+B (Y) output switching with an independent clean volume boost. (The real unit\'s effects loop, tuner out and aux switching are not modelled.)',
+    }),
+    // ---------------- added in v0.4
+    EQ({
+      id: 'eqd.acapulco', name: 'Aztec Gold Power Amp Distortion', ref: 'EarthQuaker Devices Acapulco Gold V2', logo: 'AZTEC GOLD', tagline: 'POWER AMP DISTORTION', cat: 'Distortion',
+      color: '#1d1a17', ink: '#0c0b0a', ink2: '#e2b23c', text: '#e2b23c', scene: 'aztec', size: 'b',
+      algo: 'drive', opts: { clip: 'tube', stages: 3, stage2Db: 14, bias: 0.3, preHp: 60, gainMinDb: 30, gainMaxDb: 30, tone: 'none', postLp: 6000, levelMinDb: -40, levelMaxDb: -6, preEq: [{ type: 'peak', f: 500, q: 0.7, db: 4 }] },
+      fixed: { gain: 0.5 },
+      controls: [K('level', 'VOLUME', { def: 0.55 })],
+      desc: 'One knob, loud and fuzzy power amp distortion. VOLUME is the only control: turn your amp down.',
+    }),
+    EQ({
+      id: 'eqd.blumes', name: 'Bloomer Low Signal Shredder', ref: 'EarthQuaker Devices Blumes', logo: 'BLOOMER', tagline: 'LOW SIGNAL SHREDDER', cat: 'Overdrive',
+      color: '#e9a7c0', ink: '#2a1630', ink2: '#f6e27a', scene: 'flower', size: 'b',
+      algo: 'drive', opts: { tone: 'ts', toneLo: 600, gainMinDb: 6, gainMaxDb: 40, levelMaxDb: 6, preHp: 25, clipHp: 200, postLp: 7000, cleanSum: true, cleanMix: 0,
+        modes: [{ clip: 'led', bias: 0.3 }, { clip: 'clean', gainMaxDb: 30 }, { clip: 'si' }] },
+      controls: [K('level', 'LEVEL', { def: 0.5 }), K('tone', 'TONE', { def: 0.5 }), K('gain', 'GAIN', { def: 0.5 }), K('blend', 'BLEND', { def: 0.8 }), TOG('mode', 'MODE', ['1', '2', '3'])],
+      rows: [2, 2],
+      desc: 'Bass-friendly take on the small signal shredder with a clean BLEND to keep the low end.',
+    }),
+    EQ({
+      id: 'eqd.talons', name: 'Talon High Gain Overdrive', ref: 'EarthQuaker Devices Talons', logo: 'TALON', tagline: 'HIGH GAIN OVERDRIVE', cat: 'Distortion',
+      color: '#6b2a2a', ink: '#120707', ink2: '#e9e1cf', text: '#f2e7d2', scene: 'claws',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.2, stages: 2, stage2Db: 10, preHp: 80, gainMinDb: 12, gainMaxDb: 50, tone: 'eq3', eqRangeDb: 12, bassF: 120, midF: 700, trebleF: 2800, postLp: 9000, levelMaxDb: -3 },
+      controls: [K('level', 'LEVEL', { def: 0.5 }), K('gain', 'GAIN', { def: 0.55 }), K('hicut', 'HI CUT', { def: 0.4, virtual: true }), K('bass', 'BASS', { def: 0.55 }), K('treble', 'TREBLE', { def: 0.5 })],
+      rows: [3, 2],
+      derive: (p) => ({ mid: 0.5, bright: 0.6 - (p.hicut ?? 0.4) * 0.6 }),
+      desc: 'Amp-like high gain drive with bass, treble and a high cut to tame fizz.',
+    }),
+    EQ({
+      id: 'eqd.silos', name: 'Granary Time Reflection', ref: 'EarthQuaker Devices Silos', logo: 'GRANARY', tagline: 'MULTI-GENERATIONAL DELAY', cat: 'Delay',
+      color: '#c9b78a', ink: '#1e1a12', ink2: '#e9e2ce', scene: 'silo', stereo: 'both',
+      algo: 'delay', opts: { maxMs: 1000 },
+      controls: [K('time', 'TIME', { min: 30, max: 1000, def: 380, display: ms, curve: 'log' }), K('feedback', 'REPEATS', { def: 0.4, max: 1.08 }), K('mix', 'MIX', { def: 0.35 }), K('moddepth', 'MOD', { def: 0.15 }),
+        TOG('mode', 'MODE', ['digi', 'tape', 'bbd'], { values: [0, 2, 1] })],
+      rows: [2, 2],
+      desc: 'Digital, tape-style and bucket-brigade delay with modulation.',
+    }),
+    EQ({
+      id: 'eqd.aqueduct', name: 'Viaduct Vibrato', ref: 'EarthQuaker Devices Aqueduct', logo: 'VIADUCT', tagline: 'VIBRATO MODULATOR', cat: 'Modulation',
+      color: '#5e93c7', ink: '#0f1d2e', ink2: '#f2ecd8', scene: 'arches', size: 'b',
+      algo: 'chorus', fixed: { mix: 1, mode: 1 },
+      controls: [K('rate', 'RATE', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.45 }), SEL('shape', 'MODE', ['SIN', 'TRI', 'RMP', 'SQR', 'RND', 'ENV+', 'ENV-', 'ENVR'], { virtual: true, togRow: true, r: 10 })],
+      derive: (p) => ({ wave: [0, 0.3, 0.6, 1, 0.5, 0.2, 0.8, 0.4][p.shape ?? 0] }),
+      desc: 'Pitch vibrato with eight modulation modes. The envelope modes are approximated with fixed shapes.',
+    }),
+    EQ({
+      id: 'eqd.ledges', name: 'Overhang Reverberation Machine', ref: 'EarthQuaker Devices Ledges', logo: 'OVERHANG', tagline: 'TRI-DIMENSIONAL REVERB', cat: 'Reverb',
+      color: '#2f8f8a', ink: '#0b1f1e', ink2: '#e8f2e9', text: '#effaf6', scene: 'ledge', stereo: 'both', cost: 1.1,
+      algo: 'reverb',
+      controls: [K('decay', 'DWELL', { def: 0.5 }), K('tone', 'TONE', { def: 0.55 }), K('mix', 'MIX', { def: 0.35 }), TOG('mode', 'MODE', ['room', 'plate', 'hall'], { values: [0, 2, 1] })],
+      desc: 'Room, plate and hall reverb with dwell, tone and mix.',
+    }),
+    EQ({
+      id: 'eqd.zoar', name: 'Zoat Dynamic Grinder', ref: 'EarthQuaker Devices Zoar', logo: 'ZOAT', tagline: 'DYNAMIC AUDIO GRINDER', cat: 'Distortion',
+      color: '#3a3f46', ink: '#0d0f12', ink2: '#e98a3a', text: '#f0ebe0', scene: 'gears',
+      algo: 'drive', opts: { clip: 'si', stages: 2, stage2Db: 10, preHp: 60, gainMinDb: 10, gainMaxDb: 50, tone: 'eq3', eqRangeDb: 14, bassF: 110, midF: 800, trebleF: 3000, postLp: 9000, levelMaxDb: -5, useHiMid: false },
+      controls: [K('level', 'LEVEL', { def: 0.5 }), K('gain', 'GAIN', { def: 0.55 }), K('weight', 'WEIGHT', { def: 0.5, virtual: true }), K('bass', 'BASS'), K('mid', 'MIDDLE'), K('treble', 'TREBLE')],
+      derive: (p) => ({ sag: (p.weight ?? 0.5) * 0.4 }),
+      desc: 'Dynamic distortion with an active 3-band EQ. WEIGHT sets how much the low end swells.',
     }),
   ]);
 }

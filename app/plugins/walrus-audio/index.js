@@ -7,7 +7,7 @@
 // flat ink. Per-block art parameters: `color` (body), `ink` (gold | silver | copper | #hex), `scene` (illustration),
 // `size` (n = 125B, w = wide, x = big Mako-style box, b = small).
 export default function register(tz) {
-  const { K, SEL, TOG, FOOT, LED, def, ten, db, ms, MONO, STEREO } = tz.helpers;
+  const { K, SEL, TOG, FOOT, LED, SLIDER, def, ten, db, ms, MONO, STEREO } = tz.helpers;
   const { svg, label, shade, formKit, noisePattern } = tz.gfx;
 
   // ------------------------------------------------------------------ helpers
@@ -357,6 +357,37 @@ export default function register(tz) {
     return { w: W, h: H, theme, jacks: formKit.jacksTop(def, W, { flip: ctx.flip }) };
   });
 
+
+  // ------------------------------------------------------------------ Fundamental series: small matte black box,
+  // three horizontal sliders with a coloured cap, a 3-way mode switch and a thin accent line.
+  const fundOwned = new WeakSet();
+  tz.addForm('walrus-fund', (ctx, def) => {
+    const g = ctx.g, W = 104, H = 204, acc = def.accent || '#e8b04a';
+    const id = 'waf' + ++seq;
+    const defs = svg('defs', {}, g);
+    noisePattern(defs, id + 'n', 40, 64, [255, 255, 255], 0, 0.09, 0);
+    formKit.body(g, W, H, '#1b1b1c', { rx: 6 });
+    svg('rect', { width: W, height: H, rx: 6, fill: `url(#${id}n)` }, g);
+    label(g, W / 2, 20, def.logo || def.name, { size: Math.min(13, (W - 20) / (String(def.logo || def.name).length * 0.62)), fill: '#f2f0ea', font: "'Oswald', sans-serif", weight: 500, ls: 2.2 });
+    svg('rect', { x: W / 2 - 16, y: 29, width: 32, height: 1.4, fill: acc }, g);
+    def.controls.forEach((c) => { if (c.x === undefined) fundOwned.add(c); });
+    const own = def.controls.filter((c) => fundOwned.has(c));
+    own.filter((c) => c.t === 'slider').forEach((c, i) => Object.assign(c, { x: W / 2 + 6, y: 46 + i * 27, h: 58, orient: 'h', capColor: acc, label: '', marks: false }));
+    own.filter((c) => c.t === 'slider').forEach((c, i) => label(g, 13, 46 + i * 27, c.title, { size: 5.4, fill: '#d8d6d0', weight: 700, ls: 0.5, anchor: 'start' }));
+    own.filter((c) => c.t === 'toggle').forEach((c) => Object.assign(c, { x: W / 2, y: 136, orient: 'h' }));
+    own.filter((c) => c.t === 'foot').forEach((c) => Object.assign(c, { x: W / 2, y: H - 30, r: 12, style: 'stomp' }));
+    own.filter((c) => c.t === 'led').forEach((c) => Object.assign(c, { x: W / 2, y: H - 56, r: 2.6 }));
+    const tg = def.controls.find((c) => c.t === 'toggle');
+    if (tg) label(g, W / 2, 136 - 18, tg.label, { size: 5.2, fill: '#d8d6d0', weight: 700, ls: 1 });
+    if (def.tagline) label(g, W / 2, 162, def.tagline, { size: 4.6, fill: acc, weight: 700, ls: 1.4 });
+    formKit.tzBadge(g, W / 2, H - 9, '#bdbab2', 3.8);
+    const theme = { text: '#d8d6d0', knob: 'strymon', labelSize: 5.6, toggleTitles: false };
+    formKit.placeControls(ctx, def.controls, theme);
+    return { w: W, h: H, theme, jacks: formKit.jacksTop(def, W, { flip: ctx.flip }) };
+  });
+  const FU = (o) => def(Object.assign({ form: 'walrus-fund', brand: 'Walrus Audio', cost: 0.6 }, o, { controls: [...o.controls, FOOT(), LED({ color: '#ff3a24' })] }));
+  const sl = (p, title, o = {}) => SLIDER(p, '', Object.assign({ title }, o));
+
   // ------------------------------------------------------------------ block builder
   const WA = (o) => def(Object.assign({ form: 'walrus-etch', brand: 'Walrus Audio', cost: 0.8 }, o, {
     controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: o.led || '#ff3a24' })])],
@@ -694,5 +725,39 @@ export default function register(tz) {
       derive: (p) => ({ 'r.mode': [0, 1, 6][p.rmode ?? 1] }),
       alwaysOn: true, initParams: { 'd.on': 1, 'r.on': 1 },
     }),
+    // ---------------- Fundamental series
+    FU({ id: 'wa.fdrive', name: 'Basic Drive', ref: 'Walrus Audio Fundamental Drive', logo: 'BASIC', tagline: 'DRIVE', cat: 'Overdrive', accent: '#e58a3a',
+      algo: 'drive', opts: { clip: 'ts', cleanSum: true, clipHp: 650, gainMinDb: 2, gainMaxDb: 40, tone: 'lp', toneLo: 1200, toneHi: 8000, levelMaxDb: 6, modes: [{ postLp: 6000 }, { gainMaxDb: 46, clip: 'asym' }, { postLp: 10000, preEq: [{ type: 'hs', f: 2500, q: 0.7, db: 3 }] }] },
+      controls: [sl('gain', 'GAIN', { def: 0.45 }), sl('tone', 'TONE'), sl('level', 'VOLUME'), TOG('mode', 'MODE', ['SMOOTH', 'CRUNCH', 'BRIGHT'])],
+      desc: 'Simple overdrive with smooth, crunch and bright modes.' }),
+    FU({ id: 'wa.fdist', name: 'Basic Distortion', ref: 'Walrus Audio Fundamental Distortion', logo: 'BASIC', tagline: 'DISTORTION', cat: 'Distortion', accent: '#d8423a',
+      algo: 'drive', opts: { clip: 'si', preHp: 70, gainMinDb: 10, gainMaxDb: 52, tone: 'lp', toneLo: 1000, toneHi: 7500, postLp: 8000, levelMaxDb: -3, modes: [{ preEq: [{ type: 'ls', f: 150, q: 0.7, db: 4 }], postLp: 5500 }, {}, { clip: 'led', gainMaxDb: 54 }] },
+      controls: [sl('gain', 'GAIN', { def: 0.5 }), sl('tone', 'TONE'), sl('level', 'VOLUME'), TOG('mode', 'MODE', ['DARK', 'SILICON', 'LED'], { def: 1 })],
+      desc: 'Distortion from dark and doomy to sharp LED-clipped leads.' }),
+    FU({ id: 'wa.ffuzz', name: 'Basic Fuzz', ref: 'Walrus Audio Fundamental Fuzz', logo: 'BASIC', tagline: 'FUZZ', cat: 'Fuzz', accent: '#9a6ad8',
+      algo: 'drive', opts: { clip: 'muff', stages: 2, stage2Db: 14, preHp: 80, gainMinDb: 16, gainMaxDb: 50, tone: 'blend', blendLp: 450, blendHp: 1100, postLp: 8500, levelMaxDb: -2, modes: [{}, { preEq: [{ type: 'peak', f: 900, q: 0.8, db: 5 }] }, { clip: 'si', bias: 0.6 }] },
+      controls: [sl('gain', 'GAIN', { def: 0.6 }), sl('tone', 'TONE'), sl('level', 'VOLUME'), TOG('mode', 'MODE', ['CLASSIC', 'MID+', 'GATE'])],
+      desc: 'Sustaining fuzz with a classic scoop, a mid boost or a gated, sputtery mode.' }),
+    FU({ id: 'wa.ftrem', name: 'Basic Tremolo', ref: 'Walrus Audio Fundamental Tremolo', logo: 'BASIC', tagline: 'TREMOLO', cat: 'Modulation', accent: '#4ab0d8',
+      algo: 'tremolo', fixed: { mode: 0 },
+      controls: [sl('rate', 'RATE', { def: 0.4 }), sl('depth', 'DEPTH', { def: 0.6 }), sl('level', 'VOLUME'), TOG('wave', 'WAVE', ['SINE', 'SQUARE', 'RANDOM'], { values: [0.3, 1, 0.6] })],
+      desc: 'Optical-style tremolo with sine, square and random shapes.' }),
+    FU({ id: 'wa.fchorus', name: 'Basic Chorus', ref: 'Walrus Audio Fundamental Chorus', logo: 'BASIC', tagline: 'CHORUS', cat: 'Modulation', accent: '#5cc28a',
+      algo: 'chorus',
+      controls: [sl('rate', 'RATE', { def: 0.35 }), sl('depth', 'DEPTH', { def: 0.5 }), sl('mix', 'MIX', { def: 0.5 }), TOG('voice', 'MODE', ['LIGHT', 'MEDIUM', 'HEAVY'], { def: 1, virtual: true })],
+      derive: (p) => ({ delay: [0.35, 0.5, 0.7][p.voice ?? 1], depth: (p.depth ?? 0.5) * [0.6, 1, 1.3][p.voice ?? 1] }),
+      desc: 'Bucket-brigade style chorus, from light shimmer to heavy warble.' }),
+    FU({ id: 'wa.fphaser', name: 'Basic Phaser', ref: 'Walrus Audio Fundamental Phaser', logo: 'BASIC', tagline: 'PHASER', cat: 'Modulation', accent: '#e0c040',
+      algo: 'phaser', opts: { stages: 4 }, fixed: { mix: 0.5 },
+      controls: [sl('rate', 'RATE', { def: 0.35 }), sl('depth', 'DEPTH', { def: 0.8 }), sl('feedback', 'FEEDBACK', { def: 0.35 }), TOG('stages', 'MODE', ['LIGHT', 'MEDIUM', 'HEAVY'], { values: [2, 4, 8], def: 1 })],
+      desc: 'Classic phaser with light, medium and heavy sweeps.' }),
+    FU({ id: 'wa.fdelay', name: 'Basic Delay', ref: 'Walrus Audio Fundamental Delay', logo: 'BASIC', tagline: 'DELAY', cat: 'Delay', accent: '#e86a8a',
+      algo: 'delay', opts: { maxMs: 1200 },
+      controls: [K('time', 'TIME', { t: 'slider', min: 40, max: 1100, def: 380, title: 'TIME', label: '' }), sl('feedback', 'FEEDBACK', { def: 0.4, max: 1.05 }), sl('mix', 'MIX', { def: 0.35 }), TOG('mode', 'MODE', ['DIGITAL', 'ANALOG', 'REVERSE'], { values: [0, 1, 5] })],
+      desc: 'Digital, analog and reverse delay.' }),
+    FU({ id: 'wa.freverb', name: 'Basic Reverb', ref: 'Walrus Audio Fundamental Reverb', logo: 'BASIC', tagline: 'REVERB', cat: 'Reverb', accent: '#7a9ae8', cost: 1,
+      algo: 'reverb',
+      controls: [sl('decay', 'DECAY', { def: 0.5 }), sl('tone', 'TONE', { def: 0.55 }), sl('mix', 'MIX', { def: 0.35 }), TOG('mode', 'MODE', ['HALL', 'SPRING', 'PLATE'], { values: [1, 3, 2] })],
+      desc: 'Hall, spring and plate reverb.' }),
   ]);
 }

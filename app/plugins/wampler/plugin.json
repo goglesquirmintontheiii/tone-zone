@@ -3,7 +3,7 @@
   "name": "Wampler Pedals",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Inspired by Wampler Pedals: a mini clean-blend transparent overdrive in a pale metallic box with a fine-line lamp-post illustration.",
+  "description": "Inspired by Wampler Pedals: transparent, Bluesbreaker, plexi and boutique-amp overdrives, a dual drive, a tape echo and a blend compressor in gloss boxes with fine-line art.",
   "kind": "brand",
   "brand": "Wampler",
   "main": "index.js",

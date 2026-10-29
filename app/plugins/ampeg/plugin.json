@@ -3,7 +3,7 @@
   "name": "Ampeg",
   "version": "1.0.0",
   "author": "Tone Zone",
-  "description": "Bass amps, preamps and cabs inspired by Ampeg: SVT, SVT-VR, B-15, Portaflex PF-500 and the 410 / 610 / 810 cabs.",
+  "description": "Bass amps, preamps, cabs and pedals inspired by Ampeg: SVT, B-15, Portaflex, the 410 / 610 / 810 cabs, plus the Scrambler, Liquifier, Opto Comp and SGT / SCR DI pedals.",
   "kind": "brand",
   "brand": "Ampeg",
   "main": "index.js",

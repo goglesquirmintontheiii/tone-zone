@@ -1,0 +1,12 @@
+{
+  "id": "donner",
+  "name": "Donner",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Budget mini pedals inspired by Donner gear: drives, distortion, fuzz, delays, reverb, chorus, compressor and a noise gate in small colourful boxes.",
+  "kind": "brand",
+  "brand": "Donner",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2a63c6"
+}

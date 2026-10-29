@@ -1,0 +1,12 @@
+{
+  "id": "randall",
+  "name": "Randall",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Randall: solid-state and tube metal heads from the 80s and 90s.",
+  "kind": "brand",
+  "brand": "Randall",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d6001c"
+}

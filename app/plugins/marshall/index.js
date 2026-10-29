@@ -95,4 +95,78 @@ export default function register(tz) {
       controls: [k('presence', 'PRESENCE'), k('bass', 'BASS'), k('mid', 'MIDDLE'), k('treble', 'TREBLE'), k('gain', 'LOUDNESS 1', { def: 0.55 }), k('master', 'LOUDNESS 2', { def: 0.55 }), k('t.rate', 'SPEED', { def: 0.45 }), k('t.depth', 'INTENSITY', { def: 0 })],
       desc: 'KT66 2x12 combo with bias tremolo: the Beano tone.' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Early-90s style drive pedals (and the reissues): black box, gold-trimmed control panel, script badge.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, def, ten } = tz.helpers;
+  const { svg, label, formKit } = tz.gfx;
+
+  tz.addForm('marshall-pedal', (ctx, d) => {
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => c.t === 'knob' && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const perRow = kn.length > 5 ? 3 : kn.length;
+    const w = perRow > 3 ? 196 : 150;
+    const rows = [];
+    for (let i = 0; i < kn.length; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const panelH = 14 + rows.length * 44 + (tg.length ? 30 : 0);
+    const ly = panelH + 40, h = ly + 120;
+    formKit.body(g, w, h, d.color || '#1b1b1c', { rx: 8 });
+    const gold = '#c9a45a';
+    svg('rect', { x: 8, y: 8, width: w - 16, height: panelH, rx: 4, fill: '#0d0d0e' }, g);
+    svg('rect', { x: 10, y: 10, width: w - 20, height: panelH - 4, rx: 3, fill: 'none', stroke: gold, 'stroke-width': 1.1 }, g);
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = (x1 - x0) / Math.max(1, perRow - 1);
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + i * step, y: 40 + ri * 44, r: 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 36 + (i * (w - 72)) / (tg.length - 1), y: 12 + rows.length * 44 + 10, orient: 'h', optSize: 4.2 }));
+    label(g, w / 2, ly - 4, d.logo || d.name, { size: (d.logo || d.name).length > 12 ? 13 : 16, fill: d.accent || gold, font: "'Oswald', sans-serif", weight: 700, ls: 1.2 });
+    label(g, w / 2, ly + 9, (d.typeName || d.cat).toUpperCase(), { size: 5.2, fill: '#d8d8d8', weight: 700, ls: 1.8, opacity: 0.75 });
+    d.controls.forEach((c) => {
+      if (c.t === 'led' && mine(c)) Object.assign(c, { _fa: 1, x: w / 2, y: ly + 24, r: 3 });
+      if (c.t === 'foot' && mine(c)) Object.assign(c, { _fa: 1, style: 'stomp', x: w / 2, y: ly + 56, r: 13 });
+    });
+    // script badge in a gold-edged plate near the bottom
+    svg('rect', { x: w / 2 - 42, y: h - 34, width: 84, height: 20, rx: 3, fill: '#0d0d0e', stroke: gold, 'stroke-width': 0.8 }, g);
+    label(g, w / 2, h - 20, 'Mayfair', { size: 13, fill: '#f2efe6', font: "'Dancing Script', cursive", weight: 700 });
+    formKit.tzBadge(g, w / 2, h - 5, '#8a8a8a', 3.4);
+    const theme = { text: '#f0e6cc', knob: d.knob || 'marshall', labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls, theme);
+    return { w, h, theme, jacks: formKit.jacksSide(d, w, { y0: panelH + 30, gap: 26, flip: ctx.flip }) };
+  });
+
+  const MP = (o) => def(Object.assign({ form: 'marshall-pedal' }, o, { controls: [...o.controls, FOOT(), LED({ color: '#ff2a1a' })] }));
+  const t = (p, l, o = {}) => K(p, l, Object.assign({ display: ten }, o));
+
+  tz.addDefs([
+    MP({ id: 'marshall.shredmaster', name: 'Shredder Master', ref: 'Marshall ShredMaster', logo: 'SHREDDER', typeName: 'Distortion', cat: 'Distortion', accent: '#e04a3a',
+      algo: 'drive', opts: { clip: 'diode', stages: 2, stage2Db: 6, preHp: 80, gainMinDb: 10, gainMaxDb: 46, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 650, midQ: 0.7, trebleF: 3000, postLp: 7200, levelMaxDb: -3 },
+      controls: [t('gain', 'GAIN', { def: 0.6 }), t('bass', 'BASS'), t('mid', 'CONTOUR', { def: 0.4 }), t('treble', 'TREBLE'), t('level', 'VOLUME')],
+      desc: 'The early-90s British shred box: thick, scooped distortion with a Contour mid control.' }),
+    MP({ id: 'marshall.bluesbreaker', name: 'Blues Buster', ref: 'Marshall BluesBreaker (pedal)', logo: 'BLUES BUSTER', typeName: 'Overdrive', cat: 'Overdrive', accent: '#5a8fd6',
+      algo: 'drive', opts: { clip: 'si', bias: 0.05, preHp: 70, gainMinDb: 2, gainMaxDb: 30, tone: 'lp', toneLo: 1500, toneHi: 10000, postLp: 9500, cleanSum: true, cleanMix: 0.15, levelMaxDb: 8 },
+      controls: [t('gain', 'GAIN', { def: 0.45 }), t('tone', 'TONE'), t('level', 'VOLUME')],
+      desc: 'Transparent, open low-gain overdrive in the spirit of a cranked combo.' }),
+    MP({ id: 'marshall.guvnor', name: 'The Governor', ref: "Marshall Guv'nor", logo: 'GOVERNOR', typeName: 'Distortion', cat: 'Distortion', accent: '#d9b25a',
+      algo: 'drive', opts: { clip: 'diode', preHp: 70, gainMinDb: 6, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 100, midF: 800, trebleF: 3000, postLp: 8000, levelMaxDb: 2, preEq: [{ type: 'peak', f: 900, q: 0.8, db: 2 }] },
+      controls: [t('gain', 'GAIN', { def: 0.55 }), t('bass', 'BASS'), t('mid', 'MIDDLE'), t('treble', 'TREBLE'), t('level', 'VOLUME')],
+      desc: 'Amp-in-a-box British crunch with a full 3-band EQ.' }),
+    MP({ id: 'marshall.drivemaster', name: 'Drive Major', ref: 'Marshall DriveMaster', logo: 'DRIVE MAJOR', typeName: 'Overdrive', cat: 'Overdrive', accent: '#6fbf5a',
+      algo: 'drive', opts: { clip: 'asym', bias: 0.2, preHp: 70, gainMinDb: 4, gainMaxDb: 38, tone: 'eq3', eqRangeDb: 12, bassF: 110, midF: 800, trebleF: 3200, postLp: 8500, levelMaxDb: 4 },
+      controls: [t('gain', 'GAIN', { def: 0.5 }), t('bass', 'BASS'), t('mid', 'MIDDLE'), t('treble', 'TREBLE'), t('level', 'LEVEL')],
+      desc: 'Plexi-flavoured overdrive, from edge of breakup to fat rock crunch.' }),
+    MP({ id: 'marshall.jackhammer', name: 'Pneumatic JH', ref: 'Marshall Jackhammer JH-1', logo: 'PNEUMATIC', typeName: 'Overdrive / Distortion', cat: 'Distortion', accent: '#e8892a',
+      algo: 'drive', opts: { preHp: 80, tone: 'eq3', eqRangeDb: 12, bassF: 110, midMin: 300, midMax: 3000, trebleF: 3200, postLp: 7800, levelMaxDb: -4,
+        modes: [{ clip: 'asym', bias: 0.2, gainMinDb: 4, gainMaxDb: 36 }, { clip: 'diode', stages: 2, stage2Db: 6, gainMinDb: 10, gainMaxDb: 46 }] },
+      controls: [t('gain', 'GAIN', { def: 0.55 }), t('bass', 'BASS'), t('mid', 'CONTOUR'), t('midfreq', 'FREQ'), t('treble', 'TREBLE'), t('level', 'LEVEL'), TOG('mode', 'MODE', ['OD', 'DIST'], { def: 1 })],
+      desc: 'Overdrive or distortion with a sweepable Contour mid control.' }),
+    MP({ id: 'marshall.edward', name: 'Edwin the Comp', ref: 'Marshall ED-1 Edward The Compressor', logo: 'EDWIN', typeName: 'Compressor', cat: 'Dynamics', accent: '#c9c9c9',
+      algo: 'comp', opts: { type: 'vca' },
+      controls: [t('level', 'VOLUME', { def: 0.36 }), t('tone', 'EMPHASIS'), t('attack', 'ATTACK', { def: 0.3 }), t('release', 'RELEASE', { def: 0.4 }), t('sustain', 'COMP', { def: 0.5 })],
+      desc: 'Studio-style compressor with an Emphasis control to keep the attack bright.' }),
+  ]);
 }

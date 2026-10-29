@@ -1,0 +1,12 @@
+{
+  "id": "rivera",
+  "name": "Rivera",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Rivera: three-channel Californian tube heads and the Silent Sister isolation cab.",
+  "kind": "brand",
+  "brand": "Rivera",
+  "main": "index.js",
+  "api": 1,
+  "color": "#b5332e"
+}

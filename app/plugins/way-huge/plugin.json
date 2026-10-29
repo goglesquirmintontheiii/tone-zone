@@ -1,0 +1,12 @@
+{
+  "id": "way-huge",
+  "name": "Way Huge",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Pedals inspired by Way Huge Electronics: fat fuzzes, overdrives, analog delays and modulation in colourful boxes with cartoon animal badges.",
+  "kind": "brand",
+  "brand": "Way Huge",
+  "main": "index.js",
+  "api": 1,
+  "color": "#7fae5a"
+}

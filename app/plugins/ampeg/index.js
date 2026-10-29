@@ -78,4 +78,116 @@ export default function register(tz) {
     CAB({ id: 'ampeg.cab-410hlf', name: '4x10 SVB HLF', ref: 'Ampeg SVT-410HLF', bass: true, opts: { cab: { hp: 40, hpQ: 1.3, resDb: 4, lp: 4800, peaks: [[75, 1, 3], [500, 1, 1.5], [1700, 1.3, 2.5], [5000, 1.2, 2]], seed: 111, detail: 1.5 } }, cabSize: '4x10', grille: 'silver', logo: 'SVB', logoFont: "'Oswald', sans-serif", logoColor: '#eee', logoPlate: '#2a4f9a' }),
     CAB({ id: 'ampeg.cab-610hlf', name: '6x10 SVB HLF', ref: 'Ampeg SVT-610HLF', bass: true, opts: { cab: { hp: 38, hpQ: 1.3, resDb: 4.5, lp: 4500, peaks: [[70, 1, 3.5], [500, 1, 2], [1600, 1.3, 2.5], [3200, 2, -2]], seed: 112, detail: 1.5 } }, cabSize: '6x10', grille: 'black', logo: 'SVB', logoFont: "'Oswald', sans-serif", logoColor: '#eee', logoPlate: '#2a4f9a' }),
   ]);
+  registerPedals(tz);
+}
+
+// ================================================================ pedals (v0.4)
+// Ampeg's bass pedal line: grey bodies with a black control plate, like the amp faceplates.
+function registerPedals(tz) {
+  const { K, TOG, FOOT, LED, def, ten, db } = tz.helpers;
+  const { svg, label, formKit, shade } = tz.gfx;
+
+  tz.addForm('ampeg-pedal', (ctx, d) => {
+    const g = ctx.g;
+    const mine = (c) => c.x === undefined || c._fa;
+    const kn = d.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && mine(c));
+    const tg = d.controls.filter((c) => c.t === 'toggle' && mine(c));
+    const foots = d.controls.filter((c) => c.t === 'foot' && mine(c));
+    const leds = d.controls.filter((c) => c.t === 'led' && mine(c));
+    const perRow = d.perRow || (kn.length <= 4 ? kn.length : Math.ceil(kn.length / 2));
+    const w = d.fw || (perRow > 3 || foots.length > 1 ? 196 : 140);
+    const rows = [];
+    for (let i = 0; i < kn.length; i += perRow) rows.push(kn.slice(i, i + perRow));
+    const plateH = 26 + rows.length * 44 + (tg.length ? 34 : 0);
+    const ly = plateH + 42, fy = ly + 62, h = fy + 34;
+    formKit.body(g, w, h, d.color || '#b9bdc2', { rx: 9, brushed: true });
+    // black faceplate with a thin bright border, accent stripe under it
+    svg('rect', { x: 9, y: 9, width: w - 18, height: plateH, rx: 4, fill: '#121315' }, g);
+    svg('rect', { x: 11, y: 11, width: w - 22, height: plateH - 4, rx: 3, fill: 'none', stroke: '#c9ccd1', 'stroke-opacity': 0.7, 'stroke-width': 0.8 }, g);
+    svg('rect', { x: 9, y: plateH + 13, width: w - 18, height: 3.2, rx: 1.5, fill: d.accent || '#2a6fd0' }, g);
+    rows.forEach((r, ri) => {
+      const x0 = 30, x1 = w - 30, step = perRow > 1 ? (x1 - x0) / (perRow - 1) : 0;
+      const off = ((perRow - r.length) * step) / 2;
+      r.forEach((c, i) => Object.assign(c, { _fa: 1, x: perRow === 1 ? w / 2 : x0 + off + i * step, y: 42 + ri * 44, r: 11, labelPos: 'above', labelSize: 5.4 }));
+    });
+    tg.forEach((t, i) => Object.assign(t, { _fa: 1, x: tg.length === 1 ? w / 2 : 32 + (i * (w - 64)) / (tg.length - 1), y: 26 + rows.length * 44 + 12, orient: 'h', optSize: 4.2 }));
+    const txt = '#141517';
+    label(g, w / 2, plateH + 32, d.brandMark || 'Lowland', { size: 12, fill: txt, font: "'Dancing Script', cursive", weight: 700 });
+    label(g, w / 2, ly + 2, d.logo || d.name, { size: (d.logo || d.name).length > 12 ? 10.5 : 13, fill: txt, font: "'Oswald', sans-serif", weight: 700, ls: 1.4 });
+    label(g, w / 2, ly + 13, (d.typeName || d.cat).toUpperCase(), { size: 5, fill: txt, weight: 700, ls: 1.6, opacity: 0.75 });
+    const spots = (n) => (n > 1 ? [w * 0.27, w * 0.73] : [w / 2]);
+    const lx = spots(leds.length), fx = spots(foots.length);
+    leds.forEach((l, i) => Object.assign(l, { _fa: 1, x: lx[i], y: ly + 26, r: 3 }));
+    foots.forEach((f, i) => Object.assign(f, { _fa: 1, style: 'stomp', x: fx[i], y: fy, r: 12.5, labelDy: foots.length > 1 ? -18 : undefined }));
+    formKit.tzBadge(g, w / 2, h - 8, shade(txt, 0.3), 4);
+    const theme = { text: '#eceef0', knob: d.knob || 'mxr', labelSize: 5.4 };
+    // labels on the grey area need dark text
+    const dark = { text: txt, knob: theme.knob, labelSize: 5.4 };
+    formKit.placeControls(ctx, d.controls.filter((c) => c.t !== 'foot'), theme);
+    formKit.placeControls(ctx, d.controls.filter((c) => c.t === 'foot'), dark);
+    const jacks = d.jacksTop ? formKit.jacksTop(d, w, { flip: ctx.flip }) : formKit.jacksSide(d, w, { y0: plateH + 44, gap: 24, flip: ctx.flip });
+    return { w, h, theme, jacks };
+  });
+
+  const AP = (o) => def(Object.assign({ form: 'ampeg-pedal' }, o, { controls: [...o.controls, ...(o.noStd ? [] : [FOOT(), LED({ color: '#ff2a1a' })])] }));
+  const bassDrive = { clip: 'tube', bias: 0.15, preHp: 30, gainMinDb: 6, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 90, midF: 500, trebleF: 2500, postLp: 6500, cleanSum: true, levelMaxDb: 4 };
+  const svtPre = { preamp: true, models: ['svt', 'b15'] };
+  const DI_OUTS = { ins: ['INPUT'], outs: ['OUTPUT', 'XLR DI OUT'] };
+
+  tz.addDefs([
+    AP({ id: 'ampeg.scrambler', name: 'Scrambled Bass OD', ref: 'Ampeg Scrambler Bass Overdrive', logo: 'SCRAMBLED', typeName: 'Bass Overdrive', cat: 'Overdrive', accent: '#c8302a',
+      algo: 'drive', opts: bassDrive, fixed: { bass: 0.5, mid: 0.5 },
+      controls: [K('treble', 'TREBLE', { display: ten }), K('gain', 'DRIVE', { display: ten, def: 0.5 }), K('blend', 'BLEND', { display: ten, def: 0.6 }), K('level', 'VOLUME', { display: ten, def: 0.45 })],
+      desc: 'Tube-style bass grit with a clean blend so the low end stays solid.', tags: ['bass'] }),
+    AP({ id: 'ampeg.classicpre', name: 'Classic Low Preamp', ref: 'Ampeg Classic Analog Bass Preamp', logo: 'CLASSIC LOW', typeName: 'Bass Preamp', cat: 'Preamp', kind: 'Pedal', accent: '#2a6fd0', jacksTop: true,
+      algo: 'amp', cost: 1.4, opts: { preamp: true, model: 'svt' }, ports: DI_OUTS, jackKinds: { o1: 'xlr' }, fixed: { gain: 0.35 },
+      controls: [K('level', 'VOLUME', { min: -24, max: 12, def: 0, display: db }), K('bass', 'BASS', { display: ten }), K('mid', 'MIDRANGE', { display: ten }), K('treble', 'TREBLE', { display: ten }),
+        TOG('midfreq', 'FREQ', ['220', '800', '3K'], { values: [0.2, 0.5, 0.85], def: 1 }), TOG('ultralo', 'ULTRA LO', ['OFF', 'ON']), TOG('ultrahi', 'ULTRA HI', ['OFF', 'ON'])],
+      desc: 'The classic big-head bass EQ in a pedal, with Ultra Lo / Hi and an XLR DI out.', tags: ['bass', 'di'] }),
+    AP({ id: 'ampeg.liquifier', name: 'Liquid Bass Chorus', ref: 'Ampeg Liquifier Analog Chorus', logo: 'LIQUID', typeName: 'Analog Chorus', cat: 'Modulation', accent: '#3fb7c9',
+      algo: 'chorus', opts: { style: 'bbd' }, fixed: { tone: 0.55 },
+      controls: [K('rate', 'RATE', { display: ten, def: 0.3 }), K('depth', 'DEPTH', { display: ten, def: 0.5 }), K('mix', 'FX LEVEL', { display: ten, def: 0.45 })],
+      desc: 'Warm BBD chorus voiced to keep bass lows intact.', tags: ['bass'] }),
+    AP({ id: 'ampeg.optocomp', name: 'Opti Squeeze', ref: 'Ampeg Opto Comp', logo: 'OPTI SQUEEZE', typeName: 'Optical Compressor', cat: 'Dynamics', accent: '#e0b02a',
+      algo: 'comp', opts: { type: 'opto' }, fixed: { attack: 0.35 },
+      controls: [K('sustain', 'COMP', { display: ten, def: 0.5 }), K('release', 'RELEASE', { display: ten, def: 0.4 }), K('level', 'OUTPUT', { display: ten, def: 0.36 })],
+      desc: 'Smooth optical compression for even, punchy bass.', tags: ['bass'] }),
+    AP({ id: 'ampeg.sgtdi', name: 'SGT-Direct', ref: 'Ampeg SGT-DI', logo: 'SGT-DIRECT', typeName: 'Bass Preamp / DI', cat: 'Preamp', kind: 'Pedal', accent: '#2a6fd0', fw: 220, perRow: 4, jacksTop: true,
+      algo: 'chain', cost: 3.2, alwaysOn: true, noStd: true,
+      ports: { ins: ['INPUT'], outs: ['OUTPUT', 'XLR DI OUT', 'PHONES'] }, jackKinds: { o1: 'xlr', o2: 'phones' },
+      opts: { chain: [
+        { prefix: 'c', algo: 'comp', opts: { type: 'opto' }, params: { attack: 0.3, release: 0.4, level: 0.4 } },
+        { prefix: 'g', algo: 'drive', on: false, opts: Object.assign({}, bassDrive, { tone: 'none', levelMaxDb: 2 }) },
+        { prefix: 'a', algo: 'amp', opts: svtPre },
+        { prefix: 'k', algo: 'cab', on: false, opts: { model: '8x10svt' } },
+      ] },
+      controls: [K('a.level', 'VOLUME', { min: -24, max: 12, def: -4, display: db }), K('c.sustain', 'COMP', { display: ten, def: 0.3 }), K('a.bass', 'BASS', { display: ten }), K('a.mid', 'MID', { display: ten }),
+        K('a.midfreq', 'FREQ', { display: ten }), K('a.treble', 'TREBLE', { display: ten }), K('g.gain', 'GRIT', { display: ten, def: 0.5 }), K('g.level', 'LEVEL', { display: ten, def: 0.45 }),
+        TOG('a.channel', 'VOICE', ['SVT', 'B15'], { values: [0, 1] }), TOG('a.ultrahi', 'ULTRA HI', ['OFF', 'ON']), TOG('a.ultralo', 'ULTRA LO', ['OFF', '1', '2'], { values: [0, 0.5, 1] }), TOG('k.on', 'IR', ['OFF', 'ON']),
+        FOOT({ action: 'param', p: 'pre', toggle: true, label: 'PREAMP', virtual: true }), FOOT({ action: 'param', p: 'g.on', toggle: true, label: 'SGT' }), LED({ bind: 'param:pre', color: '#3d8bff' }), LED({ bind: 'param:g.on', color: '#ff2a1a' })],
+      initParams: { pre: 1, 'g.on': 0 }, fixed: { 'a.gain': 0.4 },
+      derive: (u) => ({ 'c.on': u.pre ? 1 : 0, 'a.on': u.pre ? 1 : 0 }),
+      desc: 'Bass preamp and DI with compressor, Super Grit drive, SVT / B15 voices and a cab sim for the XLR out.', tags: ['bass', 'di'] }),
+    AP({ id: 'ampeg.scrdi', name: 'SCR-Direct', ref: 'Ampeg SCR-DI', logo: 'SCR-DIRECT', typeName: 'Bass Preamp / DI', cat: 'Preamp', kind: 'Pedal', accent: '#c8302a', fw: 200, perRow: 3, jacksTop: true,
+      algo: 'chain', cost: 2, alwaysOn: true, noStd: true,
+      ports: { ins: ['INPUT'], outs: ['OUTPUT', 'XLR DI OUT', 'PHONES'] }, jackKinds: { o1: 'xlr', o2: 'phones' },
+      opts: { chain: [
+        { prefix: 's', algo: 'drive', on: false, opts: Object.assign({}, bassDrive, { tone: 'none', levelMaxDb: 2 }) },
+        { prefix: 'a', algo: 'amp', opts: { preamp: true, model: 'svt' } },
+      ] },
+      controls: [K('a.level', 'VOLUME', { min: -24, max: 12, def: 0, display: db }), K('a.bass', 'BASS', { display: ten }), K('a.mid', 'MID', { display: ten }), K('a.treble', 'TREBLE', { display: ten }), K('s.gain', 'DRIVE', { display: ten, def: 0.5 }), K('s.blend', 'BLEND', { display: ten, def: 0.6 }),
+        TOG('a.ultrahi', 'ULTRA HI', ['OFF', 'ON']), TOG('a.ultralo', 'ULTRA LO', ['OFF', 'ON']),
+        FOOT({ action: 'param', p: 'pre', toggle: true, label: 'PREAMP', virtual: true }), FOOT({ action: 'param', p: 's.on', toggle: true, label: 'SCRAMBLER' }), LED({ bind: 'param:pre', color: '#3d8bff' }), LED({ bind: 'param:s.on', color: '#ff2a1a' })],
+      initParams: { pre: 1, 's.on': 0 }, fixed: { 'a.gain': 0.4, 's.level': 0.45 },
+      derive: (u) => ({ 'a.on': u.pre ? 1 : 0 }),
+      desc: 'Bass preamp and DI with the Scrambler drive on its own switch, Ultra Hi / Lo and a headphone out.', tags: ['bass', 'di'] }),
+    AP({ id: 'ampeg.scrambler69', name: 'Scrambler 69', ref: 'Ampeg Scrambler (1969)', logo: 'SCRAMBLER 69', brandMark: 'Lowland', typeName: 'Octave Fuzz', cat: 'Fuzz', color: '#6f8196', accent: '#e8e8e8',
+      algo: 'chain', cost: 1.1, opts: { chain: [
+        { prefix: 'f', algo: 'drive', opts: { clip: 'si', preHp: 90, gainMinDb: 14, gainMaxDb: 42, tone: 'none', postLp: 6000, cleanSum: true, levelMaxDb: -4 }, params: { level: 0.5 } },
+        { prefix: 'o', algo: 'pitch', params: { semis1: 12, level1: 0.4, dry: 0.9, quality: 0, tone: 0.75 } },
+      ] },
+      controls: [K('tex', 'TEXTURE', { display: ten, def: 0.6, virtual: true }), K('f.blend', 'BALANCE', { display: ten, def: 0.7 })],
+      derive: (u) => ({ 'f.gain': u.tex ?? 0.6, 'o.level1': 0.15 + 0.5 * (u.tex ?? 0.6) }),
+      desc: 'Late-60s octave fuzz: Texture adds grit and octave, Balance mixes it with your clean tone.' }),
+  ]);
 }

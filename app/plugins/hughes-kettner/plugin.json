@@ -1,0 +1,12 @@
+{
+  "id": "hughes-kettner",
+  "name": "Hughes & Kettner",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Hughes & Kettner: blue-lit German multi-channel tube amps and the Tubeman floor preamp.",
+  "kind": "brand",
+  "brand": "Hughes & Kettner",
+  "main": "index.js",
+  "api": 1,
+  "color": "#2c7be5"
+}

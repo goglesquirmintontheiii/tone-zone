@@ -1,0 +1,12 @@
+{
+  "id": "magnatone",
+  "name": "Magnatone",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps and preamps inspired by Magnatone: vintage-style combos with lush vibrato.",
+  "kind": "brand",
+  "brand": "Magnatone",
+  "main": "index.js",
+  "api": 1,
+  "color": "#c9a050"
+}

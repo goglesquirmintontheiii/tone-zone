@@ -1,0 +1,12 @@
+{
+  "id": "egnater",
+  "name": "Egnater",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Amps, preamps and cabs inspired by Egnater: tube amps with lots of voicing switches.",
+  "kind": "brand",
+  "brand": "Egnater",
+  "main": "index.js",
+  "api": 1,
+  "color": "#d8322a"
+}

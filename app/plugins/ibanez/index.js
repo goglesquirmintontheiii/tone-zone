@@ -204,4 +204,109 @@ export default function register(tz) {
       desc: 'Analog-voiced delay: slide DELAY TIME, tap tempo, MOD adds chorus-like movement, OSCILLATION pushes the repeats into self-oscillation.',
     }),
   ]);
+
+  // ---- v0.4 additions
+  tz.addDefs([
+    // ---- Tube Screamer family
+    NINE({
+      id: 'ib.ts808hw', name: 'GD808HW Hand-Wired', ref: 'Ibanez TS808HW Tube Screamer Hand-Wired', code: 'GD808HW', logo: 'GREEN DRIVE HW', cat: 'Overdrive', color: '#56913e', text: '#f2f2f2', plate: '#1b1b1d', plateText: '#e9d9a6',
+      algo: 'drive', opts: Object.assign({}, TS, { toneLo: 680, postLp: 4700, levelMaxDb: 4, clipHp: 700 }),
+      controls: [K('gain', 'OVERDRIVE', { display: ten }), K('tone', 'TONE', { display: ten }), K('level', 'LEVEL', { display: ten })],
+      desc: 'Hand-wired 808 with a vintage-style chip: warm mids, smooth clipping.',
+    }),
+    def({
+      id: 'ib.ts808dx', name: 'GD808DX Green Drive Booster', ref: 'Ibanez TS808DX Tube Screamer', brand: 'Ibanez', code: 'GD808DX', logo: 'GREEN DRIVE DX', cat: 'Overdrive', form: 'nine', color: '#5e9a45', text: '#f2f2f2',
+      algo: 'chain', cost: 0.8, alwaysOn: true,
+      opts: { chain: [
+        { prefix: 'b', algo: 'boost', on: false, opts: { gainMaxDb: 20 }, params: { mode: 0, level: 1 } },
+        { prefix: 'd', algo: 'drive', opts: Object.assign({}, TS, { toneLo: 700, postLp: 4600, levelMaxDb: 4 }) },
+      ] },
+      controls: [
+        K('d.gain', 'OVERDRIVE', { x: 38, y: 52, r: 12, style: 'nine', display: ten }), K('d.tone', 'TONE', { x: 67, y: 38, r: 7.5, style: 'nine', display: ten }), K('d.level', 'LEVEL', { x: 96, y: 52, r: 12, style: 'nine', display: ten }),
+        K('b.gain', 'BOOST', { x: 124, y: 36, r: 8.5, style: 'nine', def: 0.4, labelPos: 'above', display: ten }),
+        FOOT({ action: 'param', p: 'b.on', label: 'BOOST', style: 'ts', x: 110, y: 186, w: 64, h: 100, color: '#202124' }), FOOT({ action: 'param', p: 'd.on', label: 'OD', style: 'ts', x: 40, y: 186, w: 64, h: 100, color: '#202124' }),
+        LED({ x: 40, y: 18, bind: 'param:d.on', color: '#ff2a1a' }), LED({ x: 110, y: 18, bind: 'param:b.on', color: '#ff2a1a' }),
+      ],
+      initParams: { 'd.on': 1, 'b.on': 0 },
+      desc: 'An 808 overdrive plus a clean booster (up to +20 dB) in front, each on its own switch.',
+    }),
+    NINE({
+      id: 'ib.nts', name: 'NGD Nu Green Drive', ref: 'Ibanez NTS Nu Tubescreamer', code: 'NGD', logo: 'NU GREEN DRIVE', cat: 'Overdrive', color: '#2f8c46', text: '#f2f2f2',
+      algo: 'drive', opts: Object.assign({}, TS, { clip: 'tube', bias: 0.15, cleanSum: true, levelMaxDb: 6 }),
+      controls: [
+        K('gain', 'OVERDRIVE', { x: 36, y: 50, r: 15, style: 'nine', display: ten }), K('tone', 'TONE', { x: 75, y: 33, r: 8, style: 'nine', labelPos: 'below', display: ten }),
+        K('level', 'LEVEL', { x: 114, y: 50, r: 15, style: 'nine', display: ten }), K('blend', 'MIX', { x: 75, y: 70, r: 7, style: 'nine', labelPos: 'none', def: 1 }),
+      ],
+      desc: 'Tube Screamer built around a tiny vacuum tube. MIX (the small knob) blends in the clean signal.',
+    }),
+    NINE({
+      id: 'ib.ts9b', name: 'GD9B Bass Green Drive', ref: 'Ibanez TS9B Bass Tube Screamer', code: 'GD9B', logo: 'BASS GREEN DRIVE', cat: 'Overdrive', color: '#2b8a7e', text: '#f2f2f2',
+      algo: 'drive', opts: { clip: 'ts', cleanSum: true, preHp: 30, clipHp: 300, gainMinDb: 0, gainMaxDb: 40, tone: 'eq3', eqRangeDb: 12, bassF: 90, midF: 700, trebleF: 2500, postLp: 6000, levelMaxDb: 6 },
+      fixed: { mid: 0.5 },
+      controls: [K('gain', 'DRIVE', { x: 30, y: 38, r: 11, display: ten }), K('blend', 'MIX', { x: 75, y: 38, r: 11, def: 0.6 }), K('level', 'LEVEL', { x: 120, y: 38, r: 11, display: ten }),
+        K('bass', 'BASS', { x: 50, y: 70, r: 8, labelPos: 'none', display: ten }), K('treble', 'TREBLE', { x: 100, y: 70, r: 8, labelPos: 'none', display: ten })],
+      desc: 'Tube Screamer voiced for bass, with a clean MIX and two-band EQ (the small knobs: bass left, treble right).',
+    }),
+    // ---- other 9-series
+    NINE({
+      id: 'ib.bb9', name: 'LB9 Low Booster', ref: 'Ibanez BB9 Bottom Booster', code: 'LB9', logo: 'LOW BOOSTER', cat: 'Boost', color: '#5b4a3a', text: '#f2ead8',
+      algo: 'drive', opts: { clip: 'clean', preHp: 30, gainMinDb: 0, gainMaxDb: 24, tone: 'eq3', eqRangeDb: 10, bassF: 120, midF: 800, trebleF: 3000, postLp: 9000, levelMaxDb: 8 },
+      fixed: { mid: 0.5, level: 0.7 },
+      controls: [K('gain', 'GAIN', { def: 0.35, display: ten }), K('bass', 'BASS', { def: 0.6, display: ten }), K('treble', 'TREBLE', { def: 0.5, display: ten })],
+      desc: 'Fat clean boost made to drive a tube amp, with bass and treble controls.',
+    }),
+    NINE({
+      id: 'ib.sd9', name: 'SN9 Sonic Dist', ref: 'Ibanez SD9 Sonic Distortion', code: 'SN9', logo: 'SONIC DIST', cat: 'Distortion', color: '#3f4a59', text: '#f2f2f2',
+      algo: 'drive', opts: { clip: 'diode', preHp: 120, gainMinDb: 10, gainMaxDb: 46, tone: 'lp', toneLo: 1200, toneHi: 8000, postLp: 7500, levelMaxDb: 4 },
+      controls: [K('gain', 'DISTORTION', { def: 0.55, display: ten }), K('tone', 'TONE', { display: ten }), K('level', 'LEVEL', { def: 0.36, display: ten })],
+    }),
+    NINE({
+      id: 'ib.sm9', name: 'HM9 Heavy Metal', ref: 'Ibanez SM9 Super Metal', code: 'HM9', logo: 'HEAVY METAL', cat: 'Distortion', color: '#2a2a2c', text: '#f2f2f2',
+      algo: 'drive', opts: { clip: 'si', stages: 2, stage2Db: 14, preHp: 120, gainMinDb: 16, gainMaxDb: 54, tone: 'lp', toneLo: 1500, toneHi: 9000, postLp: 8000, levelMaxDb: 2, postEq: [{ type: 'peak', f: 800, q: 0.7, db: -4 }] },
+      controls: [K('gain', 'DISTORTION', { def: 0.6, display: ten }), K('tone', 'EDGE', { display: ten }), K('level', 'LEVEL', { def: 0.34, display: ten })],
+      desc: 'High-gain metal distortion. EDGE sets the treble bite.',
+    }),
+    // ---- minis
+    mini({
+      id: 'ib.bigmini', name: 'Big Little Dist', ref: 'Ibanez Big Mini Distortion', code: 'BIG-MINI', logo: 'BIG LITTLE', cat: 'Distortion', color: '#252527', text: '#f2f2f2', plate: '#b3141b', plateText: '#f4f4f4',
+      algo: 'drive', opts: { clip: 'diode', preHp: 100, gainMinDb: 12, gainMaxDb: 50, tone: 'lp', toneLo: 1300, toneHi: 9000, postLp: 7500, levelMaxDb: 2 },
+      controls: [K('gain', 'DIST', { def: 0.55, display: ten }), K('tone', 'TONE', { display: ten }), K('level', 'LEVEL', { def: 0.34, display: ten })],
+    }),
+    mini({
+      id: 'ib.csmini', name: 'Chorus Mini', ref: 'Ibanez Chorus Mini', code: 'CS-MINI', logo: 'CHORUS', cat: 'Modulation', color: '#86b6d8', text: '#151515',
+      algo: 'chorus', fixed: { mode: 0 },
+      controls: [K('rate', 'SPEED', { def: 0.35 }), K('mix', 'LEVEL', { def: 0.5 }), K('depth', 'DEPTH', { def: 0.5 })],
+    }),
+    mini({
+      id: 'ib.fzmini', name: 'Fuzz Mini', ref: 'Ibanez Fuzz Mini', code: 'FZ-MINI', logo: 'FUZZ', cat: 'Fuzz', color: '#c8401e', text: '#fbeee8',
+      algo: 'drive', opts: { clip: 'ge', bias: 0.35, preHp: 80, gainMinDb: 16, gainMaxDb: 46, tone: 'lp', toneLo: 900, toneHi: 7000, postLp: 6500, levelMaxDb: 0 },
+      controls: [K('gain', 'FUZZ', { def: 0.6, display: ten }), K('tone', 'TONE', { display: ten }), K('level', 'LEVEL', { def: 0.5, display: ten })],
+    }),
+    mini({
+      id: 'ib.phmini', name: 'Phaser Mini', ref: 'Ibanez Phaser Mini', code: 'PH-MINI', logo: 'PHASER', cat: 'Modulation', color: '#2c6fbf', text: '#f2f2f2',
+      algo: 'phaser', opts: { stages: 4 }, fixed: { stages: 4, mix: 0.5 },
+      controls: [K('rate', 'SPEED', { def: 0.35 }), K('feedback', 'FEEDBACK', { def: 0.4 }), K('depth', 'DEPTH', { def: 0.8 })],
+    }),
+    // ---- Tone-Lok
+    lock({
+      id: 'ib.tc7', name: 'TX7 Tri-Mode Chorus', ref: 'Ibanez TC7 Tone-Lok Tri Mode Chorus', code: 'TX7', logo: 'TRI-MODE CHORUS', logoSize: 8.6, cat: 'Modulation', color: '#5f9fb8', text: '#0f1d24', stereo: 'both',
+      algo: 'chorus', opts: { invertR: true },
+      controls: [K('rate', 'SPEED', { def: 0.35 }), K('depth', 'DEPTH', { def: 0.5 }), K('delay', 'DELAY', { def: 0.5 }), K('mix', 'LEVEL', { def: 0.5 }),
+        TOG('cmode', 'MODE', ['CHORUS', 'TRI', 'VIB'], { virtual: true })],
+      derive: (p) => [{ mode: 0 }, { mode: 2 }, { mode: 1, mix: 1 }][p.cmode ?? 0],
+      desc: 'Chorus, a thicker three-voice chorus, or vibrato.',
+    }),
+    lock({
+      id: 'ib.lf7', name: 'LX7 Lo-Fi', ref: 'Ibanez LF7 Tone-Lok Lo Fi', code: 'LX7', logo: 'LO-FI', logoSize: 12, cat: 'Filter', color: '#c9b37a', text: '#1d1606',
+      algo: 'chain',
+      opts: { chain: [
+        { prefix: 'd', algo: 'drive', opts: { clip: 'si', preHp: 80, gainMinDb: 0, gainMaxDb: 36, tone: 'none', postLp: 12000, levelMaxDb: 4 } },
+        { prefix: 'f', algo: 'peq', params: { lowcut: 300, highcut: 3000 } },
+      ] },
+      controls: [K('f.lowcut', 'LO', { min: 20, max: 1000, def: 300, curve: 'log' }), K('f.highcut', 'HI', { min: 1000, max: 20000, def: 3000, curve: 'log' }), K('d.gain', 'DRIVE', { def: 0.3 }), K('d.level', 'LEVEL', { def: 0.55 }),
+        TOG('flt', 'FILTER', ['ON', 'OFF'], { virtual: true })],
+      derive: (p) => ({ 'f.on': p.flt ? 0 : 1 }),
+      desc: 'Telephone and AM-radio tones: LO and HI cut the band, DRIVE adds grit.',
+    }),
+  ]);
 }
