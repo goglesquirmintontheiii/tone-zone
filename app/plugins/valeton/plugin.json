@@ -1,0 +1,12 @@
+{
+  "id": "valeton",
+  "name": "Valeton",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Multi-effects inspired by Valeton: a floor processor with a colour screen, eleven movable effect modules, dedicated amp knobs, eight footswitches and an expression pedal.",
+  "kind": "brand",
+  "brand": "Valeton",
+  "main": "index.js",
+  "api": 1,
+  "color": "#ff7a1a"
+}

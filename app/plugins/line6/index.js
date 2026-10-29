@@ -1,6 +1,10 @@
 // Built-in Tone Zone plugin: Line 6.
 // Blocks inspired by Line 6 gear. Names, logos and artwork are Tone Zone originals; control layouts and
 // colours follow the real units (see each block's `ref`) so moving between the real thing and the virtual one is easy.
+import { createKit } from './mfx-kit.js';
+import { registerVX } from './vx-stomp-xl.js';
+import { registerRigXGo } from './rig-x-go.js';
+
 export default function register(tz) {
   const { K, SEL, TOG, BTN, FOOT, LED, SLIDER, SCREEN, TREADLE, MIC, def, ten, pct, db, ms, MONO, STEREO, MONO_TO_ST, STD } = tz.helpers;
   const { BOSS, NINE, MXRD, lvl, tone, gain, S, onFoot, onLed, k, AMP, CAB, preampPair, marshallKnobs, fenderKnobs } = tz.builders;
@@ -66,6 +70,9 @@ export default function register(tz) {
   });
   tz.addDefs([podExpress]);
   registerModelers(tz);
+  const kit = createKit(tz);
+  registerVX(tz, kit);
+  registerRigXGo(tz, kit);
 }
 
 

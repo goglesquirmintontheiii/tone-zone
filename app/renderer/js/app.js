@@ -5,6 +5,7 @@ import { initBrowser, isFavorite, toggleFavorite } from './browser.js';
 import { makeDockable } from './panels.js';
 import { loadPlugins } from './plugins.js';
 import './screens-eq.js';
+import './screens-tz5.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, CABLE_COLORS } from './state.js';

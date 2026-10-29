@@ -1,0 +1,12 @@
+{
+  "id": "hotone",
+  "name": "Hotone",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Multi-effects inspired by Hotone: a compact touchscreen amp modeler with a twelve-block grid, three select knobs and three footswitches.",
+  "kind": "brand",
+  "brand": "Hotone",
+  "main": "index.js",
+  "api": 1,
+  "color": "#e8452c"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "zoom",
+  "name": "Zoom",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "Multi-effects inspired by Zoom: a touchscreen floor processor with footswitch displays and expression pedal, and a compact multi-stomp with a chain of six effects.",
+  "kind": "brand",
+  "brand": "Zoom",
+  "main": "index.js",
+  "api": 1,
+  "color": "#1c6dd0"
+}
