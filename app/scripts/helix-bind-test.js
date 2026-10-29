@@ -12,7 +12,7 @@ const path = require('path');
     const st = await import('./js/state.js');
     const T = window.__tz;
     const hx = st.addBlock('l6x.helix', -2000, 600);
-    const ts = T.state.preset.blocks.find((b) => b.type === 'ib.ts9');
+    const ts = st.addBlock('ib.ts9', -2800, 600);
     const wah = st.addBlock('dn.gcb95', -2400, 600);
     await new Promise((r) => setTimeout(r, 500));
     const C = await import('./js/catalog/index.js');

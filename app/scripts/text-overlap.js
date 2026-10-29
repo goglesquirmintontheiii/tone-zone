@@ -11,6 +11,8 @@ const fs = require('fs');
   const win = await app.firstWindow();
   await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
   const res = await win.evaluate(async ({ only, plugin }) => {
+    // measure with the real fonts (they load lazily on first use)
+    await Promise.all(['Inter', 'Barlow Condensed', 'Oswald', 'Dancing Script', 'Share Tech Mono'].flatMap((f) => [400, 500, 600, 700, 800].map((w) => document.fonts.load(`${w} 12px '${f}'`))));
     const C = await import('./js/catalog/index.js');
     const { renderForm } = await import('./js/gfx/forms.js');
     const NS = 'http://www.w3.org/2000/svg';
@@ -20,6 +22,7 @@ const fs = require('fs');
     host.style.cssText = 'position:fixed;left:-3000px;top:0;';
     document.body.appendChild(host);
     const found = [];
+    const ctx2d = document.createElement('canvas').getContext('2d');
     const defs = C.allDefs().filter((d) => !d.hidden && (!only || only.includes(d.id)) && (!plugin || d.plugin === plugin || (plugin === 'core' && !d.plugin)));
     for (const d of defs) {
       host.innerHTML = '';
@@ -36,8 +39,13 @@ const fs = require('fs');
       }
       const texts = [...g.querySelectorAll('text')].filter((t) => t.textContent.trim() && getComputedStyle(t).display !== 'none' && t.getAttribute('opacity') !== '0' && t.getAttribute('fill-opacity') !== '0');
       const boxes = texts.map((t) => {
-        const r = t.getBoundingClientRect();
-        return { t: t.textContent.trim().slice(0, 24), x0: r.left, y0: r.top, x1: r.right, y1: r.bottom };
+        // use glyph ink, not the font's line box (tall fonts like Oswald overshoot a lot)
+        const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
+        ctx2d.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const m = ctx2d.measureText(t.textContent);
+        const lineH = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent, k = lineH ? r.height / lineH : 1;
+        const base = r.bottom - m.fontBoundingBoxDescent * k;
+        return { t: t.textContent.trim().slice(0, 24), x0: r.left, y0: base - m.actualBoundingBoxAscent * k, x1: r.right, y1: base + m.actualBoundingBoxDescent * k };
       });
       const hits = [];
       for (let i = 0; i < boxes.length; i++)
@@ -46,9 +54,9 @@ const fs = require('fs');
           const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
           if (w <= 0 || h <= 0) continue;
           if (a.t === b.t) continue; // embossed / shadowed copies of the same text
+          if (a.t.length === 1 && b.t.length === 1) continue; // letter-by-letter wordmarks
           const area = w * h, small = Math.min((a.x1 - a.x0) * (a.y1 - a.y0), (b.x1 - b.x0) * (b.y1 - b.y0));
-          // glyph boxes include ascender / descender space: ignore slivers
-          if (small > 0 && area / small > 0.18 && h > 2) hits.push([a.t, b.t, +(area / small).toFixed(2)]);
+          if (small > 0 && area / small > 0.1 && h > 0.5) hits.push([a.t, b.t, +(area / small).toFixed(2)]);
         }
       if (hits.length) found.push({ id: d.id, plugin: d.plugin || 'core', hits });
     }
