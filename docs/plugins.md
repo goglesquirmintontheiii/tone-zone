@@ -161,7 +161,7 @@ tz.addForm('acme-wedge', (ctx, def) => {
 | `gfx` | `svg, label, shade, luminance, clamp, softShadow, noisePattern, haloFill, setA, setText, drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, drawJack, drawPlug, formKit, cabgeom` |
 | `addDefs(defs)` | register blocks (arrays may be nested) |
 | `addForm(name, fn)`, `addScreen(kind, {build(s,g,w,h,view), update(s,status,view,now), pointer(s,view,type,pt,e,editor)})`, `addStyles(css)` | rendering. In `update`, `s.ui` holds the block's current UI params (defaults filled in). Screens are removed when the plugin unloads. |
-| `blockHooks(type, {foot(view, ctl, down) → handled, ctrl(block, input, value, kind), …})` | custom behaviour |
+| `blockHooks(type, {foot(view, ctl, down) → handled, ctrl(block, input, value, kind), status(view, now), menu(block), …})` | custom behaviour; `status` runs ~22×/s for every block of that type (on or off screen) |
 | `addPage({id, title, icon, render(el)})` | a full page tab |
 | `engine.send(cmd)`, `engine.onEvent(fn)` | talk to the DSP engine |
 | `storage.get(k, default)`, `storage.set(k, v)` | per-plugin settings |

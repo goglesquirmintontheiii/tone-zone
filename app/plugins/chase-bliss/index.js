@@ -68,9 +68,10 @@ export default function register(tz) {
   }
   const hooked = new Set();
   function hookFeet(d) {
-    if (hooked.has(d.id) || !d.controls.some((c) => c.cb)) return;
+    if (hooked.has(d.id)) return;
     hooked.add(d.id);
     tz.blockHooks(d.id, {
+      inspector: d.dips ? (sec, b, kit) => dipInspector(d, sec, b, kit) : undefined,
       foot(v, c, down) {
         const cb = c.cb;
         if (!cb) return false;
@@ -95,8 +96,183 @@ export default function register(tz) {
     });
   }
   // tap tempo → LFO knob (rate param mapped log lo..hi Hz), mul = tap division
-  const tapRate = (c, p, lo, hi, mul = 1) => { const dt = c.tapMs(); if (dt) c.set(p, rateT((1000 / dt) * mul, lo, hi)); };
+  // (DIP DIV 3 turns the divisions into triplets)
+  const tapRate = (c, p, lo, hi, mul = 1) => { const dt = c.tapMs(); if (dt) c.set(p, rateT((1000 / dt) * mul * (c.ui.dp_div3 > 0.5 ? 1.5 : 1), lo, hi)); };
   const tapTime = (c, p, lo = 20, hi = 3000) => { const dt = c.tapMs(); if (dt) c.set(p, clamp(dt, lo, hi)); };
+  const isOn = (ui, p) => !!p && (ui[p] ?? 0) > 0.5;
+  // footswitch helpers driven by DIPs
+  // momentary toggle: with the DIP on the param only flips while the switch is held (MOTOBYP-style)
+  const momToggle = (p, dip) => ({
+    down: (c) => { if (isOn(c.ui, dip)) c.toggle(p); },
+    up: (c) => { if (isOn(c.ui, dip)) c.toggle(p); },
+    tap: (c) => { if (!isOn(c.ui, dip)) c.toggle(p); },
+  });
+  // hold functions: momentary while held, or (DIP LATCH) each hold flips them on / off
+  const latched = new Map();
+  const latchHold = (on, off, key = 'h', dip = 'dp_latch') => ({
+    hold: (c) => {
+      if (!isOn(c.ui, dip)) return on(c);
+      const k = c.id + key, s = !latched.get(k);
+      latched.set(k, s);
+      (s ? on : off)(c);
+    },
+    release: (c) => { if (!isOn(c.ui, dip)) off(c); },
+  });
+  const latchParam = (p, dip) => latchHold((c) => c.set(p, 1), (c) => c.set(p, 0), p, dip);
+  // Onward-style side switch: tap toggles, hold = momentary (DIP LATCH: stays on), DIP MANUAL: only on while held
+  const heldOn = new Set();
+  const sideFoot = (L) => {
+    const P = L + 'On';
+    const set = (c, on) => { if (isOn(c.ui, P) === on) return; c.ev(L, 1); c.set(P, on ? 1 : 0); };
+    return {
+      down: (c) => { if (isOn(c.ui, 'dp_manual')) set(c, true); },
+      up: (c) => { if (isOn(c.ui, 'dp_manual')) set(c, false); },
+      tap: (c) => { if (!isOn(c.ui, 'dp_manual')) { c.ev(L, 1); c.toggle(P); } },
+      hold: (c) => { if (!isOn(c.ui, 'dp_manual') && !isOn(c.ui, P)) { set(c, true); heldOn.add(c.id + L); } },
+      release: (c) => { if (heldOn.delete(c.id + L) && !isOn(c.ui, 'dp_latch')) set(c, false); },
+    };
+  };
+
+  // ------------------------------------------------------------------ DIP runtime: ramping, trails, stereo, overlays
+  // Everything here modulates *engine* params only (sent straight to the engine, never through setParam), so the
+  // knobs stay where the user put them (like the real pedals) and nothing lands in the undo history. A 20 Hz timer
+  // walks the board; a block's overrides are re-applied right after the editor sends its own params and are
+  // restored when the DIP / ramp is switched off.
+  const DEFS = new Map();
+  const RS = new Map(); // block id -> runtime state
+  const stOf = (id, now = performance.now()) => {
+    let st = RS.get(id);
+    if (!st) RS.set(id, (st = { t0: now, sent: {}, over: new Set(), act: false, env: 0, fade: null }));
+    return st;
+  };
+  function engOf(d, ui) {
+    // mirrors state.engineParamsFor (UI params -> engine params)
+    const out = {}, mapped = new Set();
+    for (const c of d.controls) {
+      if (!c.p) continue;
+      mapped.add(c.p);
+      if (c.virtual) continue;
+      let v = ui[c.p];
+      if (c.t === 'sel' || c.t === 'toggle') v = c.values ? c.values[v | 0] ?? c.values[0] : v | 0;
+      else if (c.invert && c.t === 'knob') v = (c.min ?? 0) + (c.max ?? 1) - v;
+      if (c.t === 'button' && c.toggle) v = v ? 1 : 0;
+      if (typeof v === 'number') out[c.p] = v;
+    }
+    for (const k in ui) if (!mapped.has(k) && typeof ui[k] === 'number' && !k.startsWith('_')) out[k] = ui[k];
+    Object.assign(out, d.fixed || {});
+    if (d.derive) Object.assign(out, d.derive(ui));
+    return out;
+  }
+  const near = (a, b) => a === b || (typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) <= 1e-4 * Math.max(1, Math.abs(a), Math.abs(b)));
+  const chainIdx = (d, pre) => (d.opts.chain || []).findIndex((s) => s.prefix === pre);
+  const sendEv = (d, id, pre, type, value = 0, inner = 0) => tz.engine.send({ cmd: 'event', id, type, value, arg: (pre ? Math.max(0, chainIdx(d, pre)) * 100 : 0) + inner });
+  // ramp position 0..1 (0 = knob position, 1 = sweep target)
+  function rampPos(R, ui, st, now) {
+    const T = Math.max(0.1, ui.rampT ?? R.time ?? 4) * 1000, x = (now - st.t0) / T;
+    const bounce = R.bounceFn ? R.bounceFn(ui) : R.bounceP ? isOn(ui, R.bounceP) : true;
+    let r = bounce ? (x % 2 < 1 ? x % 2 : 2 - (x % 2)) : Math.min(1, x);
+    if (isOn(ui, R.shapeP)) r = 0.5 - 0.5 * Math.cos(Math.PI * r);
+    return r;
+  }
+  function rampUi(d, R, ui, st, now) {
+    const act = R.enable ? (isOn(ui, R.enable) ? R.targets : []) : R.knobs.filter((k) => isOn(ui, k[0])).map((k) => k[1]);
+    if (!act.length) { st.act = false; return null; }
+    if (!st.act) { st.act = true; st.t0 = now; }
+    const r = rampPos(R, ui, st, now);
+    const upw = isOn(ui, R.sweepP) !== isOn(ui, R.polP);
+    const u = Object.assign({}, ui);
+    for (const c of act) {
+      const lo = c.min ?? 0, hi = c.max ?? 1, v0 = ui[c.p] ?? c.def ?? lo, tg = upw ? hi : lo;
+      u[c.p] = c.curve === 'log' && v0 > 0 && tg > 0 ? v0 * Math.pow(tg / v0, r) : lerp(v0, tg, r);
+    }
+    return u;
+  }
+  function tickBlock(b, now, force) {
+    const d = DEFS.get(b.type);
+    if (!d) return;
+    const X = d._dip, st = stOf(b.id, now), ui = tz.app.ui(b);
+    if (force) st.sent = {};
+    const live = !b.bypass || d.alwaysOn;
+    const uiR = X.ramp && live ? rampUi(d, X.ramp, ui, st, now) : (st.act = false, null);
+    const kill = X.trails && b.bypass && !isOn(ui, X.trails.p);
+    const ster = X.stereo && b.variant === 'stereo' && (isOn(ui, X.stereo.miso) || isOn(ui, X.stereo.spread));
+    const ov = X.overlay && X.overlay.want(ui, b, st, now);
+    if (!uiR && !kill && !ster && !ov && !st.over.size) return;
+    const base = engOf(d, ui), eng = uiR ? engOf(d, uiR) : Object.assign({}, base);
+    if (ov) X.overlay.apply(ui, b, st, now, eng, base);
+    if (kill) Object.assign(eng, X.trails.kill);
+    if (ster) {
+      const m = isOn(ui, X.stereo.miso), s = isOn(ui, X.stereo.spread);
+      Object.assign(eng, m ? { 'stx.on': 1, 'stx.mode': 2, 'stx.width': s ? 0.7 : 0.45, 'stx.depth': 0.6, 'stx.time': 16, 'stx.level': s ? -2.5 : -1.5 }
+        : { 'stx.on': 1, 'stx.mode': 0, 'stx.width': 0.95, 'stx.level': 0 });
+    }
+    const vals = {}, over = new Set();
+    let any = false;
+    for (const k in eng) {
+      if (near(eng[k], base[k])) continue;
+      over.add(k);
+      if (!near(st.sent[k], eng[k])) { vals[k] = eng[k]; st.sent[k] = eng[k]; any = true; }
+    }
+    for (const k of st.over) if (!over.has(k) && base[k] !== undefined) { vals[k] = base[k]; delete st.sent[k]; any = true; }
+    st.over = over;
+    if (any) {
+      tz.engine.send({ cmd: 'params', id: b.id, values: vals });
+      if (window.__cbDipSpy) window.__cbDipSpy(b.id, vals); // test hook (scripts can watch the modulation)
+    }
+  }
+  const blockById = (id) => tz.app.state.preset?.blocks?.find((x) => x.id === id);
+  let tickN = 0;
+  const timer = setInterval(() => {
+    const now = performance.now(), force = ++tickN % 20 === 0;
+    const bl = tz.app.state.preset?.blocks;
+    if (!bl) return;
+    for (const b of bl) if (DEFS.has(b.type)) { try { tickBlock(b, now, force); } catch (e) { console.error('chase-bliss dip', e); } }
+  }, 50);
+  tz.onUnload(() => clearInterval(timer));
+  tz.bus.on('param', (e) => {
+    const b = e && blockById(e.id);
+    if (!b || !DEFS.has(b.type)) return;
+    const d = DEFS.get(b.type), now = performance.now(), st = stOf(b.id, now);
+    // switching a DIP or an engage param (channel footswitch) restarts a one-shot ramp
+    if (e.p && (d._dip.restart.has(e.p))) st.t0 = now;
+    tickBlock(b, now, true);
+  });
+  tz.bus.on('preset:changed', () => { for (const st of RS.values()) st.sent = {}; });
+  tz.bus.on('bypass', (e) => {
+    const b = e && blockById(e.id);
+    if (!b || !DEFS.has(b.type)) return;
+    const now = performance.now(), st = stOf(b.id, now);
+    if (!e.on) st.t0 = now;
+    tickBlock(b, now, true);
+  });
+
+  // DIP descriptions for the inspector (per-pedal `dipInfo` adds / overrides)
+  const DIP_INFO = {
+    BOUNCE: 'ramp bounces back and forth continuously (off: one ramp each time the pedal is engaged)',
+    SWEEP: 'ramp direction: on = up towards the knob maximum, off = down towards the minimum',
+    POLARITY: 'inverts the ramp direction',
+    MOTOBYP: 'momentary bypass: the pedal is only on while the footswitch is held',
+    TRAILS: 'echo / reverb tails ring out after bypass (off: cut instantly)',
+    MISO: 'mono in, stereo out: a dual-voice widener spreads the sound (stereo mode)',
+    SPREAD: 'wider stereo image (stereo mode)',
+    LATCH: 'hold functions latch on / off with each hold instead of being momentary',
+    'TAP R/P': 'the TAP footswitch sets the ramp time (two taps = half a ramp cycle)',
+    'TAP R/T': 'the TAP footswitch sets the ramp time (two taps = half a ramp cycle)',
+    'DIV 3': 'triplet tap divisions (×1.5)',
+    'DRY KILL': 'removes the dry signal (for parallel loops)',
+  };
+  function dipInspector(d, sec, b, kit) {
+    const el = tz.ui.el, X = d._dip;
+    el('h5', {}, sec).textContent = 'DIP switches';
+    for (const dp of d.dips) kit.rowFor({ t: 'button', p: dp.p, label: dp.l, toggle: true, def: dp.def || 0 });
+    if (X.ramp) {
+      kit.rowFor(X.ramp.timeCtl);
+      for (const c of X.ramp.extra) kit.rowFor(c);
+    }
+    const info = d.dips.map((dp) => [dp.l, (d.dipInfo || {})[dp.l] || DIP_INFO[dp.l] || (X.ramp && X.ramp.knobs.find((k) => k[0] === dp.p) ? `ramps ${X.ramp.knobs.find((k) => k[0] === dp.p)[1].label}` : '')]).filter((x) => x[1]);
+    const p = el('p', { class: 'hint' }, sec);
+    p.innerHTML = info.map(([l, t]) => `<b>${tz.ui.esc(l)}</b> ${tz.ui.esc(t)}`).join('<br>');
+  }
   // nested looper / microloop status → LED colour
   const LOOP_COL = [null, '#ff3b30', '#3ddc84', '#ffb21f', '#f4f4f4'];
   const loopLed = (path, mode = 'state') => (ui, b, st, now) => {
@@ -122,25 +298,24 @@ export default function register(tz) {
         svg('rect', { x: x - 2.3, y: 1.6, width: 4.6, height: 7.4, rx: 0.6, fill: '#3a0b0d' }, g);
         const k = svg('rect', { x: x - 1.9, y: 5.2, width: 3.8, height: 3.4, rx: 0.5, fill: '#f6f2ea' }, g);
         s.k.push(k);
-        const live = typeof dp === 'object';
-        svg('text', { x, y: 13.7, fill: c.ink || '#fff', 'fill-opacity': live ? 1 : 0.62, 'font-family': "'Barlow Condensed', sans-serif", 'font-weight': 700, 'font-size': c.fs || 3.3, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none' }, g, live ? dp.l : dp);
-        if (live) svg('circle', { cx: x, cy: 16.7, r: 0.7, fill: c.ink || '#fff' }, g);
+        svg('text', { x, y: 13.7, fill: c.ink || '#fff', 'font-family': "'Barlow Condensed', sans-serif", 'font-weight': 700, 'font-size': c.fs || 3.3, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none' }, g, dp.l);
       });
       svg('rect', { width: w, height: h, fill: 'transparent' }, g);
     },
     update(s) {
       const c = s.ctl;
       c.dips.forEach((dp, i) => {
-        if (typeof dp !== 'object') return;
         const on = ((s.ui && s.ui[dp.p]) ?? dp.def ?? 0) > 0.5;
+        if (s.k[i]._on === on) return;
+        s.k[i]._on = on;
         setA(s.k[i], 'y', on ? 2 : 5.2);
-        setA(s.k[i], 'fill', on ? '#ffffff' : '#f6f2ea');
+        setA(s.k[i], 'fill', on ? '#ffffff' : '#e9e2d4');
       });
     },
     pointer(s, nv, type, pt) {
       if (type !== 'down') return;
       const dp = s.ctl.dips[Math.floor(pt.x / s.sw)];
-      if (!dp || typeof dp !== 'object') return;
+      if (!dp) return;
       const cur = ((s.ui && s.ui[dp.p]) ?? dp.def ?? 0) > 0.5 ? 1 : 0;
       tz.app.setParam(nv.block.id, dp.p, 1 - cur);
       if (s.ui) s.ui[dp.p] = 1 - cur;
@@ -509,17 +684,87 @@ export default function register(tz) {
   // ------------------------------------------------------------------ block builder
   // o.presets: [presetA, presetB] UI overrides recalled by the little A / LIVE / B toggle (knobs keep showing the
   // live settings, like the real pedals). o.dips: DIP bank labels; {p, l} entries are working switches.
+  // o.dips: DIP bank, every entry a working switch: a label string (param `dp_<label>`) or {p, l, def}.
+  // o.ramp: Chase Bliss ramping. A DIP labelled like a knob ramps that knob (auto); `map: {DIP label: knob param}`
+  //   adds others, `enable: 'DIP label'` + `targets: [knob params]` ramps fixed knobs while that DIP is on;
+  //   BOUNCE / SWEEP / POLARITY DIPs are found by label (`pol: false` when POLARITY means something else),
+  //   `bounce(ui)` overrides the loop / one-shot choice, `engage: [params]` restart a one-shot ramp, `shape` = DIP
+  //   label for a smooth (sine) ramp curve. Without BOUNCE / SWEEP DIPs the inspector gets ramp settings.
+  // o.trails: {p: DIP param (on = tails ring out), kill: {engine params while bypassed with the DIP off}}
+  // o.stereo: {miso, spread} DIP params -> a stereo tool ('stx') at the end of the chain (stereo variant only)
+  // o.overlay: {want(ui, b, st, now), apply(ui, b, st, now, eng, base)} extra engine-level behaviour
+  // o.bank: DIP param that swaps the two PRESET slots.
+  const slug = (l) => 'dp_' + String(l).toLowerCase().replace(/[^a-z0-9]+/g, '');
   const CB = (o) => {
     const d = def(Object.assign({ form: 'chase', brand: 'Chase Bliss', cost: 1, stereo: 'both', ports: MONO, monoPorts: MONO, stereoPorts: STEREO }, o));
+    const X = { restart: new Set(), ramp: null, trails: o.trails || null, stereo: null, overlay: o.overlay || null };
     if (o.dips) {
-      d.controls.push(SCREEN('chase-dips', { dips: o.dips, interactive: true }));
-      o.dips.forEach((dp) => { if (typeof dp === 'object') d.controls.push(TOG(dp.p, dp.l, ['off', 'on'], { def: dp.def || 0, virtual: true, hidden: true })); });
+      const dips = o.dips.map((dp) => (typeof dp === 'object' ? dp : { p: slug(dp), l: dp }));
+      d.dips = dips;
+      d.controls.push(SCREEN('chase-dips', { dips, interactive: true }));
+      dips.forEach((dp) => {
+        d.controls.push(TOG(dp.p, dp.l, ['off', 'on'], { def: dp.def || 0, virtual: true, hidden: true, noInspector: true }));
+        X.restart.add(dp.p);
+      });
+      const byL = (l) => dips.find((dp) => dp.l === l)?.p;
+      const knobs = d.controls.filter((c) => c.t === 'knob' && c.p && !c.hidden);
+      const R = o.ramp || {};
+      const kmap = [];
+      for (const dp of dips) {
+        const kp = R.map?.[dp.l] ?? knobs.find((c) => c.label === dp.l)?.p;
+        const kc = kp && d.controls.find((c) => c.p === kp);
+        if (kc && !(R.skip || []).includes(dp.l)) kmap.push([dp.p, kc]);
+      }
+      const en = R.enable && byL(R.enable);
+      if (kmap.length || en) {
+        const timeCtl = K('rampT', 'Ramp time', { min: 0.25, max: 30, def: R.time ?? 4, curve: 'log', virtual: true, hidden: true, noInspector: true, display: (v) => v.toFixed(v < 10 ? 2 : 1) + ' s' });
+        const ramp = {
+          knobs: kmap, enable: en, targets: (R.targets || []).map((p) => d.controls.find((c) => c.p === p)).filter(Boolean),
+          bounceP: byL('BOUNCE'), sweepP: byL('SWEEP'), polP: R.pol === false ? null : byL('POLARITY'), shapeP: R.shape && byL(R.shape),
+          bounceFn: R.bounce, time: R.time, timeCtl, extra: [],
+        };
+        d.controls.push(timeCtl);
+        if (!ramp.bounceP && !ramp.bounceFn) {
+          ramp.bounceP = 'rBounce';
+          const c = TOG('rBounce', 'Ramp bounce', ['off', 'on'], { def: R.bounceDef ?? 1, virtual: true, hidden: true, noInspector: true });
+          d.controls.push(c);
+          ramp.extra.push({ t: 'button', p: 'rBounce', label: 'Ramp bounce (loop)', toggle: true, def: c.def });
+          X.restart.add('rBounce');
+        }
+        if (!ramp.sweepP) {
+          ramp.sweepP = 'rSweep';
+          d.controls.push(TOG('rSweep', 'Ramp up', ['off', 'on'], { def: 1, virtual: true, hidden: true, noInspector: true }));
+          ramp.extra.push({ t: 'button', p: 'rSweep', label: 'Ramp up (off: down)', toggle: true, def: 1 });
+        }
+        for (const p of R.engage || []) X.restart.add(p);
+        X.ramp = ramp;
+      }
+      if (o.stereo) {
+        X.stereo = { miso: o.stereo.miso === undefined ? byL('MISO') : o.stereo.miso, spread: o.stereo.spread === undefined ? byL('SPREAD') : o.stereo.spread };
+        d.opts.chain.push({ prefix: 'stx', algo: 'stereo', on: false, params: { mode: 0, width: 0.5 } });
+        d.fixed = Object.assign({}, d.fixed, { 'stx.on': 0 });
+      }
+      // TAP R/P · TAP R/T: the TAP footswitch sets the ramp time instead
+      const tapDip = byL('TAP R/P') || byL('TAP R/T');
+      if (tapDip && X.ramp)
+        for (const c of d.controls) {
+          if (c.t !== 'foot' || !c.cb || typeof c.cb.tap !== 'function' || c.label !== 'TAP') continue;
+          const orig = c.cb.tap;
+          c.cb.tap = (cx) => {
+            if (!isOn(cx.ui, tapDip)) return orig(cx);
+            const dt = cx.tapMs();
+            if (dt) cx.set('rampT', clamp((dt * 2) / 1000, 0.25, 30));
+          };
+        }
+      DEFS.set(d.id, d);
     }
+    d._dip = X;
     if (o.presets) {
       d.controls.push(TOG('scene', 'PRESET', ['A', 'LIVE', 'B'], { def: 1, virtual: true, role: 'preset' }));
       const base = o.derive;
       d.derive = (ui) => {
-        const sc = Math.round(ui.scene ?? 1);
+        let sc = Math.round(ui.scene ?? 1);
+        if (o.bank && isOn(ui, o.bank) && sc !== 1) sc = 2 - sc;
         const u = sc === 1 ? ui : Object.assign({}, ui, o.presets[sc === 0 ? 0 : 1]);
         const out = {};
         if (u !== ui)
@@ -558,6 +803,7 @@ export default function register(tz) {
       LED({ bind: 'rate:on:t.rate', color: '#ffb02e' }), bypassLed(),
     ],
     dips: [{ p: 'mdip', l: 'MODE' }, { p: 'moto', l: 'MOTOBYP' }, ...RAMP_DIPS, 'RATE', 'DEPTH'],
+    dipInfo: { MODE: 'the 1·2·4 toggle selects Standard / Both / Harmonic tremolo' },
     presets: [{ 't.rate': 0.75, 't.depth': 0.85, wl: 2, wr: 0 }, { 't.rate': 0.25, 't.depth': 0.5, mdip: 1, div: 2 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => {
@@ -569,7 +815,7 @@ export default function register(tz) {
         'eq.lowfreq': 180, 'eq.lowgain': (0.5 - tone) * 10, 'eq.highfreq': 3200, 'eq.highgain': (tone - 0.5) * 12,
       };
     },
-    desc: 'Analog tremolo with a clean boost in front (DRIVE + VOLUME) and a tilt TONE. Two wave-shape toggles build the LFO; tap the left switch for tempo (1/2/4 divisions). DIP MODE turns the 1·2·4 toggle into Standard / Both / Harmonic, MOTOBYP makes bypass momentary.',
+    desc: 'Analog tremolo with a clean boost in front (DRIVE + VOLUME) and a tilt TONE. Two wave-shape toggles build the LFO; tap the left switch for tempo (1/2/4 divisions). DIP MODE turns the 1·2·4 toggle into Standard / Both / Harmonic, MOTOBYP makes bypass momentary. DIPs RATE / DEPTH ramp those knobs (SWEEP up / down, BOUNCE loops, ramp time in the inspector or via TAP R/P), DIV 3 = triplet taps.',
   }));
 
   add(CB({
@@ -589,19 +835,22 @@ export default function register(tz) {
       K('run', 'RUNAWAY', { def: 0, virtual: true, hidden: true }),
     ],
     dips: [{ p: 'mod', l: 'MOD' }, { p: 'moto', l: 'MOTOBYP' }, 'STEP', 'TRAILS', 'BOUNCE', 'RAMP', 'SWEEP', 'MIX'],
+    dipInfo: { MOD: 'INT knobs become modulation speed / depth', STEP: 'no glide: the interval steps jump', RAMP: 'ramps the LPF', MIX: 'ramps the MIX' },
+    ramp: { map: { RAMP: 'w.x.tone' } },
+    trails: { p: 'dp_trails', kill: { 'w.lvl': 0 } },
     presets: [{ i1: 0.65, i2: 0.35, 'w.x.feedback': 0.55 }, { i1: 0.9, i2: 1, 'w.p.glide': 0.6 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => {
       const mix = p.mix ?? 0.42, f = [1, 0.75, 0.5];
       const s1 = pick(p.i1 ?? 0.8, SEMIS), s2 = pick(p.i2 ?? 0.5, SEMIS);
-      const o = { 'd.lvl': dn(mix), 'w.lvl': up(mix) * 0.7, 'w.x.time': clamp((p.tempo ?? 500) * f[p.s0 | 0], 20, 2000) };
+      const o = { 'd.lvl': dn(mix), 'w.lvl': up(mix) * 0.7, 'w.x.time': clamp((p.tempo ?? 500) * f[p.s0 | 0], 20, 2000), 'w.p.glide': p.dp_step ? 0 : p['w.p.glide'] ?? 0.15 };
       if (p.run) o['w.x.feedback'] = 1.08;
       if (p.mod) Object.assign(o, { 'w.p.on': 0, 'w.x.moddepth': p.i2 ?? 0.5, 'w.x.modrate': p.i1 ?? 0.8 });
       else Object.assign(o, { 'w.x.moddepth': 0, 'w.p.on': s1 || s2 ? 1 : 0, 'w.p.semis1': s1, 'w.p.semis2': s2,
         'w.p.level1': s1 ? [0.9, 0.75, 0.6][p.s1 | 0] : 0, 'w.p.level2': s2 ? [0.9, 0.75, 0.6][p.s2 | 0] : 0 });
       return o;
     },
-    desc: 'Analog-voiced delay whose echoes are pitch-shifted by two interval steps (INT 1 / INT 2: off at noon, 4th, 5th, octave, octave+5th, two octaves up or down) with GLIDE between them. Tempo comes from the TAP switch (hold for runaway regen); the toggles set the base subdivision and the weight of each step. DIP MOD turns the INT knobs into modulation speed / depth.',
+    desc: 'Analog-voiced delay whose echoes are pitch-shifted by two interval steps (INT 1 / INT 2: off at noon, 4th, 5th, octave, octave+5th, two octaves up or down) with GLIDE between them. Tempo comes from the TAP switch (hold for runaway regen); the toggles set the base subdivision and the weight of each step. DIP MOD turns the INT knobs into modulation speed / depth, STEP removes the glide, TRAILS lets the echoes ring out on bypass, RAMP / MIX ramp the LPF / MIX (BOUNCE, SWEEP).',
   }));
 
   add(CB({
@@ -617,6 +866,7 @@ export default function register(tz) {
       LED({ bind: 'rate:on:ph.rate', color: '#ffb02e' }), bypassLed(),
     ],
     dips: [{ p: 'stg', l: 'STAGES' }, { p: 'moto', l: 'MOTOBYP' }, ...RAMP_DIPS, 'MIX', 'FORM'],
+    dipInfo: { STAGES: 'the 1·2·4 toggle selects 2 / 4 / 6 stages' },
     presets: [{ 'ph.rate': 0.2, 'ph.feedback': 0.75, 'ph.depth': 0.9 }, { 'ph.rate': 0.7, 'ph.mix': 1, 'ph.feedback': 0.3 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => ({
@@ -624,7 +874,7 @@ export default function register(tz) {
       'ph.center': c01(0.5 + ((p.form ?? 0.5) - 0.5) * 0.5 + (squareness(p) - 0.5) * 0.1),
       'v.level': ((p.vol ?? 0.5) - 0.5) * 24,
     }),
-    desc: 'Four-stage vactrol-style phaser. MIX blends from dry through phase-chorus (noon) to full phase vibrato, FEED adds resonance, FORM moves the sweep centre. Tap tempo with 1/2/4 divisions; DIP STAGES makes the left toggle select 2 / 4 / 6 stages.',
+    desc: 'Four-stage vactrol-style phaser. MIX blends from dry through phase-chorus (noon) to full phase vibrato, FEED adds resonance, FORM moves the sweep centre. Tap tempo with 1/2/4 divisions; DIP STAGES makes the left toggle select 2 / 4 / 6 stages, MIX / FORM ramp those knobs (BOUNCE, SWEEP, TAP R/P sets the ramp time, DIV 3 = triplets).',
   }));
 
   add(CB({
@@ -637,21 +887,22 @@ export default function register(tz) {
       K('shape', 'MODUSHAPE', { def: 0.5, virtual: true }), K('ph.depth', 'DEPTH', { def: 0.75 }), K('form', 'FORM', { def: 0.5, virtual: true }),
       TOG('div', 'STG/TAP', ['1', '2', '4'], { virtual: true }), TOG('wl', 'START', WAVE_L, { virtual: true, def: 0 }), TOG('wr', 'END', WAVE_R, { virtual: true, def: 2 }),
       TOG('env', 'ENV', ['OFF', 'ON'], { virtual: true }), TOG('rel', 'RELEASE', ['SLOW', 'LONG', 'MED'], { virtual: true, def: 2 }), TOG('sens', 'SENS', ['LO', 'MED', 'HI'], { virtual: true, def: 1 }),
-      FOOT({ label: 'TAP', cb: { tap: (c) => tapRate(c, 'ph.rate', 0.04, 10, c.ui.stg ? 1 : [1, 2, 4][c.ui.div | 0]) } }), FOOT({ label: 'BYPASS', cb: { tap: 'bypass' } }),
+      FOOT({ label: 'TAP', cb: { tap: (c) => tapRate(c, 'ph.rate', 0.04, 10, c.ui.stg || c.ui.dp_togts ? 1 : [1, 2, 4][c.ui.div | 0]) } }), FOOT({ label: 'BYPASS', cb: { tap: 'bypass' } }),
       LED({ bind: 'rate:on:ph.rate', color: '#ffb02e' }), bypassLed(),
     ],
     togCols: 3,
+    dipInfo: { STAGES: 'the STG/TAP toggle selects 2 / 4 / 6 stages', SLOW: 'slower LFO range', 'TOG T/S': 'same as STAGES (toggle = stages, not tap division)', FORM: 'ramps FORM' },
     dips: [{ p: 'stg', l: 'STAGES' }, { p: 'moto', l: 'MOTOBYP' }, { p: 'slow', l: 'SLOW' }, 'BOUNCE', 'SWEEP', 'TAP R/T', 'TOG T/S', 'FORM'],
     presets: [{ env: 1, sens: 2, 'ph.mix': 0.6 }, { 'ph.rate': 0.15, 'ph.feedback': 0.7 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => ({
-      'ph.stages': p.stg ? [2, 4, 6][p.div | 0] : 6,
+      'ph.stages': p.stg || p.dp_togts ? [2, 4, 6][p.div | 0] : 6,
       'ph.rate': (p['ph.rate'] ?? 0.4) * (p.slow ? 0.55 : 1),
       'ph.center': c01(0.5 + ((p.form ?? 0.5) - 0.5) * 0.5 + ((p.shape ?? 0.5) - 0.5) * 0.3),
       'e.on': p.env ? 1 : 0, 'e.sens': [0.3, 0.55, 0.85][p.sens ?? 1], 'e.range': [0.75, 0.6, 0.45][p.rel ?? 2],
       'v.level': ((p.vol ?? 0.5) - 0.5) * 24,
     }),
-    desc: 'Signature six-stage phaser with an envelope section (ENV / RELEASE / SENS toggles) that adds a picking-dynamics filter sweep, MODUSHAPE morphing the modulation, and a SLOW mode DIP. Tap tempo with divisions, stages via DIP.',
+    desc: 'Signature six-stage phaser with an envelope section (ENV / RELEASE / SENS toggles) that adds a picking-dynamics filter sweep, MODUSHAPE morphing the modulation, and a SLOW mode DIP. Tap tempo with divisions, stages via DIP (STAGES or TOG T/S), FORM ramps with BOUNCE / SWEEP, TAP R/T taps the ramp time.',
   }));
 
   add(CB({
@@ -666,13 +917,15 @@ export default function register(tz) {
       LED({ bind: 'rate:on:fl.speed', color: '#ffb02e' }), bypassLed(),
     ],
     dips: [{ p: 'pol', l: 'POLARITY' }, { p: 'moto', l: 'MOTOBYP' }, ...RAMP_DIPS, 'ZERO', 'REGEN'],
+    dipInfo: { POLARITY: 'conventional (positive) flange instead of through-zero' },
+    ramp: { pol: false },
     presets: [{ 'fl.speed': 0.12, 'fl.regen': 0.8, 'fl.width': 0.8 }, { 'fl.manual': 0.3, 'fl.regen': 0.2, 'fl.mix': 0.4 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => ({
       'fl.mode': p.pol ? 0 : 3,
       'fl.width': c01((p['fl.width'] ?? 0.6) * (1 - Math.abs((p.shift ?? 0.5) - 0.5) * 0.4) + (squareness(p) - 0.35) * 0.1),
     }),
-    desc: 'Through-zero flanger: ZERO sets the delay (the zero point sits around 1–3 o\'clock), REGEN from chorus-like to self-oscillation, RATE / WIDTH / SHIFT shape the sweep. Tap tempo with divisions; DIP POLARITY switches to a conventional (positive) flange.',
+    desc: 'Through-zero flanger: ZERO sets the delay (the zero point sits around 1–3 o\'clock), REGEN from chorus-like to self-oscillation, RATE / WIDTH / SHIFT shape the sweep. Tap tempo with divisions; DIP POLARITY switches to a conventional (positive) flange; ZERO / REGEN ramp those knobs (BOUNCE, SWEEP, TAP R/P, DIV 3).',
   }));
 
   add(CB({
@@ -687,10 +940,11 @@ export default function register(tz) {
       LED({ bind: 'rate:on:ch.rate', color: '#ffb02e' }), bypassLed(),
     ],
     dips: [{ p: 'lofi', l: 'LO-FI' }, { p: 'moto', l: 'MOTOBYP' }, ...RAMP_DIPS, 'MIX', 'RPM'],
+    dipInfo: { 'LO-FI': 'longer, murkier delay line' },
     presets: [{ 'ch.mix': 1, 'ch.rate': 0.55, 'ch.depth': 0.4 }, { 'ch.mix': 0.5, 'ch.rate': 0.15, 'ch.depth': 0.8, lofi: 1 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => ({ 'ch.wave': c01(squareness(p) * 0.8 + Math.abs((p.warp ?? 0.5) - 0.5) * 0.4), 'ch.delay': p.lofi ? 0.9 : 0.4 }),
-    desc: 'Bucket-brigade vibrato: MIX goes from dry through chorus (noon) to pure vibrato, RPM / DEPTH / WARP set the wobble, TONE darkens the wet side. Tap tempo with divisions; DIP LO-FI lengthens the delay line for a murkier, noisier vibrato.',
+    desc: 'Bucket-brigade vibrato: MIX goes from dry through chorus (noon) to pure vibrato, RPM / DEPTH / WARP set the wobble, TONE darkens the wet side. Tap tempo with divisions; DIP LO-FI lengthens the delay line for a murkier, noisier vibrato; MIX / RPM ramp those knobs (BOUNCE, SWEEP, TAP R/P, DIV 3).',
   }));
 
   // Condor family: EQ / filter / preamp with a drive footswitch
@@ -701,11 +955,13 @@ export default function register(tz) {
       K('pre.gain', 'GAIN', { def: 0.35 }), K('pre.level', 'VOLUME', { def: 0.6 }), K('bass', 'BASS', { def: 0.5, virtual: true }),
       K('freq', 'FREQ', { def: 0.45, virtual: true, display: (v) => Math.round(lmap(v, 150, 4200)) + ' Hz' }), K('mids', 'MIDS', { def: 0.5, virtual: true }), K('lpf', 'LPF', { def: 0.9, virtual: true }),
       TOG('bt', 'BASS', ['A', 'B', 'C'], { virtual: true }), TOG('mt', 'MIDS', ['A', 'B', 'C'], { virtual: true, def: 1 }), TOG('lt', 'LPF', ['A', 'B', 'C'], { virtual: true, def: 1 }),
-      FOOT({ action: 'toggle', p: 'drv', label: 'DRIVE' }), FOOT({ label: 'BYPASS' }),
+      FOOT({ label: 'DRIVE', cb: momToggle('drv', 'dp_drive') }), FOOT({ label: 'BYPASS' }),
       LED({ bind: 'onparam:drv', color: '#ffb02e' }), bypassLed(),
     ],
     initParams: { drv: 0 },
     dips: ['BUFFER', { p: 'moto', l: 'MOTOBYP' }, 'DRIVE', 'RESET', 'GAIN', 'BASS', 'MIDS', 'LPF'],
+    dipInfo: { BUFFER: 'buffered input: a touch of extra top-end sheen (+1.5 dB shelf at 8 kHz)', DRIVE: 'momentary DRIVE footswitch (drive only while held)', RESET: 'one-shot ramp that restarts on every engage (off: the ramp bounces)' },
+    ramp: { bounce: (ui) => !isOn(ui, 'dp_reset') },
     presets: [{ mids: 0.75, freq: 0.6, mt: 2, lpf: 0.7 }, { bass: 0.3, mids: 0.25, freq: 0.3, drv: 1, 'pre.gain': 0.6 }],
     momentaryWhen: (ui) => ui.moto > 0.5,
     derive: (p) => {
@@ -716,6 +972,7 @@ export default function register(tz) {
         'eq.b3type': 0, 'eq.b3f': lmap(p.freq ?? 0.45, 150, 4200), 'eq.b3g': ((p.mids ?? 0.5) - 0.5) * 36, 'eq.b3q': [0.5, 1.2, 3][p.mt ?? 1],
         'eq.lpon': lp < 0.98 ? 1 : 0, 'eq.lpf': lpf, 'eq.lps': 1,
         'eq.b5on': lp < 0.98 && lt > 0 ? 1 : 0, 'eq.b5type': 0, 'eq.b5f': clamp(lpf * 0.9, 300, 18000), 'eq.b5g': [0, 4, 9][lt], 'eq.b5q': [0.7, 2, 4][lt],
+        'eq.b6type': 2, 'eq.b6f': 8000, 'eq.b6g': p.dp_buffer ? 1.5 : 0,
       };
     },
   }, o));
@@ -723,13 +980,13 @@ export default function register(tz) {
     id: 'cba.condor', name: 'Albatross', ref: 'Chase Bliss Condor', code: 'ALBATROSS', logo: 'ALBATROSS', logoSize: 12, logoLs: 2.5,
     typeName: 'Analog EQ / filter / preamp', color: '#c4532a', text: '#fff3e2', palette: ['#f2a65a', '#e8d6b0', '#8c2f16', '#5a1d0c', '#f6e7cc'],
     drive: { clip: 'opamp', tone: 'none', gainMinDb: 0, gainMaxDb: 28, postLp: 12000, modes: [{ clip: 'clean' }, { clip: 'opamp', gainMinDb: 8, gainMaxDb: 36 }] },
-    desc: 'Analog preamp / EQ: BASS shelf (A/B/C reach), swept MIDS with FREQ and Q toggle, resonant LPF with three filter characters. The DRIVE footswitch pushes the gain stage into soft op-amp drive.',
+    desc: 'Analog preamp / EQ: BASS shelf (A/B/C reach), swept MIDS with FREQ and Q toggle, resonant LPF with three filter characters. The DRIVE footswitch pushes the gain stage into soft op-amp drive. DIPs GAIN / BASS / MIDS / LPF ramp those knobs (RESET = one-shot, otherwise bouncing; time and direction in the inspector), DRIVE makes the drive switch momentary, BUFFER adds a little sheen.',
   }));
   add(condor({
     id: 'cba.condor-hifi', name: 'Albatross HiFi', ref: 'Chase Bliss Condor HiFi', code: 'ALBATROSS HIFI', logo: 'ALBATROSS', logoSize: 12, logoLs: 2.5,
     typeName: 'HiFi EQ / filter / preamp', color: '#e7eaee', text: '#162538', palette: ['#5f8fd6', '#a9c6ea', '#21477d', '#0f2442', '#f2b63e'],
     drive: { clip: 'clean', tone: 'none', gainMinDb: 0, gainMaxDb: 24, modes: [{ clip: 'clean' }, { clip: 'jfet', gainMinDb: 6, gainMaxDb: 30, postLp: 16000 }] },
-    desc: 'Higher-headroom, lower-noise version of the EQ / filter / preamp: BASS shelf, swept resonant MIDS, resonant LPF and a cleaner, more open DRIVE footswitch.',
+    desc: 'Higher-headroom, lower-noise version of the EQ / filter / preamp: BASS shelf, swept resonant MIDS, resonant LPF and a cleaner, more open DRIVE footswitch. DIPs as on the original: GAIN / BASS / MIDS / LPF ramps, RESET, momentary DRIVE, BUFFER.',
   }));
 
   // ================================================================== gain stages
@@ -759,6 +1016,7 @@ export default function register(tz) {
     ],
     initParams: { chA: 1, chB: 0 },
     dips: ['GAIN A', 'TONE A', 'MASTER', 'GAIN B', 'TONE B', 'BLEND', 'SWEEP', 'POLARITY'],
+    ramp: { engage: ['chA', 'chB'] },
     presets: [{ ma: 2, ga: 0.6, chA: 1 }, { ma: 0, mb: 1, rt: 0, chA: 1, chB: 1 }],
     derive: (p) => {
       const A = (p.chA ?? 1) > 0.5, B = (p.chB ?? 0) > 0.5, rt = p.rt | 0, bl = p.blend ?? 0.5, par = rt === 1 && A && B;
@@ -770,7 +1028,7 @@ export default function register(tz) {
       for (const pre of ['b0', 'bp', 'b']) for (const k in bv) o[pre + '.' + k] = bv[k];
       return o;
     },
-    desc: 'Two analog gain channels, each a boost, drive or fuzz, run A into B, in parallel (BLEND balances them) or B into A. Each footswitch engages its channel; MASTER sets the overall output.',
+    desc: 'Two analog gain channels, each a boost, drive or fuzz, run A into B, in parallel (BLEND balances them) or B into A. Each footswitch engages its channel; MASTER sets the overall output. The left DIPs pick which knobs ramp (from the knob position up or down – SWEEP, POLARITY inverts – bouncing or one-shot on engage, time in the inspector).',
   }));
 
   add(CB({
@@ -786,11 +1044,15 @@ export default function register(tz) {
       K('g2', 'GAIN 2', { def: 0.4, virtual: true }), K('v2', 'VOL 2', { def: 0.5, virtual: true }), K('g1', 'GAIN 1', { def: 0.35, virtual: true }),
       K('t2', 'TONE 2', { def: 0.55, virtual: true }), K('v1', 'VOL 1', { def: 0.5, virtual: true }), K('t1', 'TONE 1', { def: 0.5, virtual: true }),
       TOG('m2', 'MODE 2', ['BOOST', 'OD', 'DIST'], { virtual: true, def: 0, col: 0 }), TOG('m1', 'MODE 1', ['BOOST', 'OD', 'DIST'], { virtual: true, def: 1, col: 2 }),
-      FOOT({ action: 'toggle', p: 'c1', label: 'BYPASS 1' }), FOOT({ action: 'toggle', p: 'c2', label: 'BYPASS 2' }),
+      FOOT({ label: 'BYPASS 1', cb: momToggle('c1', 'dp_motobyp1') }), FOOT({ label: 'BYPASS 2', cb: momToggle('c2', 'dp_motobyp2') }),
       LED({ bind: 'onparam:c1', color: '#ff3324' }), LED({ bind: 'onparam:c2', color: '#ff3324' }),
     ],
     initParams: { c1: 1, c2: 0 },
     dips: [{ p: 'hg', l: 'HI GAIN' }, 'MOTOBYP 1', 'MOTOBYP 2', { p: 'pl', l: 'PRES LINK' }, { p: 'mst', l: 'MASTER' }, 'BANK', 'SWEEP', 'POLARITY'],
+    dipInfo: { 'HI GAIN': 'about 25 % more gain on both channels', 'MOTOBYP 1': 'channel 1 footswitch is momentary', 'MOTOBYP 2': 'channel 2 footswitch is momentary', 'PRES LINK': 'presence follows TONE 1',
+      MASTER: 'VOL 2 becomes a master volume', BANK: 'swaps the two PRESET slots (A <-> B)', SWEEP: 'ramps GAIN 1 and GAIN 2 up from their knob positions (bounce / one-shot and time in the inspector)', POLARITY: 'the gain ramp goes down instead' },
+    ramp: { enable: 'SWEEP', targets: ['g1', 'g2'], engage: ['c1', 'c2'] },
+    bank: 'dp_bank',
     presets: [{ c1: 1, c2: 1, m2: 0, g2: 0.6 }, { m1: 2, g1: 0.6, c1: 1 }],
     derive: (p) => {
       const hg = p.hg ? 1.25 : 1, lv = (v) => 0.3 + 0.4 * v;
@@ -801,7 +1063,7 @@ export default function register(tz) {
         'eq.highfreq': 3500, 'eq.highgain': p.pl ? ((p.t1 ?? 0.5) - 0.5) * 8 : 0,
       };
     },
-    desc: 'Two stacked gain channels (1 into 2), each boost / overdrive / distortion; channel 2\'s boost is a germanium-style treble booster. DIP HI GAIN adds about 25 % gain, PRES LINK ties presence to TONE 1, MASTER turns VOL 2 into a master volume.',
+    desc: 'Two stacked gain channels (1 into 2), each boost / overdrive / distortion; channel 2\'s boost is a germanium-style treble booster. DIP HI GAIN adds about 25 % gain, PRES LINK ties presence to TONE 1, MASTER turns VOL 2 into a master volume, MOTOBYP 1 / 2 make the channel switches momentary, BANK swaps the preset slots, SWEEP ramps both gains (POLARITY = downwards).',
   }));
 
   // ================================================================== creative compressor
@@ -822,17 +1084,21 @@ export default function register(tz) {
       K('dyn', 'DYNAMICS', { def: 0.4, virtual: true }), K('c.sustain', 'SENSITIVITY', { def: 0.5 }), K('wet', 'WET', { def: 0.6, virtual: true }),
       K('c.attack', 'ATTACK', { def: 0.3 }), K('eqk', 'EQ', { def: 0.5, virtual: true }), K('dry', 'DRY', { def: 0.15, virtual: true }),
       TOG('rel', 'RELEASE', ['FAST', 'USER', 'SLOW'], { virtual: true, def: 1 }), TOG('eqm', 'EQ MODE', ['SHIFT', 'MAN', 'MOD'], { virtual: true, def: 1 }), TOG('phy', 'PHYSICS', ['WOB', 'STBL', 'TWCH'], { virtual: true, def: 1 }),
-      FOOT({ action: 'toggle', p: 'sw.on', label: 'AUX · SWELL' }),
-      FOOT({ label: 'BYPASS', cb: { tap: 'bypass', hold: (c) => c.set('sagH', 1), release: (c) => c.set('sagH', 0) } }),
+      FOOT({ label: 'AUX · SWELL', cb: momToggle('sw.on', 'dp_swellaux') }),
+      FOOT({ label: 'BYPASS', cb: Object.assign({ tap: 'bypass' }, latchParam('sagH')) }),
       LED({ bind: 'onparam:sw.on', color: '#3fa8ff' }), bypassLed(),
       K('sagH', 'SAG HOLD', { def: 0, virtual: true, hidden: true }),
     ],
     dips: [{ p: 'dusty', l: 'DUSTY' }, 'SWELL AUX', 'MOTION', { p: 'gate', l: 'GATE' }, 'SIDECHAIN', 'LATCH', 'SPREAD', 'MISO'],
+    dipInfo: { DUSTY: 'gritty, asymmetric limiter colour', 'SWELL AUX': 'the AUX switch swells only while held (momentary)', MOTION: 'the EQ knob sweeps by itself (ramp; time / direction / bounce in the inspector)',
+      GATE: 'noise gate in front', SIDECHAIN: 'the detector ignores the low end: softer knee, gentler ratio, so bass notes pump less (approximation)', LATCH: 'hold BYPASS latches the maximum sag instead of momentary' },
+    ramp: { map: { MOTION: 'eqk' }, time: 3 },
+    stereo: {},
     presets: [{ dyn: 0.8, wet: 0.5, dry: 0.5, dusty: 1 }, { dyn: 0.3, eqm: 0, phy: 0 }],
     derive: (p) => {
       const dyn = p.sagH ? 1 : p.dyn ?? 0.4, wet = p.wet ?? 0.6, dry = p.dry ?? 0.15, sum = wet + dry + 1e-3, eqv = (p.eqk ?? 0.5) - 0.5, eqm = p.eqm ?? 1, phy = p.phy ?? 1;
       return {
-        'c.ratio': c01(dyn * 1.6), 'c.release': [0.12, 0.45, 0.85][p.rel ?? 1], 'c.blend': wet / sum, 'c.level': clamp(0.24 + 0.2 * sum, 0, 1),
+        'c.ratio': c01(dyn * 1.6) * (p.dp_sidechain ? 0.8 : 1), 'c.knee': p.dp_sidechain ? 0.85 : 0.5, 'c.release': [0.12, 0.45, 0.85][p.rel ?? 1], 'c.blend': wet / sum, 'c.level': clamp(0.24 + 0.2 * sum, 0, 1),
         'sag.on': dyn > 0.75 ? 1 : 0, 'sag.gain': c01((dyn - 0.75) * 3), 'sag.level': 0.5,
         'dy.on': p.dusty ? 1 : 0, 'dy.gain': 0.35, 'dy.level': 0.5, 'gt.on': p.gate ? 1 : 0,
         'f.on': eqm === 1 ? 0 : 1, 'f.mode': eqm === 0 ? 2 : 1, 'f.rate': 0.2, 'f.pos': 0.7,
@@ -840,7 +1106,7 @@ export default function register(tz) {
         'ph.on': phy === 1 ? 0 : 1, 'ph.depth': phy === 0 ? 0.07 : 0.14, 'ph.rate': phy === 0 ? 0.2 : 0.75, 'ph.wave': phy === 0 ? 0 : 0.6,
       };
     },
-    desc: 'Two-stage VCA compressor / limiter: DYNAMICS sweeps from light compression through limiting into a tube-sag zone, SENSITIVITY is the threshold, WET / DRY blend parallel compression. EQ MODE adds an envelope-shifted or modulated EQ, PHYSICS a little envelope wobble. AUX engages the volume swell; hold BYPASS for maximum sag. DIPs DUSTY (gritty limiter) and GATE work.',
+    desc: 'Two-stage VCA compressor / limiter: DYNAMICS sweeps from light compression through limiting into a tube-sag zone, SENSITIVITY is the threshold, WET / DRY blend parallel compression. EQ MODE adds an envelope-shifted or modulated EQ, PHYSICS a little envelope wobble. AUX engages the volume swell; hold BYPASS for maximum sag. DIPs: DUSTY (gritty limiter), GATE, SWELL AUX (momentary swell), MOTION (EQ auto-sweep), SIDECHAIN (less bass pumping, approximated), LATCH (latching sag), SPREAD / MISO (stereo mode).',
   }));
 
   // ================================================================== micro-looper / glitch / loopers
@@ -868,12 +1134,25 @@ export default function register(tz) {
       K('mix', 'MIX', { def: 0.5, virtual: true }), K('size', 'SIZE', { def: 0.4, virtual: true }), K('oct', 'OCTAVE', { def: 0.5, virtual: true }),
       K('tex', 'TEXTURE', { def: 0.5, virtual: true }), K('sus', 'SUSTAIN', { def: 0.75, virtual: true }), K('err', 'ERROR', { def: 0.2, virtual: true }),
       TOG('fade', 'FADE', ['SLOW', 'USER', 'FAST'], { virtual: true, def: 1 }), TOG('type', 'TYPE', ['TIME', 'COND', 'PLAY'], { virtual: true }), TOG('anim', 'ANIMATE', ['NONE', 'VIB', 'CHOR'], { virtual: true }),
-      FOOT({ label: 'FREEZE', cb: { tap: (c) => { c.ev('fz', 1); c.toggle('fzOn'); } } }),
-      FOOT({ label: 'GLITCH', cb: { tap: (c) => { c.ev('gl', 1); c.toggle('glOn'); } } }),
+      FOOT({ label: 'FREEZE', cb: sideFoot('fz') }),
+      FOOT({ label: 'GLITCH', cb: sideFoot('gl') }),
       LED({ bind: 'onparam:fzOn', color: '#6fd3ff' }), LED({ bind: 'onparam:glOn', color: '#ff7a59' }),
       K('fzOn', 'FREEZE ON', { def: 0, virtual: true, hidden: true }), K('glOn', 'GLITCH ON', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', 'LATCH', 'SIDECHAIN', 'DUCK', { p: 'rev', l: 'REVERSE' }, { p: 'half', l: '½ SPEED' }, 'MANUAL'],
+    dipInfo: { LATCH: 'a held FREEZE / GLITCH stays on after you let go (off: held = momentary, tap = toggle)', SIDECHAIN: 'your playing re-triggers the captures: every new note refreshes the freeze / glitch',
+      DUCK: 'the effect ducks under your playing and swells back when you stop', REVERSE: 'glitch plays backwards', '½ SPEED': 'glitch plays at half speed (an octave down)', MANUAL: 'fully momentary: each side is only on while its footswitch is held' },
+    stereo: {},
+    overlay: {
+      want: (ui) => isOn(ui, 'dp_duck'),
+      apply: (ui, b, st, now, eng) => {
+        const pk = Math.max(0, ...(tz.app.state.status?.inPeak || [0]));
+        st.env = Math.max(pk, st.env * 0.8);
+        const g = 1 - 0.85 * c01((dB(st.env) + 44) / 30);
+        st.duck = st.duck == null || g < st.duck ? g : st.duck + (g - st.duck) * 0.2;
+        for (const k of ['fz.lvl', 'gl.lvl']) eng[k] = (eng[k] ?? 0) * st.duck;
+      },
+    },
     presets: [{ oct: 0.1, anim: 1, sus: 1 }, { err: 0.7, type: 2, size: 0.2, tex: 0.25 }],
     derive: (p) => {
       const mix = p.mix ?? 0.5, oct = (p.oct ?? 0.5) - 0.5, tex = (p.tex ?? 0.5) - 0.5, e = p.err ?? 0.2, ty = p.type | 0, an = p.anim | 0, size = p.size ?? 0.4, sus = p.sus ?? 0.75;
@@ -881,7 +1160,8 @@ export default function register(tz) {
       if (ty === 2 && e > 0.33) speed *= e > 0.66 ? -1 : 0.5;
       const o = { 'd1.lvl': dn(mix), 'd2.lvl': 2, 'fz.lvl': up(mix), 'gl.lvl': up(mix),
         'fz.f.decay': sus, 'fz.f.speed': size, 'gl.m.length': 0.05 + 1.2 * size * size, 'gl.m.decay': sus, 'gl.m.speed': speed,
-        'gl.m.fade': [0.9, 0.35, 0.05][p.fade ?? 1], 'gl.m.stretch': ty === 0 ? e * 0.8 : 0 };
+        'gl.m.fade': [0.9, 0.35, 0.05][p.fade ?? 1], 'gl.m.stretch': ty === 0 ? e * 0.8 : 0,
+        'fz.f.mode': p.dp_sidechain ? 2 : 0, 'gl.m.mode': p.dp_sidechain ? 2 : 0 };
       for (const L of ['fz', 'gl']) Object.assign(o, {
         [L + '.o.on']: Math.abs(oct) > 0.03 ? 1 : 0, [L + '.o.semis1']: oct < 0 ? -12 : 12, [L + '.o.level1']: Math.abs(oct) * 2,
         [L + '.tx.on']: tex < -0.03 || (ty === 1 && e > 0.05) ? 1 : 0, [L + '.tx.bits']: c01(1 - Math.max(-tex, 0) * 1.4 - (ty === 1 ? e * 0.5 : 0)), [L + '.tx.rate']: c01(0.6 - Math.max(-tex, 0)),
@@ -890,7 +1170,7 @@ export default function register(tz) {
       });
       return o;
     },
-    desc: 'Two sides: FREEZE holds a smooth spectral sustain, GLITCH loops a short fragment (SIZE). OCTAVE adds an octave up / down voice, TEXTURE crushes (left) or saturates (right), SUSTAIN sets how long sounds hold, ERROR adds timing (stretch), condition (crush) or playback (half speed / reverse) faults. ANIMATE adds vibrato or chorus; DIPs REVERSE and ½ SPEED change the glitch playback.',
+    desc: 'Two sides: FREEZE holds a smooth spectral sustain, GLITCH loops a short fragment (SIZE). OCTAVE adds an octave up / down voice, TEXTURE crushes (left) or saturates (right), SUSTAIN sets how long sounds hold, ERROR adds timing (stretch), condition (crush) or playback (half speed / reverse) faults. ANIMATE adds vibrato or chorus. Tap a switch to toggle its side, hold for momentary. DIPs: REVERSE / ½ SPEED (glitch playback), LATCH (holds latch), MANUAL (fully momentary), SIDECHAIN (new notes re-capture), DUCK (effect ducks under your playing), MISO / SPREAD (stereo mode).',
   }));
 
   // MOOD-style two-channel pedal (wet channel + micro-looper with routing), shared by the MKII and the grumpy one
@@ -911,13 +1191,33 @@ export default function register(tz) {
     o[loopKey] = rt === 0 ? 'm3' : 'm1';
     return o;
   };
-  const loopFoot = (modeHasEvents) => ({
-    tap: (c) => {
-      const tgt = (c.ui.rt ?? 1) === 0 ? 'm3' : 'm1';
-      if (modeHasEvents(c.ui)) c.ev(tgt, 1);
+  // DIP NO DUB: tapping LOOP while it plays grabs a fresh slice instead of releasing it; hold LOOP to release
+  const loopFoot = (modeHasEvents) => {
+    const tgt = (c) => ((c.ui.rt ?? 1) === 0 ? 'm3' : 'm1');
+    const tap = (c) => {
+      if (isOn(c.ui, 'dp_nodub') && isOn(c.ui, 'loopOn')) { if (modeHasEvents(c.ui)) { c.ev(tgt(c), 1); c.ev(tgt(c), 1); } return; }
+      if (modeHasEvents(c.ui)) c.ev(tgt(c), 1);
       c.toggle('loopOn');
-    },
-  });
+    };
+    return {
+      tap, holdMs: 800,
+      hold: (c) => {
+        if (!(isOn(c.ui, 'dp_nodub') && isOn(c.ui, 'loopOn'))) return tap(c);
+        if (modeHasEvents(c.ui)) c.ev(tgt(c), 1);
+        c.set('loopOn', 0);
+      },
+    };
+  };
+  // DIP TRAILS on a MOOD-style wet channel: switching the channel off lets the active wet lane ring out (its input is
+  // faded, the lane keeps playing its tail) instead of cutting it
+  const wetTrails = (p, o, lanes, act) => {
+    const tr = !!p.dp_trails && (p.wetOn ?? 1) < 0.5;
+    for (const k of lanes) {
+      const t = tr && k === act;
+      Object.assign(o, { [k + '.x.on']: t ? 0 : 1, [k + '.n.lvl']: t ? 0 : 2, [k + '.x.lvl']: t ? 1 : 2 });
+      if (t) o[k + '.lvl'] = up(p.mix ?? 0.5) * 0.85;
+    }
+  };
 
   add(CB({
     id: 'cba.mood2', name: 'Temper MKII', ref: 'Chase Bliss MOOD MKII', code: 'TEMPER', logo: 'TEMPER', logoFont: "'Oswald', sans-serif", logoSize: 16, logoLs: 5,
@@ -932,14 +1232,18 @@ export default function register(tz) {
       K('time', 'TIME', { def: 0.5, virtual: true }), K('mix', 'MIX', { def: 0.5, virtual: true }), K('len', 'LENGTH', { def: 0.45, virtual: true }),
       K('wmod', 'MODIFY', { def: 0.5, virtual: true }), K('clock', 'CLOCK', { def: 0.6, virtual: true }), K('lmod', 'MODIFY', { def: 0.75, virtual: true }),
       TOG('wm', 'WET', ['REVERB', 'DELAY', 'SLIP'], { virtual: true }), TOG('rt', 'ROUTING', ['IN', 'IN+LP', 'LOOP'], { virtual: true, def: 1 }), TOG('lm', 'LOOP', ['ENV', 'TAPE', 'STRCH'], { virtual: true, def: 1 }),
-      FOOT({ label: 'WET', cb: { tap: (c) => c.toggle('wetOn'),
-        hold: (c) => { const m = c.ui.wm | 0; if (m === 2) c.ev('sl', 1); else c.ev(m ? 'dl' : 'rv', 2, 1); },
-        release: (c) => { const m = c.ui.wm | 0; if (m < 2) c.ev(m ? 'dl' : 'rv', 2, 0); } } }),
+      FOOT({ label: 'WET', cb: Object.assign({ tap: (c) => c.toggle('wetOn') }, latchHold(
+        (c) => { const m = c.ui.wm | 0; if (m === 2) c.ev('sl', 1); else c.ev(m ? 'dl' : 'rv', 2, 1); },
+        (c) => { const m = c.ui.wm | 0; if (m < 2) c.ev(m ? 'dl' : 'rv', 2, 0); else if (isOn(c.ui, 'dp_latch')) c.ev('sl', 1); }, 'wet')) }),
       FOOT({ label: 'LOOP', cb: loopFoot((ui) => (ui.lm ?? 1) !== 0) }),
       LED({ bind: 'onparam:wetOn', color: '#ff3324' }), LED({ bind: 'onparam:loopOn', color: '#3ddc84' }),
       K('wetOn', 'WET ON', { def: 1, virtual: true, hidden: true }), K('loopOn', 'LOOP ON', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', { p: 'dk', l: 'DRY KILL' }, 'TRAILS', 'LATCH', 'NO DUB', 'SMOOTH', { p: 'classic', l: 'CLASSIC' }],
+    dipInfo: { TRAILS: 'turning WET off (or bypassing) lets the reverb / delay ring out (off: cut)', LATCH: 'hold WET latches the freeze on / off instead of momentary',
+      'NO DUB': 'tapping LOOP while it plays grabs a fresh slice instead of releasing (hold LOOP to release)', SMOOTH: 'smoother, longer crossfades at the loop edges', CLASSIC: 'MKI voicings (plate-ish reverb, analog delay)' },
+    trails: { p: 'dp_trails', kill: { 'rv.lvl': 0, 'dl.lvl': 0, 'sl.lvl': 0, 'm1.lvl': 0, 'm3.lvl': 0 } },
+    stereo: {},
     presets: [{ wm: 0, time: 0.85, wmod: 0.8, mix: 0.6 }, { wm: 2, time: 0.3, wmod: 0.1, lm: 2 }],
     derive: (p) => {
       const t = p.time ?? 0.5, wm = (p.wmod ?? 0.5), lm = p.lm ?? 1, lmod = (p.lmod ?? 0.75), clk = p.clock ?? 0.6, ls = lmap(clk, 2, 0.5) * (p.len ?? 0.45);
@@ -956,10 +1260,12 @@ export default function register(tz) {
         [m + '.length']: clamp(lm === 1 ? 0.15 + ls * 3.5 : 0.05 + ls * 0.9, 0.03, 4),
         [m + '.speed']: lm === 1 ? (lmod < 0.5 ? -(0.25 + (0.5 - lmod) * 3.5) : 0.25 + (lmod - 0.5) * 3.5) : lm === 2 && lmod < 0.5 ? -1 : 1,
         [m + '.stretch']: lm === 2 ? Math.abs(lmod - 0.5) * 2 : 0, [m + '.decay']: lm === 0 ? 0.3 + 0.6 * lmod : 1,
+        [m + '.fade']: p.dp_smooth ? 0.85 : 0.2,
       });
+      wetTrails(p, o, ['rv', 'dl'], ['rv', 'dl', 'sl'][p.wm | 0]);
       return o;
     },
-    desc: 'Two channels. WET: modulated reverb (TIME = decay, MODIFY = smear), delay (time / feedback) or slip (re-captured slices played at MODIFY speed / reverse). LOOP: an always-listening micro-looper – ENV (slices triggered by your playing), TAPE (LENGTH + speed / direction) or STRETCH. ROUTING sets whether the looper captures the wet sound (IN) or the wet channel processes the loop (IN+LOOP / LOOP). CLOCK trades loop length for fidelity. Tap WET to toggle the channel, hold it to freeze; tap LOOP to capture / release.',
+    desc: 'Two channels. WET: modulated reverb (TIME = decay, MODIFY = smear), delay (time / feedback) or slip (re-captured slices played at MODIFY speed / reverse). LOOP: an always-listening micro-looper – ENV (slices triggered by your playing), TAPE (LENGTH + speed / direction) or STRETCH. ROUTING sets whether the looper captures the wet sound (IN) or the wet channel processes the loop (IN+LOOP / LOOP). CLOCK trades loop length for fidelity. Tap WET to toggle the channel, hold it to freeze; tap LOOP to capture / release. DIPs: DRY KILL, CLASSIC (MKI voicings), TRAILS, LATCH (latching freeze), NO DUB (re-capture), SMOOTH (soft loop edges), MISO / SPREAD (stereo mode).',
   }));
 
   add(CB({
@@ -980,13 +1286,17 @@ export default function register(tz) {
       K('time', 'TIME', { def: 0.5, virtual: true }), K('mix', 'MIX', { def: 0.5, virtual: true }), K('len', 'LENGTH', { def: 0.5, virtual: true }),
       K('wmod', 'MODIFY', { def: 0.5, virtual: true }), K('clock', 'CLOCK', { def: 0.6, virtual: true }), K('lmod', 'MODIFY', { def: 0.5, virtual: true }),
       TOG('wm', 'WET', ['SOUP', 'RELAY', 'FLIP'], { virtual: true }), TOG('rt', 'ROUTING', ['IN', 'IN+LP', 'LOOP'], { virtual: true, def: 1 }), TOG('lm', 'LOOP', ['BURST', 'RADIO', 'MASK'], { virtual: true, def: 1 }),
-      FOOT({ label: 'WET', cb: { tap: (c) => c.toggle('wetOn'),
-        hold: (c) => c.ev(['so', 're', 'fp'][c.ui.wm | 0], 2, 1), release: (c) => c.ev(['so', 're', 'fp'][c.ui.wm | 0], 2, 0) } }),
+      FOOT({ label: 'WET', cb: Object.assign({ tap: (c) => c.toggle('wetOn') }, latchHold(
+        (c) => c.ev(['so', 're', 'fp'][c.ui.wm | 0], 2, 1), (c) => c.ev(['so', 're', 'fp'][c.ui.wm | 0], 2, 0), 'wet')) }),
       FOOT({ label: 'LOOP', cb: loopFoot(() => true) }),
       LED({ bind: 'onparam:wetOn', color: '#ff3324' }), LED({ bind: 'onparam:loopOn', color: '#3ddc84' }),
       K('wetOn', 'WET ON', { def: 1, virtual: true, hidden: true }), K('loopOn', 'LOOP ON', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', { p: 'dk', l: 'DRY KILL' }, 'TRAILS', 'LATCH', 'SMOOTH', { p: 'dglue', l: 'DRY GLUE' }, { p: 'half', l: 'HALF' }],
+    dipInfo: { TRAILS: 'turning WET off (or bypassing) lets the wet channel ring out (off: cut)', LATCH: 'hold WET latches the freeze on / off instead of momentary',
+      SMOOTH: 'smoother, longer crossfades at the loop edges', 'DRY GLUE': 'gentle tube saturator over everything', HALF: 'loops play half as long (double-time slices)' },
+    trails: { p: 'dp_trails', kill: { 'so.lvl': 0, 're.lvl': 0, 'fp.lvl': 0, 'm1.lvl': 0, 'm3.lvl': 0 } },
+    stereo: {},
     presets: [{ wm: 0, time: 0.9, clock: 0.3, mix: 0.65 }, { wm: 2, wmod: 0.8, lm: 0, lmod: 0.6 }],
     derive: (p) => {
       const t = p.time ?? 0.5, wm = p.wmod ?? 0.5, lm = p.lm ?? 1, lmod = p.lmod ?? 0.5, len = p.len ?? 0.5, clk = p.clock ?? 0.6, tone = 0.35 + 0.65 * clk;
@@ -1003,7 +1313,7 @@ export default function register(tz) {
       for (const m of ['m1', 'm3']) {
         const L = (p.half ? 0.5 : 1) * lmap(clk, 1.6, 0.6);
         Object.assign(o, {
-          [m + '.m.length']: clamp(lm === 0 ? 0.4 + 1.6 * len : 0.2 + 2.4 * len * L, 0.05, 4), [m + '.m.tone']: tone,
+          [m + '.m.length']: clamp(lm === 0 ? 0.4 + 1.6 * len : 0.2 + 2.4 * len * L, 0.05, 4), [m + '.m.tone']: tone, [m + '.m.fade']: p.dp_smooth ? 0.85 : 0.2,
           [m + '.m.speed']: lm === 1 ? [len < 0.5 ? -(0.5 + (0.5 - len) * 3) : 0.5 + (len - 0.5) * 3, 1, 1, 1, pick(len, [0.5, 1, 2])][station] : 1,
           [m + '.m.stretch']: lm === 1 && (station === 1 || station === 3) ? 0.3 + 0.7 * len : 0,
           [m + '.sl.on']: lm === 0 ? 1 : 0, [m + '.sl.time']: lmap(1 - len, 60, 400), [m + '.sl.depth']: 0.4 + 0.6 * lmod, [m + '.sl.pattern']: 3 + Math.floor(lmod * 10),
@@ -1011,9 +1321,10 @@ export default function register(tz) {
           [m + '.cr.on']: lm === 2 ? 1 : 0, [m + '.cr.bits']: 0.2 + 0.6 * (1 - len), [m + '.cr.mix']: lmod,
         });
       }
+      wetTrails(p, o, ['so', 're', 'fp'], ['so', 're', 'fp'][p.wm | 0]);
       return o;
     },
-    desc: 'The grumpy two-channel sibling: WET is SOUP (resynthesised ambient reverb), RELAY (repeats that don\'t fade) or FLIP (harmonies lagging behind you, MODIFY picks the intervals). The micro-looper is BURST (sliced rhythmic steps), RADIO (five stations: tape, ambient, orchestral, shoegaze, dance – MODIFY scans) or MASK (crushes the loud parts). Hold WET to freeze, tap LOOP to capture. DIPs DRY KILL, DRY GLUE (saturator on everything) and HALF work.',
+    desc: 'The grumpy two-channel sibling: WET is SOUP (resynthesised ambient reverb), RELAY (repeats that don\'t fade) or FLIP (harmonies lagging behind you, MODIFY picks the intervals). The micro-looper is BURST (sliced rhythmic steps), RADIO (five stations: tape, ambient, orchestral, shoegaze, dance – MODIFY scans) or MASK (crushes the loud parts). Hold WET to freeze, tap LOOP to capture. DIPs: DRY KILL, DRY GLUE (saturator on everything), HALF, TRAILS, LATCH (latching freeze), SMOOTH (soft loop edges), MISO / SPREAD (stereo mode).',
   }));
 
   add(CB({
@@ -1039,10 +1350,21 @@ export default function register(tz) {
       TOG('sa', 'MOD A', ['SPD', 'DROP', 'TRIM'], { virtual: true }), TOG('mode', 'MODE', ['NORM', 'ADD', 'SMPL'], { virtual: true }), TOG('sb', 'MOD B', ['STEP', 'FILT', 'SCRM'], { virtual: true }),
       BTN('A', { p: 'ma', toggle: true, led: true, ledColor: '#ffb02e', ledDy: -8.5, bind: 'param:ma' }), BTN('B', { p: 'mb', toggle: true, led: true, ledColor: '#ffb02e', ledDy: -8.5, bind: 'param:mb' }),
       FOOT({ label: 'REC / PLAY', cb: { tap: (c) => c.ev('w', 1), hold: (c) => c.ev('w', 4), holdMs: 900 } }),
-      FOOT({ label: 'STOP', cb: { tap: (c) => c.ev('w', 2), hold: (c) => c.ev('w', 3), holdMs: 1200 } }),
+      FOOT({ label: 'STOP', cb: { tap: (c) => { if (isOn(c.ui, 'dp_trails')) stOf(c.id).fade = { t0: performance.now(), dur: 1500 }; else c.ev('w', 2); }, hold: (c) => c.ev('w', 3), holdMs: 1200 } }),
       LED({ bind: 'fn', ledFn: loopLed(['w', 'lp']) }), LED({ bind: 'fn', ledFn: loopLed(['w', 'lp'], 'stop') }),
     ],
     dips: [{ p: 'dk', l: 'DRY KILL' }, { p: 'half', l: 'HALF' }, 'MISO', 'SPREAD', 'TRAILS', 'BOUNCE', 'SWEEP', 'POLARITY'],
+    dipInfo: { HALF: 'the loop plays an octave down (half speed)', TRAILS: 'STOP fades the loop out over 1.5 s instead of cutting it', BOUNCE: 'MOD A / MOD B knobs ramp back and forth by themselves (when their buttons are lit)', SWEEP: 'modifier ramp goes up (off: down)', POLARITY: 'inverts the modifier ramp direction' },
+    ramp: { enable: 'BOUNCE', targets: ['ka', 'kb'], bounce: () => true },
+    stereo: {},
+    overlay: {
+      want: (ui, b, st) => !!st.fade,
+      apply: (ui, b, st, now, eng) => {
+        const t = (now - st.fade.t0) / st.fade.dur;
+        eng['w.g.level'] = (eng['w.g.level'] ?? 0) + (t >= 1 ? -60 : dB(1 - t));
+        if (t >= 1) { st.fade = null; sendEv(DEFS.get(b.type), b.id, 'w', 2); }
+      },
+    },
     presets: [{ ma: 1, sa: 0, ka: 0.25, stab: 0.4 }, { mb: 1, sb: 2, kb: 0.8, ma: 1, sa: 2, ka: 0.8 }],
     derive: (p) => {
       const a = ((p.ka ?? 0.5) - 0.5) * 2, b = ((p.kb ?? 0.5) - 0.5) * 2, A = !!p.ma, B = !!p.mb, sa = p.sa | 0, sb = p.sb | 0, s = p.stab ?? 0;
@@ -1059,7 +1381,7 @@ export default function register(tz) {
         'w.f.on': filt ? 1 : 0, 'w.f.filter': b < 0 ? 0 : 2, 'w.f.pos': b < 0 ? 1 - Math.abs(b) * 0.85 : Math.abs(b) * 0.85,
       };
     },
-    desc: 'Looper with modifiers. Left: record / play (hold = undo), right: stop (hold = clear). LAYERS sets the loop playback level, REPEATS fades older layers while overdubbing, STABILITY adds tape wow / flutter / noise. MOD A (speed, dropper, trimmer) and MOD B (stepped speed, filter, scrambler) act on the loop when their buttons are lit; noon is neutral. MODE: normal, additive (record into overdub) or sampler.',
+    desc: 'Looper with modifiers. Left: record / play (hold = undo), right: stop (hold = clear). LAYERS sets the loop playback level, REPEATS fades older layers while overdubbing, STABILITY adds tape wow / flutter / noise. MOD A (speed, dropper, trimmer) and MOD B (stepped speed, filter, scrambler) act on the loop when their buttons are lit; noon is neutral. MODE: normal, additive (record into overdub) or sampler. DIPs: DRY KILL, HALF (octave-down loop), TRAILS (STOP fades out), BOUNCE / SWEEP / POLARITY (the modifier knobs ramp by themselves), MISO / SPREAD (stereo mode).',
   }));
 
   add(CB({
@@ -1080,17 +1402,21 @@ export default function register(tz) {
       K('lvl', 'LEVEL', { def: 0.5, virtual: true }), K('w.x.feedback', 'REPEATS', { def: 0.45, max: 1 }), K('w.x.time', 'SIZE', { min: 50, max: 6000, def: 420, curve: 'log', display: ms }),
       K('mod', 'MODIFY', { def: 0.5, virtual: true }), K('spread', 'SPREAD', { def: 0, virtual: true }), K('scan', 'SCAN', { def: 0, virtual: true }),
       TOG('bank', 'MODIFIER', ['1', '2', '3'], { virtual: true, col: 0 }), TOG('rt', 'ROUTING', ['IN', 'OUT', 'FEED'], { virtual: true, def: 1, col: 2 }),
-      FOOT({ label: 'TAP · SCAN', cb: { tap: (c) => tapTime(c, 'w.x.time', 50, 6000), hold: (c) => c.set('scanH', 1), release: (c) => c.set('scanH', 0) } }),
-      FOOT({ label: 'BYPASS · LOOP', cb: { tap: 'bypass', hold: (c) => c.ev('w', 2, 1), release: (c) => c.ev('w', 2, 0) } }),
+      FOOT({ label: 'TAP · SCAN', cb: Object.assign({ tap: (c) => tapTime(c, 'w.x.time', 50, 6000) }, latchParam('scanH')) }),
+      FOOT({ label: 'BYPASS · LOOP', cb: Object.assign({ tap: 'bypass' }, latchHold((c) => c.ev('w', 2, 1), (c) => c.ev('w', 2, 0), 'loop')) }),
       LED({ bind: 'tap:w.x.time', color: '#f2d27a' }), bypassLed(),
       K('scanH', 'SCAN HOLD', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MANUAL', 'COLLECT', { p: 'dk', l: 'DRY KILL' }, 'ALWAYS', 'LATCH', { p: 'wipe', l: 'WIPE' }, 'BOUNCE', 'SHAPE'],
+    dipInfo: { MANUAL: 'SCAN only plays while the left switch is held (the SCAN knob is ignored)', COLLECT: 'the scanner reaches further back and smears its grains (longer memory)', ALWAYS: 'the echoes and scanner keep ringing after bypass (off: cut)',
+      LATCH: 'holds (scan / loop) latch on / off instead of being momentary', WIPE: 'mutes the echo voice, only the scanner plays', BOUNCE: 'MODIFY ramps back and forth by itself (time / direction in the inspector)', SHAPE: 'smooth (sine) ramp curve instead of linear' },
+    ramp: { enable: 'BOUNCE', targets: ['mod'], bounce: () => true, shape: 'SHAPE' },
+    trails: { p: 'dp_always', kill: { 'w.lvl': 0, 'sc.lvl': 0 } },
     presets: [{ bank: 1, mod: 0.85, 'w.x.feedback': 0.7, spread: 0.4 }, { bank: 2, mod: 0.15, scan: 0.6 }],
     derive: (p) => {
-      const lvl = p.lvl ?? 0.5, a = ((p.mod ?? 0.5) - 0.5) * 2 * ((p.rt ?? 1) === 0 ? 1.2 : 1), bank = p.bank | 0, sp = p.spread ?? 0, sc = p.scanH ? 1 : p.scan ?? 0, A = Math.min(1, Math.abs(a));
+      const lvl = p.lvl ?? 0.5, a = ((p.mod ?? 0.5) - 0.5) * 2 * ((p.rt ?? 1) === 0 ? 1.2 : 1), bank = p.bank | 0, sp = p.spread ?? 0, sc = p.scanH ? 1 : p.dp_manual ? 0 : p.scan ?? 0, A = Math.min(1, Math.abs(a));
       return {
-        'd.lvl': p.dk ? 0 : 2, 'w.lvl': p.wipe ? 0 : 2 * lvl * 1.2, 'sc.lvl': 2 * sc, 'sc.length': 0.3 + 2.7 * sc,
+        'd.lvl': p.dk ? 0 : 2, 'w.lvl': p.wipe ? 0 : 2 * lvl * 1.2, 'sc.lvl': 2 * sc, 'sc.length': Math.min(4, (0.3 + 2.7 * sc) * (p.dp_collect ? 1.45 : 1)), 'sc.stretch': p.dp_collect ? 0.3 : 0,
         'w.x.mode': sp < 0.05 ? 0 : 2, 'w.x.heads': sp < 0.5 ? 6 : 7, 'w.x.spread': 0.3 + 0.6 * sp,
         'w.x.feedback': clamp((p['w.x.feedback'] ?? 0.45) + ((p.rt ?? 1) === 2 ? 0.08 : 0), 0, 1.02),
         'w.mf.on': bank === 0 && A > 0.04 ? 1 : 0, 'w.mf.filter': a < 0 ? 0 : 2, 'w.mf.pos': a < 0 ? 1 - A * 0.85 : A * 0.8,
@@ -1098,7 +1424,7 @@ export default function register(tz) {
         'w.ms.on': bank === 2 && A > 0.04 ? 1 : 0, 'w.ms.depth': A, 'w.ms.pattern': a < 0 ? 5 : 11,
       };
     },
-    desc: 'Echo with a memory: LEVEL / REPEATS / SIZE (50 ms – 6 s) set the echo, SPREAD adds a second tap behind it, SCAN plays moments back out of the recent past. MODIFY applies modifier bank 1 (filter), 2 (octave) or 3 (stutter) to the echoes, noon neutral. Left: tap tempo, hold = momentary scan; right: bypass, hold = loop the echoes. DIPs DRY KILL and WIPE work.',
+    desc: 'Echo with a memory: LEVEL / REPEATS / SIZE (50 ms – 6 s) set the echo, SPREAD adds a second tap behind it, SCAN plays moments back out of the recent past. MODIFY applies modifier bank 1 (filter), 2 (octave) or 3 (stutter) to the echoes, noon neutral. Left: tap tempo, hold = momentary scan; right: bypass, hold = loop the echoes. DIPs: DRY KILL, WIPE, MANUAL (scan only while held), COLLECT (longer, smeared memory), ALWAYS (tails after bypass), LATCH (latching holds), BOUNCE + SHAPE (MODIFY ramps by itself).',
   }));
 
   // ================================================================== codec / tape degradation
@@ -1106,27 +1432,37 @@ export default function register(tz) {
     id: 'cba.lossy', name: 'Leaky', ref: 'Chase Bliss Lossy (with Goodhertz)', code: 'LEAKY', logo: 'leaky', logoFont: "'Share Tech Mono', monospace", logoSize: 18, logoLs: 3,
     typeName: 'Codec damage', cat: 'Filter', art: 'pixels', size: 'mk2', color: '#dfe7ea', text: '#13212b', palette: ['#ff5c8a', '#3fb6ff', '#ffd23f', '#7a5cff'],
     algo: 'chain', cost: 2.2,
-    opts: { chain: [{ prefix: 'f', algo: 'pareq', params: { spectrum: 0, b1g: 0, b2g: 0, b3g: 0, b4g: 0, b5g: 0, b6g: 0 } }, { prefix: 'l', algo: 'lossy' }] },
+    opts: { chain: [{ prefix: 'f', algo: 'pareq', params: { spectrum: 0, b1g: 0, b2g: 0, b3g: 0, b4g: 0, b5g: 0, b6g: 0 } }, { prefix: 'l', algo: 'lossy' },
+      { prefix: 'f2', algo: 'pareq', on: false, params: { spectrum: 0, b1g: 0, b2g: 0, b3g: 0, b4g: 0, b5g: 0, b6g: 0 } }] },
     controls: [
       K('glob', 'GLOBAL', { def: 0.65, virtual: true }), K('l.verb', 'VERB', { def: 0.15 }), K('speed', 'SPEED', { def: 0.4, virtual: true }),
       K('loss', 'LOSS', { def: 0.45, virtual: true }), K('filt', 'FILTER', { def: 0, virtual: true }), K('freq', 'FREQ', { def: 0.5, virtual: true, display: (v) => Math.round(lmap(v, 120, 8000)) + ' Hz' }),
       TOG('slope', 'SLOPE', ['6dB', '24dB', '96dB'], { virtual: true, def: 1 }), TOG('pk', 'PACKETS', ['RPT', 'CLEAN', 'LOSS'], { virtual: true, def: 1 }), TOG('lm', 'MODE', ['INV', 'STD', 'JITR'], { virtual: true, def: 1 }),
-      FOOT({ label: 'BYPASS · GATE', cb: { tap: 'bypass', hold: (c) => c.set('gateH', 1), release: (c) => c.set('gateH', 0) } }),
+      FOOT({ label: 'BYPASS · GATE', cb: Object.assign({ tap: 'bypass' }, latchParam('gateH')) }),
       FOOT({ action: 'toggle', p: 'l.freeze', label: 'FREEZE' }),
       bypassLed(), LED({ bind: 'onparam:l.freeze', color: '#3fb6ff' }),
       K('gateH', 'GATE HOLD', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', 'TRAILS', 'LATCH', 'PRE/POST', { p: 'slow', l: 'SLOW' }, 'INVERT', { p: 'aw', l: 'ALL WET' }],
+    dipInfo: { TRAILS: 'the codec reverb / frozen frame rings out after bypass (off: cut)', LATCH: 'hold BYPASS latches the gate on / off instead of momentary', 'PRE/POST': 'the filter sits after the codec instead of before it',
+      SLOW: 'slower packet speed range', INVERT: 'the filter becomes a band-reject (cuts the band around FREQ instead of keeping it)', 'ALL WET': 'no dry blend, codec only' },
+    trails: { p: 'dp_trails', kill: { 'l.mix': 0 } },
+    stereo: {},
     presets: [{ loss: 0.8, pk: 2, speed: 0.7 }, { filt: 0.7, freq: 0.6, lm: 2, 'l.verb': 0.5 }],
     derive: (p) => {
       const g = p.glob ?? 0.65, f = p.filt ?? 0, c = lmap(p.freq ?? 0.5, 120, 8000), hw = lerp(5, 0.4, f), sl = [0, 1, 3][p.slope ?? 1], sp = (p.speed ?? 0.4) * (p.slow ? 0.4 : 1), pk = p.pk ?? 1;
-      return {
-        'f.hpon': f > 0.02 ? 1 : 0, 'f.lpon': f > 0.02 ? 1 : 0, 'f.hpf': clamp(c / Math.pow(2, hw), 20, 2000), 'f.lpf': clamp(c * Math.pow(2, hw), 500, 20000), 'f.hps': sl, 'f.lps': sl,
+      const inv = !!p.dp_invert, bw = Math.pow(2, Math.max(0.3, 2 * hw)), F = {
+        hpon: f > 0.02 && !inv ? 1 : 0, lpon: f > 0.02 && !inv ? 1 : 0, hpf: clamp(c / Math.pow(2, hw), 20, 2000), lpf: clamp(c * Math.pow(2, hw), 500, 20000), hps: sl, lps: sl,
+        b3type: 0, b3f: c, b3g: inv ? -18 * f : 0, b3q: clamp((Math.sqrt(bw) / (bw - 1)) * [1, 1.6, 3][p.slope ?? 1], 0.1, 18),
+      };
+      const post = !!p.dp_prepost, o = { 'f.on': post ? 0 : 1, 'f2.on': post ? 1 : 0 };
+      for (const k in F) { o['f.' + k] = F[k]; o['f2.' + k] = F[k]; }
+      return Object.assign(o, {
         'l.mix': p.aw ? 1 : 0.35 + 0.65 * g, 'l.loss': c01((p.loss ?? 0.45) * (0.4 + 0.6 * g)), 'l.filter': 0.95,
         'l.mode': [1, 0, 2][p.lm ?? 1], 'l.packets': pk === 1 ? 0 : (0.15 + 0.6 * sp) * (pk === 0 ? 0.7 : 1), 'l.gate': p.gateH ? 0.6 : 0,
-      };
+      });
     },
-    desc: 'Low-bitrate streaming damage: LOSS removes and quantises spectral detail (standard, inverse = only what the codec throws away, or jitter), PACKETS drops (LOSS) or repeats (RPT) frames at SPEED, FILTER + FREQ + SLOPE band-limit the signal, VERB smears it into a codec reverb. GLOBAL is the overall intensity. FREEZE holds the current frame; hold BYPASS to gate.',
+    desc: 'Low-bitrate streaming damage: LOSS removes and quantises spectral detail (standard, inverse = only what the codec throws away, or jitter), PACKETS drops (LOSS) or repeats (RPT) frames at SPEED, FILTER + FREQ + SLOPE band-limit the signal, VERB smears it into a codec reverb. GLOBAL is the overall intensity. FREEZE holds the current frame; hold BYPASS to gate. DIPs: SLOW, ALL WET, PRE/POST (filter after the codec), INVERT (band-reject filter), TRAILS, LATCH (latching gate), MISO / SPREAD (stereo mode).',
   }));
 
   const TAPES = [
@@ -1152,19 +1488,23 @@ export default function register(tz) {
       K('aux', 'AUX HELD', { def: 0, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', 'DRY TYPE', { p: 'nodrop', l: 'DROP BYP' }, 'SNAG BYP', { p: 'nohum', l: 'HUM BYP' }, 'BOUNCE', 'SWEEP'],
+    dipInfo: { 'DRY TYPE': 'stronger dry blend for the SMALL / UNITY settings (35 % / 65 % dry)', 'DROP BYP': 'no volume dropouts', 'SNAG BYP': 'no tape snags / crinkle from FAILURE', 'HUM BYP': 'no hiss / hum',
+      BOUNCE: 'WOW and FLUTTER ramp back and forth by themselves (time in the inspector)', SWEEP: 'the WOW / FLUTTER ramp goes up (off: down)' },
+    ramp: { enable: 'BOUNCE', targets: ['t.wow', 't.flutter'], bounce: () => true, time: 6 },
+    stereo: {},
     presets: [{ model: 0.7, 't.wow': 0.6, fail: 0.4 }, { model: 0.3, nz: 2, 't.saturate': 0.7 }],
     derive: (p) => {
       const T = TAPES[Math.round(c01(p.model ?? 0.15) * 7)], aux = (p.aux ?? 0) > 0.5, ax = p.ax | 0, v = p.vol ?? 0.5;
       const f = aux && ax === 2 ? 1 : p.fail ?? 0.15;
       return {
-        mix: [1, 0.8, 0.5][p.dr | 0],
-        't.level': (v >= 0.5 ? (v - 0.5) * 12 : -30 * (1 - 2 * v)) - 4, 't.age': 0.15 + 0.7 * f, 't.noise': p.nohum ? 0 : [0, 0.22, 0.55][p.nz ?? 1],
+        mix: (p.dp_drytype ? [1, 0.65, 0.35] : [1, 0.8, 0.5])[p.dr | 0],
+        't.level': (v >= 0.5 ? (v - 0.5) * 12 : -30 * (1 - 2 * v)) - 4, 't.age': p.dp_snagbyp ? 0.15 : 0.15 + 0.7 * f, 't.noise': p.nohum ? 0 : [0, 0.22, 0.55][p.nz ?? 1],
         'm.on': aux && ax === 1 ? 0 : 1, 'm.hpf': T.hp, 'm.lpf': T.lp, 'm.b3f': T.mf, 'm.b3g': T.md,
         'sl.on': !p.nodrop && f > 0.3 ? 1 : 0, 'sl.depth': (f - 0.3) * 0.9,
         'ps.on': aux && ax === 0 ? 1 : 0,
       };
     },
-    desc: 'Cassette / VHS machine: WOW and FLUTTER pitch drift, SATURATE magnetic saturation, FAILURE malfunctions (age and volume dropouts), MODEL picks one of eight tape-deck EQ profiles. NOISE adds hiss, DRY blends some clean signal back. Hold AUX for the performance effect: tape STOP, FILTER (model off) or FAIL. DIPs DROP BYP and HUM BYP work.',
+    desc: 'Cassette / VHS machine: WOW and FLUTTER pitch drift, SATURATE magnetic saturation, FAILURE malfunctions (age and volume dropouts), MODEL picks one of eight tape-deck EQ profiles. NOISE adds hiss, DRY blends some clean signal back. Hold AUX for the performance effect: tape STOP, FILTER (model off) or FAIL. DIPs: DROP BYP, SNAG BYP, HUM BYP, DRY TYPE (more dry in the blend), BOUNCE + SWEEP (WOW / FLUTTER ramp by themselves), MISO / SPREAD (stereo mode).',
   }));
 
   // ================================================================== multidirectional delay / multi-modulator
@@ -1186,11 +1526,15 @@ export default function register(tz) {
       K('filt', 'FILTER', { def: 0.6, virtual: true }), K('bal', 'BALANCE', { def: 0.6, virtual: true }), K('depth', 'DEPTH', { def: 0.3, virtual: true }), K('rate', 'RATE', { def: 0.4, virtual: true }),
       TOG('ms', 'MOD', ['SYNC', 'OFF', 'FREE'], { virtual: true, def: 1 }), TOG('mt', 'TYPE', ['VIB', 'TREM', 'FREQ'], { virtual: true }), TOG('sq', 'SEQUENCE', ['RUN', 'OFF', 'ENV'], { virtual: true, def: 1 }),
       FOOT({ label: 'ON · HALF', cb: { tap: 'bypass', hold: (c) => c.toggle('half'), holdMs: 900 } }),
-      FOOT({ label: 'TAP · HOLD', cb: { tap: (c) => tapTime(c, 'fw.x.time', 20, 4200), hold: (c) => { c.ev('fw', 2, 1); c.ev('rv', 2, 1); }, release: (c) => { c.ev('fw', 2, 0); c.ev('rv', 2, 0); } } }),
+      FOOT({ label: 'TAP · HOLD', cb: Object.assign({ tap: (c) => tapTime(c, 'fw.x.time', 20, 4200) }, latchHold((c) => { c.ev('fw', 2, 1); c.ev('rv', 2, 1); }, (c) => { c.ev('fw', 2, 0); c.ev('rv', 2, 0); }, 'cap')) }),
       bypassLed(), LED({ bind: 'tap:fw.x.time', color: '#2f9fd8' }),
       K('half', 'HALF RATE', { def: 0, virtual: true, hidden: true }),
     ],
     dips: [{ p: 'swap', l: 'SWAP' }, 'MISO', { p: 'spread', l: 'SPREAD' }, 'TRAILS', 'LATCH', 'FEED TYPE', 'FADE TYPE', 'MOD TYPE'],
+    dipInfo: { SWAP: 'swaps the BALANCE knob (reverse on the left)', SPREAD: 'wider stereo spread of the echo taps', LATCH: 'hold on the right switch latches the capture on / off',
+      'FEED TYPE': 'saturating feedback: the repeats grit up and regenerate a little harder', 'FADE TYPE': 'softer, darker reverse voice (longer fades, approximated)', 'MOD TYPE': 'the modulation only acts on the forward voice' },
+    trails: { p: 'dp_trails', kill: { 'fw.lvl': 0, 'rv.lvl': 0 } },
+    stereo: { spread: null },
     presets: [{ bal: 1, fb: 0.6, ms: 2, mt: 0, depth: 0.5 }, { bal: 0.5, off: 0.8, sq: 0, ms: 0, mt: 2 }],
     derive: (p) => {
       const half = (p.half ?? 0) > 0.5, t = (p['fw.x.time'] ?? 420) * (half ? 2 : 1), mix = p.mix ?? 0.45, bal = p.swap ? 1 - (p.bal ?? 0.6) : p.bal ?? 0.6, fb = p.fb ?? 0.35;
@@ -1206,9 +1550,16 @@ export default function register(tz) {
       o['fw.x.time'] = clamp(t, 20, 8400);
       o['rv.x.time'] = clamp(t * lmap(p.off ?? 0.5, 0.5, 2), 20, 8400);
       o['fw.x.mode'] = half ? 3 : sq === 0 ? 7 : sq === 2 ? 1 : 0;
+      for (const k of ['fw', 'rv']) {
+        o[k + '.x.sat'] = p.dp_feedtype ? 0.65 : 0.3;
+        if (p.dp_feedtype) o[k + '.x.feedback'] = clamp(fb * 1.12 + 0.03, 0, 1.05);
+      }
+      o['rv.x.age'] = p.dp_fadetype ? 0.5 : 0.3;
+      if (p.dp_fadetype) o['rv.x.tone'] = tone * 0.72;
+      if (p.dp_modtype) Object.assign(o, { 'rv.vb.on': 0, 'rv.tr.on': 0, 'rv.fs.on': 0 });
       return o;
     },
-    desc: 'Forward and reverse echo voices (BALANCE blends them, OFFSET moves the reverse voice\'s time against the forward one) with audio-rate modulation on the echoes: vibrato, tremolo or frequency-shift style ring mod, synced to the delay time or free. SEQUENCE RUN rolls the forward voice across the stereo field. Hold the left switch to halve the sample rate (double time, lo-fi); right: tap tempo, hold = capture and repeat.',
+    desc: 'Forward and reverse echo voices (BALANCE blends them, OFFSET moves the reverse voice\'s time against the forward one) with audio-rate modulation on the echoes: vibrato, tremolo or frequency-shift style ring mod, synced to the delay time or free. SEQUENCE RUN rolls the forward voice across the stereo field. Hold the left switch to halve the sample rate (double time, lo-fi); right: tap tempo, hold = capture and repeat. DIPs: SWAP, SPREAD, TRAILS, LATCH (latching capture), FEED TYPE (saturating feedback), FADE TYPE (softer reverse voice), MOD TYPE (modulate the forward voice only), MISO (stereo mode).',
   }));
 
   add(CB({
@@ -1235,12 +1586,17 @@ export default function register(tz) {
       K('lt', 'L TIME', { def: 0.5, virtual: true }), K('mix', 'MIX', { def: 0.45, virtual: true }), K('rt2', 'R TIME', { def: 0.45, virtual: true }),
       K('lm', 'L MODIFY', { def: 0.3, virtual: true }), K('blend', 'BLEND', { def: 0.5, virtual: true }), K('rm', 'R MODIFY', { def: 0.3, virtual: true }),
       TOG('lfx', 'LEFT', ['VERB', 'PITCH', 'WARP'], { virtual: true }), TOG('route', 'ROUTING', ['L>R', 'L+R', 'R>L'], { virtual: true }), TOG('rfx', 'RIGHT', ['DELAY', 'SYNTH', 'BEND'], { virtual: true }),
-      FOOT({ label: 'LEFT', cb: { tap: (c) => c.toggle('lOn'), hold: (c) => (c.ui.lfx | 0) === 0 && c.ev('lr', 2, 1), release: (c) => (c.ui.lfx | 0) === 0 && c.ev('lr', 2, 0) } }),
-      FOOT({ label: 'RIGHT', cb: { tap: (c) => c.toggle('rOn'), hold: (c) => (c.ui.rfx | 0) === 0 && c.ev('rd', 2, 1), release: (c) => (c.ui.rfx | 0) === 0 && c.ev('rd', 2, 0) } }),
+      FOOT({ label: 'LEFT', cb: Object.assign({ tap: (c) => c.toggle('lOn') }, latchHold((c) => (c.ui.lfx | 0) === 0 && c.ev('lr', 2, 1), (c) => (c.ui.lfx | 0) === 0 && c.ev('lr', 2, 0), 'L')) }),
+      FOOT({ label: 'RIGHT', cb: Object.assign({ tap: (c) => c.toggle('rOn') }, latchHold((c) => (c.ui.rfx | 0) === 0 && c.ev('rd', 2, 1), (c) => (c.ui.rfx | 0) === 0 && c.ev('rd', 2, 0), 'R')) }),
       LED({ bind: 'onparam:lOn', color: '#ff3324' }), LED({ bind: 'onparam:rOn', color: '#ff3324' }),
       K('lOn', 'LEFT ON', { def: 1, virtual: true, hidden: true }), K('rOn', 'RIGHT ON', { def: 1, virtual: true, hidden: true }),
     ],
     dips: ['MISO', 'SPREAD', 'LATCH', { p: 'lswap', l: 'L SWAP' }, { p: 'rswap', l: 'R SWAP' }, 'UNSYNC', 'TRAILS', 'BANK'],
+    dipInfo: { LATCH: 'holds (freeze / infinite repeats) latch on / off instead of momentary', 'L SWAP': 'the left effect takes over both sides', 'R SWAP': 'the right effect takes over both sides',
+      UNSYNC: 'R TIME runs free (off: delay / loop times snap to musical half-steps of 125 ms)', TRAILS: 'both sides ring out after bypass (off: cut)', BANK: 'swaps the two PRESET slots (A <-> B)' },
+    trails: { p: 'dp_trails', kill: { 'lr.lvl': 0, 'lp.lvl': 0, 'lph.lvl': 0, 'lls.lvl': 0, 'rd.lvl': 0, 'rg.lvl': 0, 'rs.lvl': 0, 'rr.lvl': 0, 're.lvl': 0, 'rl.lvl': 0 } },
+    stereo: {},
+    bank: 'dp_bank',
     presets: [{ lfx: 1, lm: 0.2, rfx: 2, rm: 0.8 }, { lfx: 2, lm: 0.8, rfx: 1, rm: 0.2 }],
     derive: (p) => {
       const mix = p.mix ?? 0.45, bl = p.blend ?? 0.5, rtg = p.route | 0;
@@ -1249,6 +1605,7 @@ export default function register(tz) {
       const lt = p.lt ?? 0.5, rt = p.rt2 ?? 0.45, lmB = (p.lm ?? 0.3) > 0.5, rmB = (p.rm ?? 0.3) > 0.5, li = Math.abs((p.lm ?? 0.3) - 0.5) * 2, ri = Math.abs((p.rm ?? 0.3) - 0.5) * 2;
       const wl = L ? up(mix) * Math.min(1, 2 * (rtg === 2 ? bl : 1 - bl)) : 0, wr = R ? up(mix) * Math.min(1, 2 * (rtg === 2 ? 1 - bl : bl)) : 0;
       const lane = (n, on) => (on ? 1 : 0);
+      const snap = (t) => (p.dp_unsync ? t : 125 * Math.pow(2, Math.round(Math.log2(t / 125) * 2) / 2));
       const o = { 'd1.lvl': dn(mix), 'd2.lvl': 2 };
       const lsel = p.rswap ? null : lfx, rsel = p.lswap ? null : rfx;
       o['lr.lvl'] = wl * lane(0, lsel === 0); o['lp.lvl'] = wl * lane(1, lsel === 1); o['lph.lvl'] = wl * lane(2, lsel === 2 && !lmB); o['lls.lvl'] = wl * lane(2, lsel === 2 && lmB);
@@ -1259,8 +1616,8 @@ export default function register(tz) {
         'lp.semis1': lmB ? Math.round(lerp(-12, 12, lt)) : 12, 'lp.semis2': lmB ? 0 : 7, 'lp.level2': lmB ? 0 : 0.3 + 0.5 * li, 'lp.glide': lmB ? 0.05 : 0.6,
         'lph.rate': lt, 'lph.feedback': 0.5 + 0.4 * li, 'lph.stages': Math.round(lerp(2, 12, lt)),
         'lls.loss': 0.3 + 0.6 * li, 'lls.verb': lt * 0.6,
-        'rd.x.time': lmap(rt, 60, 1400), 'rd.x.feedback': 0.25 + 0.6 * ri,
-        'rg.length': lmap(rt, 0.05, 1), 'rg.stretch': ri,
+        'rd.x.time': snap(lmap(rt, 60, 1400)), 'rd.x.feedback': 0.25 + 0.6 * ri,
+        'rg.length': snap(lmap(rt, 50, 1000)) / 1000, 'rg.stretch': ri,
         'rs.attack': 0.05, 'rs.decay': 0.15 + 0.7 * rt, 'rs.filter': 0.3 + 0.6 * ri,
         'rr.manual': rt, 'rr.regen': 0.7 + 0.28 * ri,
         're.rate': rt * 0.6, 're.depth': 0.3 + 0.6 * ri,
@@ -1268,7 +1625,7 @@ export default function register(tz) {
       });
       return o;
     },
-    desc: 'Two channels of oddities. LEFT: reverb (slow-verb / useful ambience), pitch (orchestral swell / pitch repeater) or warp (pinging phaser / spectral modulator). RIGHT: delay (tape echo / grain tumbler), synth (impulse synth / sympathetic resonator) or bend (ensemble expander / tape lite). MODIFY picks variant A (left of noon) or B and its intensity; TIME is mode-specific. Footswitches engage each side, hold for freeze / infinite repeats.',
+    desc: 'Two channels of oddities. LEFT: reverb (slow-verb / useful ambience), pitch (orchestral swell / pitch repeater) or warp (pinging phaser / spectral modulator). RIGHT: delay (tape echo / grain tumbler), synth (impulse synth / sympathetic resonator) or bend (ensemble expander / tape lite). MODIFY picks variant A (left of noon) or B and its intensity; TIME is mode-specific. Footswitches engage each side, hold for freeze / infinite repeats. DIPs: L SWAP / R SWAP, UNSYNC (free R TIME, otherwise musical steps), TRAILS, LATCH (latching holds), BANK (swap preset slots), MISO / SPREAD (stereo mode).',
   }));
 
   // ================================================================== desktop motorised-fader units

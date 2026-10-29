@@ -1037,6 +1037,11 @@ export class Editor {
     const now = performance.now();
     if (this.onTick) this.onTick(now);
     this._tickN = (this._tickN || 0) + 1;
+    // plugin behaviour hooks (ramps, timers …) run for every block, on or off screen, on any tab
+    for (const v of this.views.values()) {
+      const hk = hooksFor(v.block.type);
+      if (hk && hk.status) try { hk.status(v, now); } catch (e) { if (!v._hkErr) { v._hkErr = 1; console.error('status hook', v.block.type, e); } }
+    }
     if (document.hidden || !this.boardView.classList.contains('active')) return;
     // only blocks in view are animated; when zoomed far out (LEDs and screens are tiny) they update less often –
     // every changed pixel of a big zoomed-out board costs a large SVG repaint
