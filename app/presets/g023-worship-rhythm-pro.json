@@ -6,7 +6,7 @@
   "gospel",
   "rhythm"
  ],
- "desc": "Full worship rhythm board: compressor, stacked low-gain drives (off), dual-mic cab, optional chorus, delay and room.",
+ "desc": "Full worship rhythm board: compressor, two low-gain drives (off), a cab with two mics, optional chorus, delay and room.",
  "factory": true,
  "order": 123,
  "blocks": [

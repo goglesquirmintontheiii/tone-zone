@@ -7,7 +7,7 @@
   "noise",
   "lead"
  ],
- "desc": "Whammy, octave fuzz, polyphonic pitch, Superego hold, Polymoon and shimmer.",
+ "desc": "Whammy, octave fuzz, pitch shifter, a Superego for held notes, Polymoon delay and shimmer.",
  "factory": true,
  "order": 214,
  "blocks": [

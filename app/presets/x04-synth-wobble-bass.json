@@ -6,7 +6,7 @@
   "bass",
   "edm"
  ],
- "desc": "Sub / saw bass synth with an LFO wobble, into a bass amp and fridge cab. Works on bass or the low strings of a guitar.",
+ "desc": "A sub or saw bass synth with a wobble, into a bass amp and an 8x10 cab. Works on bass or the low strings of a guitar.",
  "factory": true,
  "order": 33,
  "blocks": [

@@ -7,7 +7,7 @@
   "high-gain",
   "rhythm"
  ],
- "desc": "Boost, gate, 5150, dual-mic cab and the 10-band EQ trick for cut.",
+ "desc": "Boost, gate, 5150, a cab with two mics and a 10-band EQ to help it cut through.",
  "factory": true,
  "order": 163,
  "blocks": [

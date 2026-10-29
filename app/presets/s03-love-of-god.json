@@ -7,7 +7,7 @@
   "instrumental",
   "ibanez"
  ],
- "desc": "Inspired by Steve Vai's singing lead tone: Bad Horsie-style wah, a light compressor, a TS used as a clean boost into a Bogner-style red channel, a mid-forward EQ, wide stereo delay and a big hall. Made for an Ibanez with hot/active pickups – the input gain stays modest so the notes bloom instead of fizz.",
+ "desc": "Inspired by Steve Vai's singing lead tone: Bad Horsie-style wah, light compressor, a Tube Screamer as a clean boost into a Bogner-style red channel, an EQ with more mids, wide stereo delay and a big hall. Made for an Ibanez with hot or active pickups, so the input gain stays low and notes bloom instead of fizzing.",
  "factory": true,
  "order": 12,
  "blocks": [

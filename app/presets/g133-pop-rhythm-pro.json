@@ -6,7 +6,7 @@
   "clean",
   "rhythm"
  ],
- "desc": "Compressor, EQ, trem (off), chorus, delay and plate-ish hall; two mics.",
+ "desc": "Compressor, EQ, tremolo (off), chorus, delay and a plate-like hall, with two mics on the cab.",
  "factory": true,
  "order": 233,
  "blocks": [

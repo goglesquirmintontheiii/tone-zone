@@ -6,7 +6,7 @@
   "clean",
   "lead"
  ],
- "desc": "Comp, drive and boost (off), slapback and reverb for Tele leads.",
+ "desc": "Compressor, drive and boost (off), slapback and reverb for Tele leads.",
  "factory": true,
  "order": 304,
  "blocks": [

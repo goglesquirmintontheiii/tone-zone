@@ -6,7 +6,7 @@
   "clean",
   "lead"
  ],
- "desc": "Opto comp, BD-2, chorus (off), delay and hall.",
+ "desc": "Opto compressor, BD-2, chorus (off), delay and hall.",
  "factory": true,
  "order": 234,
  "blocks": [

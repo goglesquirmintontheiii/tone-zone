@@ -7,7 +7,7 @@
   "clean",
   "lead"
  ],
- "desc": "Stereo volume, soft drive, chorus, long delay, MercuryX and shimmer.",
+ "desc": "Stereo volume pedal, soft drive, chorus, long delay, MercuryX reverb and shimmer.",
  "factory": true,
  "order": 274,
  "blocks": [

@@ -7,7 +7,7 @@
   "noise",
   "lead"
  ],
- "desc": "Fuzz into bit crusher, chiming amp and granular delay.",
+ "desc": "Fuzz into a bit crusher, a chiming amp and a granular delay.",
  "factory": true,
  "order": 212,
  "blocks": [

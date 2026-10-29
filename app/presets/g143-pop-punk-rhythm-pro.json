@@ -7,7 +7,7 @@
   "rock",
   "rhythm"
  ],
- "desc": "Noise suppressor, SD-1, dual-mic 2x12 and a little room.",
+ "desc": "Noise gate, SD-1, a 2x12 with two mics and a little room.",
  "factory": true,
  "order": 243,
  "blocks": [

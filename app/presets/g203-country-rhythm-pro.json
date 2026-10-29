@@ -6,7 +6,7 @@
   "clean",
   "rhythm"
  ],
- "desc": "Compressor, clean boost, dual-mic Twin, tremolo (off) and reverb.",
+ "desc": "Compressor, clean boost, a Twin with two mics, tremolo (off) and reverb.",
  "factory": true,
  "order": 303,
  "blocks": [

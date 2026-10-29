@@ -7,7 +7,7 @@
   "noise",
   "rhythm"
  ],
- "desc": "Slicer, sequenced bit crusher, modulation workstation, reverse delay and freeze.",
+ "desc": "Slicer, a stepped bit crusher, a big modulation pedal, reverse delay and freeze.",
  "factory": true,
  "order": 213,
  "blocks": [

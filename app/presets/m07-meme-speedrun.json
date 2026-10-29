@@ -6,7 +6,7 @@
   "edm",
   "lead"
  ],
- "desc": "Arcade synth into a delay whose repeats keep climbing octaves – frame-perfect.",
+ "desc": "Arcade synth into a delay whose repeats keep climbing octaves. Frame-perfect.",
  "factory": true,
  "order": 46,
  "blocks": [

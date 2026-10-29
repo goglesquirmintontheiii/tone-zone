@@ -6,7 +6,7 @@
   "high-gain",
   "lead"
  ],
- "desc": "Wah, boost, gate, Recto, EQ, optional chorus, delay and reverb.",
+ "desc": "Wah, boost, gate, Rectifier, EQ, optional chorus, delay and reverb.",
  "factory": true,
  "order": 154,
  "blocks": [

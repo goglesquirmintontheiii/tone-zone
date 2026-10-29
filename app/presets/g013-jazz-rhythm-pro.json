@@ -6,7 +6,7 @@
   "clean",
   "rhythm"
  ],
- "desc": "Compressed, mid-scooped clean with optional stereo chorus and a soft stereo room. Two mics on the cab (dynamic + ribbon).",
+ "desc": "Compressed clean with scooped mids, optional stereo chorus and a soft stereo room. Two mics on the cab (dynamic and ribbon).",
  "factory": true,
  "order": 113,
  "blocks": [

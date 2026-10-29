@@ -6,7 +6,7 @@
   "crunch",
   "lead"
  ],
- "desc": "Wah, compressor, TS and RAT for two lead levels, EQ, delay and reverb.",
+ "desc": "Wah, compressor, a Tube Screamer and a RAT for two lead levels, EQ, delay and reverb.",
  "factory": true,
  "order": 144,
  "blocks": [

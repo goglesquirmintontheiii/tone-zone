@@ -9,7 +9,7 @@
   "lead",
   "ambient"
  ],
- "desc": "Four complete rigs behind one selector (A gospel clean, B contemporary ambient, C overdrive, D heavy). Each has its own drives, amp and cab; all of them share the delays and reverbs at the end. Use the selector's footswitches to change chains; MULTI mode stacks them.",
+ "desc": "Four full rigs on one selector: A gospel clean, B modern ambient, C overdrive, D heavy. Each has its own drives, amp and cab, and they share the delays and reverbs at the end. Switch rigs with the selector's footswitches, or use MULTI mode to play several at once.",
  "factory": true,
  "order": 10,
  "blocks": [
