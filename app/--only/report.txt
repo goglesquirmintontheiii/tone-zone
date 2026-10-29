@@ -1,6 +1,0 @@
-bx.ds1                            7.5 dB  peak 0.25  
-
-engine:
-
-
-renderer:
