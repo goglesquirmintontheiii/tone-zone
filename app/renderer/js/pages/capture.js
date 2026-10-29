@@ -136,7 +136,7 @@ function defaultName() {
     const a = p.blocks.find((b) => b.id === S.from), z = p.blocks.find((b) => b.id === S.to);
     if (a && z) n += a === z ? ` (${blockName(a)})` : ` (${blockName(a)} to ${blockName(z)})`;
   }
-  return n.slice(0, 40);
+  return n.slice(0, 60);
 }
 
 // ------------------------------------------------------------------ formatting
@@ -422,7 +422,7 @@ function drawForm() {
   q.appendChild(seg(QUALITY.map(([k, l, n]) => [k, `${l} · ${n} epochs`]), S.quality, (v) => { S.quality = v; }));
   // name + tone
   const nm = row(f, 'Name', 'The Library block gets this name.');
-  const inp = el('input', { type: 'text', value: S.name, maxlength: '40', id: 'capName' }, nm);
+  const inp = el('input', { type: 'text', value: S.name, maxlength: '60', id: 'capName' }, nm);
   inp.oninput = () => { S.name = inp.value; S.nameTouched = true; };
   const tn = row(f, 'Tone', 'Saved in the model file. Optional.');
   const ts = el('select', {}, tn);

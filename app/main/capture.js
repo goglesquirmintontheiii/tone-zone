@@ -202,8 +202,9 @@ async function downloadInput() {
         lastErr = e;
       }
     }
-    ev({ error: `Could not download the training signal (${lastErr && lastErr.message}).` });
-    throw new Error(`Could not download the training signal (${lastErr && lastErr.message}). Download v3_0_0.wav from the Neural Amp Modeler project yourself and choose it with "Choose file".`);
+    const why = lastErr && /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|timed out/.test(lastErr.message) ? 'no connection' : (lastErr && lastErr.message) || 'unknown error';
+    ev({ error: `Could not download the training signal (${why}).` });
+    throw new Error(`Could not download the training signal (${why}). Get v3_0_0.wav from the Neural Amp Modeler project and pick it with the Choose file button.`);
   } finally {
     downloading = false;
   }

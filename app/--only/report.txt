@@ -1,4 +1,4 @@
-bx.gx1000core                     4.3 dB  peak 0.76  
+bx.ds1                            7.5 dB  peak 0.25  
 
 engine:
 
