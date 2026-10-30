@@ -93,8 +93,8 @@ export function renderUpdates(main, ctx) {
   el('div', {}, ver, `<span>Previous</span><b>${dev.prevVersion || '0.7.2'}</b>`);
   field(c, 'Channel');
   seg(c.lastChild.lastChild, [['stable', 'Stable'], ['beta', 'Beta'], ['nightly', 'Nightly']], u.channel, (v) => { u.channel = v; savePi(); ctx.rerender(); });
-  field(c, 'Update through');
-  seg(c.lastChild.lastChild, [['network', 'Pi downloads it (Wi-Fi / Ethernet)'], ['push', 'This app sends it (network or cable)'], ['usb', 'USB stick']], u.via, (v) => { u.via = v; savePi(); ctx.rerender(); }, { 'data-ctl': 'via' });
+  field(c, 'Update through', u.via === 'network' ? 'The Pi downloads it over Wi-Fi or Ethernet.' : u.via === 'push' ? 'This computer downloads it and sends it over the network or the direct cable. The Pi needs no internet.' : 'For places with no network at all.');
+  seg(c.lastChild.lastChild, [['network', 'Pi downloads'], ['push', 'From this app'], ['usb', 'USB stick']], u.via, (v) => { u.via = v; savePi(); ctx.rerender(); }, { 'data-ctl': 'via' });
   if (u.via === 'usb') el('p', { class: 'pi-muted' }, c).textContent = 'Save the update file to a USB stick, plug it into the Pi and press footswitch 1 and 4 together (or tap Update on the screen).';
   const r = el('div', { class: 'pi-opt' }, c);
   el('div', {}, r, '<b>Install automatically</b><small>Only when the Pi has had no guitar signal for 10 minutes. Never during a show.</small>');

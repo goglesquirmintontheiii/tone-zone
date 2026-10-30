@@ -4,7 +4,7 @@ import { el, bus } from '../util.js';
 import { piStore, savePi, resetPi, currentDevice, MODELS, piLog } from './pi-data.js';
 import { select } from './pi-ui.js';
 import { renderDevices } from './pi-devices.js';
-import { renderPresetsSection } from './pi-presets.js';
+import { renderPresetsSection, listPresets } from './pi-presets.js';
 import { renderGpio } from './pi-gpio.js';
 import { renderDisplay } from './pi-display.js';
 import { renderAudio, renderUpdates, renderLogs } from './pi-system.js';
@@ -31,7 +31,8 @@ const ICONS = {
 let page = null;
 let liveTimer = 0;
 
-export function renderPi() {
+export async function renderPi() {
+  await listPresets();
   const v = document.getElementById('view-pi');
   v.innerHTML = '';
   const s = piStore();

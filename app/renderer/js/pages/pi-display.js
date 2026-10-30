@@ -71,8 +71,10 @@ export function renderDisplay(main, ctx) {
   const bezel = el('div', { class: 'pi-bezel' + (sc.id === 'oled' ? ' oled' : '') }, stage);
   const holder = el('div', { class: 'pi-prev-holder' }, bezel);
   const banks = dev ? dev.banks : [];
-  const at = { bank: dev ? dev.bank : 0, slot: dev ? dev.slot : 0, board: true };
-  const bankName = () => (banks[at.bank] ? banks[at.bank].name : 'Board');
+  // start on the board's preset; if it is on the Pi too, show where
+  const at = { bank: 0, slot: -1, board: true };
+  banks.forEach((b, i) => b.presets.forEach((p, j) => { if (p && at.slot < 0 && (p.file === state.file || p.name === state.preset?.name)) Object.assign(at, { bank: i, slot: j }); }));
+  const bankName = () => (at.slot < 0 ? 'Board preset, not on the Pi yet' : banks[at.bank] ? banks[at.bank].name : 'Board');
   const edits = el('div', { class: 'pi-edits' }, pc);
   const scr = mountScreen(holder, {
     w, h, theme: d.theme, preset: state.preset, banks, bankIndex: at.bank, slot: at.slot, bankName: bankName(), cpu: dev ? dev.cpu : 30,
@@ -106,7 +108,7 @@ export function renderDisplay(main, ctx) {
   });
   scr.root.style.filter = `brightness(${0.4 + d.brightness / 166})`;
   const fit = () => {
-    const avail = stage.clientWidth - 40;
+    const avail = stage.clientWidth - 40 - 28 - 4; // stage and bezel padding
     const s = scaleMode === '1' ? 1 : Math.min(1.6, avail / w, 560 / h);
     holder.style.width = w * s + 'px';
     holder.style.height = h * s + 'px';

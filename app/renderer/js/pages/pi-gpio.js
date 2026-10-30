@@ -56,7 +56,7 @@ export function renderGpio(main, ctx) {
     el('td', { class: 'num' }, tr).textContent = pin;
     el('td', { class: 'num' }, tr).textContent = HEADER[pin][1];
     el('td', {}, tr).textContent = a.name;
-    el('td', { class: 'pi-muted' }, tr).textContent = a.type === 'foot' ? name(FOOT_ACTIONS, a.press) + (a.mode === 'momentary' && a.hold !== 'none' ? ', hold: ' + name(FOOT_ACTIONS, a.hold) : '') : 'Shows ' + name(LED_SHOWS, a.show).toLowerCase();
+    el('td', { class: 'pi-muted' }, tr).textContent = a.type === 'foot' ? name(FOOT_ACTIONS, a.press) + (a.mode === 'momentary' && a.hold !== 'none' ? ', hold: ' + name(FOOT_ACTIONS, a.hold) : '') : 'Lights for: ' + name(LED_SHOWS, a.show);
   }
   const bw = el('div', { class: 'pi-opt' }, lc);
   el('div', {}, bw, '<b>Bank change waits for a preset</b><small>Bank up / down only picks the bank. The sound changes when you press A to D (like most floor units).</small>');

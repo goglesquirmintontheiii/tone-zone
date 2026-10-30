@@ -25,8 +25,9 @@ export function mountScreen(host, opts) {
   root.style.height = opts.h + 'px';
   const size = opts.w <= 160 ? 'xs' : Math.min(opts.w, opts.h) <= 260 ? 's' : Math.min(opts.w, opts.h) <= 340 ? 'm' : 'l';
   root.dataset.size = size;
+  if (opts.w < opts.h) root.dataset.portrait = '';
   // one unit drives every size so a 320x240 and a 1280x720 screen keep the same layout
-  root.style.setProperty('--u', Math.max(4, Math.round(Math.min(opts.h / 24, opts.w / 34))) + 'px');
+  root.style.setProperty('--u', Math.max(4, Math.round(Math.min(opts.h / 24, opts.w / (opts.w < opts.h ? 18 : 34)))) + 'px');
   const ui = { view: 'home', block: null, bank: opts.bankIndex || 0, cpu: opts.cpu || 30, tuneT: 0, timer: 0 };
   let chain = [];
   const setPreset = (p, info = {}) => {
@@ -39,7 +40,7 @@ export function mountScreen(host, opts) {
 
   function topBar() {
     const t = el('div', { class: 'pis-top' }, root);
-    el('span', { class: 'pis-slot' }, t).textContent = (opts.bankIndex ?? 0) + 1 + String.fromCharCode(65 + (opts.slot ?? 0));
+    el('span', { class: 'pis-slot' }, t).textContent = opts.slot < 0 ? '--' : (opts.bankIndex ?? 0) + 1 + String.fromCharCode(65 + (opts.slot ?? 0));
     el('span', { class: 'pis-bank' }, t).textContent = opts.bankName || 'Bank 1';
     el('span', { class: 'pis-sp' }, t);
     const m = el('span', { class: 'pis-meters' }, t, '<i data-m="in"><b></b></i><i data-m="out"><b></b></i>');
@@ -76,6 +77,16 @@ export function mountScreen(host, opts) {
       tile.onclick = () => { ui.view = 'edit'; ui.block = b.id; draw(); };
     });
     if (chain.length > max) el('div', { class: 'pis-more' }, tiles).textContent = '+' + (chain.length - max);
+    // the current bank's four presets, laid out like the footswitches under the screen
+    const bk = (opts.banks || [])[opts.bankIndex ?? 0];
+    if (bk && size !== 's') {
+      const fs = el('div', { class: 'pis-fs' }, body);
+      bk.presets.forEach((p, i) => {
+        const b = el('button', { class: 'pis-btn' + (i === (opts.slot ?? 0) ? ' on' : '') + (p ? '' : ' empty'), 'data-fs': i }, fs);
+        b.innerHTML = `<b>${String.fromCharCode(65 + i)}</b><span>${p ? esc(p.name) : '-'}</span>`;
+        if (p) b.onclick = () => opts.onLoad && opts.onLoad(opts.bankIndex ?? 0, i);
+      });
+    }
   }
 
   function edit() {
@@ -155,7 +166,7 @@ export function mountScreen(host, opts) {
   function oled() {
     root.innerHTML = '';
     const b = el('div', { class: 'pis-oled' }, root);
-    el('div', { class: 'o1' }, b).textContent = ((opts.bankIndex ?? 0) + 1) + String.fromCharCode(65 + (opts.slot ?? 0)) + ' ' + (ui.preset ? ui.preset.name : '').toUpperCase().slice(0, 12);
+    el('div', { class: 'o1' }, b).textContent = (opts.slot < 0 ? '--' : ((opts.bankIndex ?? 0) + 1) + String.fromCharCode(65 + (opts.slot ?? 0))) + ' ' + (ui.preset ? ui.preset.name : '').toUpperCase().slice(0, 12);
     el('div', { class: 'o2' }, b).textContent = (opts.bankName || '').slice(0, 16);
     el('div', { class: 'o3', 'data-cpu': '' }, b).textContent = 'CPU ' + Math.round(ui.cpu) + '%  ' + chain.filter((x) => x.on).length + '/' + chain.length + ' ON';
   }

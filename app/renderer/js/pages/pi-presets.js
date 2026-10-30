@@ -1,12 +1,15 @@
 // Pi tab: presets on the device (banks, push, switching) and the Pi compatibility check.
 import { el, esc, toast } from '../util.js';
 import { state } from '../state.js';
-import { MODELS, PI_BUDGET, checkPreset, savePi, piLog } from './pi-data.js';
+import { MODELS, PI_BUDGET, checkPreset, savePi, piLog, piStore } from './pi-data.js';
 import { card, meter, toggle, select, demoNote, fakeProgress } from './pi-ui.js';
 
 let presetList = null;
 export async function listPresets() {
   if (!presetList) presetList = (await window.tz.presets.list().catch(() => [])) || [];
+  // the demo banks only know file names: show the real preset names
+  const byFile = new Map(presetList.map((q) => [q.file, q.name]));
+  for (const d of piStore().devices) for (const b of d.banks) b.presets.forEach((p) => p && byFile.has(p.file) && (p.name = byFile.get(p.file)));
   return presetList;
 }
 export async function loadPresetFile(file) {
@@ -130,6 +133,26 @@ function renderCompat(parent, dev) {
     const p = await loadPresetFile(pick.value);
     if (!p) return (out.textContent = 'Could not load that preset.');
     showResult(out, p, dev);
+  };
+  const all = el('button', { class: 'btn', 'data-act': 'check-all' }, row, 'Check all on this Pi');
+  all.onclick = async () => {
+    out.innerHTML = '';
+    const t = el('table', { class: 'pi-table', 'data-checkall': '' }, out);
+    t.innerHTML = '<thead><tr><th>Slot</th><th>Preset</th><th>Pi 4</th><th>Pi 5</th></tr></thead>';
+    const tb = el('tbody', {}, t);
+    for (const [bi, bk] of dev.banks.entries()) {
+      for (const [si, p] of bk.presets.entries()) {
+        if (!p) continue;
+        const pr = await loadPresetFile(p.file);
+        if (!pr) continue;
+        const r = checkPreset(pr);
+        const tr = el('tr', {}, tb);
+        el('td', { class: 'num' }, tr).textContent = bi + 1 + slotName(si);
+        el('td', {}, tr).textContent = p.name;
+        for (const m of ['pi4', 'pi5']) el('td', { class: 'num' }, tr, `<span class="pi-chip ${kindOf(r[m])}">${Math.round(r[m])}%</span>`);
+      }
+    }
+    if (!tb.children.length) el('div', { class: 'pi-empty' }, out).textContent = 'No presets on this Pi yet.';
   };
   if (state.preset) showResult(out, state.preset, dev);
   demoNote(c, 'Estimates use the catalog block costs and rough Pi factors. A real Pi measures the preset when you push it.');
