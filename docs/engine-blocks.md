@@ -528,9 +528,9 @@ Neural Amp Modeler (A1 / A2 / LSTM) player.
 
 ## `patch`
 
-Pedal Factory circuit: engine algorithms and small native parts wired as a graph (audio in chunks of up to 64 samples, control wires evaluated per chunk). Native parts: sum, ain, aout, vca, filter, shaper, mixer, xfade, switch, pol, fb (feedback loop, the only way audio may loop), bypass, param, const, lfo, env, seq, scale, math, smooth, sh, and, or, xor, not, toggle, cmp, window. Event arg / 100 picks the circuit (tap tempo group).
+Pedal Factory circuit: engine algorithms and small native parts wired as a graph (audio in chunks of up to 64 samples, control wires evaluated per chunk). Native parts: sum, ain, aout, vca, filter, shaper, mixer, xfade, switch, pol, fb (feedback loop, the only way audio may loop), bypass, param (a circuit input; its optional `in` slot, when wired, wins over the param), const, lfo, env, seq, scale, math, smooth, sh, and, or, xor, not, toggle, cmp, window, add, sub, mul, div (divide by zero gives 0), cdelay (control delay: `in` comes out `time` seconds later, up to 10 s), cout (a circuit output, reported in the status as `cv[idx]`). Control values are floats from -255 to 255. Event arg / 100 picks the circuit (tap tempo group).
 
-**opts:** `opts: {params: [{name, def, min, max}], nodes: [{k: 'algo' | native kind, algo, opts, params, idx, pi, tap, slots: [{p, def, lo, hi, log, int, tab}]}], edges: [[from, fromPort, to, toPort, isControl]], outs: [[aoutIdx, ch]], mix, mixDef}`. The params listed below are only the ones a patch with no options has (none); a real patch exposes `opts.params` (the pedal's circuit inputs, `<circuit>.<input>` and `<circuit>.on`).
+**opts:** `opts: {params: [{name, def, min, max}], nodes: [{k: 'algo' | native kind, algo, opts, params, idx, pi, tap, slots: [{p, def, lo, hi, log, int, tab, raw, xlo, xhi}]}], edges: [[from, fromPort, to, toPort, isControl]], outs: [[aoutIdx, ch]], mix, mixDef}`. A normal slot reads its input span `xlo..xhi` (default 0..1) as 0..1 and sweeps `lo..hi`; a `raw` slot takes the value as it is (clamped to `lo..hi`). The params listed below are only the ones a patch with no options has (none); a real patch exposes `opts.params` (the pedal's circuit inputs, `<circuit>.<input>` and `<circuit>.on`).
 
 | param | default | range |
 |---|---|---|

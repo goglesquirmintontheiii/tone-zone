@@ -258,13 +258,6 @@ export function drawGraph(ctx, G, o) {
       ctx.font = '10px Inter, system-ui, sans-serif';
       ctx.fillText(clip(ctx, ctlSummary(n), b.w - 44), b.x + 9, b.y + HEAD + ROW / 2 + 2);
     }
-    if (pt.io === 'cout' && detail && n.t === 'anaout') {
-      ctx.fillStyle = C.muted;
-      ctx.font = '10px Inter, system-ui, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(`${+(n.min ?? 0).toFixed(2)} to ${+(n.max ?? 1).toFixed(2)}`, b.x + b.w - 8, b.y + HEAD + ROW / 2 + 2);
-      ctx.textAlign = 'left';
-    }
   }
   // a wire being dragged
   if (o.drag) {

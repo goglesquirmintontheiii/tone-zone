@@ -866,7 +866,7 @@ const S = process.env.SHOTS || '/tmp';
   // old designs: 'knob' control inputs load as analog inputs (2 way switches as binary), still wired
   const mig2 = await win.evaluate(async () => {
     const F = await import('./js/pages/factory-circuit.js');
-    const d = window.__tzFactory.template('blank');
+    const d = window.__tzFactory.template('delay');
     const inst = d.circuit.insts[0];
     const ctlNodes = inst.graph.nodes.filter((n) => n.t === 'analog' || n.t === 'binary');
     // make it look like a v0.7 design

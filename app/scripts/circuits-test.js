@@ -419,6 +419,26 @@ const S = process.env.SHOTS || '/tmp';
   const m1 = await renderBlock(mathD.d, { 'u.k': 455 / 510 }), m2 = await renderBlock(mathD.d, { 'u.k': 455.5 / 510 });
   const rm1 = segRms(readWav(m1.file).chans[0], 0.2, 10), rm2 = segRms(readWav(m2.file).chans[0], 0.2, 10);
   ok(rm1 > 0.01 && Math.abs(rm1 / rm2 - 2) < 0.15, `200 * -1 + 201 opens the VCA, 200.5 gives half (${rm1.toFixed(4)} / ${rm2.toFixed(4)})`);
+  // the math circuit in the editor, with an output and the signal key (screenshot)
+  await win.evaluate(async (d) => {
+    const m = await import('./js/pages/circuit-editor.js');
+    const P = window.__ct.P;
+    const g = JSON.parse(JSON.stringify(d.circuit.insts[0].graph));
+    const o = P.newNode('anaout', 0, 0, { name: 'Gain out' }), dl = P.newNode('cdelay'), b = P.newNode('binary', 0, 0, { name: 'Hold' }), bo = P.newNode('binout');
+    g.nodes.push(o, dl, b, bo);
+    g.wires.push({ id: 'x1', a: { n: 'add', p: 'cv' }, b: { n: dl.id, p: '@in' } }, { id: 'x2', a: { n: dl.id, p: 'cv' }, b: { n: o.id, p: '@in' } }, { id: 'x3', a: { n: b.id, p: 'cv' }, b: { n: bo.id, p: '@in' } });
+    const pos = { in: [40, 60], A: [40, 200], mul: [240, 200], add: [440, 200], vca: [640, 60], out: [860, 60] };
+    pos[dl.id] = [640, 260]; pos[o.id] = [860, 260]; pos[b.id] = [40, 360]; pos[bo.id] = [240, 360];
+    for (const n of g.nodes) if (pos[n.id]) [n.x, n.y] = pos[n.id];
+    const E = m.openCircuitEditor({ host: document.querySelector('.fz-root'), rec: { name: 'Math and delay', graph: g }, onSave: async (r) => r });
+    await new Promise((r) => setTimeout(r, 400));
+    E.fit();
+    E.sel = new Set(['A']);
+    E.paintInsp();
+  }, mathD.d);
+  await win.waitForTimeout(400);
+  await win.screenshot({ path: path.join(S, 'circuits-signals-editor.png') });
+  await win.evaluate(() => window.__tzCircuits.editor().close(true));
   // delay: a constant reaches the VCA a second later
   const delD = await win.evaluate(() => {
     const { N, W, pedal, G: g0, F } = window.__ct;

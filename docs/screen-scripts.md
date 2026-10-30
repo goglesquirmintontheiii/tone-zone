@@ -214,6 +214,30 @@ Signals come from the circuit in the wiring diagram. in and out are the input an
 | `setInput(name, value)` | Write a circuit input, like setInput("delay.time", 350). Goes through the control wired to it. |
 | `signals()` | Names of the signals this pedal has. |
 
+### The screen's own inputs and outputs
+
+A screen can have up to 16 inputs and 16 outputs, each analog (a number from -255 to 255) or binary (0 or 1).
+Add them in the screen's inspector (Inputs and outputs) or with the +in and +out buttons on the screen's box in
+the wiring diagram, then wire them there: a circuit output (Analog output or Binary output part) into a screen
+input, a screen output into circuit inputs (the value goes in as it is, kept within the input's range).
+
+| Call | What it does |
+| --- | --- |
+| `input(n)` | The value wired into input n (1 for the first), or by name: input("Level"). 0 when nothing is wired or the pedal is not playing. |
+| `output(n, value)` | Set output n (or by name): output("Set", 120). Binary outputs take true / false or 0 / 1. |
+| `outputValue(n)` | What output n is set to now. |
+| `ports()` | The names: {ins = {...}, outs = {...}}. |
+
+```lua
+-- doubles what a circuit puts out and sends it on to another circuit
+function draw()
+  clear()
+  local v = input("Level")
+  output(1, v * 2)
+  text(string.format("%.2f", v), 2, 2)
+end
+```
+
 ## Time and memory
 
 | Call | What it does |
@@ -252,6 +276,8 @@ screen runs (board, test mode, factory preview, editor preview) gives the same i
 | `getSignal(name)` | a signal value: `in`, `out`, `inDb`, `outDb`, `env`, `on`, `lfo`, `tempo`, `<stage>.<key>` |
 | `setInput(name, v)` | write a circuit input (today through the control wired to it) |
 | `signals()` | names a script can read |
+| `screenInput(n)` / `screenOutput(n, v)` | this screen's own inputs and outputs (`io.cid` says which screen); an input reads the block status `cv[idx]` of the circuit output wired to it, an output sets the block param `u.s.<screen id>.<n - 1>` that drives the circuit inputs wired to it |
+| `screenOutputValue(n)` / `screenPorts()` | an output's current value, and the port names and kinds |
 
 `<stage>.<key>` is a stage of the design's circuit, by its id or type (`delay.time`, `overdrive.gain`): the
 block's live status for that stage first, then the value the circuit runs with.
