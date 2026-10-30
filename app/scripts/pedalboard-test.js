@@ -56,6 +56,11 @@ const S = process.argv[2] || '/tmp';
   const nameShown = await win.evaluate((id) => [...document.querySelectorAll(`[data-node="${id}"] text`)].some((t) => t.textContent === 'MAIN BOARD'), r.pb);
   ok(nameShown, 'name shown above the board');
   await win.screenshot({ path: S + '/pedalboard.png' });
+  for (const st of [1, 2]) {
+    await win.evaluate(async ({ id, st }) => { (await import('./js/state.js')).setParam(id, 'style', st); }, { id: r.pb, st });
+    await win.waitForTimeout(300);
+    await win.screenshot({ path: S + '/pedalboard-style' + st + '.png' });
+  }
   // all six sizes
   await win.evaluate(async () => {
     const st = await import('./js/state.js');

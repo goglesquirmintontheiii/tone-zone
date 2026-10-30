@@ -28,10 +28,13 @@ export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows]) =>
     ports: { ins: [], outs: [] },
     recolor: true,
     recolorSwatches: ['#1d1e22', '#4a4f57', '#9aa0a8', '#d9dbde', '#b8964f', '#8e2a26', '#2b4a7a', '#2f5a3e'],
-    rerenderOn: ['jacket', 'velcro', 'name'],
+    rerenderOn: ['jacket', 'velcro', 'name', 'style', 'screwCol'],
     alwaysOn: true,
     cost: 0,
-    controls: [SEL('velcro', 'VELCRO', ['BLACK', 'WHITE', 'SEMI-CLEAR'], { virtual: true, hidden: true })],
+    controls: [
+      SEL('style', 'MOUNTING', ['FULL VELCRO', 'VELCRO STRIPS', 'SCREWS'], { virtual: true, hidden: true }),
+      SEL('velcro', 'VELCRO', ['BLACK', 'WHITE', 'SEMI-CLEAR'], { virtual: true, hidden: true }),
+    ],
     desc: `Holds ${cols * rows} regular pedals (${cols} x ${rows}). Drop pedals on it to snap them into place; drag the frame to move the whole board. Right-click to rename it or change the frame colour; the velcro colour is in the inspector.`,
   })
 );

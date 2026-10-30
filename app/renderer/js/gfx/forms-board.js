@@ -10,6 +10,16 @@ const VELCRO = [
   { fill: 'url(#p-velcro-clear)', edge: 'rgba(255,255,255,0.35)' },
 ];
 
+// a recolourable pan head screw with a Phillips cross
+function screw(g, cx, cy, r, col) {
+  svg('circle', { cx: cx + 0.6, cy: cy + 1, r: r + 0.4, fill: '#000', opacity: 0.45 }, g);
+  svg('circle', { cx, cy, r, fill: shade(col, -0.35) }, g);
+  svg('circle', { cx: cx - r * 0.12, cy: cy - r * 0.12, r: r * 0.86, fill: col }, g);
+  svg('circle', { cx: cx - r * 0.3, cy: cy - r * 0.3, r: r * 0.4, fill: '#fff', opacity: 0.35 }, g);
+  const k = r * 0.55;
+  svg('path', { d: `M${cx - k} ${cy}H${cx + k}M${cx} ${cy - k}V${cy + k}`, stroke: shade(col, -0.6), 'stroke-width': Math.max(0.8, r * 0.22), 'stroke-linecap': 'round' }, g);
+}
+
 export function installBoardForms(registerForm) {
   registerForm('pedalboard', (ctx, def) => {
     const g = ctx.g;
@@ -19,6 +29,8 @@ export function installBoardForms(registerForm) {
     const w = cols * S.w + S.padX * 2, h = rows * S.h + S.padY * 2;
     const frame = p.jacket || '#1d1e22';
     const vel = VELCRO[Math.round(p.velcro || 0)] || VELCRO[0];
+    const style = Math.round(p.style || 0); // 0 full velcro, 1 strips per spot, 2 screws
+    const screwCol = p.screwCol || '#c9ced5';
     softShadow(g, { w, h, rx: 14, blur: 14, opacity: 0.6, dy: 14 });
     // frame
     svg('rect', { width: w, height: h, rx: 14, fill: shade(frame, -0.35) }, g);
@@ -42,9 +54,19 @@ export function installBoardForms(registerForm) {
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3, fill: shade(frame, 0.08) }, rail);
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3, fill: 'url(#p-brushed)' }, rail);
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: 1.6, fill: '#fff', opacity: 0.3 }, rail);
-      // velcro leaves about 6% of bare rail on every side
-      const rw = w - ix * 2 + 4, mx = rw * 0.06, my = sh * 0.06;
-      svg('rect', { x: ix - 2 + mx, y: sy + my, width: rw - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
+      const rw = w - ix * 2 + 4, my = sh * 0.09;
+      if (style === 0) {
+        // full velcro: 4% bare rail at the ends, 9% above and below
+        const mx = rw * 0.04;
+        svg('rect', { x: ix - 2 + mx, y: sy + my, width: rw - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
+      } else if (style === 1) {
+        // one strip per pedal spot
+        const mx = S.w * 0.04;
+        for (let c = 0; c < cols; c++) svg('rect', { x: S.padX + c * S.w + mx, y: sy + my, width: S.w - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
+      } else {
+        // no velcro: two screws per spot on each rail, four per pedal
+        for (let c = 0; c < cols; c++) for (const f of [0.22, 0.78]) screw(rail, S.padX + c * S.w + S.w * f, sy + sh / 2, Math.min(5.5, sh * 0.16), screwCol);
+      }
     }
     // side caps over the rail ends, with screws
     for (const x of [2, w - S.padX + 10]) {
