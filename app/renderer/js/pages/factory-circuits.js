@@ -6,7 +6,7 @@ import { PARTS, emptyGraph, clone, newNode, graphCat } from './circuit-parts.js'
 import { loadCircuits, allCircuits, circuitRec, thumbOf, saveCircuit, deleteCircuit, filterCircuits, allTags, allCats, catOf, tagsOf } from './circuit-library.js';
 import { openCircuitEditor, editorOpen, currentEditor } from './circuit-editor.js';
 import { mountDiagram } from './wiring-diagram.js';
-import { addInstance, removeInstance, setInstanceGraph, seriesWires, instInputs, instOf, mapTo, targetInfo, mappingsOf, uid, autoMap, isV3, syncStages } from './factory-circuit.js';
+import { addInstance, removeInstance, setInstanceGraph, seriesWires, instInputs, instOf, mapTo, targetInfo, mappingsOf, uid, autoMap, isV3, syncStages, screenIO, SCREEN_PORTS } from './factory-circuit.js';
 import { startSolo, updateSolo, stopSolo, soloRunning } from './factory-play.js';
 
 let api = null; // from factory.js: design, commit, refresh, select, selected, place, name, setTab, stopTest
@@ -47,6 +47,16 @@ export function initCircuitUI(midEl, a) {
       api.refresh();
     },
     showList: () => api.setTab('circuit'),
+    addScreenPort: (cid, dir) => {
+      const c = api.design().ctls.find((x) => x.id === cid);
+      if (!c) return;
+      const sio = screenIO(c);
+      const list = dir === 'in' ? sio.ins : sio.outs;
+      if (list.length >= SCREEN_PORTS) return;
+      list.push({ id: uid('p'), name: (dir === 'in' ? 'In ' : 'Out ') + (list.length + 1), sig: 'n' });
+      api.commit();
+      api.refresh();
+    },
     wireInRow: () => {
       seriesWires(api.design());
       api.commit();
@@ -120,7 +130,7 @@ function openEditor(rec, onSaved, title) {
 }
 export function openNew() {
   const g = emptyGraph();
-  g.nodes.push(newNode('knob', 40, 240, { name: 'Level', def: 0.5 }));
+  g.nodes.push(newNode('analog', 40, 240, { name: 'Level', def: 0.5 }));
   return openEditor({ name: '', desc: '', tags: [], graph: g }, null, 'New circuit');
 }
 export function editLibrary(id) {

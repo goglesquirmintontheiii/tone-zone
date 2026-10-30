@@ -86,6 +86,7 @@ export function openScreenEditor(o) {
 
   // ---- the simulated pedal
   const { io, sim } = simIO(D, { paramsFor, log: null });
+  io.cid = o.id; // the screen's own inputs and outputs
   const host = makeHost(D, io);
   const simRows = [];
   const tp = panes.test;

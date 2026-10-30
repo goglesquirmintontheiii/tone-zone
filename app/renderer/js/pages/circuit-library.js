@@ -3,7 +3,7 @@
 import { bus } from '../util.js';
 import { BUILTIN } from './circuit-templates.js';
 import { renderThumb } from './circuit-render.js';
-import { graphCat, graphNames, clone } from './circuit-parts.js';
+import { graphCat, graphNames, clone, migrateGraph } from './circuit-parts.js';
 
 const user = new Map();
 const thumbs = new Map();
@@ -22,7 +22,11 @@ export function loadCircuits() {
     } catch (e) {
       console.warn('circuits', e);
     }
-    for (const r of list) if (r && r.id && r.graph) user.set(r.id, r);
+    for (const r of list)
+      if (r && r.id && r.graph) {
+        migrateGraph(r.graph); // old 'knob' inputs become analog / binary inputs
+        user.set(r.id, r);
+      }
     bus.emit('circuits');
   })();
   return loading;

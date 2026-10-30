@@ -8,8 +8,13 @@
 //   getSignal(name)        -> number (or string for a few) or undefined
 //   setInput(name, v)      -> true when something took the value
 //   signals()              -> names a script can read
+//   screenInput(i)         -> the value wired into this screen's input i (1-based number or its name)
+//   screenOutput(i, v)     -> set this screen's output i (drives the circuit inputs wired to it)
+//   screenPorts()          -> { ins: [{name, sig}], outs: [{name, sig}] }
 // New circuit signals plug in with addSignalSource() / addInputSink() below, without touching this file.
+// io.cid is the id of the screen the host runs (for its inputs and outputs).
 import { clamp } from '../util.js';
+import { circuitOutputs, outKey } from '../pages/factory-circuit.js';
 
 const sources = [];
 const sinks = [];
@@ -275,6 +280,49 @@ export function makeHost(design, io) {
       if (e.kind === 'switch') return host.setControl(e, Math.round(invertMap(m, +v || 0) * (e.ways - 1)) + 1);
       return host.setControl(e, !!v && v !== 0);
     },
+    // ---- this screen's own inputs and outputs (wired in the factory's wiring diagram)
+    screenPorts() {
+      const c = screenCtl();
+      const sio = (c && c.sio) || { ins: [], outs: [] };
+      const m = (p, i, d) => ({ name: p.name || d + ' ' + (i + 1), sig: p.sig === 'b' ? 'b' : 'n' });
+      return { ins: (sio.ins || []).map((p, i) => m(p, i, 'In')), outs: (sio.outs || []).map((p, i) => m(p, i, 'Out')) };
+    },
+    screenInput(which) {
+      const c = screenCtl();
+      const list = (c && c.sio && c.sio.ins) || [];
+      const i = portIndex(list, which, 'In');
+      const p = list[i];
+      if (!p) return 0;
+      const st = io.blockStatus && io.blockStatus();
+      let v;
+      if (p.from && st && Array.isArray(st.cv)) {
+        const o = outIndex().get(outKey(p.from));
+        if (o !== undefined) v = st.cv[o];
+      }
+      if (typeof v !== 'number') v = 0;
+      return p.sig === 'b' ? (v > 0.5 ? 1 : 0) : clamp(v, -255, 255);
+    },
+    screenOutput(which, v) {
+      const c = screenCtl();
+      const list = (c && c.sio && c.sio.outs) || [];
+      const i = portIndex(list, which, 'Out');
+      const p = list[i];
+      if (!p) return false;
+      const nv = p.sig === 'b' ? (v === true || (typeof v === 'number' && v > 0.5) ? 1 : 0) : clamp(+v || 0, -255, 255);
+      const key = 'u.s.' + c.id + '.' + i;
+      const cur = io.get(key);
+      if (cur !== undefined && Math.abs((+cur || 0) - nv) < 1e-7) return true;
+      io.set(key, nv, { raw: true, p: key, id: null });
+      paramCache = null;
+      return true;
+    },
+    screenOutputValue(which) {
+      const c = screenCtl();
+      const list = (c && c.sio && c.sio.outs) || [];
+      const i = portIndex(list, which, 'Out');
+      if (!list[i]) return 0;
+      return +(io.get('u.s.' + c.id + '.' + i) ?? 0) || 0;
+    },
     // per frame: levels, envelope and a fresh param cache
     beginFrame(now) {
       paramCache = null;
@@ -296,6 +344,22 @@ export function makeHost(design, io) {
     saveStore: (o) => io.storeSet && io.storeSet(o),
     log: (m) => io.log && io.log(m),
   };
+  // the screen this host belongs to, and where circuit outputs sit in the status
+  function screenCtl() {
+    const id = io.cid;
+    return id ? ((design && design.ctls) || []).find((x) => x.id === id) || null : null;
+  }
+  let outIdx = null;
+  function outIndex() {
+    if (!outIdx) outIdx = new Map(circuitOutputs(design || { circuit: null }).map((o) => [o.key, o.idx]));
+    return outIdx;
+  }
+  function portIndex(list, which, word) {
+    if (typeof which === 'number') return Math.round(which) - 1;
+    const k = lc(which);
+    const i = list.findIndex((p, n) => lc(p.name || word + ' ' + (n + 1)) === k);
+    return i >= 0 ? i : /^\d+$/.test(k) ? +k - 1 : -1;
+  }
   // an LFO phase from a stage's rate (approximate, from the rate the circuit runs with)
   function lfo(s) {
     if (!s) return 0;

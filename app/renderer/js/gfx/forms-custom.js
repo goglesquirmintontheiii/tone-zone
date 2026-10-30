@@ -30,6 +30,11 @@ function customForm(ctx, def) {
     const j = D.jacks.find((x) => x.id === c._jack);
     if (j) jacks.push({ key: 'ic' + i, dir: 'in', port: 'c' + i, label: '', kind: 'ctrl', ...at(j) });
   });
+  // EXP / footswitch jacks driven by a circuit output (factory-circuit.js def.ctrl.outs)
+  (def.ctrl?.outs || []).forEach((c, i) => {
+    const j = D.jacks.find((x) => x.id === c._jack);
+    if (j) jacks.push({ key: 'oc' + i, dir: 'out', port: 'c' + i, label: '', kind: 'ctrl', ...at(j) });
+  });
   return { w: W * S, h: H * S, theme: { text: D.labels.color, jackLabels: false }, jacks };
 }
 

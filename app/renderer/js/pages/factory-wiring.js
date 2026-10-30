@@ -3,7 +3,7 @@
 // the highest, lowest or average). DIP switches wire each switch on its own, LEDs pick what they show,
 // expression jacks move a control or drive circuit inputs. The model lives in factory-circuit.js.
 import { el } from '../util.js';
-import { CIRCUITS, TAPER_NAMES, COMBINES, targetsFor, targetInfo, mapTo, targetLabel, mapValue, mappingsOf, driversOf, addMapping, removeMapping, instOf, isV3 } from './factory-circuit.js';
+import { CIRCUITS, TAPER_NAMES, COMBINES, targetsFor, targetInfo, mapTo, targetLabel, mapValue, mappingsOf, driversOf, addMapping, removeMapping, instOf, isV3, circuitOutputs, outKey, screenIO, SCREEN_PORTS, jackIsOut, uid } from './factory-circuit.js';
 import { hasTap } from './circuit-parts.js';
 import { renderCircuitTab, useCircuit } from './factory-circuits.js';
 import { circuitRec } from './circuit-library.js';
@@ -42,7 +42,7 @@ function stepRange(C, to, c) {
 // ------------------------------------------------------------------ inspector: wiring for one control
 export function wiringSection(host, D, c, H) {
   const C = D.circuit;
-  if (c.kind === 'screen') return;
+  if (c.kind === 'screen') return screenSection(host, D, c, H);
   if (c.kind === 'led') return ledSection(host, D, c, H);
   if (c.kind === 'dip') return dipSection(host, D, c, H);
   const s = H.sec(host, 'Controls');
@@ -173,15 +173,100 @@ function ledSection(host, D, c, H) {
   for (const o of D.ctls) if (o.kind !== 'led' && o.kind !== 'screen' && o.kind !== 'dip' && o.kind !== 'xy' && o.id !== c.id) opts.push(['ctl:' + o.id, H.name(o) + ' is on / up']);
   const C = D.circuit;
   if (isV3(C)) for (const i of C.insts) if (hasTap(i.graph)) opts.push(['tap:' + i.id, i.name + ' tempo (blinks)']);
+  // circuit outputs: binary lights it, analog sets how bright
+  if (isV3(C)) for (const o of circuitOutputs(D)) opts.push(['cv:' + o.key, o.name + (o.sig === 'b' ? ' is on' : ' (brightness)')]);
   H.selectField(s, 'Shows', opts, c.bind || 'on', (v) => (c.bind = v));
+  if ((c.bind || '').startsWith('cv:')) el('p', { class: 'fz-note' }, s).textContent = 'Lit by a circuit output, in Test mode and on the board. Wire outputs to LEDs in the wiring diagram too.';
+}
+
+// ------------------------------------------------------------------ screens: inputs and outputs for the script
+function screenSection(host, D, c, H) {
+  const C = D.circuit;
+  const sio = screenIO(c);
+  const s = H.sec(host, 'Inputs and outputs');
+  s.classList.add('fz-wiring');
+  el('p', { class: 'fz-note fz-note-top' }, s).textContent = `Up to ${SCREEN_PORTS} inputs and ${SCREEN_PORTS} outputs. The script reads input(1), input("name") and sets output(1, value). Wire them in the wiring diagram.`;
+  const outs = isV3(C) ? circuitOutputs(D) : [];
+  const SIGS = [['n', 'Analog'], ['b', 'Binary']];
+  const portRow = (list, i, dir) => {
+    const p = list[i];
+    const box = el('div', { class: 'fz-mapbox', ['data-s' + dir]: i }, s);
+    const nm = H.textField(box, (dir === 'in' ? 'Input ' : 'Output ') + (i + 1), p.name, (v) => (p.name = v.slice(0, 16)));
+    const x = el('button', { class: 'fz-lbtn fz-maprm', title: 'Remove it' }, nm.parentNode, '<i class="ic ic-x"></i>');
+    x.onclick = () => {
+      list.splice(i, 1);
+      H.changed(false);
+      H.rerender(false);
+    };
+    H.selectField(box, 'Signal', SIGS, p.sig === 'b' ? 'b' : 'n', (v) => (p.sig = v));
+    if (dir === 'in') {
+      H.selectField(box, 'Reads', [['', 'Nothing'], ...outs.map((o) => [o.key, o.name])], outKey(p.from), (v) => {
+        const o = outs.find((x2) => x2.key === v);
+        p.from = o ? { n: o.inst.id, p: o.n.id } : null;
+      });
+    } else {
+      const all = targetsFor(C, 'knob').filter((t) => t[0] && t[2] && !t[2].tap && !t[2].extra);
+      (p.maps || []).forEach((m, k) => {
+        const sel = H.selectField(box, k ? 'And drives' : 'Drives', all.map((t) => [t[0], t[1]]), m.to, (v) => {
+          p.maps = p.maps.slice();
+          p.maps[k] = { to: v, raw: true };
+        });
+        const rm = el('button', { class: 'fz-lbtn fz-maprm', title: 'Stop driving this' }, sel.parentNode, '<i class="ic ic-x"></i>');
+        rm.onclick = () => {
+          p.maps = p.maps.filter((_, q) => q !== k);
+          H.changed(false);
+          H.rerender(false);
+        };
+      });
+      const free = all.find((t) => !(p.maps || []).some((m) => m.to === t[0]));
+      if (free) el('div', { class: 'fz-actrow' }, box).appendChild(el('button', { class: 'btn small', onclick: () => { p.maps = [...(p.maps || []), { to: free[0], raw: true }]; H.changed(false); H.rerender(false); } }, null, '<i class="ic ic-plus"></i>Drive a circuit input'));
+    }
+  };
+  sio.ins.forEach((_, i) => portRow(sio.ins, i, 'in'));
+  sio.outs.forEach((_, i) => portRow(sio.outs, i, 'out'));
+  const ar = el('div', { class: 'fz-actrow' }, s);
+  const add = (dir) => {
+    const list = dir === 'in' ? sio.ins : sio.outs;
+    if (list.length >= SCREEN_PORTS) return;
+    list.push({ id: uid('p'), name: (dir === 'in' ? 'In ' : 'Out ') + (list.length + 1), sig: 'n' });
+    H.changed(false);
+    H.rerender(false);
+  };
+  if (sio.ins.length < SCREEN_PORTS) el('button', { class: 'btn small', 'data-act': 'sin', onclick: () => add('in') }, ar, '<i class="ic ic-plus"></i>Input');
+  if (sio.outs.length < SCREEN_PORTS) el('button', { class: 'btn small', 'data-act': 'sout', onclick: () => add('out') }, ar, '<i class="ic ic-plus"></i>Output');
 }
 
 /** Expression jack: which control it moves, or which circuit inputs it drives. */
 export function expSection(host, D, j, H) {
   const C = D.circuit;
-  const s = H.sec(host, 'Expression');
+  const fsw = j.kind === 'fsw';
+  const s = H.sec(host, fsw ? 'Footswitch jack' : 'Expression');
+  // a jack driven by a circuit output is an output: it moves what is plugged in on the board
+  const outs = isV3(C) ? circuitOutputs(D) : [];
+  H.selectField(s, 'Direction', [['in', fsw ? 'In: a footswitch plugs in here' : 'In: an expression pedal plugs in here'], ['out', 'Out: a circuit output drives it']], jackIsOut(j) ? 'out' : 'in', (v) => {
+    if (v === 'out') {
+      const o = outs.find((x) => (fsw ? x.sig === 'b' : x.sig === 'n')) || outs[0];
+      j.from = o ? { n: o.inst.id, p: o.n.id } : { n: '', p: '' };
+      delete j.maps;
+      delete j.drive;
+      j.dir = 'out';
+    } else {
+      delete j.from;
+      delete j.dir;
+    }
+  }, true);
+  if (jackIsOut(j)) {
+    H.selectField(s, 'Sends', [['', 'Nothing'], ...outs.map((o) => [o.key, o.name])], outKey(j.from), (v) => {
+      const o = outs.find((x) => x.key === v);
+      j.from = o ? { n: o.inst.id, p: o.n.id } : { n: '', p: '' };
+      j.dir = 'out';
+    });
+    el('p', { class: 'fz-note' }, s).textContent = fsw ? 'On the board, a control cable from here presses whatever it is plugged into when the output turns on.' : 'On the board, a control cable from here moves whatever it is plugged into, like an expression pedal (the output\'s Lowest to Highest is heel to toe).';
+    return;
+  }
   const maps = j.maps || [];
-  if (!maps.length) {
+  if (fsw) el('p', { class: 'fz-note fz-note-top' }, s).textContent = maps.length ? 'Tip and ring of a footswitch plugged in here drive:' : 'Wire the tip or ring to circuit inputs in the wiring diagram, or pick one here.';
+  else if (!maps.length) {
     const opts = [['', 'First treadle or knob']];
     for (const c of D.ctls) if (KNOBLIKE.has(c.kind)) opts.push([c.id, H.name(c)]);
     H.selectField(s, 'Moves', opts, j.drive || '', (v) => (j.drive = v || undefined));
@@ -195,7 +280,7 @@ export function expSection(host, D, j, H) {
       mm[i] = nm;
       j.maps = mm;
     };
-    const sel = H.selectField(box, 'Drives', all, m.to, (v) => set(mapTo(C, v)), true);
+    const sel = H.selectField(box, fsw ? ((m.ch || 't') === 'r' ? 'Ring drives' : 'Tip drives') : 'Drives', all, m.to, (v) => set(mapTo(C, v, fsw ? { ch: m.ch || 't' } : {})), true);
     const x = el('button', { class: 'fz-lbtn fz-maprm', title: 'Stop driving this' }, sel.parentNode, '<i class="ic ic-x"></i>');
     x.onclick = () => {
       j.maps = (j.maps || []).filter((_, k) => k !== i);
@@ -204,13 +289,14 @@ export function expSection(host, D, j, H) {
     };
     const info = targetInfo(C, m.to);
     if (!info) return;
+    if (fsw) H.selectField(box, 'Switch', [['t', 'Tip'], ['r', 'Ring']], m.ch || 't', (v) => set({ ...m, ch: v }));
     const lo = info.min ?? 0, hi = info.max ?? 1, step = info.i ? 1 : (hi - lo) / 200;
-    H.slider(box, 'Heel', m.min ?? lo, lo, hi, step, (v) => set({ ...m, min: v }));
-    H.slider(box, 'Toe', m.max ?? hi, lo, hi, step, (v) => set({ ...m, max: v }));
+    H.slider(box, fsw ? 'Up' : 'Heel', m.min ?? lo, lo, hi, step, (v) => set({ ...m, min: v }));
+    H.slider(box, fsw ? 'Pressed' : 'Toe', m.max ?? hi, lo, hi, step, (v) => set({ ...m, max: v }));
   });
   if (all.length) {
     const ar = el('div', { class: 'fz-actrow' }, s);
-    el('button', { class: 'btn small', 'data-act': 'expmap', onclick: () => { const t = all.find((x) => !maps.some((m) => m.to === x[0])) || all[0]; j.maps = [...maps, mapTo(C, t[0])]; H.changed(false); H.rerender(false); } }, ar, '<i class="ic ic-plus"></i>Drive a circuit input');
+    el('button', { class: 'btn small', 'data-act': 'expmap', onclick: () => { const t = all.find((x) => !maps.some((m) => m.to === x[0])) || all[0]; j.maps = [...maps, mapTo(C, t[0], fsw ? { ch: 't' } : {})]; H.changed(false); H.rerender(false); } }, ar, '<i class="ic ic-plus"></i>Drive a circuit input');
   }
 }
 export { targetLabel, CIRCUITS, instOf, mappingsOf };

@@ -75,21 +75,32 @@ body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: 
 .fz-wd-title { font-size: 11.5px; font-weight: 700; fill: var(--text); pointer-events: none; }
 .fz-wd-plabel { font-size: 10.5px; fill: var(--text2); pointer-events: none; }
 .fz-wd-plabel.c { fill: var(--teal-text); }
+.fz-wd-plabel.c.b { fill: var(--warn); }
+.fz-wd-row.dim .fz-wd-label { fill: var(--muted); }
+.fz-wd-led { stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; pointer-events: none; }
+.fz-wd-btxt { font-size: 9.5px; font-weight: 700; fill: var(--text2); pointer-events: none; }
+.fz-wd-btn.off { opacity: 0.35; cursor: default; }
+.fz-wd-screen .fz-wd-boxtop { fill: rgba(var(--teal-rgb), 0.16); }
+.fz-wd-screen .fz-wd-boxhead { cursor: pointer; }
+.fz-wd-screen.on .fz-wd-boxbg { stroke: var(--accent); }
 .fz-wd-btn { cursor: pointer; }
 .fz-wd-btn rect { fill: rgba(var(--fg-rgb), 0.06); }
 .fz-wd-btn:hover rect { fill: rgba(var(--fg-rgb), 0.16); }
 .fz-wd-ico { fill: none; stroke: var(--text2); stroke-width: 1.4; stroke-linecap: round; }
 .fz-wd-wire { fill: none; pointer-events: none; transition: opacity 0.12s; }
 .fz-wd-wire.a { stroke: var(--accent); stroke-width: 2.4; opacity: 0.85; }
-.fz-wd-wire.c { stroke: var(--teal); stroke-width: 1.6; stroke-dasharray: 5 4; opacity: 0.75; }
+.fz-wd-wire.c { stroke: var(--teal); stroke-width: 1.6; opacity: 0.8; }
+.fz-wd-wire.c.b { stroke: var(--warn); stroke-dasharray: 5 4; }
 .fz-wd-wire.auto { stroke-dasharray: 2 4; opacity: 0.45; }
 .fz-wd-wire.hot, .fz-wd-wire.on { opacity: 1; stroke-width: 3.2; }
 .fz-wd-wire.on { filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.7)); }
-.fz-wd-wire.drag { stroke-dasharray: none; opacity: 1; }
+.fz-wd-wire.drag { opacity: 1; }
+.fz-wd-wire.drag.a, .fz-wd-wire.drag.c.n { stroke-dasharray: none; }
 .fz-wd-wirehit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
 .fz-wd-port { cursor: crosshair; stroke: var(--bg1); stroke-width: 1.5; }
 .fz-wd-port.a { fill: var(--accent); }
 .fz-wd-port.c { fill: var(--teal); }
+.fz-wd-port.c.b { fill: var(--warn); }
 .fz-wd-port:not(.wired) { fill-opacity: 0.55; }
 .fz-wd-port.hot, .fz-wd-port.ok { stroke: var(--text); stroke-width: 2; fill-opacity: 1; }
 .fz-wd-port.dim { opacity: 0.2; }
@@ -146,3 +157,11 @@ body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: 
 @media (max-width: 1300px) { .cz-pal { width: 180px; } .cz-insp { width: 250px; } }
 .cl-inst .fz-lbtn, .fz-mapbox .fz-lbtn { display: grid; opacity: 0.75; }
 .cl-inst .fz-lbtn:hover, .fz-mapbox .fz-lbtn:hover { opacity: 1; }
+
+/* ------------------------------------------------------------ signal key (editor and diagram) */
+.sig-legend { pointer-events: none; }
+.sig-legend-svg text { font-size: 10px; fill: var(--muted); font-family: var(--font); }
+.cz-legend { position: absolute; right: 10px; bottom: 8px; padding: 3px 6px; border-radius: 7px; background: rgba(var(--well-rgb), 0.5); }
+.fz-wd-legend { position: absolute; right: 8px; bottom: 6px; padding: 2px 6px; border-radius: 7px; background: rgba(var(--well-rgb), 0.55); }
+.cz-insp .sig-legend { margin-top: 8px; }
+.fz-num.fz-num-wide { width: 86px; }

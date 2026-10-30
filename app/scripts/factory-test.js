@@ -2,7 +2,9 @@
 // old designs loading, LED selection, multi-select editing, mirror mode, a 12 switch DIP, save as block (Custom
 // filter, on the board), test mode (graph override and restore), an offline render of the custom block, the
 // footswitch nut material, the dot grid toggle, an LED ring encoder, XY pad and step buttons, an angled jack wired
-// on the board and the My pedals library.
+// on the board, the My pedals library, palette variants (dots on the tiles), the LED ring down to 2 curved LEDs, the
+// toggle bank as a DIP look, the material part switcher (no quick colour rows), foot pedal materials, removed
+// controls migrating, and a footswitch jack on a saved block as a control jack.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -15,8 +17,8 @@ const S = process.env.SHOTS || '/tmp';
   const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'], env: { ...process.env, XDG_DATA_HOME: data } });
   const win = await app.firstWindow();
   const errs = [];
-  win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.stack));
-  win.on('console', (m) => m.type() === 'error' && errs.push('CONSOLE ' + m.text()));
+  win.on('pageerror', (e) => (errs.push('PAGEERROR ' + e.stack), process.env.FZ_LOG && console.log('PAGEERROR ' + e.message)));
+  win.on('console', (m) => (m.type() === 'error' ? errs.push('CONSOLE ' + m.text()) : process.env.FZ_LOG && console.log('page: ' + m.text())));
   await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
   await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
   let fails = 0;
@@ -291,9 +293,10 @@ const S = process.env.SHOTS || '/tmp';
     for (let i = 0; i < 12; i++) {
       const used = new Set(d.ctls.flatMap((c) => [c.map, ...(c.more || []), ...(c.maps || [])]).map((x) => x && x.to));
       const opts = m.targetsFor(d.circuit, 'dip').map((t) => t[0]).filter((v) => v && v !== 'bypass' && !v.endsWith('.on') && !v.endsWith('.tap'));
-      const v = opts.find((x) => x.includes('.+')) || opts.find((x) => !used.has(x));
-      const info = m.targetInfo(d.circuit, v);
-      dip.maps[i] = m.mapTo(d.circuit, v, { min: info.def ?? info.min, max: info.def === info.max ? info.min : info.max, taper: 'lin' });
+      const v = opts.find((x) => x.includes('.+')) || opts.find((x) => !used.has(x)) || opts.find((x) => !dip.maps.some((y) => y && y.to === x));
+      const info = v && m.targetInfo(d.circuit, v);
+      if (!info) console.log('dip ' + i + ': no target among ' + opts.length);
+      dip.maps[i] = info ? m.mapTo(d.circuit, v, { min: info.def ?? info.min, max: info.def === info.max ? info.min : info.max, taper: 'lin' }) : null;
     }
     window.__tzFactory.load(JSON.parse(JSON.stringify(d)));
   });
@@ -637,6 +640,228 @@ const S = process.env.SHOTS || '/tmp';
   ok(await win.evaluate((id) => window.__tzFactory.testing() && window.__tzFactory.design().blockId === id, ctlBlock), 'test from My pedals opens the pedal and plays it');
   await win.click('#fzTest');
   await win.waitForTimeout(800);
+
+  // 21. variants: every control tile has at least 3, a dot switches the tile, the next add uses it
+  await win.click('#fzTemplates');
+  await win.click('[data-template="blank"]');
+  await win.waitForTimeout(300);
+  await win.click('.fz-tabs [data-t="parts"]');
+  await win.evaluate(() => document.querySelectorAll('.fz-vdots [data-var="0"]').forEach((d) => d.click()));
+  const pal = await win.evaluate(() => [...document.querySelectorAll('.fz-vtile')].map((t) => [t.dataset.part, t.querySelectorAll('.fz-vdots i').length]));
+  ok(pal.length >= 15 && pal.every(([, n]) => n >= 3), 'every control tile has 3 or more variants: ' + pal.map((p) => p.join(':')).join(' '));
+  ok(!pal.some(([k]) => ['lever', 'pad', 'ldr', 'tbank', 'encring', 'stick'].includes(k)), 'no whammy lever, pressure pad, light sensor, toggle bank, ring encoder or joystick tiles of their own');
+  const svg0 = await win.evaluate(() => document.querySelector('.fz-tile[data-part="dip"] svg').innerHTML);
+  await win.click('.fz-tile[data-part="dip"] .fz-vdots [data-var="2"]');
+  await win.waitForTimeout(100);
+  const dipTile = await win.evaluate(() => { const t = document.querySelector('.fz-tile[data-part="dip"]'); return { v: t.dataset.variant, cap: t.querySelector('span').textContent, svg: t.querySelector('svg').innerHTML, on: t.querySelector('.fz-vdots i.on').dataset.var }; });
+  ok(dipTile.v === '2' && dipTile.on === '2' && dipTile.cap === 'Toggle bank' && dipTile.svg !== svg0, 'a dot switched the DIP tile to its toggle bank variant (preview updated)');
+  ok((await D()).ctls.length === 1, 'clicking a dot does not add anything');
+  await win.click('.fz-tile[data-part="dip"]');
+  await win.waitForTimeout(200);
+  const tb = (await D()).ctls.find((c) => c.kind === 'dip');
+  ok(tb && tb.look === 'toggle' && !tb.part, 'the toggle bank is a DIP switch variant');
+  ok(await win.evaluate(() => /DIP switch/.test(document.querySelector('.fz-insp h3').textContent) && document.querySelector('.fz-insp .fz-seg [data-v="toggle"]').classList.contains('on')), 'its inspector is the DIP switch one, Look: Toggles');
+  ok(await win.evaluate((id) => document.querySelectorAll(`.fz-stage [data-id="${id}"] .tbank`).length === 1, tb.id), 'drawn as a toggle bank');
+  await win.screenshot({ path: path.join(S, 'factory-variant-dots.png') });
+  await win.click('.fz-tile[data-part="dip"] .fz-vdots [data-var="0"]');
+
+  // the LED ring encoder goes down to 2 LEDs, drawn as curved segments
+  await win.click('.fz-tile[data-part="encoder"] .fz-vdots [data-var="3"]');
+  await win.click('.fz-tile[data-part="encoder"]');
+  await win.waitForTimeout(200);
+  const e2 = (await D()).ctls.filter((c) => c.part === 'encoder').pop();
+  const led2 = await win.$('.fz-insp .fz-sec .fz-row:has(label:text-is("LEDs")) .fz-num');
+  await led2.fill('1');
+  await led2.press('Enter');
+  await win.waitForTimeout(150);
+  const e2b = (await D()).ctls.find((c) => c.id === e2.id);
+  const segs = await win.evaluate((id) => [...document.querySelectorAll(`.fz-stage [data-id="${id}"] .enc-led`)].map((e) => e.tagName + ':' + /A/.test(e.getAttribute('d') || '')), e2.id);
+  ok(e2b.ringN === 2 && segs.length === 2 && segs.every((x) => x === 'path:true'), `LED ring encoder with 2 LEDs, as curved segments (${segs.join(' ')})`);
+  await win.evaluate((id) => { const d = window.__tzFactory.design(); Object.assign(d.ctls.find((c) => c.id === id), { ringN: 10, value: 0.55, r: 10.5, x: 33, y: 40 }); window.__tzFactory.load(JSON.parse(JSON.stringify(d))); window.__tzFactory.select(id); }, e2.id);
+  await win.waitForTimeout(200);
+  const eb = await (await win.$(`.fz-stage [data-id="${e2.id}"]`)).boundingBox();
+  await win.screenshot({ path: path.join(S, 'factory-ledring.png'), clip: { x: eb.x - 30, y: eb.y - 30, width: eb.width + 60, height: eb.height + 60 } });
+  await win.click('.fz-tile[data-part="encoder"] .fz-vdots [data-var="0"]');
+
+  // the material panel: one picker, a switcher picks the part; no quick colour rows anywhere
+  await win.click('.fz-tile[data-part="knob"]');
+  await win.waitForTimeout(200);
+  const kk = (await D()).ctls.filter((c) => c.kind === 'knob').pop();
+  ok(await win.evaluate(() => document.querySelectorAll('.fz-insp .mtp').length === 1 && [...document.querySelectorAll('.fz-matparts button')].map((b) => b.textContent).join() === 'Cap,Skirt'), 'knob: one material picker with a Cap / Skirt switcher');
+  await win.click('.fz-matparts [data-matpart="skirtMat"]');
+  await win.click('.fz-mat-skirtMat .mtp-mats [data-v="metal"]');
+  await win.waitForTimeout(150);
+  let kd = (await D()).ctls.find((c) => c.id === kk.id);
+  ok(kd.skirtMat && kd.skirtMat.m === 'metal' && !kd.mat, 'the switcher picked the skirt: only the skirt is metal');
+  await win.click('.fz-insp .fz-seg [data-v="plate"]');
+  await win.waitForTimeout(150);
+  ok(await win.evaluate(() => [...document.querySelectorAll('.fz-matparts button')].map((b) => b.textContent).join() === 'Cap,Skirt,Dial' && document.querySelector('.fz-matparts .on').dataset.matpart === 'skirtMat'), 'a dial adds a Dial part, the switcher stays on the skirt');
+  await win.screenshot({ path: path.join(S, 'factory-matparts.png') });
+  const quick = [];
+  for (const k of ['button', 'arcade', 'pedal', 'dip', 'trim', 'foot']) {
+    await win.click(`.fz-tile[data-part="${k}"]`);
+    await win.waitForTimeout(120);
+    quick.push(await win.evaluate((kind) => [kind, document.querySelectorAll('.fz-insp .mtp').length, document.querySelectorAll('.fz-insp .fz-swatches:is([data-key="cap"],[data-key="pedal"],[data-key="dip"],[data-key="trim"],[data-key="arcring"],[data-key="enc"])').length], k));
+  }
+  ok(quick.every(([, m, q]) => m === 1 && q === 0), 'no quick colour rows, one material picker each: ' + quick.map((q) => q.join(':')).join(' '));
+
+  // foot pedals: the pedal itself takes a material, and so does its grip
+  const pd = (await D()).ctls.filter((c) => c.kind === 'pedal').pop();
+  await win.evaluate((id) => window.__tzFactory.select(id), pd.id);
+  await win.waitForTimeout(150);
+  ok(await win.evaluate(() => [...document.querySelectorAll('.fz-matparts button')].map((b) => b.dataset.matpart).join() === 'mat,gripMat'), 'foot pedal: Pedal and Grip parts');
+  await win.click('.fz-mat-mat .mtp-mats [data-v="wood"]');
+  await win.waitForTimeout(150);
+  ok(((await D()).ctls.find((c) => c.id === pd.id).mat || {}).m === 'wood' && (await win.evaluate((id) => !!document.querySelector(`.fz-stage [data-id="${id}"] [fill^="url(#mt-wood"]`), pd.id)), 'the pedal body is wood');
+  await win.click('.fz-matparts [data-matpart="gripMat"]');
+  await win.click('.fz-mat-gripMat .mtp-mats [data-v="metal"]');
+  await win.waitForTimeout(150);
+  const pdd = (await D()).ctls.find((c) => c.id === pd.id);
+  ok(pdd.gripMat && pdd.gripMat.m === 'metal' && pdd.mat.m === 'wood', 'and its grip is metal');
+
+  // mirror mode and multi-select with variants
+  await win.click('#fzTemplates');
+  await win.click('[data-template="blank"]');
+  await win.waitForTimeout(300);
+  await win.click('.fz-tabs [data-t="parts"]');
+  await win.click('#fzMirror');
+  await win.click('#fzMirrorAxis [data-v="v"]');
+  await win.click('.fz-tile[data-part="encoder"] .fz-vdots [data-var="3"]');
+  await win.click('.fz-tile[data-part="encoder"]');
+  await win.waitForTimeout(200);
+  const tw = (await D()).ctls.filter((c) => c.part === 'encoder');
+  ok(tw.length === 2 && tw.every((c) => c.ring && c.ringN === 12) && tw[0].twin === tw[1].id, 'mirror mode: the LED ring variant gets a matching twin');
+  await win.evaluate((ids) => window.__tzFactory.selectMany(ids), tw.map((c) => c.id));
+  await win.waitForTimeout(150);
+  const ml2 = await win.$('.fz-insp .fz-sec .fz-row:has(label:text-is("LEDs")) .fz-num');
+  await ml2.fill('6');
+  await ml2.press('Enter');
+  await win.waitForTimeout(150);
+  ok((await D()).ctls.filter((c) => c.part === 'encoder').every((c) => c.ringN === 6), 'multi-select: one edit set both rings to 6 LEDs');
+  await win.click('#fzMirror');
+  await win.click('.fz-tile[data-part="encoder"] .fz-vdots [data-var="0"]');
+
+  // 22. removed controls in an older design become knobs (wiring kept), the toggle bank becomes a DIP look
+  const mig = await win.evaluate(async () => {
+    const fc = await import('./js/pages/factory-circuit.js');
+    const d = window.__tzFactory.template('blank');
+    const C = d.circuit;
+    const T = fc.targetsFor(C, 'knob').filter((t) => t[2] && !t[2].i && !t[2].tap && !t[0].endsWith('.on')).map((t) => t[0]);
+    const id = '';
+    const made = {};
+    const m = (k) => (made[k] = made[k] || fc.mapTo(C, T[{ gain: 0, tone: 1, level: 2 }[k] % T.length]));
+    d.ctls.push(
+      { id: 'lv1', kind: 'knob', part: 'lever', len: 26, x: 15, y: 30, value: 0.3, label: 'BEND', labelPos: 'none', map: m('gain') },
+      { id: 'pd1', kind: 'knob', part: 'pad', w: 16, x: 33, y: 30, value: 0.2, color: '#ff7a2f', label: '', labelPos: 'below', map: m('tone') },
+      { id: 'ld1', kind: 'knob', part: 'ldr', r: 3.5, x: 51, y: 30, value: 0.5, label: 'LIGHT', labelPos: 'below', map: m('level') },
+      { id: 'tb1', kind: 'dip', part: 'tbank', n: 3, bits: [1, 0, 1], x: 33, y: 60, maps: [m('gain'), null, m('tone')], label: '', labelPos: 'none' },
+    );
+    window.__tzFactory.load(d);
+    const out = window.__tzFactory.design().ctls.filter((c) => ['lv1', 'pd1', 'ld1', 'tb1'].includes(c.id)).map((c) => ({ id: c.id, kind: c.kind, part: c.part, look: c.look, map: c.map && c.map.to, maps: (c.maps || []).map((x) => x && x.to), r: c.r }));
+    return { out, T: [made.gain.to, made.tone.to, made.level.to] };
+  });
+  const mk2 = (id) => mig.out.find((c) => c.id === id) || {};
+  if (process.env.FZ_LOG) console.log(JSON.stringify(mig));
+  ok(['lv1', 'pd1', 'ld1'].every((id) => mk2(id).kind === 'knob' && !mk2(id).part && mk2(id).r > 0) && mk2('lv1').map === mig.T[0] && mk2('ld1').map === mig.T[2], 'whammy lever, pressure pad and light sensor load as knobs, still wired');
+  ok(mk2('tb1').kind === 'dip' && mk2('tb1').look === 'toggle' && !mk2('tb1').part && mk2('tb1').maps[0] === mig.T[0] && mk2('tb1').maps[2] === mig.T[1], 'the toggle bank loads as a DIP switch with the toggle look, still wired');
+  ok(await win.evaluate(() => ['lv1', 'pd1', 'ld1', 'tb1'].every((id) => !!document.querySelector(`.fz-stage [data-id="${id}"] .ctl, .fz-stage [data-id="${id}"] .tbank`))), 'they draw');
+
+  // 23. a footswitch jack (TRS, a control input on the board) and a saved pedal full of variants on the board
+  await win.click('#fzTemplates');
+  await win.click('[data-template="blank"]');
+  await win.waitForTimeout(300);
+  await win.click('.fz-tabs [data-t="parts"]');
+  await win.click('.fz-tile[data-part="fsw"]');
+  await win.waitForTimeout(150);
+  const fj = (await D()).jacks.find((j) => j.kind === 'fsw');
+  ok(fj && fj.label === 'FSW', 'footswitch jack added (kind fsw)');
+  await win.evaluate(async () => {
+    const v = await import('./js/pages/factory-variants.js');
+    const d = window.__tzFactory.design();
+    Object.assign(d.enc, { w: 120, h: 150, size: 'custom', mat: { m: 'metal', s: 'aluminium', f: 'anodized', c: '#1f8a8a' } });
+    d.name = 'Variant Box';
+    d.title = { ...d.title, text: 'VARIANTS', x: 60, y: 76, size: 7 };
+    d.ctls = d.ctls.filter((c) => c.kind === 'foot');
+    Object.assign(d.ctls[0], { x: 60, y: 132 });
+    const put = (k, i, x, y, o = {}) => d.ctls.push(Object.assign(v.makeControl(k, d, i), { x, y }, o));
+    put('encoder', 3, 22, 24, { label: 'TIME' }); put('knob', 3, 60, 22, { label: 'MIX' }); put('arcade', 1, 98, 24);
+    put('dip', 2, 30, 52); put('steps', 1, 88, 52); put('meter', 2, 22, 98, { h: 22 }); put('xy', 3, 60, 100); put('trim', 2, 98, 98, { r: 4 });
+    window.__tzFactory.load(JSON.parse(JSON.stringify(d)));
+  });
+  await win.waitForTimeout(300);
+  await win.click('#fzSaveBlock');
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 }).catch(() => {});
+  const vb = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(300);
+  const vOn = await win.evaluate(async ([id, jid]) => {
+    const m = await import('./js/state.js');
+    const b = m.addBlock(id, 1500, 300);
+    await new Promise((r) => setTimeout(r, 500));
+    const v = window.__tz.editor.views.get(b.id);
+    const want = v.def.controls.map((c) => c.cid).sort(), got = [...v.views.keys()].sort();
+    const ctrl = (v.def.ctrl?.ins || []).some((c) => c._jack === jid);
+    window.__tz.editor.view.z = 2.2;
+    window.__tz.editor.view.x = -b.x * 2.2 + 330;
+    window.__tz.editor.view.y = -b.y * 2.2 + 120;
+    window.__tz.editor.applyView && window.__tz.editor.applyView();
+    return { same: JSON.stringify(want) === JSON.stringify(got), jacks: v.jacks.map((j) => j.key + ':' + (j.kind || 'inst')), ctrl, leds: v.g.querySelectorAll('.enc-led').length };
+  }, [vb, fj.id]);
+  await win.waitForTimeout(500);
+  await win.screenshot({ path: path.join(S, 'factory-variants-board.png') });
+  ok(vOn.same && vOn.leds === 12, `the saved pedal with variants works on the board (${vOn.leds} ring LEDs)`);
+  ok(vOn.ctrl && vOn.jacks.some((j) => /^ic\d+:ctrl$/.test(j)), 'the footswitch jack is a control (ctrl) jack on the board: ' + vOn.jacks.join(' '));
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+
+  // every variant of every control, for a look (two pictures, drawn big over the window)
+  const shotDesign = async (file, build, arg) => {
+    await win.evaluate(async ([d]) => {
+      const r = await import('./js/pages/factory-render.js');
+      const box = document.createElement('div');
+      box.id = 'fzShot';
+      box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#15171c;display:grid;place-items:center';
+      const s = r.thumb(d, 'fz-shot');
+      s.style.cssText = 'width:96vw;height:96vh';
+      box.appendChild(s);
+      document.body.appendChild(box);
+    }, [await win.evaluate(build, arg)]);
+    await win.waitForTimeout(300);
+    await win.screenshot({ path: path.join(S, file) });
+    await win.evaluate(() => document.getElementById('fzShot').remove());
+  };
+  const allTypes = await win.evaluate(async () => Object.keys((await import('./js/pages/factory-variants.js')).CONTROL_TYPES));
+  const gallery = async (keys) => {
+    const v = await import('./js/pages/factory-variants.js');
+    const d = window.__tzFactory.template('blank');
+    Object.assign(d.enc, { w: 248, h: keys.length * 36 + 6, size: 'custom', mat: { m: 'metal', s: 'aluminium', f: 'powder', c: '#2a2d33' }, dots: false });
+    d.title.hidden = true;
+    d.ctls = [];
+    d.jacks = [];
+    keys.forEach((k, row) => v.CONTROL_TYPES[k].variants.forEach((vr, i) => {
+      const c = Object.assign(v.makeControl(k, d, i), { x: 24 + i * 40, y: 17 + row * 36, label: vr.name.toUpperCase().slice(0, 12), labelPos: 'below' });
+      if (c.kind === 'pedal') Object.assign(c, { w: 18, h: 26 });
+      if (c.kind === 'slider') Object.assign(c, { h: Math.min(c.h, 20) });
+      if (c.part === 'strip') Object.assign(c, { h: 20 });
+      if (c.kind === 'xy' && (c.look === 'pad' || c.look === 'glow')) Object.assign(c, { w: 20, h: 18 });
+      if (c.kind === 'screen') Object.assign(c, { w: 26, h: 12 });
+      if (c.kind === 'foot' && c.w) Object.assign(c, { w: 24, h: 22 });
+      d.ctls.push(c);
+    }));
+    return d;
+  };
+  await shotDesign('factory-variants-all-1.png', gallery, allTypes.slice(0, 9));
+  await shotDesign('factory-variants-all-2.png', gallery, allTypes.slice(9));
+  // the LED ring up close, next to the reference look: curved segments with small gaps
+  await shotDesign('factory-ledring-big.png', async () => {
+    const v = await import('./js/pages/factory-variants.js');
+    const d = window.__tzFactory.template('blank');
+    Object.assign(d.enc, { w: 90, h: 40, size: 'custom', dots: false, mat: { m: 'metal', s: 'aluminium', f: 'powder', c: '#202226' } });
+    d.title.hidden = true;
+    d.jacks = [];
+    d.ctls = [0.55, 0.85].map((val, i) => Object.assign(v.makeControl('encoder', d, 3), { x: 25 + i * 40, y: 20, r: 10, value: val, ringN: i ? 16 : 10, cap: i ? 'knurl' : 'rubber', labelPos: 'none' }));
+    return d;
+  });
 
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));

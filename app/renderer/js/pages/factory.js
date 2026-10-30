@@ -1492,7 +1492,7 @@ function inspJack(host, j, multi) {
   seg(s, 'Edge', [['top', 'Top'], ['left', 'Left'], ['right', 'Right'], ['bottom', 'Bottom']], j.edge, (v) => (j.edge = v), false);
   if (!multi) slider(s, 'Along', j.t, 0.04, 0.96, 0.01, (v) => (j.t = v));
   el('p', { class: 'fz-note' }, s).textContent = { phones: 'A stereo headphone out (TRS) on the board.', xlr: 'A balanced XLR out on the board.', exp: 'A control input: an expression pedal plugged in here turns one of your controls.', fsw: 'A footswitch input (TRS): plug one or two external footswitches in on the board. Tip and ring each send an on / off. Wire it in the wiring diagram.', power: 'Just for looks: the board does not need power.' }[j.kind] || 'Drag a jack around the pedal to move it to another edge.';
-  if (j.kind === 'exp' && !multi) expSection(host, D, j, H());
+  if ((j.kind === 'exp' || j.kind === 'fsw') && !multi) expSection(host, D, j, H());
   if (j.kind !== 'power') jackAngleSection(host, D, j, multi, H());
   if (j.kind !== 'power') partMaterial(host, j);
 }
@@ -1509,9 +1509,6 @@ function inspControl(host, c, multi) {
     seg(s, 'Size', KNOB_SIZES, c.r, (v) => (c.r = +v), false);
     slider(s, 'Pointer', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
     check(s, 'Scale ticks', c.ticks, (v) => (c.ticks = v));
-  } else if (c.kind === 'trim') {
-    seg(s, 'Size', [[2.5, 'S'], [3, 'M'], [4, 'L']], c.r, (v) => (c.r = +v), false);
-    slider(s, 'Pointer', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
   } else if (c.kind === 'slider') {
     seg(s, 'Direction', [['v', 'Up / down'], ['h', 'Sideways']], c.orient || 'v', (v) => (c.orient = v), false);
     slider(s, 'Length', c.h || 24, 10, 70, 1, (v) => (c.h = v));
@@ -1560,12 +1557,6 @@ function inspControl(host, c, multi) {
       slider(s, 'Width', c.w || 34, 18, 90, 1, (v) => (c.w = v));
       slider(s, 'Height', c.h || 30, 14, 70, 1, (v) => (c.h = v));
     }
-  } else if (c.kind === 'pedal') {
-    slider(s, 'Width', c.w || 40, 16, 200, 1, (v) => (c.w = v));
-    slider(s, 'Length', c.h || 60, 20, 200, 1, (v) => (c.h = v));
-    textField(s, 'Logo', c.logo, (v) => (c.logo = v));
-    slider(s, 'Rocked', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
-    el('p', { class: 'fz-note' }, s).textContent = 'A treadle you rock with your foot, like a wah or volume pedal. Drag it up and down in test mode.';
   } else if (c.kind === 'led') {
     colors(s, 'Colour', c.color, LED_COLORS, (v) => (c.color = v), 'led');
     seg(s, 'Size', [[1.5, '3 mm'], [2.5, '5 mm'], [4, '8 mm']], c.r, (v) => (c.r = +v), false);
@@ -1575,32 +1566,10 @@ function inspControl(host, c, multi) {
     slider(s, 'Width', c.w, 12, 90, 1, (v) => (c.w = v));
     slider(s, 'Height', c.h, 8, 50, 1, (v) => (c.h = v));
     screenInspector(s, c, H(), { getD: () => D, multi }); // Basic text or Custom (screenscript/factory-ui.js)
-  } else if (c.kind === 'dip') {
-    slider(s, 'Switches', c.n, 2, 12, 1, (v) => {
-      c.n = v;
-      const b = (c.bits || []).slice(0, v);
-      while (b.length < v) b.push(0);
-      c.bits = b;
-    });
-    if (!multi) {
-      const r = row(s, 'Set');
-      const bits = el('div', { class: 'fz-bits' }, r);
-      for (let i = 0; i < c.n; i++) {
-        const b = el('button', { class: c.bits[i] ? 'on' : '' }, bits);
-        b.textContent = i + 1;
-        b.onclick = () => {
-          const nb = c.bits.slice();
-          nb[i] = nb[i] ? 0 : 1;
-          c.bits = nb;
-          b.classList.toggle('on', !!nb[i]);
-          changed(false);
-        };
-      }
-    }
   }
   extraSections(host, D, c, multi, H());
   // what a control drives is wired in the wiring diagram; LEDs keep their "Lights when" section
-  if (c.kind === 'led') wiringSection(host, D, c, H());
+  if (c.kind === 'led' || (c.kind === 'screen' && !multi)) wiringSection(host, D, c, H()); // screens: inputs and outputs
   partMaterial(host, c);
   const s2 = sec(host, 'Label');
   textField(s2, 'Text', c.label, (v) => (c.label = v.toUpperCase()));

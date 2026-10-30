@@ -15,6 +15,7 @@ export function boardIO(blockId, fallback, cid) {
   const B = () => blockById(blockId) || fallback;
   return {
     mode: 'board',
+    cid, // the screen (its own inputs and outputs)
     get block() {
       return B();
     },

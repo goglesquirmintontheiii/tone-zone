@@ -500,7 +500,7 @@ function partHalf(c) {
   }
   if (c.kind === 'xy') {
     const [w, h] = xySize(c);
-    return [w / 2 + 1, h / 2 + 2.4];
+    return [w / 2 + 1, h / 2 + 4.8]; // the X rail sits under the pad
   }
   if (c.kind === 'trim' && c.look === 'thumb') return [(c.r || 3) + 1.4, (c.r || 3) * 0.75 + 0.6];
   if (c.kind === 'knob' && c.dial && c.dial !== 'none') return [c.r + (c.dial === 'plate' ? 6.5 : 5.2), c.r + (c.dial === 'plate' ? 6.5 : 5.2)];

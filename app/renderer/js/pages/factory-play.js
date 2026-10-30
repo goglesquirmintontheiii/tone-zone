@@ -96,7 +96,11 @@ function ledOn(c, now) {
   const b = T.block;
   const bind = c.bind || 'on';
   if (bind === 'on') return !b.bypass;
-  if (bind === 'fn') return c.ledFn ? !!c.ledFn(b.params, b) : false;
+  if (bind === 'fn') {
+    if (!c.ledFn) return false;
+    const st = state.status && state.status.blocks ? state.status.blocks[NODE] : null;
+    return c.ledFn(b.params, b, st, now) || false;
+  }
   if (bind.startsWith('tap:')) {
     if (b.bypass) return false;
     const msv = engineParamsFor(b)[bind.slice(4)] || 400;
@@ -113,7 +117,10 @@ export function updateViews(now = performance.now()) {
     if (c.t === 'knob' || c.t === 'slider' || c.t === 'treadle') view.set(clamp(v, 0, 1));
     else if (c.t === 'toggle' || c.t === 'sel') view.set(v | 0);
     else if (c.t === 'button' && c.toggle) view.set(!!v);
-    else if (c.t === 'led') view.set(ledOn(c, now) ? true : null);
+    else if (c.t === 'led') {
+      const on = ledOn(c, now);
+      view.set(on ? on : null); // true or a colour (circuit outputs dim it)
+    }
   }
 }
 function setP(p, v) {
@@ -175,6 +182,17 @@ export function playDown(e, stage, zoom, onChange) {
   stage.addEventListener('pointermove', mv);
   stage.addEventListener('pointerup', up);
   stage.addEventListener('pointercancel', up);
+  return true;
+}
+/** What the LEDs of the pedal under test show: [{cid, on: true | colour | false}] (tests). */
+export function testLeds(now = performance.now()) {
+  if (!T) return [];
+  return T.def.controls.filter((c) => c.t === 'led').map((c) => ({ cid: c.cid, on: ledOn(c, now) || false }));
+}
+/** Set any of the test block's params (screen outputs, control jacks). */
+export function playSetParam(p, v) {
+  if (!T) return false;
+  setP(p, v);
   return true;
 }
 /** Set a control from code (tests, wheel): pos 0..1 for knobs, index for switches. */

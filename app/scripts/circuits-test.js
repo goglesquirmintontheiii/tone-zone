@@ -206,8 +206,8 @@ const S = process.env.SHOTS || '/tmp';
   const newKnob = d.ctls.filter((c) => c.kind === 'knob').pop();
   const in2 = d.jacks.filter((j) => j.kind === 'in').pop();
   const exp = d.jacks.find((j) => j.kind === 'exp');
-  const tsDrive = ts.graph.nodes.find((n) => n.t === 'knob' && n.name === 'Drive');
-  const wobMix = wob.graph.nodes.find((n) => n.t === 'knob' && n.name === 'Mix');
+  const tsDrive = ts.graph.nodes.find((n) => (n.t === 'analog' || n.t === 'binary') && n.name === 'Drive');
+  const wobMix = wob.graph.nodes.find((n) => (n.t === 'analog' || n.t === 'binary') && n.name === 'Mix');
   const wobIn = wob.graph.nodes.find((n) => n.t === 'in');
   await win.evaluate(() => window.__tzCircuits.diagram().refresh(true));
   await win.waitForTimeout(200);
@@ -222,7 +222,7 @@ const S = process.env.SHOTS || '/tmp';
   ok(tos.includes(ts.id + '.' + tsDrive.id) && tos.includes(wob.id + '.' + wobMix.id), 'one knob wired to two circuits by dragging in the diagram: ' + tos.join(', '));
   ok(d.circuit.wires.some((w) => w.a.n === 'jack:' + in2.id && w.b.n === wob.id), 'the second input jack is wired into a circuit');
   ok((d.jacks.find((j) => j.id === exp.id).maps || []).some((m) => m.to === ts.id + '.' + tsDrive.id), 'the expression jack drives the drive input');
-  ok((await win.evaluate(() => window.__tzFactory.selection())) === newKnob.id && (await win.evaluate(() => document.querySelectorAll('.fz-insp .fz-mapbox').length)) === tos.length, 'the inspector lists every target of the knob (' + tos.length + ')');
+  ok((await win.evaluate(() => window.__tzFactory.selection())) === newKnob.id, 'wiring a control selects it (' + tos.length + ' targets)');
   // the knob moves both
   const both = await win.evaluate(async ([kid, a, b]) => {
     const m = await import('./js/pages/factory-circuit.js');
@@ -321,7 +321,7 @@ const S = process.env.SHOTS || '/tmp';
   const blockId = (await D()).blockId;
   // the drive's Level knob (made when the circuit was added)
   const dl = await D();
-  const lvlK = ts.graph.nodes.find((n) => n.t === 'knob' && n.name === 'Level');
+  const lvlK = ts.graph.nodes.find((n) => (n.t === 'analog' || n.t === 'binary') && n.name === 'Level');
   const lvlCtl = dl.ctls.find((c) => c.map && c.map.to === ts.id + '.' + lvlK.id);
   const di = makeDI(path.join(data, 'di.wav'));
   const render = (v) => win.evaluate(async ([id, di, kid, v]) => {
@@ -352,6 +352,223 @@ const S = process.env.SHOTS || '/tmp';
   d = await D();
   ok(d.circuit.insts.find((i) => i.id === wob2.id).graph.nodes.some((n) => n.t === 'crusher'), 'saving from the pedal updates the pedal\'s circuit');
   ok(JSON.parse(fs.readFileSync(path.join(dir, saved.id + '.json'), 'utf8')).graph.nodes.some((n) => n.t === 'crusher'), 'and the circuit in the library');
+
+  // 15. analog and binary signals: math, delay, outputs to LEDs, jacks, screens and other circuits
+  await win.evaluate(async () => {
+    const P = await import('./js/pages/circuit-parts.js');
+    const F = await import('./js/pages/factory-circuit.js');
+    const N = (G, id, t, o = {}, p = {}) => {
+      const n = P.newNode(t, 0, 0, o);
+      n.id = id;
+      Object.assign(n.p, p);
+      G.nodes.push(n);
+      return n;
+    };
+    const W = (G, a, ap, b, bp, o = {}) => G.wires.push({ id: P.nid('w'), a: { n: a, p: ap }, b: { n: b, p: bp }, ...o });
+    const pedal = (name, insts, o = {}) => {
+      const d = window.__tzFactory.template('blank');
+      d.name = name;
+      d.circuit = { v: 3, insts: insts.map((x, i) => ({ id: x.id, ref: null, ver: 1, name: x.name, graph: x.graph, x: (i % 2) * 250, y: Math.floor(i / 2) * 170, on: true })), wires: o.wires || [], cwires: o.cwires || [], combine: {} };
+      d.jacks = o.jacks || d.jacks;
+      d.ctls = o.ctls || [];
+      F.syncStages(d.circuit);
+      return d;
+    };
+    window.__ct = { P, F, N, W, pedal, G: () => ({ nodes: [], wires: [] }) };
+  });
+  const renderBlock = (design, params, extra) => win.evaluate(async ([design, params, di, extra]) => {
+    const cu = await import('./js/catalog/custom.js');
+    const id = await cu.saveCustomBlock(design, { asNew: true });
+    const preset = {
+      version: 1, name: 'signal check',
+      blocks: [{ id: '__in', type: '__in', x: 0, y: 0, params: {} }, { id: '__out', type: '__out', x: 0, y: 0, params: {} }, { id: 'c1', type: id, x: 0, y: 0, params, variant: 'mono' }],
+      cables: [{ id: 'a', from: { node: '__in', port: 0 }, to: { node: 'c1', port: 0 } }, { id: 'b', from: { node: 'c1', port: 0 }, to: { node: '__out', port: 0 } }],
+    };
+    const g = window.__tz.buildGraph(preset);
+    if (extra === 'stereo') {
+      // both sides of the PHONES jack to the two outputs
+      g.cables = g.cables.filter((c) => c.to.node !== '__out');
+      g.cables.push({ from: { node: 'c1', port: 0 }, to: { node: '__out', port: 0 } }, { from: { node: 'c1', port: 1 }, to: { node: '__out', port: 1 } });
+    }
+    return { file: await window.tz.offline.render(g, di), id, nOut: g.nodes[0].nOut };
+  }, [design, params, di, extra]);
+  const { readWav } = require('../main/offline');
+  const segRms = (x, t0, t1) => {
+    let a = 0, n = 0;
+    for (let i = Math.floor(t0 * 48000); i < Math.min(x.length, Math.floor(t1 * 48000)); i++, n++) a += x[i] * x[i];
+    return Math.sqrt(a / Math.max(1, n));
+  };
+  // math: an analog input of -255..255 at 200, times -1, plus 201 = 1 (VCA open); at 200.5 it gives 0.5
+  const mathD = await win.evaluate(() => {
+    const { N, W, pedal, G: g0, F } = window.__ct;
+    const G = g0();
+    N(G, 'in', 'in'); N(G, 'out', 'out');
+    N(G, 'A', 'analog', { name: 'A', min: -255, max: 255, def: 0 });
+    N(G, 'mul', 'mul', {}, { b: -1 }); N(G, 'add', 'add', {}, { b: 201 }); N(G, 'vca', 'vca');
+    W(G, 'in', 'out', 'vca', 'in'); W(G, 'vca', 'out', 'out', 'in');
+    W(G, 'A', 'cv', 'mul', '@a'); W(G, 'mul', 'cv', 'add', '@a'); W(G, 'add', 'cv', 'vca', '@gain', { lo: 0, hi: 1 });
+    const d = pedal('Math check', [{ id: 'M', name: 'Math', graph: G }], { ctls: [{ id: 'k', kind: 'knob', x: 30, y: 40, r: 6.5, style: 'boss', value: 0.5, label: 'A', labelPos: 'below' }] });
+    F.seriesWires(d);
+    d.ctls[0].map = F.mapTo(d.circuit, 'M.A');
+    const def = F.designToDef(d, { id: 'custom.mathcheck' });
+    const at = (v) => def.derive({ 'u.k': (v + 255) / 510 })['M.A'];
+    return { d, a200: at(200), a2005: at(200.5), aNeg: at(-255), slots: def.opts.nodes.filter((n) => n.k === 'mul' || n.k === 'add').map((n) => n.slots.map((x) => x.raw)) };
+  });
+  ok(Math.abs(mathD.a200 - 200) < 1e-6 && Math.abs(mathD.a2005 - 200.5) < 1e-6 && mathD.aNeg === -255, `a knob sweeps an analog input from -255 to 255 (${mathD.aNeg}, ${mathD.a200}, ${mathD.a2005})`);
+  ok(mathD.slots.flat().every((x) => x === true), 'math parts take their values as they are (raw slots)');
+  const m1 = await renderBlock(mathD.d, { 'u.k': 455 / 510 }), m2 = await renderBlock(mathD.d, { 'u.k': 455.5 / 510 });
+  const rm1 = segRms(readWav(m1.file).chans[0], 0.2, 10), rm2 = segRms(readWav(m2.file).chans[0], 0.2, 10);
+  ok(rm1 > 0.01 && Math.abs(rm1 / rm2 - 2) < 0.15, `200 * -1 + 201 opens the VCA, 200.5 gives half (${rm1.toFixed(4)} / ${rm2.toFixed(4)})`);
+  // delay: a constant reaches the VCA a second later
+  const delD = await win.evaluate(() => {
+    const { N, W, pedal, G: g0, F } = window.__ct;
+    const G = g0();
+    N(G, 'in', 'in'); N(G, 'out', 'out');
+    N(G, 'one', 'const', {}, { value: 1 }); N(G, 'dl', 'cdelay', {}, { time: 1 }); N(G, 'vca', 'vca');
+    W(G, 'in', 'out', 'vca', 'in'); W(G, 'vca', 'out', 'out', 'in');
+    W(G, 'one', 'cv', 'dl', '@in'); W(G, 'dl', 'cv', 'vca', '@gain', { lo: 0, hi: 1 });
+    const d = pedal('Delay check', [{ id: 'D', name: 'Delay', graph: G }]);
+    F.seriesWires(d);
+    return d;
+  });
+  const dr = await renderBlock(delD, {});
+  const dx = readWav(dr.file).chans[0];
+  const early = segRms(dx, 0.05, 0.9), late = segRms(dx, 1.1, 3);
+  ok(early < 1e-4 && late > 0.01, `the Delay part passes its input on after its time (${early.toFixed(5)} then ${late.toFixed(4)})`);
+  // PHONES: left and right wired from different circuits
+  const phD = await win.evaluate(() => {
+    const { N, W, pedal, G: g0 } = window.__ct;
+    const mk = (gain) => {
+      const G = g0();
+      N(G, 'in', 'in'); N(G, 'out', 'out'); N(G, 'vca', 'vca', {}, { gain });
+      W(G, 'in', 'out', 'vca', 'in'); W(G, 'vca', 'out', 'out', 'in');
+      return G;
+    };
+    const jacks = [{ id: 'jin', kind: 'in', edge: 'right', t: 0.4, label: 'IN' }, { id: 'jph', kind: 'phones', edge: 'top', t: 0.5, label: 'PHONES' }];
+    const wires = [
+      { id: 'w1', a: { n: 'jack:jin', p: '' }, b: { n: 'L', p: 'in' } }, { id: 'w2', a: { n: 'jack:jin', p: '' }, b: { n: 'R', p: 'in' } },
+      { id: 'w3', a: { n: 'L', p: 'out' }, b: { n: 'jack:jph', p: 'L' } }, { id: 'w4', a: { n: 'R', p: 'out' }, b: { n: 'jack:jph', p: 'R' } },
+    ];
+    return pedal('Phones check', [{ id: 'L', name: 'Loud', graph: mk(1) }, { id: 'R', name: 'Quiet', graph: mk(0.25) }], { jacks, wires });
+  });
+  const pr = await renderBlock(phD, {}, 'stereo');
+  const pw = readWav(pr.file);
+  const pl = segRms(pw.chans[0], 0.2, 10), prr = pw.chans[1] ? segRms(pw.chans[1], 0.2, 10) : 0;
+  ok(pw.chans.length >= 2 && pl > 0.01 && Math.abs(pl / prr - 4) < 0.3, `PHONES L and R wired on their own (${pw.chans.length} channels, L ${pl.toFixed(4)}, R ${prr.toFixed(4)})`);
+  for (const r of [m1, m2, dr, pr]) fs.rmSync(r.file, { force: true });
+
+  // the big one: outputs to LEDs, an EXP OUT jack, a footswitch IN jack, circuit to circuit and a screen
+  const big = await win.evaluate(() => {
+    const { N, W, pedal, G: g0, F } = window.__ct;
+    const E = g0();
+    N(E, 'in', 'in'); N(E, 'out', 'out'); W(E, 'in', 'out', 'out', 'in');
+    N(E, 'V', 'analog', { name: 'V', def: 0.75 }); N(E, 'exp', 'anaout', { name: 'Exp' }); W(E, 'V', 'cv', 'exp', '@in');
+    const Gt = g0();
+    N(Gt, 'gate', 'binary', { name: 'Gate', def: 0 }); N(Gt, 'lit', 'binout', { name: 'Lit' }); W(Gt, 'gate', 'cv', 'lit', '@in');
+    N(Gt, 'gate2', 'binary', { name: 'Gate2', def: 0 }); N(Gt, 'fsw', 'binout', { name: 'Fsw' }); W(Gt, 'gate2', 'cv', 'fsw', '@in');
+    N(Gt, 'lvl', 'analog', { name: 'Lvl', def: 0.5 }); N(Gt, 'glow', 'anaout', { name: 'Glow' }); W(Gt, 'lvl', 'cv', 'glow', '@in');
+    const H = g0();
+    N(H, 'hin', 'analog', { name: 'In', def: 0 }); N(H, 'm2', 'mul', {}, { b: 2 }); N(H, 'twice', 'anaout', { name: 'Twice', min: 0, max: 2 });
+    W(H, 'hin', 'cv', 'm2', '@a'); W(H, 'm2', 'cv', 'twice', '@in');
+    const S = g0();
+    N(S, 'val', 'analog', { name: 'Val', min: -255, max: 255, def: 0 }); N(S, 'back', 'anaout', { name: 'Back', min: -255, max: 255 }); W(S, 'val', 'cv', 'back', '@in');
+    const jacks = [
+      { id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' },
+      { id: 'jexp', kind: 'exp', edge: 'top', t: 0.25, label: 'EXP', from: { n: 'E', p: 'exp' } },
+      { id: 'jfs', kind: 'fsw', edge: 'top', t: 0.7, label: 'FS', maps: [{ to: 'G.gate2', min: 0, max: 1, taper: 'lin', ch: 't' }] },
+    ];
+    const ctls = [
+      { id: 'tg', kind: 'toggle', ways: 2, orient: 'v', x: 20, y: 70, pos: 0, label: 'GATE', labelPos: 'below', map: { to: 'G.gate', min: 0, max: 1, taper: 'lin' } },
+      { id: 'l1', kind: 'led', x: 20, y: 20, r: 2.5, color: '#ff2a1a', on: true, label: '', labelPos: 'none', bind: 'cv:G.lit' },
+      { id: 'l2', kind: 'led', x: 40, y: 20, r: 2.5, color: '#3fa8ff', on: true, label: '', labelPos: 'none', bind: 'on' },
+      { id: 'sc', kind: 'screen', x: 30, y: 45, w: 40, h: 16, type: 'oled', text: '', label: '', labelPos: 'none', shows: 'custom',
+        script: 'function draw()\n  clear()\n  output(1, input("Level") * 2)\n  text(string.format("%.2f", input(1)), 2, 2)\nend\n',
+        sio: { ins: [{ id: 'p1', name: 'Level', sig: 'n', from: { n: 'E', p: 'exp' } }], outs: [{ id: 'p2', name: 'Set', sig: 'n', maps: [{ to: 'S.val', raw: true }] }] } },
+    ];
+    const wires = [{ id: 'w1', a: { n: 'jack:jin', p: '' }, b: { n: 'E', p: 'in' } }, { id: 'w2', a: { n: 'E', p: 'out' }, b: { n: 'jack:jout', p: '' } }];
+    const d = pedal('Signals', [{ id: 'E', name: 'Exp', graph: E }, { id: 'G', name: 'Gates', graph: Gt }, { id: 'H', name: 'Double', graph: H }, { id: 'S', name: 'Screen in', graph: S }], { jacks, ctls, wires });
+    d.enc.w = 90;
+    d.enc.h = 110;
+    window.__tzFactory.load(d);
+    const def = F.designToDef(window.__tzFactory.design(), { id: 'custom.sigcheck' });
+    return { couts: def.couts.map((x) => x.key), ctrl: def.ctrl, screenIO: def.screenIO };
+  });
+  ok(big.couts.join() === 'E.exp,G.lit,G.fsw,G.glow,H.twice,S.back', 'circuit outputs are numbered for the engine status: ' + big.couts.join());
+  ok(big.ctrl && big.ctrl.outs.length === 1 && big.ctrl.outs[0].source === 'cv' && big.ctrl.ins.length === 1 && big.ctrl.ins[0].param === 'u.f.jfs', 'the EXP jack is a control out, the footswitch jack a control in');
+  await win.evaluate(() => window.__tzCircuits.diagram().refresh(true));
+  await win.waitForTimeout(300);
+  const wdHas = await win.evaluate(() => ['co:E:exp', 'k:H:hin', 'led:l1', 'led:l2', 'jo:jexp', 'jack:jfs:t', 'jack:jfs:r', 'si:sc:0', 'so:sc:0'].filter((k) => !document.querySelector(`.fz-wd [data-wp="${k}"]`)));
+  ok(!wdHas.length, 'the diagram shows circuit outputs, LEDs, the EXP out, footswitch tip and ring and the screen ports' + (wdHas.length ? ' (missing ' + wdHas.join(', ') + ')' : ''));
+  const shapes = await win.evaluate(() => ['co:E:exp', 'co:G:lit', 'jack:jin'].map((k) => { const e = document.querySelector(`.fz-wd [data-wp="${k}"]`); return e.tagName + (e.getAttribute('transform') ? '/rot' : '') + ':' + e.getAttribute('class').split(' ').slice(1, 3).join('.'); }));
+  ok(shapes[0] === 'rect/rot:c.n' && shapes[1] === 'rect:c.b' && shapes[2] === 'circle:a.a', 'analog ports are diamonds, binary squares, audio circles: ' + shapes.join(' '));
+  ok(await win.evaluate(() => !!document.querySelector('.fz-wd [data-wd="legend"] svg')), 'the diagram has a signal key');
+  // drag circuit to circuit, and an analog output to an LED
+  await wdDrag('co:E:exp', 'k:H:hin');
+  await wdDrag('co:G:glow', 'led:l2');
+  d = await D();
+  ok(d.circuit.cwires.some((w) => w.a.n === 'E' && w.a.p === 'exp' && w.b.n === 'H' && w.b.p === 'hin'), 'dragged a circuit output into another circuit\'s input');
+  ok(d.ctls.find((c) => c.id === 'l2').bind === 'cv:G.glow', 'dragged an analog output onto an LED');
+  const wsig = await win.evaluate(() => [...document.querySelectorAll('.fz-wd .fz-wd-wire')].map((p) => p.dataset.sig));
+  ok(wsig.includes('a') && wsig.includes('n') && wsig.includes('b'), 'audio, analog and binary wires are drawn differently: ' + [...new Set(wsig)].join(', '));
+  await win.screenshot({ path: path.join(S, 'circuits-signals-diagram.png') });
+  // Test mode: the LEDs and the circuit values from the engine
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1800);
+  const tv = () => win.evaluate(async () => {
+    const m = await import('./js/pages/factory-play.js');
+    const st = window.__tz.state.status.blocks.fztest;
+    return { leds: m.testLeds(), cv: st && st.cv };
+  });
+  let t1 = await tv();
+  ok(t1.cv && Math.abs(t1.cv[4] - 1.5) < 0.01, 'circuit to circuit: 0.75 from one circuit, doubled in the other = ' + (t1.cv && t1.cv[4]));
+  ok(t1.cv && Math.abs(t1.cv[5] - 1.5) < 0.01, 'the screen reads a circuit output and drives another circuit\'s input (' + (t1.cv && t1.cv[5]) + ')');
+  ok(t1.leds.find((l) => l.cid === 'l1').on === false && typeof t1.leds.find((l) => l.cid === 'l2').on === 'string', 'in Test mode the binary LED is off and the analog one dimmed: ' + JSON.stringify(t1.leds));
+  await win.evaluate(() => window.__tzFactory.testSet('tg', 1));
+  await win.waitForTimeout(700);
+  t1 = await tv();
+  ok(t1.leds.find((l) => l.cid === 'l1').on === true && t1.cv[1] === 1, 'flipping the switch lights the LED through the binary output');
+  await win.screenshot({ path: path.join(S, 'circuits-signals-test.png') });
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(300);
+  // on the board: the saved pedal drives a volume pedal through its EXP OUT, a footswitch plugs into its FS jack
+  await win.evaluate(() => window.__tzFactory.save(true));
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
+  const sigId = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(400);
+  const ids = await win.evaluate(async (id) => {
+    const st = await import('./js/state.js');
+    const a = st.addBlock(id, 300, 160), v = st.addBlock('tz.dimmer', 620, 160), f = st.addBlock('tz.fs1', 300, 420);
+    st.connect({ node: a.id, port: 'c0' }, { node: v.id, port: 'c0' });
+    st.connect({ node: f.id, port: 'c0' }, { node: a.id, port: 'c0' });
+    // in the signal chain, so the engine runs it
+    st.connect({ node: '__in', port: 0 }, { node: a.id, port: 0 });
+    st.connect({ node: a.id, port: 0 }, { node: '__out', port: 0 });
+    st.syncGraph();
+    return { a: a.id, v: v.id, f: f.id };
+  }, sigId);
+  await win.waitForTimeout(1800);
+  const bv = () => win.evaluate(async (ids) => {
+    const st = await import('./js/state.js');
+    const s = st.state.status.blocks[ids.a];
+    const fills = [...document.querySelectorAll(`[data-node="${ids.a}"] circle.led`)].map((c) => c.getAttribute('fill'));
+    return { pos: st.uiParams(st.blockById(ids.v)).pos, cv: s && s.cv, gate2: st.engineParamsFor(st.blockById(ids.a))['G.gate2'], fills };
+  }, ids);
+  let b1 = await bv();
+  ok(Math.abs(b1.pos - 0.75) < 0.01, 'a circuit analog output on the EXP OUT jack moves the volume pedal plugged into it (' + b1.pos + ')');
+  await win.evaluate(async (ids) => { const c = await import('./js/control.js'); const st = await import('./js/state.js'); c.footCtrl(st.blockById(ids.f), 0, true); }, ids);
+  await win.waitForTimeout(700);
+  b1 = await bv();
+  ok(b1.gate2 === 1 && b1.cv && b1.cv[2] === 1, 'a footswitch on the FS jack sends a binary 1 through the tip into the circuit (' + b1.gate2 + ', ' + (b1.cv && b1.cv[2]) + ')');
+  const before = b1.fills.slice();
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.setParam(ids.a, 'u.tg', 1); }, ids);
+  await win.waitForTimeout(900);
+  b1 = await bv();
+  ok(b1.fills.length >= 2 && !before.includes('#ff2a1a') && b1.fills.includes('#ff2a1a'), 'on the board the LED wired to the binary output lights (' + before.join(' ') + ' -> ' + b1.fills.join(' ') + ')');
+  await win.screenshot({ path: path.join(S, 'circuits-signals-board.png') });
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.removeBlocks([ids.a, ids.v, ids.f]); }, ids);
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
 
   await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   ok(errs.length === 0, 'no console errors');

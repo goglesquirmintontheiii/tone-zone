@@ -35,6 +35,7 @@ function stillFor(c, design) {
   let url = null;
   try {
     const { io } = simIO(design || { ctls: [] }, { readOnly: true, demo: false });
+    io.cid = c.id;
     const rt = new ScreenRuntime({ src: c.script || '', w: W, h: H, host: makeHost(design || { ctls: [] }, io), palette: paletteOf(c), screen: { type: c.type, name: c.label || '' } });
     const t = performance.now();
     rt.frame(t);

@@ -1152,6 +1152,11 @@ export class ScreenRuntime {
     }, 2);
     def('setInput', (name, v) => !!(H() && H().setInput(tostr(name), v)), 4);
     def('signals', () => makeTable(H() ? H().signals() : []));
+    // this screen's own inputs and outputs (wired in the wiring diagram)
+    def('input', (i = 1) => (H() && H().screenInput ? H().screenInput(typeof i === 'number' ? i : tostr(i)) : 0), 2);
+    def('output', (i, v) => !!(H() && H().screenOutput && H().screenOutput(typeof i === 'number' ? i : tostr(i), typeof v === 'boolean' ? v : num(v))), 4);
+    def('outputValue', (i = 1) => (H() && H().screenOutputValue ? H().screenOutputValue(typeof i === 'number' ? i : tostr(i)) : 0), 2);
+    def('ports', () => makeTable(H() && H().screenPorts ? { ins: H().screenPorts().ins.map((p) => p.name), outs: H().screenPorts().outs.map((p) => p.name) } : { ins: [], outs: [] }));
 
     // ---- state that is saved with the preset
     def('save', (key, v) => {

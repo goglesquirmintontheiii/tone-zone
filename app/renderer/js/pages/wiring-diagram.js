@@ -1,11 +1,15 @@
 // Pedal Factory: the wiring diagram under the pedal canvas. The pedal's controls and jacks on the left, its
-// circuits in the middle, the output jacks on the right. Drag from a control or jack to a circuit's input to
-// wire it, between circuits to chain audio; click a wire and press Delete to remove it. The panel folds away,
+// circuits (and screens) in the middle, the output jacks, control out jacks and LEDs on the right. Drag from a
+// control or jack to a circuit's input to wire it, between circuits to chain audio or control values, from a
+// circuit's output to an LED, jack, screen or another circuit; click a wire and press Delete to remove it.
+// Audio ports are circles, analog diamonds and binary squares (wires: thick, thin, dashed). The panel folds away,
 // resizes from its top edge and pops out into its own window.
 import { el, svg, clamp } from '../util.js';
 import { PARTS, hasTap } from './circuit-parts.js';
+import { legendSVG } from './circuit-render.js';
 import {
-  instInputs, instAudioIns, instAudioOuts, instOf, jackList, effectiveWires, mappingsOf, mapTo, targetInfo, addMapping, removeMapping, uid, resolveJack,
+  instInputs, instAudioIns, instAudioOuts, instOutputs, instOf, jackList, effectiveWires, mappingsOf, mapTo, targetInfo, addMapping, removeMapping, uid, resolveJack,
+  nodeSig, ctlJacks, jackIsOut, screenIO, SCREEN_PORTS,
 } from './factory-circuit.js';
 
 const PREF = 'tz.factory.wd.v1';
@@ -45,6 +49,7 @@ export function mountDiagram(mid, api) {
   const sv = svg('svg', { class: 'fz-wd-svg' }, body);
   const vg = svg('g', {}, sv);
   const empty = el('div', { class: 'fz-wd-empty' }, body);
+  const legend = el('div', { class: 'sig-legend fz-wd-legend', title: 'What the wires carry', 'data-wd': 'legend' }, body, legendSVG());
   let view = { x: 10, y: 8, z: 1 }, touched = false;
   let selWire = null, hoverKey = null, drag = null, sig = '', raf = 0, geo = null;
 
@@ -145,10 +150,12 @@ export function mountDiagram(mid, api) {
 
   // ---------------------------------------------------------------- layout
   const ctlName = (c) => api.name(c);
+  // what a control sends: switches and footswitches are binary, knobs and selectors analog
+  const ctlSig = (c) => (c.kind === 'foot' || c.kind === 'button' || c.kind === 'dip' || (c.kind === 'toggle' && (c.ways || 2) === 2) ? 'b' : 'n');
   function build(D) {
     const C = D.circuit;
     const J = jackList(D);
-    const ports = new Map(); // key -> {x, y, dir: 'out' | 'in', kind: 'a' | 'c', ...}
+    const ports = new Map(); // key -> {x, y, dir: 'out' | 'in', kind: 'a' | 'c', sig: 'a' | 'n' | 'b', ...}
     const rows = [];
     let y = 0;
     const group = (t) => {
@@ -157,29 +164,39 @@ export function mountDiagram(mid, api) {
     };
     const ctls = D.ctls.filter((c) => !CTL_SKIP.has(c.kind) && !c.hidden);
     if (ctls.length) group('Controls');
+    const subRow = (key, subs, base, at) =>
+      subs.forEach(([k, l, sig], i) => {
+        const px = 20 + (i % 6) * 22, py = at + ROWH - 2 + Math.floor(i / 6) * 16 + 6;
+        ports.set(key + ':' + k, { x: px, y: py, dir: 'out', kind: 'c', sig, label: l, small: true, ...base, sw: +k });
+      });
     for (const c of ctls) {
-      const subs = c.kind === 'dip' ? [...Array(c.n || 4)].map((_, i) => [String(i), String(i + 1)]) : c.kind === 'xy' ? [['0', 'X'], ['1', 'Y']] : null;
+      const subs = c.kind === 'dip' ? [...Array(c.n || 4)].map((_, i) => [String(i), String(i + 1), 'b']) : c.kind === 'xy' ? [['0', 'X', 'n'], ['1', 'Y', 'n']] : null;
       const h = subs ? ROWH + Math.ceil(subs.length / 6) * 16 : ROWH;
-      const r = { ctl: c, y, h, label: ctlName(c), subs };
-      rows.push(r);
-      if (subs)
-        subs.forEach(([k, l], i) => {
-          const px = 20 + (i % 6) * 22, py = y + ROWH - 2 + Math.floor(i / 6) * 16 + 6;
-          ports.set('ctl:' + c.id + ':' + k, { x: px, y: py, dir: 'out', kind: 'c', ctl: c, sw: +k, label: l, small: true });
-        });
-      else ports.set('ctl:' + c.id, { x: COL, y: y + h / 2, dir: 'out', kind: 'c', ctl: c });
+      rows.push({ ctl: c, y, h, label: ctlName(c), subs });
+      if (subs) subRow('ctl:' + c.id, subs, { ctl: c }, y);
+      else ports.set('ctl:' + c.id, { x: COL, y: y + h / 2, dir: 'out', kind: 'c', sig: ctlSig(c), ctl: c });
       y += h + 4;
     }
     group('Jacks');
     for (const j of J.ins) {
       rows.push({ jack: j, y, h: ROWH, label: (j.label || 'IN') + (j.virtual ? ' (no jack)' : ''), audio: true });
-      ports.set('jack:' + j.id, { x: COL, y: y + ROWH / 2, dir: 'out', kind: 'a', jack: j });
+      ports.set('jack:' + j.id, { x: COL, y: y + ROWH / 2, dir: 'out', kind: 'a', sig: 'a', jack: j });
       y += ROWH + 4;
     }
-    for (const j of J.exps) {
-      rows.push({ jack: j, y, h: ROWH, label: (j.label || 'EXP') + ' (expression)' });
-      ports.set('jack:' + j.id, { x: COL, y: y + ROWH / 2, dir: 'out', kind: 'c', jack: j });
-      y += ROWH + 4;
+    for (const j of ctlJacks(D)) {
+      const out = jackIsOut(j);
+      if (j.kind === 'fsw') {
+        const h = ROWH + 16;
+        rows.push({ jack: j, y, h, label: (j.label || 'FS') + (out ? ' (used as out)' : ' (footswitch in)'), dim: out });
+        const p = (k, l, i) => ports.set('jack:' + j.id + ':' + k, { x: 20 + i * 34, y: y + ROWH + 4, dir: 'out', kind: 'c', sig: 'b', jack: j, ch: k, label: l, small: true });
+        p('t', 'Tip', 0);
+        p('r', 'Ring', 1);
+        y += h + 4;
+      } else {
+        rows.push({ jack: j, y, h: ROWH, label: (j.label || 'EXP') + (out ? ' (used as out)' : ' (expression in)'), dim: out });
+        ports.set('jack:' + j.id, { x: COL, y: y + ROWH / 2, dir: 'out', kind: 'c', sig: 'n', jack: j });
+        y += ROWH + 4;
+      }
     }
     const leftH = y;
     // circuits
@@ -187,62 +204,111 @@ export function mountDiagram(mid, api) {
     let maxR = AREA + BOXW, maxB = 0;
     for (const inst of C.insts) {
       const ains = instAudioIns(inst), aouts = instAudioOuts(inst);
-      const kins = [...ains.map((n) => ({ key: 'in:' + inst.id + ':' + n.id, label: n.name || 'IN', kind: 'a' })),
-        ...instInputs(inst).map((n) => ({ key: 'k:' + inst.id + ':' + n.id, label: n.name || 'Knob', kind: 'c', to: inst.id + '.' + n.id })),
-        { key: 'k:' + inst.id + ':on', label: 'On / off', kind: 'c', to: inst.id + '.on' },
-        ...(hasTap(inst.graph) ? [{ key: 'k:' + inst.id + ':tap', label: 'Tap tempo', kind: 'c', to: inst.id + '.tap' }] : [])];
-      const kouts = aouts.map((n) => ({ key: 'out:' + inst.id + ':' + n.id, label: n.name || 'OUT', kind: 'a' }));
+      const kins = [...ains.map((n) => ({ key: 'in:' + inst.id + ':' + n.id, label: n.name || 'IN', kind: 'a', sig: 'a' })),
+        ...instInputs(inst).map((n) => ({ key: 'k:' + inst.id + ':' + n.id, label: n.name || 'Input', kind: 'c', sig: nodeSig(n), to: inst.id + '.' + n.id, node: n.id })),
+        { key: 'k:' + inst.id + ':on', label: 'On / off', kind: 'c', sig: 'b', to: inst.id + '.on' },
+        ...(hasTap(inst.graph) ? [{ key: 'k:' + inst.id + ':tap', label: 'Tap tempo', kind: 'c', sig: 'b', to: inst.id + '.tap' }] : [])];
+      const kouts = [...aouts.map((n) => ({ key: 'out:' + inst.id + ':' + n.id, label: n.name || 'OUT', kind: 'a', sig: 'a' })),
+        ...instOutputs(inst).map((n) => ({ key: 'co:' + inst.id + ':' + n.id, label: n.name || 'Out', kind: 'c', sig: nodeSig(n), cout: { n: inst.id, p: n.id } }))];
       const bx = AREA + (inst.x || 0), by = inst.y || 0;
       const h = 28 + Math.max(kins.length, kouts.length, 1) * 18 + 6;
       boxes.push({ inst, x: bx, y: by, w: BOXW, h, kins, kouts });
-      kins.forEach((p, i) => ports.set(p.key, { x: bx, y: by + 28 + i * 18 + 9, dir: 'in', kind: p.kind, inst, to: p.to, label: p.label, tapOnly: p.to && p.to.endsWith('.tap') }));
-      kouts.forEach((p, i) => ports.set(p.key, { x: bx + BOXW, y: by + 28 + i * 18 + 9, dir: 'out', kind: 'a', inst, label: p.label }));
+      kins.forEach((p, i) => ports.set(p.key, { x: bx, y: by + 28 + i * 18 + 9, dir: 'in', kind: p.kind, sig: p.sig, inst, to: p.to, node: p.node, label: p.label, tapOnly: p.to && p.to.endsWith('.tap') }));
+      kouts.forEach((p, i) => ports.set(p.key, { x: bx + BOXW, y: by + 28 + i * 18 + 9, dir: 'out', kind: p.kind, sig: p.sig, inst, label: p.label, cout: p.cout }));
       maxR = Math.max(maxR, bx + BOXW);
       maxB = Math.max(maxB, by + h);
+    }
+    // screens: their inputs read circuit outputs, their outputs drive circuit inputs
+    const sboxes = [];
+    let sy = (C.insts.length ? maxB : 0) + 24;
+    for (const c of D.ctls.filter((x) => x.kind === 'screen' && !x.hidden)) {
+      const sio = c.sio || { ins: [], outs: [] };
+      const ins = (sio.ins || []).slice(0, SCREEN_PORTS), outs = (sio.outs || []).slice(0, SCREEN_PORTS);
+      const bx = AREA, h = 28 + Math.max(ins.length, outs.length, 1) * 18 + 6;
+      sboxes.push({ c, x: bx, y: sy, w: BOXW, h, ins, outs, label: ctlName(c) });
+      ins.forEach((p, i) => ports.set('si:' + c.id + ':' + i, { x: bx, y: sy + 28 + i * 18 + 9, dir: 'in', kind: 'c', sig: p.sig === 'b' ? 'b' : 'n', screen: c, si: i, label: p.name }));
+      outs.forEach((p, i) => ports.set('so:' + c.id + ':' + i, { x: bx + BOXW, y: sy + 28 + i * 18 + 9, dir: 'out', kind: 'c', sig: p.sig === 'b' ? 'b' : 'n', screen: c, so: i, label: p.name }));
+      maxB = Math.max(maxB, sy + h);
+      sy += h + 16;
     }
     const rx = maxR + 110;
     let ry = 20;
     const outRows = [];
     for (const j of J.outs) {
-      outRows.push({ jack: j, y: ry, label: (j.label || 'OUT') + (j.virtual ? ' (no jack)' : '') });
-      ports.set('jack:' + j.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'a', jack: j });
-      ry += ROWH + 4;
+      const stereo = j.kind === 'phones';
+      outRows.push({ jack: j, y: ry, label: (j.label || 'OUT') + (j.virtual ? ' (no jack)' : ''), h: stereo ? ROWH + 16 : ROWH });
+      ports.set('jack:' + j.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'a', sig: 'a', jack: j });
+      if (stereo) {
+        ports.set('jack:' + j.id + ':L', { x: rx + 22, y: ry + ROWH + 4, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'L', label: 'L', small: true });
+        ports.set('jack:' + j.id + ':R', { x: rx + 56, y: ry + ROWH + 4, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'R', label: 'R', small: true });
+      }
+      ry += (stereo ? ROWH + 16 : ROWH) + 4;
     }
-    // wires: audio from the design, control from the mappings
+    const ctlOuts = ctlJacks(D);
+    if (ctlOuts.length) {
+      ry += 6;
+      outRows.push({ title: 'Control out', y: ry });
+      ry += 20;
+      for (const j of ctlOuts) {
+        outRows.push({ jack: j, y: ry, label: (j.label || (j.kind === 'fsw' ? 'FS' : 'EXP')) + (jackIsOut(j) ? ' (out)' : ' (used as in)'), dim: !jackIsOut(j), h: ROWH });
+        ports.set('jo:' + j.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'c', sig: j.kind === 'fsw' ? 'b' : 'n', jout: j });
+        ry += ROWH + 4;
+      }
+    }
+    const leds = D.ctls.filter((c) => c.kind === 'led' && !c.hidden);
+    if (leds.length) {
+      ry += 6;
+      outRows.push({ title: 'LEDs', y: ry });
+      ry += 20;
+      for (const c of leds) {
+        outRows.push({ led: c, y: ry, label: ctlName(c), h: ROWH });
+        ports.set('led:' + c.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'c', sig: 'b', led: c });
+        ry += ROWH + 4;
+      }
+    }
+    // wires: audio from the design, control from the mappings and the circuit outputs
     const wires = [];
     const ekey = (e, out) => {
       if (e.n.startsWith('jack:')) {
         const j = resolveJack(J, e.n.slice(5), out ? 'in' : 'out');
-        return j ? 'jack:' + j.id : null;
+        if (!j) return null;
+        return 'jack:' + j.id + (!out && (e.p === 'L' || e.p === 'R') && j.kind === 'phones' ? ':' + e.p : '');
       }
       return (out ? 'out:' : 'in:') + e.n + ':' + e.p;
     };
     for (const w of effectiveWires(D)) {
       const a = ekey(w.a, true), b = ekey(w.b, false);
-      if (ports.has(a) && ports.has(b)) wires.push({ id: w.id, a, b, kind: 'a', auto: !!w.auto, w });
+      if (ports.has(a) && ports.has(b)) wires.push({ id: w.id, a, b, kind: 'a', sig: 'a', auto: !!w.auto, w });
     }
     const inPort = (to) => {
       const dot = to.indexOf('.');
       return 'k:' + to.slice(0, dot) + ':' + to.slice(dot + 1);
     };
+    const cw = (o) => {
+      if (ports.has(o.a) && ports.has(o.b)) wires.push({ kind: 'c', sig: ports.get(o.a).sig, ...o });
+    };
     for (const c of ctls) {
-      mappingsOf(c).forEach((m, i) => {
-        const b = inPort(m.to);
-        if (ports.has(b)) wires.push({ id: 'm:' + c.id + ':' + i, a: 'ctl:' + c.id, b, kind: 'c', ctl: c, mi: i });
-      });
+      mappingsOf(c).forEach((m, i) => cw({ id: 'm:' + c.id + ':' + i, a: 'ctl:' + c.id, b: inPort(m.to), ctl: c, mi: i }));
       if (c.kind === 'dip' || c.kind === 'xy')
-        (c.maps || []).forEach((m, i) => {
-          if (!m || !m.to) return;
-          const b = inPort(m.to);
-          if (ports.has(b) && ports.has('ctl:' + c.id + ':' + i)) wires.push({ id: 's:' + c.id + ':' + i, a: 'ctl:' + c.id + ':' + i, b, kind: 'c', ctl: c, sw: i });
-        });
+        (c.maps || []).forEach((m, i) => m && m.to && cw({ id: 's:' + c.id + ':' + i, a: 'ctl:' + c.id + ':' + i, b: inPort(m.to), ctl: c, sw: i }));
     }
-    for (const j of J.exps)
-      (j.maps || []).forEach((m, i) => {
-        const b = inPort(m.to);
-        if (ports.has(b)) wires.push({ id: 'x:' + j.id + ':' + i, a: 'jack:' + j.id, b, kind: 'c', jack: j, xi: i });
-      });
-    return { rows, outRows, boxes, ports, wires, rx, w: rx + COL, h: Math.max(leftH, maxB + 10, ry) };
+    for (const j of ctlJacks(D)) {
+      if (jackIsOut(j)) {
+        if (j.from) cw({ id: 'jo:' + j.id, a: 'co:' + j.from.n + ':' + j.from.p, b: 'jo:' + j.id, jout: j });
+        continue;
+      }
+      (j.maps || []).forEach((m, i) => cw({ id: 'x:' + j.id + ':' + i, a: 'jack:' + j.id + (j.kind === 'fsw' ? ':' + (m.ch || 't') : ''), b: inPort(m.to), jack: j, xi: i }));
+    }
+    for (const w of C.cwires || []) cw({ id: 'cw:' + w.id, a: 'co:' + w.a.n + ':' + w.a.p, b: 'k:' + w.b.n + ':' + w.b.p, cwire: w });
+    for (const c of leds) if (c.bind && c.bind.startsWith('cv:')) {
+      const k = c.bind.slice(3), dot = k.indexOf('.');
+      cw({ id: 'led:' + c.id, a: 'co:' + k.slice(0, dot) + ':' + k.slice(dot + 1), b: 'led:' + c.id, led: c });
+    }
+    for (const b of sboxes) {
+      b.ins.forEach((p, i) => p.from && cw({ id: 'si:' + b.c.id + ':' + i, a: 'co:' + p.from.n + ':' + p.from.p, b: 'si:' + b.c.id + ':' + i, screen: b.c, si: i }));
+      b.outs.forEach((p, i) => (p.maps || []).forEach((m, k) => m && m.to && cw({ id: 'sm:' + b.c.id + ':' + i + ':' + k, a: 'so:' + b.c.id + ':' + i, b: inPort(m.to), screen: b.c, so: i, mk: k })));
+    }
+    return { rows, outRows, boxes, sboxes, ports, wires, rx, w: rx + COL, h: Math.max(leftH, maxB + 10, ry) };
   }
 
   // ---------------------------------------------------------------- drawing
@@ -258,6 +324,7 @@ export function mountDiagram(mid, api) {
     const sel = new Set(api.selected());
     const C = D.circuit;
     info.textContent = `${C.insts.length} circuit${C.insts.length === 1 ? '' : 's'} · ${geo.wires.filter((w) => w.kind === 'c').length} control wires`;
+    legend.hidden = !C.insts.length;
     empty.textContent = C.insts.length ? '' : 'No circuits yet: add one from the Circuit list on the left.';
     empty.hidden = !!C.insts.length;
     // left column
@@ -268,17 +335,24 @@ export function mountDiagram(mid, api) {
         continue;
       }
       const key = r.ctl ? 'ctl:' + r.ctl.id : 'jack:' + r.jack.id;
-      const g = svg('g', { class: 'fz-wd-row' + (r.ctl && sel.has(r.ctl.id) ? ' on' : '') + (r.jack ? ' jack' : ''), 'data-wrow': key }, gl);
+      const g = svg('g', { class: 'fz-wd-row' + (r.ctl && sel.has(r.ctl.id) ? ' on' : '') + (r.jack ? ' jack' : '') + (r.dim ? ' dim' : ''), 'data-wrow': key }, gl);
       svg('rect', { x: 0, y: r.y, width: COL, height: r.h, rx: 6, class: 'fz-wd-rowbg' }, g);
       svg('text', { x: 10, y: r.y + 15, class: 'fz-wd-label' }, g, r.label.length > 22 ? r.label.slice(0, 21) + '...' : r.label);
       if (r.ctl && r.ctl.kind === 'foot' && (!r.ctl.map || r.ctl.map.to === 'bypass')) svg('text', { x: COL - 14, y: r.y + 15, class: 'fz-wd-note', 'text-anchor': 'end' }, g, 'bypass');
       g.addEventListener('click', () => r.ctl ? api.select(r.ctl.id) : r.jack.virtual ? null : api.select(r.jack.id));
     }
     for (const r of geo.outRows) {
-      const g = svg('g', { class: 'fz-wd-row jack', 'data-wrow': 'jack:' + r.jack.id }, vg);
-      svg('rect', { x: geo.rx, y: r.y, width: COL, height: ROWH, rx: 6, class: 'fz-wd-rowbg' }, g);
-      svg('text', { x: geo.rx + 12, y: r.y + 15, class: 'fz-wd-label' }, g, r.label);
-      g.addEventListener('click', () => !r.jack.virtual && api.select(r.jack.id));
+      if (r.title) {
+        svg('text', { x: geo.rx + 4, y: r.y + 13, class: 'fz-wd-group' }, vg, r.title.toUpperCase());
+        continue;
+      }
+      const it = r.jack || r.led;
+      const key = r.led ? 'led:' + r.led.id : (r.dim !== undefined && r.jack && (r.jack.kind === 'exp' || r.jack.kind === 'fsw') ? 'jo:' : 'jack:') + it.id;
+      const g = svg('g', { class: 'fz-wd-row jack' + (r.dim ? ' dim' : '') + (r.led && sel.has(r.led.id) ? ' on' : ''), 'data-wrow': key }, vg);
+      svg('rect', { x: geo.rx, y: r.y, width: COL, height: r.h || ROWH, rx: 6, class: 'fz-wd-rowbg' }, g);
+      svg('text', { x: geo.rx + 12, y: r.y + 15, class: 'fz-wd-label' }, g, r.label.length > 22 ? r.label.slice(0, 21) + '...' : r.label);
+      if (r.led) svg('circle', { cx: geo.rx + COL - 14, cy: r.y + ROWH / 2, r: 4, class: 'fz-wd-led', fill: r.led.color || '#ff2a1a' }, g);
+      g.addEventListener('click', () => (r.led ? api.select(r.led.id) : !r.jack.virtual && api.select(r.jack.id)));
     }
     if (geo.outRows.length) svg('text', { x: geo.rx + 4, y: 13, class: 'fz-wd-group' }, vg, 'OUTPUTS');
     // wires go under the circuit boxes, so wires passing behind a box do not look plugged into it
@@ -306,16 +380,39 @@ export function mountDiagram(mid, api) {
         e.stopPropagation();
         api.removeInst(b.inst.id);
       });
-      b.kins.forEach((p, i) => svg('text', { x: b.x + 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel' + (p.kind === 'c' ? ' c' : '') }, g, p.label.slice(0, 18)));
-      b.kouts.forEach((p, i) => svg('text', { x: b.x + b.w - 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel', 'text-anchor': 'end' }, g, p.label.slice(0, 14)));
+      b.kins.forEach((p, i) => svg('text', { x: b.x + 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel' + (p.kind === 'c' ? ' c ' + p.sig : '') }, g, p.label.slice(0, 18)));
+      b.kouts.forEach((p, i) => svg('text', { x: b.x + b.w - 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel' + (p.kind === 'c' ? ' c ' + p.sig : ''), 'text-anchor': 'end' }, g, p.label.slice(0, 14)));
       g.addEventListener('dblclick', () => api.editInst(b.inst.id));
+    }
+    // screens
+    for (const b of geo.sboxes) {
+      const g = svg('g', { class: 'fz-wd-box fz-wd-screen' + (sel.has(b.c.id) ? ' on' : ''), 'data-wscreen': b.c.id }, vg);
+      svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8, class: 'fz-wd-boxbg' }, g);
+      const hd = svg('g', { class: 'fz-wd-boxhead' }, g);
+      svg('rect', { x: b.x, y: b.y, width: b.w, height: 24, rx: 8, class: 'fz-wd-boxtop' }, hd);
+      svg('text', { x: b.x + 10, y: b.y + 16, class: 'fz-wd-title' }, hd, 'Screen: ' + (b.label.length > 12 ? b.label.slice(0, 11) + '...' : b.label));
+      hd.addEventListener('click', () => api.select(b.c.id));
+      const nIn = b.ins.length, nOut = b.outs.length;
+      [['in', 'Add an input (the script reads it with input())', b.x + b.w - 70, nIn], ['out', 'Add an output (the script sets it with output())', b.x + b.w - 36, nOut]].forEach(([k, tip, x, n]) => {
+        const bt = svg('g', { class: 'fz-wd-btn' + (n >= SCREEN_PORTS ? ' off' : ''), 'data-wscreen-add': k }, g);
+        svg('rect', { x, y: b.y + 4, width: 30, height: 16, rx: 4 }, bt);
+        svg('text', { x: x + 15, y: b.y + 15.5, class: 'fz-wd-btxt', 'text-anchor': 'middle' }, bt, '+' + k);
+        svg('title', {}, bt, tip);
+        bt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (n < SCREEN_PORTS) api.addScreenPort(b.c.id, k);
+        });
+      });
+      if (!nIn && !nOut) svg('text', { x: b.x + 12, y: b.y + 41, class: 'fz-wd-note' }, g, 'No inputs or outputs yet');
+      b.ins.forEach((p, i) => svg('text', { x: b.x + 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel c ' + (p.sig === 'b' ? 'b' : 'n') }, g, (p.name || 'In ' + (i + 1)).slice(0, 14)));
+      b.outs.forEach((p, i) => svg('text', { x: b.x + b.w - 12, y: b.y + 28 + i * 18 + 13, class: 'fz-wd-plabel c ' + (p.sig === 'b' ? 'b' : 'n'), 'text-anchor': 'end' }, g, (p.name || 'Out ' + (i + 1)).slice(0, 14)));
     }
     // wires
     for (const w of geo.wires) {
       const a = geo.ports.get(w.a), b = geo.ports.get(w.b);
       const hot = hoverKey && (hoverKey === w.a || hoverKey === w.b || hoverKey === w.id || (w.ctl && hoverKey === 'ctl:' + w.ctl.id));
       const on = selWire === w.id || (w.ctl && sel.has(w.ctl.id));
-      const p = svg('path', { d: wpath(a, b), class: `fz-wd-wire ${w.kind === 'a' ? 'a' : 'c'}${w.auto ? ' auto' : ''}${hot ? ' hot' : ''}${on ? ' on' : ''}`, 'data-ww': w.id, 'data-kind': w.kind }, gw);
+      const p = svg('path', { d: wpath(a, b), class: `fz-wd-wire ${w.kind === 'a' ? 'a' : 'c ' + (w.sig || 'n')}${w.auto ? ' auto' : ''}${hot ? ' hot' : ''}${on ? ' on' : ''}`, 'data-ww': w.id, 'data-kind': w.kind, 'data-sig': w.sig || w.kind }, gw);
       const hitp = svg('path', { d: wpath(a, b), class: 'fz-wd-wirehit', 'data-ww': w.id }, gw);
       for (const q of [p, hitp]) {
         q.addEventListener('pointerenter', () => setHover(w.id));
@@ -334,15 +431,18 @@ export function mountDiagram(mid, api) {
     for (const [k, p] of geo.ports) {
       const wired = geo.wires.some((w) => w.a === k || w.b === k);
       const ok = drag ? canDrop(drag.from, k) : true;
-      const c = svg(p.kind === 'a' ? 'circle' : 'rect', p.kind === 'a' ? { cx: p.x, cy: p.y, r: 5 } : { x: p.x - 4.5, y: p.y - 4.5, width: 9, height: 9, rx: 1.5, transform: `rotate(45 ${p.x} ${p.y})` }, gp);
-      c.setAttribute('class', `fz-wd-port ${p.kind}${wired ? ' wired' : ''}${drag && !ok && drag.from !== k ? ' dim' : ''}${drag && ok && drag.from !== k ? ' ok' : ''}${hoverKey === k ? ' hot' : ''}`);
+      // audio circle, analog diamond, binary square
+      const sg = p.sig || (p.kind === 'a' ? 'a' : 'n');
+      const r0 = p.small ? 3.8 : 4.5;
+      const c = svg(sg === 'a' ? 'circle' : 'rect', sg === 'a' ? { cx: p.x, cy: p.y, r: p.small ? 4.2 : 5 } : sg === 'b' ? { x: p.x - r0 + 0.5, y: p.y - r0 + 0.5, width: r0 * 2 - 1, height: r0 * 2 - 1, rx: 1 } : { x: p.x - r0, y: p.y - r0, width: r0 * 2, height: r0 * 2, rx: 1.5, transform: `rotate(45 ${p.x} ${p.y})` }, gp);
+      c.setAttribute('class', `fz-wd-port ${p.kind} ${sg}${wired ? ' wired' : ''}${drag && !ok && drag.from !== k ? ' dim' : ''}${drag && ok && drag.from !== k ? ' ok' : ''}${hoverKey === k ? ' hot' : ''}`);
       c.setAttribute('data-wp', k);
       if (p.small) svg('text', { x: p.x, y: p.y - 7, class: 'fz-wd-sub', 'text-anchor': 'middle' }, gp, p.label);
       c.addEventListener('pointerdown', (e) => startDrag(e, k));
       c.addEventListener('pointerenter', () => setHover(k));
       c.addEventListener('pointerleave', () => setHover(null));
     }
-    if (drag && drag.to) svg('path', { d: wpath(drag.dir === 'out' ? drag.p0 : drag.to, drag.dir === 'out' ? drag.to : drag.p0), class: 'fz-wd-wire drag ' + drag.kind }, vg);
+    if (drag && drag.to) svg('path', { d: wpath(drag.dir === 'out' ? drag.p0 : drag.to, drag.dir === 'out' ? drag.to : drag.p0), class: 'fz-wd-wire drag ' + drag.kind + (drag.kind === 'c' ? ' ' + (drag.sig || 'n') : '') }, vg);
     delB.disabled = !selWire;
     applyView();
   }
@@ -374,14 +474,20 @@ export function mountDiagram(mid, api) {
     const src = a.dir === 'out' ? a : b, dst = a.dir === 'out' ? b : a;
     if (dst.tapOnly && !(src.ctl && (src.ctl.kind === 'foot' || src.ctl.kind === 'button') && src.sw == null)) return false;
     if (src.inst && dst.inst && src.inst === dst.inst) return false;
-    return true;
+    if (src.kind === 'a') return true;
+    // LEDs, control out jacks and screen inputs only take circuit outputs
+    if (dst.led || dst.jout || dst.screen) return !!src.cout;
+    // a circuit output goes into another circuit's input (not its on / off or tap)
+    if (src.cout) return !!dst.node;
+    if (src.screen) return !!dst.to && !dst.tapOnly;
+    return !!dst.to;
   }
   function startDrag(e, k) {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     const p = geo.ports.get(k);
-    drag = { from: k, kind: p.kind, dir: p.dir, p0: { x: p.x, y: p.y }, to: null };
+    drag = { from: k, kind: p.kind, sig: p.sig, dir: p.dir, p0: { x: p.x, y: p.y }, to: null };
     sv.setPointerCapture(e.pointerId);
     refresh(true);
     const mv = (ev) => {
@@ -422,23 +528,52 @@ export function mountDiagram(mid, api) {
     const A = geo.ports.get(ka), B = geo.ports.get(kb);
     const src = A.dir === 'out' ? A : B, dst = A.dir === 'out' ? B : A;
     const sk = A.dir === 'out' ? ka : kb, dk = A.dir === 'out' ? kb : ka;
+    const C = D.circuit;
     if (src.kind === 'a') {
       const end = (k) => {
         const [t, ...r] = k.split(':');
-        return t === 'jack' ? { n: 'jack:' + r[0], p: '' } : { n: r[0], p: r[1] };
+        return t === 'jack' ? { n: 'jack:' + r[0], p: r[1] || '' } : { n: r[0], p: r[1] };
       };
       const a = end(sk), b = end(dk);
-      const C = D.circuit;
       if (C.wires.some((w) => w.a.n === a.n && w.a.p === a.p && w.b.n === b.n && w.b.p === b.p)) return false;
       C.wires.push({ id: uid('w'), a, b });
+    } else if (src.cout) {
+      const key = src.cout.n + '.' + src.cout.p;
+      if (dst.led) {
+        const c = D.ctls.find((x) => x.id === dst.led.id);
+        if (c.bind === 'cv:' + key) return false;
+        c.bind = 'cv:' + key;
+      } else if (dst.jout) {
+        const j = D.jacks.find((x) => x.id === dst.jout.id);
+        j.from = { ...src.cout };
+        j.dir = 'out';
+        delete j.maps;
+        delete j.drive;
+      } else if (dst.screen) {
+        const p = screenIO(D.ctls.find((x) => x.id === dst.screen.id)).ins[dst.si];
+        if (!p) return false;
+        p.from = { ...src.cout };
+      } else {
+        const b = { n: dst.inst.id, p: dst.node };
+        if (!Array.isArray(C.cwires)) C.cwires = [];
+        if (C.cwires.some((w) => w.a.n === src.cout.n && w.a.p === src.cout.p && w.b.n === b.n && w.b.p === b.p)) return false;
+        C.cwires.push({ id: uid('w'), a: { ...src.cout }, b });
+      }
+    } else if (src.screen) {
+      const p = screenIO(D.ctls.find((x) => x.id === src.screen.id)).outs[src.so];
+      if (!p || !targetInfo(C, dst.to) || (p.maps || []).some((m) => m.to === dst.to)) return false;
+      p.maps = [...(p.maps || []), { to: dst.to, raw: true }];
     } else {
       const to = dst.to;
       const info = targetInfo(D.circuit, to);
       if (!info) return false;
       if (src.jack) {
         const j = D.jacks.find((x) => x.id === src.jack.id);
-        if ((j.maps || []).some((m) => m.to === to)) return false;
-        j.maps = [...(j.maps || []), mapTo(D.circuit, to)];
+        const ch = j.kind === 'fsw' ? src.ch || 't' : undefined;
+        if ((j.maps || []).some((m) => m.to === to && (m.ch || 't') === (ch || 't'))) return false;
+        delete j.from; // a jack wired into a circuit is an input
+        delete j.dir;
+        j.maps = [...(j.maps || []), mapTo(D.circuit, to, ch ? { ch } : {})];
       } else if (src.sw != null) {
         const c = D.ctls.find((x) => x.id === src.ctl.id);
         const n = c.kind === 'dip' ? c.n || 4 : 2;
@@ -468,7 +603,14 @@ export function mountDiagram(mid, api) {
   function removeWire(w) {
     const D = api.design();
     if (w.kind === 'a') D.circuit.wires = D.circuit.wires.filter((x) => x.id !== w.id);
-    else if (w.jack) {
+    else if (w.cwire) D.circuit.cwires = (D.circuit.cwires || []).filter((x) => x.id !== w.cwire.id);
+    else if (w.led) D.ctls.find((x) => x.id === w.led.id).bind = 'on';
+    else if (w.jout) delete D.jacks.find((x) => x.id === w.jout.id).from;
+    else if (w.screen && w.si != null) screenIO(D.ctls.find((x) => x.id === w.screen.id)).ins[w.si].from = null;
+    else if (w.screen && w.so != null) {
+      const p = screenIO(D.ctls.find((x) => x.id === w.screen.id)).outs[w.so];
+      p.maps = (p.maps || []).filter((_, i) => i !== w.mk);
+    } else if (w.jack) {
       const j = D.jacks.find((x) => x.id === w.jack.id);
       j.maps = (j.maps || []).filter((_, i) => i !== w.xi);
     } else if (w.sw != null) {
@@ -520,7 +662,7 @@ export function mountDiagram(mid, api) {
       sv.addEventListener('pointerup', up);
       return;
     }
-    if (e.target.closest('[data-wp], [data-ww], [data-wrow], .fz-wd-btn')) return;
+    if (e.target.closest('[data-wp], [data-ww], [data-wrow], .fz-wd-btn, .fz-wd-screen .fz-wd-boxhead')) return;
     // empty space: pan
     if (selWire) {
       selWire = null;
@@ -555,7 +697,7 @@ export function mountDiagram(mid, api) {
   function signature() {
     const D = api.design();
     if (!D) return '';
-    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.n]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.name]), hasTap(i.graph)]), D.circuit && D.circuit.wires, api.selected(), selWire, P.collapsed]);
+    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.n, c.ways, c.bind, c.sio, c.color]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps, j.from]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.t, n.name, n.steps]), hasTap(i.graph)]), D.circuit && D.circuit.wires, D.circuit && D.circuit.cwires, api.selected(), selWire, P.collapsed]);
   }
   function refresh(force) {
     if (raf) return;

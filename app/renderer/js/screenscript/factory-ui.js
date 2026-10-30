@@ -8,7 +8,7 @@ import { TEMPLATES, DEFAULT_SCRIPT } from './templates.js';
 import { controlList } from './host.js';
 import { state, engineParamsFor } from '../state.js';
 import { getDef } from '../catalog/index.js';
-import { testInfo, playSet, testing, NODE } from '../pages/factory-play.js';
+import { testInfo, playSet, playSetParam, testing, NODE } from '../pages/factory-play.js';
 import { TEST_ID } from '../catalog/custom.js';
 import { designToDef } from '../pages/factory-circuit.js';
 import { openScreenEditor, screenEditor } from './screen-editor.js';
@@ -155,7 +155,8 @@ function testIO() {
     },
     get: (p) => I().params[p],
     set: (p, v, e) => {
-      playSet(e.id, v);
+      if (e && e.raw) playSetParam(p, v); // a screen output
+      else playSet(e.id, v);
       info = null;
     },
     bypassed: () => !!I().bypass,
@@ -179,6 +180,7 @@ function makeEntry(c, mode, getD) {
   const { W, H } = screenPixels(c);
   const canvas = document.createElement('canvas');
   const io = mode === 'test' ? testIO() : designIO(getD);
+  io.cid = c.id; // the screen's own inputs and outputs
   const host = makeHost(getD(), io);
   const rt = new ScreenRuntime({ src: c.script || '', w: W, h: H, host, canvas, palette: paletteOf(c), screen: { type: c.type, name: c.label || '' } });
   const ent = { rt, canvas, src: c.script || '', W, H, type: c.type, mode, last: 0 };
