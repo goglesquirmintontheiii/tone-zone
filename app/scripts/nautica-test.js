@@ -10,7 +10,9 @@ const { makeDI, measure } = require('./loudness');
 (async () => {
   const out = process.argv[2] || '/tmp/nautica-test';
   fs.mkdirSync(out, { recursive: true });
-  const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'] });
+  // private data dir: the shared settings must not change what loads
+  const xdg = fs.mkdtempSync(path.join(require('os').tmpdir(), 'nx-xdg-'));
+  const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'], env: Object.assign({}, process.env, { XDG_DATA_HOME: xdg }) });
   const win = await app.firstWindow();
   const errs = [];
   win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.stack));
@@ -18,8 +20,35 @@ const { makeDI, measure } = require('./loudness');
   await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
   await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
   let fails = 0;
+  const levelsOnly = process.argv.includes('--levels-only');
   const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
   const wait = (ms) => win.waitForTimeout(ms);
+
+  // ---- 0. every factory preset renders at -17 LUFS +-0.5 with true peak under -1 dBFS (same DI as preset-check.js)
+  {
+    const di = makeDI(path.join(out, 'di-phrase-v2.wav'));
+    const n = await win.evaluate(async () => (await import('./js/catalog/nautica.js')).NX_FACTORY.length);
+    const res = [];
+    for (let i = 0; i < n; i++) {
+      const r = await win.evaluate(async ([i, di]) => {
+        const st = await import('./js/state.js');
+        const N = await import('./js/catalog/nautica.js');
+        const p = st.newPreset('nx');
+        const s = Object.assign(N.nxLive(N.NX_FACTORY[i]), { pi: i, mode: 0, ver: 1, g: N.nxDefault().g });
+        p.blocks.push({ id: 'nx', type: 'tz.nautica', x: 0, y: 0, params: { _st: JSON.stringify(s) }, bypass: false, opts: N.nxRig(s) });
+        p.cables.push({ id: 'c1', from: { node: '__in', port: 0 }, to: { node: 'nx', port: 0 } }, { id: 'c2', from: { node: 'nx', port: 2 }, to: { node: '__out', port: 0 } }, { id: 'c3', from: { node: 'nx', port: 3 }, to: { node: '__out', port: 1 } });
+        const g = window.__tz.buildGraph(p);
+        return { name: N.NX_FACTORY[i].name, trim: s.trim, wav: await window.tz.offline.render(g, di) };
+      }, [i, di]);
+      let m = null;
+      try { m = measure(r.wav); } catch {}
+      fs.rmSync(r.wav, { force: true });
+      res.push({ name: r.name, trim: r.trim, lufs: m ? m.lufs : null, tp: m ? m.tp : null });
+    }
+    for (const r of res) console.log(`     ${r.name.padEnd(16)} ${r.lufs === null ? 'SILENT' : r.lufs.toFixed(2) + ' LUFS'}  tp ${r.tp === null ? '-' : r.tp.toFixed(1)}  trim ${r.trim}  (to -17: ${r.lufs === null ? '-' : (-17 - r.lufs).toFixed(2)})`);
+    ok(res.every((r) => r.lufs !== null && Math.abs(r.lufs + 17) <= 0.5 && r.tp < -1), 'all factory presets at -17 LUFS +-0.5, true peak under -1 dBFS');
+    if (levelsOnly) { await app.close(); process.exit(fails ? 1 : 0); }
+  }
 
   // ---- 1. load the block on a fresh board, wired in -> GUITAR IN, OUT 1 L/R -> main out
   const id = await win.evaluate(async () => {
