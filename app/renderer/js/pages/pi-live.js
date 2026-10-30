@@ -104,6 +104,7 @@ export function createLive(api) {
 
   function fromList(d) {
     const old = devices.get(d.id) || {};
+    devices.set(d.id, old);
     return Object.assign(old, {
       id: d.id, name: d.name, model: d.model || old.model || 'pi4', ram: d.ram || old.ram || 1, host: d.host || old.host || '', ip: d.ip || old.ip || '',
       link: d.link || 'wifi', online: !!d.online, paired: !!d.paired, lastSeen: d.lastSeen || Date.now(), version: d.version || old.version || '',

@@ -106,7 +106,8 @@ class AudioServer {
     return { mode: 'jackd', jackLib: 'libjack.so.0', bridge: this.bridge, sel };
   }
   spawn(cmd, args) {
-    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    // headless: no D-Bus session, so skip JACK's device reservation
+    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { JACK_NO_AUDIO_RESERVATION: '1' }) });
     const tag = cmd;
     const out = (b) => String(b).split('\n').filter((l) => l.trim() && !/^(jackdmp|Copyright|This is free|JACK server starting|creating alsa driver|configuring for)/.test(l)).forEach((l) => log.info(`${tag}: ${l.trim()}`, 'engine'));
     p.stdout.on('data', out);

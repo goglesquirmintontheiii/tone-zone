@@ -31,7 +31,7 @@ button:active { background: var(--bg3); }
 .pname .slot { color: var(--muted); font-size: 14px; }
 .pname .slot.pending { color: var(--warn); }
 .pname h1 { margin: 2px 0 0; font-size: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
 .tile { display: flex; min-height: 64px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg1); overflow: hidden; }
 .tile .tog { flex: 1; text-align: left; border: 0; border-radius: 0; background: transparent; border-left: 6px solid var(--muted); min-width: 0; }
 .tile .tog .n { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
