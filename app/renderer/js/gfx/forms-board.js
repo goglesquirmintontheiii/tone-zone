@@ -31,18 +31,20 @@ export function installBoardForms(registerForm) {
     const ix = S.padX - 12, iy = S.padY - 10;
     svg('rect', { x: ix, y: iy, width: w - ix * 2, height: h - iy * 2, rx: 6, fill: '#08090b' }, g);
     svg('rect', { x: ix, y: iy, width: w - ix * 2, height: 6, rx: 3, fill: '#000', opacity: 0.6 }, g);
-    // rails: three per row of pedals, each covered with a velcro strip
-    const nr = rows * 3, rh = (h - iy * 2 - 8) / nr;
+    // rails: two per row of pedals (a regular pedal stands across both), each with a velcro strip
+    const nr = rows * 2, rh = (h - iy * 2 - 8) / nr;
     for (let i = 0; i < nr; i++) {
       const y = iy + 4 + i * rh;
       const rail = svg('g', {}, g);
       // slat with open gaps between them, like an aluminium rail board
-      const sh = rh * 0.6, sy = y + (rh - sh) / 2;
+      const sh = rh * 0.64, sy = y + (rh - sh) / 2;
       svg('rect', { x: ix - 2, y: sy + 3, width: w - ix * 2 + 4, height: sh, rx: 3, fill: '#000', opacity: 0.5 }, rail);
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3, fill: shade(frame, 0.08) }, rail);
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3, fill: 'url(#p-brushed)' }, rail);
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: 1.6, fill: '#fff', opacity: 0.3 }, rail);
-      svg('rect', { x: ix + 6, y: sy + 3, width: w - ix * 2 - 12, height: sh - 7, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
+      // velcro leaves about 6% of bare rail on every side
+      const rw = w - ix * 2 + 4, mx = rw * 0.06, my = sh * 0.06;
+      svg('rect', { x: ix - 2 + mx, y: sy + my, width: rw - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
     }
     // side caps over the rail ends, with screws
     for (const x of [2, w - S.padX + 10]) {

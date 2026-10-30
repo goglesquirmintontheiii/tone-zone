@@ -799,10 +799,13 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .sb-svg .screen, .sb-svg [data-ctl] text { user-select: none; }
 /* plugins tab views: large (about 3x2 tiles), medium (2x2), tile, list */
 .pl-views { margin-right: 6px; }
-.plugin-grid.v-medium { grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
-.plugin-grid.v-large { grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); }
-.v-medium .plugin-card { min-height: 480px; }
-.v-large .plugin-card { min-height: 560px; }
+.plugin-grid.v-medium, .plugin-grid.v-large { grid-auto-flow: row dense; }
+/* sized in tiles: medium = 2 x 2, large = 3 x 2 (a tile row is about 289px plus the 14px gap) */
+.v-medium .plugin-card { grid-column: span 2; }
+.plugin-grid.v-large { grid-template-columns: repeat(auto-fill, minmax(min(100%, 902px), 902px)); justify-content: center; }
+
+.v-medium .plugin-card { min-height: 592px; }
+.v-large .plugin-card { min-height: 592px; }
 .pl-banner { position: relative; flex: 1 0 240px; min-height: 240px; max-height: 340px; overflow: hidden; display: grid; place-items: center; border-bottom: 1px solid var(--line); }
 .v-large .pl-banner { flex-basis: 300px; }
 .plugin-card.off .pl-banner { opacity: 0.5; }

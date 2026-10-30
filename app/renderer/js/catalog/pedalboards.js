@@ -8,9 +8,9 @@ export const BOARD_SIZES = [
   ['tiny', 'Tiny', 4, 1],
   ['small', 'Small', 4, 2],
   ['medium', 'Medium', 6, 2],
-  ['large', 'Large', 6, 3],
-  ['xl', 'XL', 8, 3],
-  ['xlmax', 'XL Max', 7, 4],
+  ['large', 'Large', 9, 2],
+  ['xl', 'XL', 12, 2],
+  ['xlmax', 'XL Max', 14, 2],
 ];
 
 export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows]) =>
