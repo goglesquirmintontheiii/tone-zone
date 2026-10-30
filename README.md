@@ -64,9 +64,10 @@ the `fuse2` package.
   ([docs/screen-scripts.md](docs/screen-scripts.md)), try it with your guitar in Test mode, then save it as a block.
   Saved pedals appear under **Custom** in the block list.
 - **App themes**: Dark, White or Monochrome. Pedal graphics stay the same.
-- **Raspberry Pi tab**: a preview of running Tone Zone on a Raspberry Pi as a pedal: find and set up a Pi, put banks
-  of presets on it, assign GPIO footswitches, pick audio devices and preview its small screen UI. It uses demo data
-  for now; the plan is in [docs/raspberry-pi.md](docs/raspberry-pi.md).
+- **Raspberry Pi pedal** (first version, not yet tested on real hardware): install Tone Zone on a Pi 3B/3B+, 4 or 5
+  with one command, then find it from the Pi tab, push presets in banks, switch them with GPIO footswitches, light
+  LEDs (PWM), watch DSP/CPU load and temperature, and update it with signed bundles. Optional light screen UI. See
+  [docs/raspberry-pi.md](docs/raspberry-pi.md).
 
 What's planned next (including Windows support) is in [docs/roadmap.md](docs/roadmap.md).
 
