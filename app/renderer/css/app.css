@@ -799,11 +799,10 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .sb-svg .screen, .sb-svg [data-ctl] text { user-select: none; }
 /* plugins tab views: large (about 3x2 tiles), medium (2x2), tile, list */
 .pl-views { margin-right: 6px; }
-.plugin-card { content-visibility: auto; contain-intrinsic-size: auto 262px; }
 .plugin-grid.v-medium { grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
 .plugin-grid.v-large { grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); }
-.v-medium .plugin-card { min-height: 480px; contain-intrinsic-size: auto 480px; }
-.v-large .plugin-card { min-height: 560px; contain-intrinsic-size: auto 560px; }
+.v-medium .plugin-card { min-height: 480px; }
+.v-large .plugin-card { min-height: 560px; }
 .pl-banner { position: relative; flex: 1 0 240px; min-height: 240px; max-height: 340px; overflow: hidden; display: grid; place-items: center; border-bottom: 1px solid var(--line); }
 .v-large .pl-banner { flex-basis: 300px; }
 .plugin-card.off .pl-banner { opacity: 0.5; }
@@ -824,7 +823,7 @@ body.resizing-panel, body.resizing-panel * { cursor: col-resize !important; user
 .pc-names { margin-top: 8px; font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .v-medium .pc-foot, .v-large .pc-foot { padding: 10px 18px 14px; }
 .plugin-grid.v-list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-.pl-lrow { display: flex; align-items: center; gap: 16px; padding: 9px 14px; border-radius: 11px; cursor: pointer; background: var(--card-bg); border: 1px solid var(--line); transition: border-color 0.15s; content-visibility: auto; contain-intrinsic-size: auto 52px; }
+.pl-lrow { display: flex; align-items: center; gap: 16px; padding: 9px 14px; border-radius: 11px; cursor: pointer; background: var(--card-bg); border: 1px solid var(--line); transition: border-color 0.15s; }
 .pl-lrow:hover { border-color: var(--line2); }
 .pl-lrow.off .pl-lmain, .pl-lrow.off .pl-lcount { opacity: 0.5; }
 .pl-lrow.err { border-color: rgba(var(--bad-rgb), 0.45); }

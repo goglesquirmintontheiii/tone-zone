@@ -19,9 +19,11 @@ function makeDI(file) {
     const buf = new Float32Array(N).map(() => rnd() * amp);
     for (let k = 0; k < Math.floor((1 - bright) * 4); k++) for (let i = 0; i < N; i++) buf[i] = 0.5 * (buf[i] + buf[(i + 1) % N]);
     const rel = Math.min(n, Math.floor(0.02 * SR)); // fret hand release, no clicks
+    const att = Math.floor(0.0015 * SR); // a pick takes about a millisecond to push the string
     for (let i = 0; i < n && s0 + i < out.length; i++) {
       const j = i % N;
-      out[s0 + i] += buf[j] * (i > n - rel ? (n - i) / rel : 1);
+      const env = (i < att ? 0.5 - 0.5 * Math.cos((Math.PI * i) / att) : 1) * (i > n - rel ? (n - i) / rel : 1);
+      out[s0 + i] += buf[j] * env;
       buf[j] = 0.5 * (buf[j] + buf[(j + 1) % N]) * damp;
     }
   };
@@ -30,8 +32,8 @@ function makeDI(file) {
   const strum = (t, frets, dur, amp, down = true) => frets.forEach((f, s) => f !== null && pluck(t + (down ? s : 5 - s) * 0.012, E[s] * Math.pow(2, f / 12), dur, amp));
   // 0-3 s: riff of single notes
   [40, 43, 45, 47, 50, 52, 55, 57, 59, 62, 64, 67].forEach((m, i) => pluck(i * 0.22, midi(m), 0.5, 0.35));
-  // 3-5.5 s: power chords
-  [[40, 47, 52], [43, 50, 55], [45, 52, 57], [38, 45, 50]].forEach((ch, i) => ch.forEach((m) => pluck(3 + i * 0.6, midi(m), 0.6, 0.28)));
+  // 3-5.5 s: power chords (strummed, strings a few ms apart)
+  [[40, 47, 52], [43, 50, 55], [45, 52, 57], [38, 45, 50]].forEach((ch, i) => ch.forEach((m, k) => pluck(3 + i * 0.6 + k * 0.008, midi(m), 0.6, 0.28)));
   // 5.6-7 s: palm-muted chugs
   for (let i = 0; i < 8; i++) pluck(5.6 + i * 0.16, midi(40), 0.14, 0.32, 0.97, 0.3);
   // 7-11 s: open chords

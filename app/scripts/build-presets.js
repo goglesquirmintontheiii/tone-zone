@@ -20,16 +20,17 @@ const fs = require('fs');
   // level matching: measured loudness (LUFS, from preset-check.js levels.json) → per-preset output trims (dB) so
   // every preset plays at the same loudness. Trims go on the cab level; what doesn't fit (or rigs without a cab)
   // goes on a gain block at the end of the chain. make-presets.js reads the same trims file for 01-09.
-  const TARGET = process.argv.includes('--target') ? +process.argv[process.argv.indexOf('--target') + 1] : -16.5;
+  const TARGET = process.argv.includes('--target') ? +process.argv[process.argv.indexOf('--target') + 1] : -17;
   const lvPath = process.argv.includes('--levels') ? process.argv[process.argv.indexOf('--levels') + 1] : null;
   const measured = lvPath ? JSON.parse(fs.readFileSync(lvPath, 'utf8')) : {};
   const prevTrim = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'preset-trims.json'), 'utf8')); } catch { return {}; } })();
   const trims = Object.assign({}, prevTrim);
-  // peak guard: very peaky rigs (clean acoustic, synths) sit up to 1 LU lower so they stay under -1 dBTP
+  // peak guard: very peaky rigs (clean acoustic, slicers) sit up to 1.5 LU lower so they stay under -1 dBTP.
+  // A peak at 0 dBFS was clamped by the output, so the real peak is higher than measured.
   const detail = (() => { try { return JSON.parse(fs.readFileSync(path.join(path.dirname(lvPath), 'loudness.json'), 'utf8')); } catch { return {}; } })();
   for (const [f, lv] of Object.entries(measured)) {
-    const plr = detail[f] ? detail[f].tp - detail[f].lufs : 0;
-    const goal = Math.max(TARGET - 1, Math.min(TARGET, -1 - plr));
+    const plr = detail[f] ? detail[f].tp - detail[f].lufs + (detail[f].peak > -0.01 ? 2 : 0) : 0;
+    const goal = Math.max(TARGET - 1.5, Math.min(TARGET, -1 - plr));
     const t = Math.max(-30, Math.min(24, Math.round(((prevTrim[f] || 0) + (goal - lv)) * 10) / 10));
     if (t) trims[f] = t;
     else delete trims[f];

@@ -52,7 +52,17 @@ the `fuse2` package.
   PolyTune-style tuner also has a strum mode that shows every string at once.
 - **Presets**: a Presets tab with board thumbnails, tags and favourites, about 180 factory presets (rhythm and lead
   rigs for many genres, artist and song tones, synth and meme rigs), undo / redo, import and export.
+- **Pedalboards**: six empty boards from Tiny (4 pedals) to XL Max (28). Pedals dropped on a board snap into
+  place, and dragging the board moves its pedals. Name them, and pick the frame and velcro colours.
+- **Rotate blocks** in 90 degree steps (R, or right-click). Cables follow the jacks.
+- **Couplers**: tiny double male and double female 1/4" couplers. A male coupler turns to fit the jack you drop it
+  on and joins two pedals with no cable.
+- **Pedal Factory tab**: design your own pedal's look (enclosure, finish, artwork, knobs, switches, jacks). The
+  sound side comes later.
+- **App themes**: Dark, White or Monochrome. Pedal graphics stay the same.
 - **Raspberry Pi tab**: a placeholder for now. This is where putting presets on a Pi-based pedal will live.
+
+What's planned next (including Windows support) is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Using it
 

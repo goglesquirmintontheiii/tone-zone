@@ -12,7 +12,13 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(500);
   const ev = (f, a) => win.evaluate(f, a);
   // 1. knob drag on the green drive
-  const ts = await ev(() => window.__tz.state.preset.blocks.find((b) => b.type === 'ib.ts9').id);
+  // the app reopens the last preset, which may not have a TS9
+  const ts = await win.evaluate(async () => {
+    const f = window.__tz.state.preset.blocks.find((b) => b.type === 'ib.ts9');
+    if (f) return f.id;
+    const st = await import('./js/state.js');
+    return st.addBlock('ib.ts9', 200, 200).id;
+  });
   await ev((id) => { const ed = window.__tz.editor; const b = window.__tz.state.preset.blocks.find(x=>x.id===id); const v = ed.views.get(id); const r = ed.svg.getBoundingClientRect(); ed.view.z = 1.6; ed.view.x = r.width/2 - (b.x + v.w/2) * 1.6; ed.view.y = r.height/2 - (b.y + v.h/2) * 1.6; ed.applyView(); }, ts);
   await win.waitForTimeout(300);
   const knob = await win.$(`[data-node="${ts}"] [data-ctl="c0"]`);

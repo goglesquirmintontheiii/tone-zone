@@ -12,7 +12,7 @@ const { makeDI, measure } = require('./loudness');
   const arg = (k) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1].split(',') : []);
   const shots = arg('--shots');
   const only = arg('--only');
-  const di = makeDI(path.join(out, 'di-phrase-v1.wav'));
+  const di = makeDI(path.join(out, 'di-phrase-v2.wav'));
   const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..', '..', 'app'), '--no-sandbox'] });
   const win = await app.firstWindow();
   const errs = [];
