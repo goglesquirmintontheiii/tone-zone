@@ -5,7 +5,7 @@
 // through 'fb' parts (a delay of at least one chunk); control loops read the previous chunk's value.
 //
 // opts: { params: [{name, def, min, max}],            exposed params (the pedal's circuit inputs)
-//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int}]}],
+//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int, tab}]}],
 //         edges:  [[fromNode, fromPort, toNode, toPort, isControl]],
 //         outs:   [[aoutIdx, ch]] per engine output (ch 0 = L, 1 = R, -1 = mono sum), mix, mixDef }
 #include "common.h"
@@ -69,6 +69,7 @@ struct Slot
   std::string name;
   float def = 0, lo = 0, hi = 1;
   bool log = false, isInt = false;
+  std::vector<float> tab; // optional lookup: 0..1 picks an entry
   int sub = -1;          // algo nodes: sub-block param index (-1 = the 'on' switch)
   std::vector<std::pair<int, int>> src; // (node, control out port)
   float v = 0;           // current value
@@ -162,6 +163,8 @@ public:
         s.hi = sj.value("hi", 1.f);
         s.log = sj.value("log", false) && s.lo > 0 && s.hi > 0;
         s.isInt = sj.value("int", false);
+        for (auto& tv : sj.value("tab", json::array()))
+          if (tv.is_number()) s.tab.push_back(tv.get<float>());
         s.v = s.def;
         if (n.kind == K_ALGO && n.b)
         {
@@ -313,6 +316,7 @@ public:
     float x = 0.f;
     for (auto& [f, p] : s.src) x += nodes[f].cv[p];
     x = clampf(x, 0.f, 1.f);
+    if (!s.tab.empty()) return s.v = s.tab[std::min(s.tab.size() - 1, size_t(x * float(s.tab.size() - 1) + 0.5f))];
     float v = s.log ? s.lo * std::pow(s.hi / s.lo, x) : s.lo + (s.hi - s.lo) * x;
     if (s.isInt) v = std::round(v);
     return s.v = v;

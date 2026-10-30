@@ -1,7 +1,8 @@
 // Pedal Factory test mode: the design runs in the engine as a hidden block between the board's input and
 // output (state.js graph override), and its controls on the factory stage can be played.
 import { state, setGraphOverride, buildGraph, engineParamsFor, nodePorts, ctlDefault } from '../state.js';
-import { registerTestDef, unregisterTestDef, TEST_ID } from '../catalog/custom.js';
+import { registerTestDef, unregisterTestDef, TEST_ID, registerSoloDef, unregisterSoloDef, SOLO_ID } from '../catalog/custom.js';
+import { soloDesign } from './factory-circuit.js';
 import { renderPedal } from './factory-render.js';
 import { clamp } from '../util.js';
 
@@ -21,6 +22,7 @@ export const engineRunning = () => Date.now() - lastStatus < 2000;
 export const testing = () => !!T;
 export const testInfo = () => (T ? { graphs: T.graphs.slice(), params: { ...T.block.params }, bypass: T.block.bypass, def: T.def.id } : null);
 const chainKey = (d) => JSON.stringify([d.opts, d.ports, d.jackKinds]);
+const ioCopy = (id) => JSON.parse(JSON.stringify(state.preset.blocks.find((b) => b.id === id) || { id, type: id, params: {} }));
 
 function graph() {
   const io = (id) => JSON.parse(JSON.stringify(state.preset.blocks.find((b) => b.id === id) || { id, type: id, params: {} }));
@@ -52,6 +54,7 @@ function sendParams() {
 /** Start playing design d. */
 export function startTest(d) {
   hookStatus();
+  if (SO) stopSolo();
   const def = registerTestDef(d);
   const params = {};
   for (const c of def.controls) if (c.p) params[c.p] = ctlDefault(c);
@@ -182,3 +185,43 @@ export function playSet(cid, v) {
   setP(c.p, v);
   return true;
 }
+
+// ------------------------------------------------------------------ one circuit on its own (circuit editor)
+const SNODE = 'fzsolo';
+let SO = null;
+function soloGraph() {
+  const pin = ioCopy('__in'), pout = ioCopy('__out');
+  const ports = nodePorts(SO.block);
+  const cables = [{ from: { node: '__in', port: 0 }, to: { node: SNODE, port: 0 } }];
+  for (let i = 0; i < Math.min(2, ports.outs.length); i++) cables.push({ from: { node: SNODE, port: i }, to: { node: '__out', port: i } });
+  const g = buildGraph({ blocks: [pin, pout, SO.block], cables });
+  SO.graphs.push(g);
+  if (SO.graphs.length > 10) SO.graphs.shift();
+  return g;
+}
+/** Play circuit graph G alone through the engine (stops a pedal test). */
+export function startSolo(G, name) {
+  hookStatus();
+  if (T) stopTest();
+  const def = registerSoloDef(soloDesign(G, name));
+  SO = { def, key: chainKey(def), block: { id: SNODE, type: SOLO_ID, params: {}, bypass: false, variant: 'mono' }, graphs: [] };
+  setGraphOverride(soloGraph);
+}
+export function updateSolo(G, name) {
+  if (!SO) return;
+  const def = registerSoloDef(soloDesign(G, name));
+  SO.def = def;
+  const key = chainKey(def);
+  if (key !== SO.key) {
+    SO.key = key;
+    setGraphOverride(soloGraph);
+  }
+}
+export function stopSolo() {
+  if (!SO) return;
+  SO = null;
+  setGraphOverride(null);
+  unregisterSoloDef();
+}
+export const soloRunning = () => !!SO;
+export const soloInfo = () => (SO ? { graphs: SO.graphs.slice(), def: SO.def.id } : null);

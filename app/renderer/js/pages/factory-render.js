@@ -4,11 +4,12 @@ import { svg, clamp, luminance } from '../util.js';
 import { drawSlider, drawSelector, drawTreadle, angleFor } from '../gfx/controls.js';
 import { drawJack } from '../gfx/jacks.js';
 import { normalize, materialFill, multiFill, wearOverlay, seeThrough, opacityOf } from '../gfx/materials.js';
-import { knobPart, buttonPart, footPart, togglePart, ledPart, treadlePart, bezel, nutPaint } from './factory-parts.js';
+import { knobPart, buttonPart, footPart, togglePart, ledPart, treadlePart, bezel, nutPaint, NEW_KNOBS } from './factory-parts.js';
 import { encoderPart, xyPart, stripPart, arcadePart, stepsPart, tbankPart, tbankWidth, leverPart, padPart, ldrPart, meterPart, sliderLook, selLook, ledLook, ledHalf, STEP } from './factory-controls.js';
 import { xySize } from './factory-kinds.js';
 import { renderPatterns } from './factory-patterns.js';
 import { STAGES } from './factory-circuit.js';
+import { drawScriptScreen } from '../screenscript/surface.js';
 
 export const r1 = (v) => Math.round(v * 10) / 10;
 const lum = (c) => {
@@ -345,6 +346,7 @@ export function drawScreen(g, c) {
   const w = c.w, h = c.h;
   bezel(g, c, w, h);
   svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.6, fill: s.bg }, g);
+  if (c.shows === 'custom') return drawScriptScreen(g, c); // screen scripts (screenscript/)
   const lines = String(c.text || '').split('\n').slice(0, 4);
   const fs = Math.min(h / (lines.length + 1.2), w / 8);
   if (c.type === 'tft') {
@@ -461,6 +463,8 @@ function partHalf(c) {
   return null;
 }
 
+const NEW_STYLE = new Set(NEW_KNOBS.map((k) => k[0]));
+const hasMat = (c) => !!c.mat && normalize(c.mat).m !== 'stock';
 // draws one control; returns a view ({set, press}) for board / test use
 export function drawControl(parent, c, th, o = {}) {
   let view = null;
@@ -477,8 +481,8 @@ export function drawControl(parent, c, th, o = {}) {
   else if (part === 'steps') view = stepsPart(parent, c, th);
   else if (part === 'tbank') view = tbankPart(parent, c, th, { ids });
   else if (c.kind === 'xy') view = xyPart(parent, c, th, { ids });
-  else if (c.kind === 'slider' && c.look && c.look !== 'classic') view = sliderLook(parent, c, th);
-  else if (c.kind === 'sel' && c.look && c.look !== 'classic') view = selLook(parent, c, th, knobPart);
+  else if (c.kind === 'slider' && ((c.look && c.look !== 'classic') || hasMat(c))) view = sliderLook(parent, c, th);
+  else if (c.kind === 'sel' && ((c.look && c.look !== 'classic') || hasMat(c) || NEW_STYLE.has(c.style))) view = selLook(parent, c, th, knobPart);
   else if (c.kind === 'led' && c.look && c.look !== 'round') view = ledLook(parent, c);
   else if (c.kind === 'led' && c.bezel && c.bezel !== 'chrome') view = ledLook(parent, c);
   else if (c.kind === 'knob') view = knobPart(parent, c, th);

@@ -2,8 +2,9 @@
 // factory renderer, so the block looks like the factory preview, and returns its jacks and control views.
 import { svg } from '../util.js';
 import { registerForm, hasForm } from './forms.js';
-import { renderPedal, jackSpot, shapePoints, boardKind, r1 } from '../pages/factory-render.js';
+import { renderPedal, jackSpot, jackAngle, sideOf, shapePoints, boardKind, r1 } from '../pages/factory-render.js';
 import { S, portJacks } from '../pages/factory-circuit.js';
+import { attachBoardScreens } from '../screenscript/board.js';
 
 function customForm(ctx, def) {
   const D = def.design;
@@ -11,10 +12,13 @@ function customForm(ctx, def) {
   const g = svg('g', { transform: `scale(${S})` }, ctx.g);
   const ctlDefs = new Map(def.controls.map((c) => [c.cid, c]));
   renderPedal(g, D, { board: true, views: ctx.views, ctlDefs });
+  attachBoardScreens(ctx, D, S); // live custom screens (screenscript/board.js)
   const pts = shapePoints(D.enc.shape, W, H);
+  // jacks on a slanted or curved edge (or turned by hand) carry their angle; side stays the nearest edge
   const at = (j) => {
     const p = jackSpot(pts, D, j);
-    return { x: r1(p.x * S), y: r1(p.y * S), side: j.edge };
+    const a = jackAngle(p, j.edge);
+    return a == null ? { x: r1(p.x * S), y: r1(p.y * S), side: j.edge } : { x: r1(p.x * S), y: r1(p.y * S), side: sideOf(a), angle: a };
   };
   const jacks = [];
   const { ins, outs } = portJacks(D);

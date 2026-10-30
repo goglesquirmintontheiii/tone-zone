@@ -1,0 +1,143 @@
+/* Pedal Factory circuits: the circuit list, the wiring diagram and the circuit editor */
+.fz-mid { position: relative; min-height: 0; }
+.fz-ic-edit { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E"); }
+.fz-ic-chip { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Crect x='6' y='6' width='12' height='12' rx='2'/%3E%3Cpath d='M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4'/%3E%3C/svg%3E"); }
+
+/* ------------------------------------------------------------ the circuit list */
+.cl-pane { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
+.cl-top { display: flex; gap: 6px; }
+.cl-search { flex: 1; min-width: 0; }
+.cl-filters { display: flex; gap: 6px; align-items: center; }
+.cl-cat { flex: 1; min-width: 0; }
+.cl-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.cl-tags .chip, .cl-filters .chip { padding: 3px 8px; font-size: 10.5px; }
+.chip.on { color: var(--text); border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.14); }
+.cl-inpedal { border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; background: rgba(var(--fg-rgb), 0.02); }
+.cl-inpedal h6, .cz-pal-group h6 { margin: 2px 0 6px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.cl-inst { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 0; }
+.cl-inst span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-list { display: flex; flex-direction: column; gap: 8px; }
+.cl-item { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: rgba(var(--fg-rgb), 0.025); transition: border-color 0.15s; }
+.cl-item:hover { border-color: var(--line2); }
+.cl-thumb { display: block; width: 100%; aspect-ratio: 300 / 180; object-fit: cover; cursor: pointer; background: #141821; }
+.cl-meta { padding: 7px 9px 9px; display: flex; flex-direction: column; gap: 4px; }
+.cl-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cl-name b { font-size: 12.5px; }
+.cl-badge { font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line2); border-radius: 999px; padding: 1px 6px; }
+.cl-badge.use { color: var(--good-text); border-color: rgba(var(--good-rgb), 0.5); }
+.cl-desc { margin: 0; font-size: 11px; color: var(--text2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cl-itags { display: flex; flex-wrap: wrap; gap: 3px; }
+.cl-itags span { font-size: 10px; color: var(--muted); background: rgba(var(--fg-rgb), 0.05); border-radius: 5px; padding: 1px 5px; }
+.cl-itags .cl-cat { color: var(--teal-text); }
+.cl-acts { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.cl-acts .btn.small { padding: 4px 8px; font-size: 11px; }
+.btn.sure { border-color: rgba(var(--bad-rgb), 0.6); color: var(--danger-text); }
+
+/* ------------------------------------------------------------ inspector: several targets */
+.fz-mapbox { padding: 6px 0 4px; border-top: 1px dashed var(--line); }
+.fz-mapbox:first-of-type { border-top: none; padding-top: 0; }
+.fz-mapbox .fz-field { position: relative; }
+.fz-maprm { flex: none; margin-left: 4px; }
+.fz-mapbox select.fz-param { flex: 1; min-width: 0; }
+
+/* ------------------------------------------------------------ the wiring diagram */
+.fz-wd { position: relative; flex: none; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); background: var(--side-bg, var(--bg1)); outline: none; }
+.fz-wd.collapsed { height: auto !important; }
+.fz-wd.collapsed .fz-wd-body { display: none; }
+.fz-wd.collapsed .fz-wd-fold i { transform: rotate(180deg); }
+.fz-wd.popped { height: 100vh !important; border-top: none; }
+.fz-wd.popped .fz-wd-grip { display: none; }
+body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: var(--text); font-family: var(--font); }
+.fz-wd-grip { position: absolute; left: 0; right: 0; top: -4px; height: 8px; cursor: ns-resize; z-index: 3; }
+.fz-wd-grip:hover { background: linear-gradient(transparent 3px, rgba(var(--accent-rgb), 0.5) 3px, rgba(var(--accent-rgb), 0.5) 5px, transparent 5px); }
+.fz-wd-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--line); flex: none; user-select: none; }
+.fz-wd-head b { font-size: 12px; letter-spacing: 0.04em; }
+.fz-wd-head .btn.small { padding: 4px 8px; font-size: 11px; }
+.fz-wd-head .btn[disabled] { opacity: 0.4; pointer-events: none; }
+.fz-wd-head .icon-btn { width: 26px; height: 26px; }
+.fz-wd-fold i { transition: transform 0.15s; }
+.fz-wd-info { font-size: 11px; color: var(--muted); }
+.fz-wd-body { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--board-bg); }
+.fz-wd-svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.fz-wd-empty { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--muted); font-size: 12px; pointer-events: none; }
+.fz-wd-group { font-size: 9.5px; letter-spacing: 0.12em; fill: var(--muted); font-weight: 700; }
+.fz-wd-row { cursor: pointer; }
+.fz-wd-rowbg { fill: rgba(var(--fg-rgb), 0.04); stroke: var(--line); }
+.fz-wd-row:hover .fz-wd-rowbg { stroke: var(--line2); fill: rgba(var(--fg-rgb), 0.07); }
+.fz-wd-row.on .fz-wd-rowbg { stroke: var(--accent); fill: rgba(var(--accent-rgb), 0.1); }
+.fz-wd-label { font-size: 11px; fill: var(--text); }
+.fz-wd-note { font-size: 9.5px; fill: var(--muted); }
+.fz-wd-sub { font-size: 8.5px; fill: var(--muted); pointer-events: none; }
+.fz-wd-boxbg { fill: var(--bg3); stroke: var(--line2); }
+.fz-wd-box.off .fz-wd-boxbg { stroke-dasharray: 4 3; }
+.fz-wd-boxtop { fill: rgba(var(--accent-rgb), 0.16); }
+.fz-wd-boxhead { cursor: grab; }
+.fz-wd-title { font-size: 11.5px; font-weight: 700; fill: var(--text); pointer-events: none; }
+.fz-wd-plabel { font-size: 10.5px; fill: var(--text2); pointer-events: none; }
+.fz-wd-plabel.c { fill: var(--teal-text); }
+.fz-wd-btn { cursor: pointer; }
+.fz-wd-btn rect { fill: rgba(var(--fg-rgb), 0.06); }
+.fz-wd-btn:hover rect { fill: rgba(var(--fg-rgb), 0.16); }
+.fz-wd-ico { fill: none; stroke: var(--text2); stroke-width: 1.4; stroke-linecap: round; }
+.fz-wd-wire { fill: none; pointer-events: none; transition: opacity 0.12s; }
+.fz-wd-wire.a { stroke: var(--accent); stroke-width: 2.4; opacity: 0.85; }
+.fz-wd-wire.c { stroke: var(--teal); stroke-width: 1.6; stroke-dasharray: 5 4; opacity: 0.75; }
+.fz-wd-wire.auto { stroke-dasharray: 2 4; opacity: 0.45; }
+.fz-wd-wire.hot, .fz-wd-wire.on { opacity: 1; stroke-width: 3.2; }
+.fz-wd-wire.on { filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.7)); }
+.fz-wd-wire.drag { stroke-dasharray: none; opacity: 1; }
+.fz-wd-wirehit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.fz-wd-port { cursor: crosshair; stroke: var(--bg1); stroke-width: 1.5; }
+.fz-wd-port.a { fill: var(--accent); }
+.fz-wd-port.c { fill: var(--teal); }
+.fz-wd-port:not(.wired) { fill-opacity: 0.55; }
+.fz-wd-port.hot, .fz-wd-port.ok { stroke: var(--text); stroke-width: 2; fill-opacity: 1; }
+.fz-wd-port.dim { opacity: 0.2; }
+
+/* ------------------------------------------------------------ the circuit editor */
+.cz-modal { position: absolute; inset: 6px; z-index: 45; display: flex; flex-direction: column; background: var(--bg1); border: 1px solid var(--line2); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; outline: none; animation: fade 0.15s; }
+.cz-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.cz-logo { width: 18px; height: 18px; color: var(--accent); }
+.cz-name { width: 220px; font-weight: 700; }
+.cz-name.bad { border-color: var(--bad) !important; }
+.cz-badge { font-size: 10.5px; color: var(--warn); border: 1px solid rgba(var(--warn-rgb), 0.4); border-radius: 999px; padding: 2px 8px; }
+.cz-align button { padding: 4px 8px; font-size: 11px; }
+.cz-bar .icon-btn.on { color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
+.cz-bar .icon-btn.sure { color: var(--bad); }
+.cz-bar .btn.on { border-color: var(--accent); }
+.cz-bar .icon-btn[disabled] { opacity: 0.35; pointer-events: none; }
+.cz-body { flex: 1; min-height: 0; display: flex; }
+.cz-pal { width: 210px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--side-bg, var(--bg1)); }
+.cz-search { margin: 8px; }
+.cz-pal-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+.cz-pal-group { margin-bottom: 8px; }
+.cz-part { display: flex; align-items: center; gap: 7px; padding: 4px 7px; border-radius: 7px; font-size: 12px; cursor: grab; user-select: none; color: var(--text2); }
+.cz-part:hover { background: rgba(var(--fg-rgb), 0.06); color: var(--text); }
+.cz-part-dot { width: 8px; height: 8px; border-radius: 3px; flex: none; background: var(--muted); }
+.cz-part-dot.g-drive { background: var(--fz-drive, var(--accent)); } .cz-part-dot.g-dyn { background: var(--fz-dyn, var(--good)); }
+.cz-part-dot.g-eq { background: var(--fz-eq, var(--teal)); } .cz-part-dot.g-mod { background: var(--fz-mod, var(--warn)); }
+.cz-part-dot.g-time, .cz-part-dot.g-pitch { background: var(--accent2); } .cz-part-dot.g-route { background: var(--teal); }
+.cz-part-dot.g-ctl { background: var(--good); border-radius: 50%; } .cz-part-dot.g-logic { background: var(--warn); border-radius: 50%; }
+.cz-ghost { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; padding: 5px 10px; border-radius: 8px; font-size: 12px; background: var(--bg4); border: 1px solid var(--line2); color: var(--text); opacity: 0.85; }
+.cz-ghost.over { border-color: var(--accent); }
+.cz-canvaswrap { flex: 1; min-width: 0; position: relative; overflow: hidden; }
+.cz-canvas { position: absolute; left: 0; top: 0; touch-action: none; }
+.cz-canvaswrap.panning .cz-canvas { cursor: grabbing; }
+.cz-status { position: absolute; left: 10px; bottom: 10px; max-width: 60%; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.cz-status-h { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 7px; background: rgba(var(--well-rgb), 0.5); }
+.cz-status-h span { font-weight: 500; color: var(--muted); }
+.cz-status-h.ok { color: var(--good-text); } .cz-status-h.warn { color: var(--warn); } .cz-status-h.bad { color: var(--bad-text); }
+.cz-issue { all: unset; cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(var(--well-rgb), 0.5); color: var(--text2); }
+.cz-issue.error { color: var(--bad-text); } .cz-issue.warn { color: var(--warn); }
+.cz-issue:hover { background: rgba(var(--well-rgb), 0.75); }
+.cz-hint { position: absolute; right: 10px; bottom: 10px; font-size: 10.5px; color: var(--muted); pointer-events: none; }
+.cz-zoom { position: absolute; right: 10px; top: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.cz-insp { width: 290px; flex: none; overflow-y: auto; padding: 4px 12px 18px; border-left: 1px solid var(--line); background: var(--side-bg, var(--bg1)); }
+.cz-wired { all: unset; cursor: pointer; font-size: 11.5px; color: var(--teal-text); }
+.cz-menu { position: absolute; z-index: 50; width: 340px; max-height: 70%; overflow-y: auto; padding: 6px; border-radius: 10px; background: var(--bg3); border: 1px solid var(--line2); box-shadow: var(--shadow); }
+.cz-menu-h { font-size: 10.5px; color: var(--muted); padding: 4px 8px 6px; }
+.cz-menu-i { all: unset; display: block; box-sizing: border-box; width: 100%; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+.cz-menu-i:hover { background: rgba(var(--fg-rgb), 0.07); }
+.cz-menu-i b { display: block; font-size: 12px; }
+.cz-menu-i small { display: block; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1300px) { .cz-pal { width: 180px; } .cz-insp { width: 250px; } }

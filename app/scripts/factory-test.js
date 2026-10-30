@@ -1,6 +1,8 @@
 // Pedal Factory: add a knob, drag it, change the enclosure colour, per-part materials, patterns, wear, undo,
 // old designs loading, LED selection, multi-select editing, mirror mode, a 12 switch DIP, save as block (Custom
-// filter, on the board), test mode (graph override and restore) and an offline render of the custom block.
+// filter, on the board), test mode (graph override and restore), an offline render of the custom block, the
+// footswitch nut material, the dot grid toggle, an LED ring encoder, XY pad and step buttons, an angled jack wired
+// on the board and the My pedals library.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -405,6 +407,208 @@ const S = process.env.SHOTS || '/tmp';
   const lv = measure(wav.file);
   fs.rmSync(wav.file, { force: true });
   ok(wav.algo === 'chain' && wav.chain >= 1 && lv.lufs > -45 && lv.peak < 0, `offline render of the custom block is not silent (${lv.lufs.toFixed(1)} LUFS)`);
+
+  // 16. footswitch nut material: only the nut changes, the cap keeps its stock look
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+  await win.click('#fzTemplates');
+  await win.click('[data-template="drive"]');
+  await win.waitForTimeout(300);
+  const footId = (await D()).ctls.find((c) => c.kind === 'foot').id;
+  await win.evaluate((id) => window.__tzFactory.select(id), footId);
+  await win.waitForSelector('.fz-mat-nutMat .mtp-head');
+  await win.click('.fz-mat-nutMat .mtp-head');
+  await win.click('.fz-mat-nutMat .mtp-mats [data-v="metal"]');
+  await win.waitForTimeout(150);
+  await win.click('.fz-mat-nutMat .mtp-subs [data-v="brass"]');
+  await win.waitForTimeout(200);
+  const ft = (await D()).ctls.find((c) => c.id === footId);
+  ok(ft.nutMat && ft.nutMat.m === 'metal' && ft.nutMat.s === 'brass' && !ft.mat, 'footswitch nut is brass, the cap is still stock');
+  ok(await win.evaluate((id) => !!document.querySelector(`.fz-stage [data-id="${id}"] polygon[fill^="url(#mt-metal-brass"]`), footId), 'brass nut drawn on the stage');
+  await win.screenshot({ path: path.join(S, 'factory-nut.png') });
+
+  // 17. dot grid: on by default, the toolbar turns it off for this design (undoable), and it is part of the design
+  await win.keyboard.press('Escape');
+  ok(await win.evaluate(() => !!document.querySelector('.fz-stage .fz-gridfill') && document.querySelector('#fzDots').classList.contains('on')), 'dot grid shown by default');
+  await win.click('#fzDots');
+  await win.waitForTimeout(150);
+  ok((await D()).enc.dots === false && (await win.evaluate(() => !document.querySelector('.fz-stage .fz-gridfill') && !document.querySelector('#fzDots').classList.contains('on'))), 'dot grid turned off');
+  ok(await win.evaluate(() => [...document.querySelectorAll('.fz-insp h5')].some((h) => /Dot grid/i.test(h.textContent))), 'enclosure inspector has a dot grid section');
+  await win.click('#fzUndo');
+  await win.waitForTimeout(150);
+  ok((await D()).enc.dots !== false && (await win.evaluate(() => !!document.querySelector('.fz-stage .fz-gridfill'))), 'undo brought the dots back');
+
+  // 18. an encoder with an LED ring, and two new controls (XY pad, step buttons)
+  await win.click('.fz-tabs [data-t="parts"]');
+  await win.click('.fz-tile[data-part="encring"]');
+  await win.waitForTimeout(200);
+  const enc = (await D()).ctls.filter((c) => c.part === 'encoder').pop();
+  ok(enc && enc.kind === 'knob' && enc.ring, 'LED ring encoder added');
+  const ledsIn = await win.$('.fz-insp .fz-sec .fz-row:has(label:text-is("LEDs")) .fz-num');
+  await ledsIn.fill('24');
+  await ledsIn.press('Enter');
+  await win.waitForTimeout(200);
+  ok((await D()).ctls.find((c) => c.id === enc.id).ringN === 24 && (await win.evaluate((id) => document.querySelectorAll(`.fz-stage [data-id="${id}"] .enc-led`).length, enc.id)) === 24, 'encoder ring has 24 LEDs');
+  // a circuit template reuses the plain knobs but keeps the encoder
+  await win.click('.fz-tabs [data-t="circuit"]');
+  await win.click('[data-circuit="delay"]');
+  await win.waitForTimeout(200);
+  ok(!!(await D()).ctls.find((c) => c.id === enc.id), 'applying a circuit kept the encoder');
+  await win.click('.fz-tabs [data-t="parts"]');
+  await win.click('.fz-tile[data-part="xy"]');
+  await win.waitForTimeout(200);
+  const xy = (await D()).ctls.find((c) => c.kind === 'xy');
+  ok(xy && Array.isArray(xy.maps) && xy.maps.length === 2, 'XY pad added with one mapping per axis');
+  ok(await win.evaluate(() => document.querySelectorAll('.fz-insp [data-axis]').length === 2), 'XY pad inspector wires both axes');
+  await win.click('.fz-tile[data-part="steps"]');
+  await win.waitForTimeout(200);
+  const st = (await D()).ctls.find((c) => c.part === 'steps');
+  ok(st && st.kind === 'sel' && st.n === 4, 'step buttons added');
+  // wire them to values of the circuit (it may have no free ones left)
+  await win.evaluate(async () => {
+    const m = await import('./js/pages/factory-circuit.js');
+    const d = window.__tzFactory.design();
+    const C = d.circuit;
+    const cont = m.targetsFor(C, 'knob').filter((t) => t[2] && !t[2].i && !t[2].tap && !t[0].endsWith('.on')).map((t) => t[0]);
+    const ints = m.targetsFor(C, 'sel').filter((t) => t[2] && t[2].i && t[2].max > 1 && !t[0].endsWith('.on'));
+    const n = cont.length;
+    // room for everything, so nothing sits on top of anything else
+    Object.assign(d.enc, { w: 110, h: 122, size: 'custom' });
+    for (const c of d.ctls) {
+      if (c.part === 'encoder') Object.assign(c, { x: 90, y: 24 });
+      if (c.kind === 'xy') Object.assign(c, { x: 80, y: 64 });
+      if (c.part === 'steps') Object.assign(c, { x: 30, y: 70 });
+    }
+    for (const c of d.ctls) {
+      if (c.part === 'encoder') c.map = m.mapTo(C, cont[0]);
+      if (c.kind === 'xy') c.maps = [m.mapTo(C, cont[1 % n]), m.mapTo(C, cont[2 % n])];
+      if (c.part === 'steps') c.map = ints.length ? m.mapTo(C, ints[0][0], { max: Math.min(ints[0][2].max, ints[0][2].min + 3) }) : m.mapTo(C, cont[3 % n]);
+    }
+    window.__tzFactory.load(JSON.parse(JSON.stringify(d)));
+  });
+  await win.waitForTimeout(300);
+  const der2 = await win.evaluate(async ([xyId, encId, stId]) => {
+    const m = await import('./js/pages/factory-circuit.js');
+    const def = m.designToDef(window.__tzFactory.design(), { id: 'custom.check2' });
+    const ui = {};
+    for (const c of def.controls) if (c.p) ui[c.p] = c.def;
+    const a = def.derive(ui);
+    ui['u.' + xyId + '.x'] = 1;
+    ui['u.' + xyId + '.y'] = 0;
+    ui['u.' + encId] = 1;
+    ui['u.' + stId] = 2;
+    const b = def.derive(ui);
+    const t = (cid) => (def.controls.find((c) => c.cid === cid) || {}).t;
+    return { tx: t(xyId + '.x'), ty: t(xyId + '.y'), te: t(encId), ts: t(stId), changed: Object.keys(b).filter((k) => a[k] !== b[k]).length };
+  }, [xy.id, enc.id, st.id]);
+  ok(der2.tx === 'slider' && der2.ty === 'slider' && der2.te === 'knob' && der2.ts === 'sel' && der2.changed >= 3, `new controls are block controls (xy ${der2.tx}/${der2.ty}, encoder ${der2.te}, steps ${der2.ts}, ${der2.changed} values move)`);
+  // test mode: the encoder ring follows the value, the pad drags, a step lights
+  await win.click('#fzTest');
+  await win.waitForTimeout(1200);
+  await win.evaluate((id) => window.__tzFactory.testSet(id, 0.5), enc.id);
+  await win.waitForTimeout(100);
+  const lit = await win.evaluate((id) => [...document.querySelectorAll(`.fz-stage [data-ctl="${id}"] .enc-led`)].filter((e) => e.dataset.on === '1').length, enc.id);
+  ok(lit === 12, `encoder ring lights half its LEDs at half way (${lit} of 24)`);
+  const pb = await (await win.$(`.fz-stage [data-ctl="${xy.id}.y"]`)).boundingBox();
+  await win.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2 - 40, { steps: 5 });
+  await win.mouse.up();
+  await win.waitForTimeout(150);
+  const vy = await win.evaluate((id) => window.__tzFactory.testInfo().params['u.' + id + '.y'], xy.id);
+  ok(vy > 0.6, `dragging the XY pad moves Y in test mode (${vy && vy.toFixed(2)})`);
+  await win.evaluate((id) => window.__tzFactory.testSet(id, 2), st.id);
+  await win.waitForTimeout(100);
+  const stepLit = await win.evaluate((id) => [...document.querySelectorAll(`.fz-stage [data-ctl="${id}"] .step-led`)].map((e) => e.dataset.on).join(''), st.id);
+  ok(stepLit === '0010', 'the chosen step button lights (' + stepLit + ')');
+  await win.screenshot({ path: path.join(S, 'factory-newcontrols-test.png') });
+  await win.click('#fzTest');
+  await win.waitForTimeout(800);
+
+  // 19. an angled jack: the wedge's slanted sides turn the jacks, one is set by hand, and they wire up on the board
+  await win.evaluate(() => { const d = window.__tzFactory.design(); Object.assign(d.enc, { shape: 'wedge', w: 110, h: 122, size: 'custom' }); d.jacks.find((j) => j.kind === 'in').t = 0.5; d.jacks.find((j) => j.kind === 'out').t = 0.5; window.__tzFactory.load(JSON.parse(JSON.stringify(d))); });
+  await win.waitForTimeout(300);
+  const outJ = (await D()).jacks.find((j) => j.kind === 'out');
+  await win.evaluate((id) => window.__tzFactory.select(id), outJ.id);
+  await win.waitForTimeout(150);
+  await win.click('.fz-insp .fz-seg [data-v="hand"]');
+  await win.waitForTimeout(150);
+  const autoA = (await D()).jacks.find((j) => j.id === outJ.id).angle;
+  ok(typeof autoA === 'number' && autoA > 180 && autoA < 200, `out jack follows the slanted edge (${autoA} degrees)`);
+  const angIn = await win.$('.fz-insp .fz-row:has(label:text-is("Angle")) .fz-num');
+  await angIn.fill('210');
+  await angIn.press('Enter');
+  await win.waitForTimeout(150);
+  ok((await D()).jacks.find((j) => j.id === outJ.id).angle === 210, 'jack angle set by hand');
+  await win.keyboard.press('Escape');
+  await win.click('#fzSaveBlock');
+  await win.waitForFunction((old) => window.__tzFactory.design().blockId && window.__tzFactory.design().blockId !== old, blockId, { timeout: 5000 }).catch(() => {});
+  const ctlBlock = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(300);
+  const wired = await win.evaluate(async (id) => {
+    const m = await import('./js/state.js');
+    const b = m.addBlock(id, 400, 900);
+    m.connect({ node: '__in', port: 0 }, { node: b.id, port: 0 });
+    m.connect({ node: b.id, port: 0 }, { node: '__out', port: 0 });
+    await new Promise((r) => setTimeout(r, 500));
+    const v = window.__tz.editor.views.get(b.id);
+    const def = v.def;
+    const want = def.controls.map((c) => c.cid).sort(), got = [...v.views.keys()].sort();
+    const cables = m.state.preset.cables.filter((c) => c.to.node === b.id || c.from.node === b.id).map((c) => !!document.querySelector(`[data-cable="${c.id}"]`));
+    return { bid: b.id, jacks: v.jacks.map((j) => ({ key: j.key, side: j.side, angle: j.angle })), same: JSON.stringify(want) === JSON.stringify(got), xy: got.filter((k) => k.includes('.')).length, dots: !!v.g.querySelector('.fz-gridfill'), cables };
+  }, ctlBlock);
+  const ji = wired.jacks.find((j) => j.key === 'i0'), jo = wired.jacks.find((j) => j.key === 'o0');
+  ok(ji && typeof ji.angle === 'number' && ji.side === 'right' && Math.abs(ji.angle - 360) < 20, `board input jack is angled (${ji && ji.angle}, ${ji && ji.side})`);
+  ok(jo && jo.angle === 210 && jo.side === 'left', `board output jack uses the hand set angle (${jo && jo.angle})`);
+  ok(wired.cables.length === 2 && wired.cables.every(Boolean), 'cables plug into the angled jacks');
+  ok(wired.same && wired.xy >= 2, 'the saved pedal has all its controls on the board, the XY pad as two');
+  ok(wired.dots, 'the dot grid shows on the board too');
+  await win.evaluate((bid) => {
+    const v = window.__tz.editor.views.get(bid);
+    const b = v.block;
+    window.__tz.editor.view.z = 2;
+    window.__tz.editor.view.x = -b.x * 2 + 450;
+    window.__tz.editor.view.y = -b.y * 2 + 150;
+    window.__tz.editor.applyView && window.__tz.editor.applyView();
+  }, wired.bid);
+  await win.waitForTimeout(500);
+  await win.screenshot({ path: path.join(S, 'factory-angled-board.png') });
+
+  // 20. My pedals: every saved pedal, duplicate, edit and update (the board follows), delete
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+  await win.click('#fzLibrary');
+  await win.waitForSelector('.fz-lib-card');
+  const nLib = await win.$$eval('.fz-lib-card', (e) => e.length);
+  const nSaved = await win.evaluate(async () => (await import('./js/catalog/custom.js')).customBlocks().length);
+  ok(nLib === nSaved && nLib >= 2, `My pedals lists every saved pedal (${nLib})`);
+  ok(await win.evaluate((id) => document.querySelector(`.fz-lib-card[data-lib="${id}"]`).classList.contains('open') && !!document.querySelector(`.fz-lib-card[data-lib="${id}"] svg`), ctlBlock), 'the open pedal is marked and has a picture');
+  await win.screenshot({ path: path.join(S, 'factory-library.png') });
+  await win.click(`.fz-lib-card[data-lib="${blockId}"] [data-act="dup"]`);
+  await win.waitForFunction((n) => document.querySelectorAll('.fz-lib-card').length === n + 1, nLib, { timeout: 5000 }).catch(() => {});
+  ok((await win.$$eval('.fz-lib-card', (e) => e.length)) === nLib + 1, 'duplicate made a new pedal');
+  await win.click(`.fz-lib-card[data-lib="${blockId}"] [data-act="edit"]`);
+  await win.waitForTimeout(300);
+  const ed = await D();
+  ok(ed.blockId === blockId && ed.name === 'Glass Drive', 'edit opened the saved pedal');
+  await win.evaluate(() => { const d = window.__tzFactory.design(); d.name = 'Glass Drive II'; window.__tzFactory.load(JSON.parse(JSON.stringify(d))); });
+  await win.click('#fzSaveBlock');
+  await win.waitForTimeout(800);
+  const upd = await win.evaluate((bid) => window.__tz.editor.views.get(bid)?.def.name, onBoard.id);
+  ok(upd === 'Glass Drive II', 'saving updated the block already on the board (' + upd + ')');
+  await win.click('#fzLibrary');
+  await win.waitForSelector('.fz-lib-card');
+  const dupId = await win.evaluate(() => [...document.querySelectorAll('.fz-lib-card')].find((c) => /copy/.test(c.textContent)).dataset.lib);
+  await win.click(`.fz-lib-card[data-lib="${dupId}"] [data-act="del"]`);
+  await win.click(`.fz-lib-card[data-lib="${dupId}"] [data-act="del"]`);
+  await win.waitForTimeout(400);
+  ok(!(await win.$(`.fz-lib-card[data-lib="${dupId}"]`)) && (await win.$$eval('.fz-lib-card', (e) => e.length)) === nLib, 'delete removed the copy');
+  await win.click(`.fz-lib-card[data-lib="${ctlBlock}"] [data-act="test"]`);
+  await win.waitForTimeout(1200);
+  ok(await win.evaluate((id) => window.__tzFactory.testing() && window.__tzFactory.design().blockId === id, ctlBlock), 'test from My pedals opens the pedal and plays it');
+  await win.click('#fzTest');
+  await win.waitForTimeout(800);
 
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));

@@ -1,218 +1,103 @@
-// Pedal Factory: the sound of a design. A circuit is a list of stages, each one an engine algorithm (see
-// docs/engine-blocks.md). The whole pedal runs as one 'chain' engine node; stage params show up as
-// "<stage id>.<param>". Every control maps to one stage param (with range, taper and invert), a stage on/off,
-// the wet/dry mix, tap tempo or bypass. designToDef() turns a design into a catalog block definition.
+// Pedal Factory: the sound of a design. A pedal holds one or more circuits (graphs of parts, see
+// circuit-parts.js); the wiring diagram routes the pedal's jacks through them, and each control drives one or
+// more circuit inputs. designToDef() compiles all of it into one engine 'patch' node and a catalog block.
+//
+// Design model (v3):
+//   D.circuit = { v: 3, insts: [{ id, ref, ver, name, graph, x, y, on }], wires: [{ id, a: {n, p}, b: {n, p} }],
+//                 combine: { target: 'sum' | 'max' | 'min' | 'avg' }, mix, mixDef, stages }
+//   wire ends: n = 'jack:<jack id>' or an instance id, p = the circuit's Audio in / Audio out node id.
+//   control targets: '<inst>.<control input node>', '<inst>.on', '<inst>.tap', 'bypass', 'mix'.
+//   c.map is a control's first target, c.more its others; DIP switches and XY pads keep c.maps[i]; expression
+//   jacks j.maps. `stages` is a short summary of the engine parts ([{type}]) for the circuit board drawing.
+// Older designs (v2: a list of stages) are migrated on load (circuit-migrate.js).
 import { clamp } from '../util.js';
+import { xyControls } from './factory-kinds.js';
+import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, ioNodes, nid, clone, val, portKind, graphCat, graphCost, graphNames, hasTap } from './circuit-parts.js';
+import {
+  CIRCUITS, circuitById, makeCircuit, newStage, stageParam, v2TargetsFor, v2TargetInfo, v2MapTo, v2AutoMap, autoMapWith, stagesToGraph,
+} from './circuit-migrate.js';
 
-const uid = (p) => p + Math.random().toString(36).slice(2, 6);
-const clone = (o) => JSON.parse(JSON.stringify(o));
-
-// ------------------------------------------------------------------ stage types
-// params: [key, label, min, max, default, flags] flags: i = whole numbers, l = log sweep, o = options list
-const P = (key, label, min, max, def, f = {}) => ({ key, label, min, max, def, ...f });
-export const STAGE_CATS = { drive: 'Drive', dyn: 'Dynamics', eq: 'Tone', mod: 'Modulation', time: 'Time', pitch: 'Pitch', util: 'Utility' };
-export const STAGES = {
-  boost: { name: 'Boost', cat: 'drive', algo: 'boost', cost: 0.2, params: [P('gain', 'Gain', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.8), P('bass', 'Bass', 0, 1, 0.5), P('treble', 'Treble', 0, 1, 0.5), P('mode', 'Voice', 0, 3, 0, { i: 1, opts: ['Clean', 'Treble', 'Mid', 'Fat'] })] },
-  overdrive: { name: 'Overdrive', cat: 'drive', algo: 'drive', cost: 0.5, opts: { clip: 'ts', tone: 'ts', gainMinDb: 2, gainMaxDb: 38, levelMaxDb: 8 },
-    params: [P('gain', 'Drive', 0, 1, 0.5), P('tone', 'Tone', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.5), P('blend', 'Blend', 0, 1, 1), P('bright', 'Bright', 0, 1, 0), P('sag', 'Sag', 0, 1, 0)] },
-  distortion: { name: 'Distortion', cat: 'drive', algo: 'drive', cost: 0.5, opts: { clip: 'si', tone: 'rat', gainMinDb: 12, gainMaxDb: 48, levelMaxDb: 6, outTrim: 0.6 },
-    params: [P('gain', 'Gain', 0, 1, 0.55), P('tone', 'Filter', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.5), P('sag', 'Sag', 0, 1, 0)] },
-  fuzz: { name: 'Fuzz', cat: 'drive', algo: 'drive', cost: 0.5, opts: { clip: 'muff', tone: 'lp', toneLo: 900, toneHi: 6500, gainMinDb: 18, gainMaxDb: 50, levelMaxDb: 4, outTrim: 0.7 },
-    params: [P('gain', 'Fuzz', 0, 1, 0.65), P('tone', 'Tone', 0, 1, 0.5), P('level', 'Volume', 0, 1, 0.5), P('sag', 'Starve', 0, 1, 0)] },
-  amp: { name: 'Amp drive', cat: 'drive', algo: 'drive', cost: 0.6, opts: { clip: 'tube', tone: 'eq3', bassF: 110, midF: 750, trebleF: 3200, eqRangeDb: 12, gainMinDb: 6, gainMaxDb: 44, levelMaxDb: 6 },
-    params: [P('gain', 'Gain', 0, 1, 0.5), P('bass', 'Bass', 0, 1, 0.5), P('mid', 'Mid', 0, 1, 0.5), P('treble', 'Treble', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.5), P('sag', 'Sag', 0, 1, 0.2)] },
-  comp: { name: 'Compressor', cat: 'dyn', algo: 'comp', cost: 0.3, opts: { type: 'ota' },
-    params: [P('sustain', 'Sustain', 0, 1, 0.5), P('attack', 'Attack', 0, 1, 0.3), P('release', 'Release', 0, 1, 0.4), P('level', 'Level', 0, 1, 0.5), P('tone', 'Tone', 0, 1, 0.5), P('blend', 'Blend', 0, 1, 1), P('ratio', 'Ratio', 0, 1, 0.5)] },
-  gate: { name: 'Noise gate', cat: 'dyn', algo: 'gate', cost: 0.1, params: [P('threshold', 'Threshold', 0, 1, 0.3), P('decay', 'Decay', 0, 1, 0.4)] },
-  swell: { name: 'Swell', cat: 'dyn', algo: 'swell', cost: 0.2, params: [P('sens', 'Sensitivity', 0, 1, 0.5), P('attack', 'Attack', 0, 1, 0.4)] },
-  eq: { name: '3 band EQ', cat: 'eq', algo: 'peq', cost: 0.3,
-    params: [P('lowgain', 'Bass', -15, 15, 0), P('mid1gain', 'Mid', -15, 15, 0), P('mid1freq', 'Mid freq', 200, 3000, 700, { l: 1 }), P('highgain', 'Treble', -15, 15, 0), P('level', 'Level', -12, 12, 0)] },
-  wah: { name: 'Wah / filter', cat: 'eq', algo: 'wah', cost: 0.2,
-    params: [P('pos', 'Position', 0, 1, 0.5), P('q', 'Q', 0, 1, 0.5), P('mode', 'Mode', 0, 2, 0, { i: 1, opts: ['Treadle', 'LFO', 'Envelope'] }), P('rate', 'Rate', 0, 1, 0.4), P('sens', 'Sensitivity', 0, 1, 0.5), P('range', 'Range', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.5)] },
-  chorus: { name: 'Chorus', cat: 'mod', algo: 'chorus', cost: 0.3,
-    params: [P('rate', 'Rate', 0, 1, 0.35), P('depth', 'Depth', 0, 1, 0.5), P('mix', 'Mix', 0, 1, 0.5), P('tone', 'Tone', 0, 1, 0.5), P('mode', 'Mode', 0, 3, 0, { i: 1, opts: ['Chorus', 'Vibrato', 'Ensemble', 'Dimension'] }), P('level', 'Level', 0, 1, 0.5)] },
-  phaser: { name: 'Phaser', cat: 'mod', algo: 'phaser', cost: 0.3,
-    params: [P('rate', 'Rate', 0, 1, 0.35), P('depth', 'Depth', 0, 1, 0.8), P('feedback', 'Feedback', 0, 1, 0.4), P('mix', 'Mix', 0, 1, 0.5), P('stages', 'Stages', 2, 12, 4, { i: 1 }), P('center', 'Centre', 0, 1, 0.5)] },
-  flanger: { name: 'Flanger', cat: 'mod', algo: 'flanger', cost: 0.3,
-    params: [P('speed', 'Rate', 0, 1, 0.3), P('width', 'Depth', 0, 1, 0.6), P('manual', 'Manual', 0, 1, 0.5), P('regen', 'Regen', 0, 1, 0.6), P('mix', 'Mix', 0, 1, 0.5)] },
-  vibe: { name: 'Vibe', cat: 'mod', algo: 'vibe', cost: 0.3, params: [P('speed', 'Speed', 0, 1, 0.4), P('intensity', 'Intensity', 0, 1, 0.7), P('mode', 'Mode', 0, 1, 0, { i: 1, opts: ['Chorus', 'Vibrato'] }), P('level', 'Level', 0, 1, 0.5)] },
-  tremolo: { name: 'Tremolo', cat: 'mod', algo: 'tremolo', cost: 0.2,
-    params: [P('rate', 'Rate', 0, 1, 0.4), P('depth', 'Depth', 0, 1, 0.6), P('wave', 'Shape', 0, 1, 0.3), P('mode', 'Type', 0, 2, 0, { i: 1, opts: ['Opto', 'Harmonic', 'Bias'] }), P('level', 'Level', 0, 1, 0.5)] },
-  rotary: { name: 'Rotary', cat: 'mod', algo: 'rotary', cost: 0.4, params: [P('speed', 'Fast', 0, 1, 0, { i: 1 }), P('drive', 'Drive', 0, 1, 0.2), P('balance', 'Balance', 0, 1, 0.5), P('mix', 'Mix', 0, 1, 1)] },
-  ringmod: { name: 'Ring mod', cat: 'mod', algo: 'ringmod', cost: 0.2, params: [P('freq', 'Frequency', 0, 1, 0.4), P('fine', 'Fine', 0, 1, 0.5), P('mix', 'Mix', 0, 1, 0.5)] },
-  delay: { name: 'Delay', cat: 'time', algo: 'delay', cost: 0.5, tap: true, opts: { maxMs: 3000 },
-    params: [P('time', 'Time', 20, 2000, 420, { l: 1, unit: 'ms' }), P('feedback', 'Repeats', 0, 1, 0.35), P('mix', 'Mix', 0, 1, 0.35), P('tone', 'Tone', 0, 1, 0.6),
-      P('mode', 'Mode', 0, 10, 0, { i: 1, opts: ['Digital', 'Analog', 'Tape', 'Lo-fi', 'Modulated', 'Reverse', 'Shimmer', 'Ping-pong', 'Dual', 'Warp', 'Delay+verb'] }),
-      P('moddepth', 'Mod', 0, 1, 0), P('modrate', 'Mod rate', 0, 1, 0.3), P('subdiv', 'Subdivision', 0, 4, 0, { i: 1 }), P('level', 'Level', 0, 1, 0.5)] },
-  reverb: { name: 'Reverb', cat: 'time', algo: 'reverb', cost: 0.8,
-    params: [P('decay', 'Decay', 0, 1, 0.5), P('mix', 'Mix', 0, 1, 0.35), P('tone', 'Tone', 0, 1, 0.6), P('predelay', 'Pre-delay', 0, 500, 20, { unit: 'ms' }),
-      P('mode', 'Mode', 0, 9, 1, { i: 1, opts: ['Room', 'Hall', 'Plate', 'Spring', 'Shimmer', 'Cloud', 'Modulated', 'Dynamic', '+Delay', 'Swell'] }), P('mod', 'Mod', 0, 1, 0.3), P('shimmer', 'Shimmer', 0, 1, 0.5), P('size', 'Size', 0, 1, 0.5), P('level', 'Level', 0, 1, 0.5)] },
-  freeze: { name: 'Freeze', cat: 'time', algo: 'freeze', cost: 0.6, params: [P('decay', 'Decay', 0, 1, 1), P('mix', 'Mix', 0, 1, 0.7), P('mode', 'Mode', 0, 2, 2, { i: 1, opts: ['Latch', 'Momentary', 'Auto'] }), P('speed', 'Speed', 0, 1, 0.3)] },
-  slicer: { name: 'Slicer', cat: 'time', algo: 'slicer', cost: 0.2, tap: true, params: [P('time', 'Time', 30, 1000, 125, { l: 1, unit: 'ms' }), P('pattern', 'Pattern', 0, 15, 1, { i: 1 }), P('depth', 'Depth', 0, 1, 1), P('smooth', 'Smooth', 0, 1, 0.2), P('mix', 'Mix', 0, 1, 1)] },
-  octave: { name: 'Octave', cat: 'pitch', algo: 'pitch', cost: 0.8, opts: { semis1: -12, level1: 1 },
-    params: [P('level1', 'Sub', 0, 1, 0.8), P('level3', 'Up', 0, 1, 0), P('dry', 'Dry', 0, 1, 1), P('tone', 'Tone', 0, 1, 1), P('semis1', 'Low interval', -24, 0, -12, { i: 1 }), P('semis3', 'High interval', 0, 24, 12, { i: 1 })] },
-  pitch: { name: 'Pitch shift', cat: 'pitch', algo: 'pitch', cost: 0.8, params: [P('semis1', 'Interval', -24, 24, 7, { i: 1 }), P('level1', 'Level', 0, 1, 1), P('dry', 'Dry', 0, 1, 1), P('cents', 'Detune', -50, 50, 0), P('glide', 'Glide', 0, 1, 0.1)] },
-  synth: { name: 'Synth', cat: 'pitch', algo: 'synth', cost: 0.8,
-    params: [P('mode', 'Wave', 0, 7, 1, { i: 1, opts: ['Square', 'Saw', 'Organ', 'Strings', 'Brass', 'Sub bass', 'Pad', 'Sweep'] }), P('filter', 'Cutoff', 0, 1, 0.5), P('reso', 'Resonance', 0, 1, 0.4), P('attack', 'Attack', 0, 1, 0.2), P('sens', 'Sensitivity', 0, 1, 0.5), P('octave', 'Octave', -2, 1, 0, { i: 1 }), P('dry', 'Dry', 0, 1, 0), P('wet', 'Wet', 0, 1, 0.8)] },
-  lofi: { name: 'Lo-fi', cat: 'util', algo: 'lofi', cost: 0.3, params: [P('mode', 'Type', 0, 4, 0, { i: 1, opts: ['Cassette', 'Vinyl', 'AM radio', 'Telephone', 'Sampler'] }), P('wow', 'Wow', 0, 1, 0.3), P('flutter', 'Flutter', 0, 1, 0.3), P('age', 'Age', 0, 1, 0.4), P('noise', 'Noise', 0, 1, 0.2), P('mix', 'Mix', 0, 1, 1)] },
-  crusher: { name: 'Bit crusher', cat: 'util', algo: 'crusher', cost: 0.1, params: [P('bits', 'Bits', 0, 1, 0.5), P('rate', 'Rate', 0, 1, 0.3), P('mix', 'Mix', 0, 1, 1)] },
-  volume: { name: 'Volume', cat: 'util', algo: 'volume', cost: 0.05, params: [P('pos', 'Volume', 0, 1, 1), P('min', 'Minimum', 0, 1, 0)] },
-  level: { name: 'Output level', cat: 'util', algo: 'utility', cost: 0.05, opts: { kind: 'gain' }, params: [P('level', 'Level', -24, 12, 0, { unit: 'dB' })] },
-};
-// drive voicings (engine opts.clip), picked per stage in the circuit tab
-export const CLIPS = [['ts', 'Tube screamer'], ['diode', 'Diodes'], ['asym', 'Asymmetric'], ['opamp', 'Op-amp'], ['ge', 'Germanium'], ['si', 'Silicon'], ['muff', 'Muff'], ['led', 'LED'], ['jfet', 'JFET'], ['tube', 'Tube'], ['mosfet', 'MOSFET'], ['clean', 'Clean']];
-export const COMP_TYPES = [['ota', 'OTA'], ['vca', 'VCA'], ['opto', 'Opto']];
-
-export function stageParam(type, key) {
-  return (STAGES[type]?.params || []).find((p) => p.key === key);
-}
-export function newStage(type, o = {}) {
-  return Object.assign({ id: uid('s'), type, on: true, par: false, params: {}, voice: STAGES[type]?.opts?.clip || STAGES[type]?.opts?.type || '' }, o);
-}
+export { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, CIRCUITS, circuitById, makeCircuit, newStage, stageParam, nid };
+export const uid = (p) => p + Math.random().toString(36).slice(2, 7);
+export const isV3 = (C) => !!C && C.v === 3;
 const isOutput = (k) => k === 'out' || k === 'stereo' || k === 'phones' || k === 'xlr';
+export const S = 2; // board units per millimetre
 
-// ------------------------------------------------------------------ circuit templates
-// Each one fills the chain and says which controls a pedal needs: k = knobs, t = toggles / selectors, f = footswitches.
-// Targets use the stage index: '0.gain' = first stage's gain.
-const T = (id, name, cat, desc, stages, ctl, o = {}) => ({ id, name, cat, desc, stages, ctl, ...o });
-export const CIRCUITS = [
-  T('boost', 'Clean boost', 'Boost', 'More volume, a little sparkle', [['boost', { params: { gain: 0.6 } }]], { k: [['LEVEL', '0.level'], ['TONE', '0.treble']] }),
-  T('overdrive', 'Overdrive', 'Overdrive', 'Warm mid push, like a tube screamer', [['overdrive']], { k: [['LEVEL', '0.level'], ['TONE', '0.tone'], ['DRIVE', '0.gain']] }),
-  T('distortion', 'Distortion', 'Distortion', 'Hard clipping with a filter knob', [['distortion'], ['gate', { params: { threshold: 0.15 } }]], { k: [['DIST', '0.gain'], ['FILTER', '0.tone'], ['VOLUME', '0.level']] }),
-  T('fuzz', 'Fuzz', 'Fuzz', 'Big, woolly sustain', [['fuzz']], { k: [['VOLUME', '0.level'], ['TONE', '0.tone'], ['SUSTAIN', '0.gain']] }),
-  T('amp', 'Amp in a box', 'Overdrive', 'Gain and a 3 band EQ', [['amp']], { k: [['GAIN', '0.gain'], ['BASS', '0.bass'], ['MID', '0.mid'], ['TREBLE', '0.treble'], ['LEVEL', '0.level']] }),
-  T('comp', 'Compressor', 'Dynamics', 'Even, squashed sustain', [['comp']], { k: [['LEVEL', '0.level'], ['SUSTAIN', '0.sustain'], ['ATTACK', '0.attack'], ['BLEND', '0.blend']] }),
-  T('chorus', 'Chorus', 'Modulation', 'Shimmery doubled sound', [['chorus']], { k: [['RATE', '0.rate'], ['DEPTH', '0.depth'], ['MIX', '0.mix']], t: [['MODE', '0.mode', ['CHO', 'VIB']]] }),
-  T('phaser', 'Phaser', 'Modulation', 'Swirling notches', [['phaser']], { k: [['SPEED', '0.rate'], ['DEPTH', '0.depth'], ['REGEN', '0.feedback']] }),
-  T('flanger', 'Flanger', 'Modulation', 'Jet plane sweep', [['flanger']], { k: [['MANUAL', '0.manual'], ['WIDTH', '0.width'], ['SPEED', '0.speed'], ['REGEN', '0.regen']] }),
-  T('tremolo', 'Tremolo', 'Modulation', 'Pulsing volume', [['tremolo']], { k: [['RATE', '0.rate'], ['DEPTH', '0.depth'], ['SHAPE', '0.wave']] }),
-  T('vibe', 'Vibe', 'Modulation', 'Throbbing photocell phase', [['vibe']], { k: [['SPEED', '0.speed'], ['INTENSITY', '0.intensity']], t: [['MODE', '0.mode', ['CHO', 'VIB']]] }),
-  T('delay', 'Delay', 'Delay', 'Echoes with tap tempo', [['delay']], { k: [['TIME', '0.time'], ['REPEATS', '0.feedback'], ['MIX', '0.mix']], t: [['MODE', '0.mode', ['DIG', 'ANA', 'TAPE'], [0, 2]]], tap: true }),
-  T('tape', 'Tape echo', 'Delay', 'Warbly, dark repeats', [['delay', { params: { mode: 2, tone: 0.45 } }]], { k: [['TIME', '0.time'], ['REPEATS', '0.feedback'], ['MIX', '0.mix'], ['WOW', '0.moddepth']] }),
-  T('reverb', 'Reverb', 'Reverb', 'Room, hall or spring', [['reverb']], { k: [['DECAY', '0.decay'], ['TONE', '0.tone'], ['MIX', '0.mix']], t: [['TYPE', '0.mode', ['ROOM', 'HALL', 'SPRING'], [0, 3]]] }),
-  T('shimmer', 'Shimmer verb', 'Reverb', 'Octave-up wash', [['reverb', { params: { mode: 4, decay: 0.75, mix: 0.45 } }]], { k: [['DECAY', '0.decay'], ['SHIMMER', '0.shimmer'], ['MIX', '0.mix']] }),
-  T('octave', 'Octave', 'Pitch', 'Adds an octave below', [['octave']], { k: [['SUB', '0.level1'], ['UP', '0.level3'], ['DRY', '0.dry']] }),
-  T('wah', 'Wah', 'Wah', 'Expression treadle wah', [['wah', { params: { mode: 0 } }]], { pedal: ['WAH', '0.pos'], k: [['Q', '0.q']] }),
-  T('autowah', 'Envelope filter', 'Filter', 'Quacky auto wah', [['wah', { params: { mode: 2, sens: 0.6 } }]], { k: [['SENS', '0.sens'], ['RANGE', '0.range'], ['Q', '0.q']] }),
-  T('drivedelay', 'Drive into delay', 'Multi-FX', 'Two pedals in one', [['overdrive'], ['delay', { params: { mix: 0.3 } }]],
-    { k: [['DRIVE', '0.gain'], ['LEVEL', '0.level'], ['TIME', '1.time'], ['MIX', '1.mix']], f: [['DRIVE', '0.on'], ['ECHO', '1.on']] }),
-  T('shoegaze', 'Shoegaze stack', 'Multi-FX', 'Fuzz, chorus and a huge reverb', [['fuzz', { params: { gain: 0.7 } }], ['chorus', { params: { mix: 0.4 } }], ['reverb', { params: { mode: 5, decay: 0.8, mix: 0.5 } }]],
-    { k: [['FUZZ', '0.gain'], ['TONE', '0.tone'], ['WOBBLE', '1.depth'], ['WASH', '2.mix'], ['LEVEL', '0.level']], f: [['FUZZ', '0.on'], ['WASH', '2.on']] }),
-  T('ambient', 'Ambient', 'Multi-FX', 'Swells into echo and a cloud reverb', [['swell'], ['delay', { params: { mode: 4, mix: 0.4, feedback: 0.5 } }], ['reverb', { params: { mode: 5, decay: 0.85, mix: 0.55 } }]],
-    { k: [['SWELL', '0.attack'], ['TIME', '1.time'], ['REPEATS', '1.feedback'], ['SPACE', '2.mix']] }),
-  T('blend', 'Parallel blend', 'Multi-FX', 'Fuzz and octave side by side', [['fuzz'], ['octave', { par: true, params: { dry: 0 } }]],
-    { k: [['FUZZ', '0.gain'], ['FUZZ LVL', '0.lvl'], ['OCT LVL', '1.lvl'], ['MIX', 'mix']] }, { mix: true }),
-  T('synth', 'Synth', 'Synth', 'Guitar synth with a filter', [['synth']], { k: [['CUTOFF', '0.filter'], ['RES', '0.reso'], ['ATTACK', '0.attack'], ['MIX', '0.wet']], t: [['WAVE', '0.mode', ['SAW', 'SQR', 'PAD'], [1, 0, 6]]] }),
-  T('lofi', 'Lo-fi', 'Utility', 'Old cassette wobble', [['lofi']], { k: [['WOW', '0.wow'], ['AGE', '0.age'], ['NOISE', '0.noise'], ['MIX', '0.mix']] }),
-];
-export function circuitById(id) {
-  return CIRCUITS.find((c) => c.id === id);
-}
-// a fresh circuit from a template: stages plus the control mappings it wants (resolved to stage ids)
-export function makeCircuit(id) {
-  const t = circuitById(id) || CIRCUITS[1];
-  const stages = t.stages.map(([type, o]) => newStage(type, clone(o || {})));
-  const res = (to) => {
-    if (!to || to === 'mix' || to === 'bypass') return to;
-    const [i, k] = to.split('.');
-    return stages[+i] ? stages[+i].id + '.' + k : '';
-  };
-  const circuit = { v: 2, tpl: t.id, cat: t.cat, stages, mix: !!t.mix, mixDef: 1 };
-  const wants = {
-    knobs: (t.ctl.k || []).map(([label, to]) => ({ label, to: res(to) })),
-    toggles: (t.ctl.t || []).map(([label, to, opts, vals]) => ({ label, to: res(to), opts, vals })),
-    foots: (t.ctl.f || []).map(([label, to]) => ({ label, to: res(to) })),
-    pedal: t.ctl.pedal ? { label: t.ctl.pedal[0], to: res(t.ctl.pedal[1]) } : null,
-    tap: !!t.ctl.tap && stages.find((s) => STAGES[s.type].tap),
-  };
-  return { circuit, wants };
+// ------------------------------------------------------------------ instances
+export const instOf = (C, id) => (C && C.insts ? C.insts.find((i) => i.id === id) : null);
+export const instInputs = (inst) => ioNodes(inst.graph, 'ctl');
+export const instAudioIns = (inst) => ioNodes(inst.graph, 'in');
+export const instAudioOuts = (inst) => ioNodes(inst.graph, 'out');
+const titleCase = (s) => String(s || '').toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+/** Keep the parts summary (C.stages) up to date after changing circuits. */
+export function syncStages(C) {
+  if (!isV3(C)) return;
+  C.stages = [];
+  for (const i of C.insts) for (const n of i.graph.nodes) if (STAGES[n.t] && C.stages.length < 8) C.stages.push({ id: n.id, type: n.t });
 }
 
-// ------------------------------------------------------------------ targets
-// everything a control can drive: [value, label, info]
-export function targetsFor(circuit, ctlKind) {
+function knobInfo(k) {
+  const steps = k.steps >= 2 ? k.steps : 0;
+  const name = k.name || 'Knob';
+  if (steps) return { min: 0, max: steps - 1, i: 1, def: k.def ?? 0, opts: k.opts && k.opts.length ? k.opts.slice(0, steps) : undefined, label: name, key: name.toLowerCase() };
+  return { min: 0, max: 1, def: k.def ?? 0.5, label: name, key: name.toLowerCase() };
+}
+
+// ------------------------------------------------------------------ targets (v2 and v3)
+/** Everything a control can drive: [value, label, info]. */
+export function targetsFor(C, ctlKind) {
+  if (!isV3(C)) return v2TargetsFor(C, ctlKind);
   const out = [['', 'Nothing']];
   const sw = ctlKind === 'foot' || ctlKind === 'button';
   if (ctlKind === 'foot') out.push(['bypass', 'Bypass (pedal on / off)']);
-  if (circuit.mix) out.push(['mix', 'Wet / dry mix', { min: 0, max: 1 }]);
-  circuit.stages.forEach((s, i) => {
-    const st = STAGES[s.type];
-    if (!st) return;
-    const nm = `${i + 1}. ${st.name}`;
-    out.push([s.id + '.on', `${nm}: on / off`, { min: 0, max: 1, i: 1 }]);
-    if (sw && st.tap) out.push([s.id + '.tap', `${nm}: tap tempo`]);
-    if (s.par || circuit.stages[i + 1]?.par) out.push([s.id + '.lvl', `${nm}: blend level`, { min: 0, max: 2, def: 1 }]);
-    for (const p of st.params) out.push([s.id + '.' + p.key, `${nm}: ${p.label}`, p]);
-  });
+  if (C.mix) out.push(['mix', 'Wet / dry mix', { min: 0, max: 1, label: 'Mix' }]);
+  for (const inst of C.insts) {
+    const nm = inst.name || 'Circuit';
+    out.push([inst.id + '.on', `${nm}: on / off`, { min: 0, max: 1, i: 1, label: 'On', key: 'on' }]);
+    if (sw && hasTap(inst.graph)) out.push([inst.id + '.tap', `${nm}: tap tempo`, { tap: true, label: 'Tap' }]);
+    for (const k of instInputs(inst)) out.push([inst.id + '.' + k.id, `${nm}: ${k.name || 'Knob'}`, knobInfo(k)]);
+  }
   return out;
 }
-export function targetInfo(circuit, to) {
+export function targetInfo(C, to) {
   if (!to) return null;
+  if (!isV3(C)) return v2TargetInfo(C, to);
   if (to === 'mix') return { min: 0, max: 1, label: 'Mix' };
-  const [sid, key] = to.split('.');
-  const s = circuit.stages.find((x) => x.id === sid);
-  if (!s) return null;
-  if (key === 'on') return { min: 0, max: 1, i: 1, label: 'On' };
-  if (key === 'lvl') return { min: 0, max: 2, label: 'Blend level' };
-  if (key === 'tap') return { tap: true, label: 'Tap' };
-  const p = stageParam(s.type, key);
-  return p ? { ...p } : null;
+  const dot = to.indexOf('.');
+  const inst = instOf(C, to.slice(0, dot));
+  if (!inst) return null;
+  const key = to.slice(dot + 1);
+  if (key === 'on') return { min: 0, max: 1, i: 1, label: 'On', key: 'on' };
+  if (key === 'tap') return hasTap(inst.graph) ? { tap: true, label: 'Tap' } : null;
+  const k = inst.graph.nodes.find((n) => n.id === key && PARTS[n.t]?.io === 'ctl');
+  return k ? knobInfo(k) : null;
 }
-export function targetLabel(circuit, to) {
+export function targetLabel(C, to) {
   if (!to) return 'Nothing';
   if (to === 'bypass') return 'Bypass';
-  const t = targetsFor(circuit, 'foot').find((x) => x[0] === to);
-  return t ? t[1] : 'Missing stage';
+  const t = targetsFor(C, 'foot').find((x) => x[0] === to);
+  return t ? t[1] : 'Missing';
 }
-// a default mapping for a control: full range of the target
-export function mapTo(circuit, to, o = {}) {
-  const info = targetInfo(circuit, to) || {};
-  return Object.assign({ to, min: info.min ?? 0, max: info.max ?? 1, taper: info.l ? 'log' : 'lin', invert: false }, o);
+export function mapTo(C, to, o = {}) {
+  if (!isV3(C)) return v2MapTo(C, to, o);
+  const info = targetInfo(C, to) || {};
+  return Object.assign({ to, min: info.min ?? 0, max: info.max ?? 1, taper: 'lin', invert: false }, o);
 }
-
-// ------------------------------------------------------------------ migration from the old sketch format
-const OLD = { boost: 'boost', drive: 'overdrive', dist: 'distortion', fuzz: 'fuzz', comp: 'comp', eq: 'amp', chorus: 'chorus', phaser: 'phaser', flanger: 'flanger', trem: 'tremolo', delay: 'delay', reverb: 'reverb', octave: 'octave', pitch: 'octave', filter: 'autowah', synth: 'synth' };
-export function migrateCircuit(d) {
-  if (d.circuit && d.circuit.v === 2) return false;
-  const old = d.circuit || {};
-  const { circuit } = makeCircuit(OLD[old.type] || 'overdrive');
-  d.circuit = circuit;
-  return true;
-}
-// map controls that have no mapping yet, by their label or old parameter name
-const SYN = { drive: ['gain', 'drive', 'fuzz', 'sustain', 'dist'], gain: ['gain'], level: ['level', 'volume', 'vol', 'output'], volume: ['level', 'volume'], tone: ['tone', 'treble', 'filter'], filter: ['tone', 'filter'],
-  time: ['time'], repeats: ['feedback', 'repeats'], feedback: ['feedback'], mix: ['mix', 'wet'], rate: ['rate', 'speed'], speed: ['rate', 'speed'], depth: ['depth', 'width', 'intensity'], decay: ['decay'],
-  bass: ['bass', 'lowgain'], mid: ['mid', 'mid1gain'], treble: ['treble', 'highgain'], cutoff: ['filter'], res: ['reso'], resonance: ['reso'], glide: ['glide'], mod: ['moddepth', 'mod'], sub: ['level1'], q: ['q'] };
-export function autoMap(d) {
-  const C = d.circuit;
-  const used = new Set();
-  const all = targetsFor(C, 'knob').filter((t) => t[2] && !String(t[0]).endsWith('.on'));
-  for (const c of d.ctls) {
-    if (c.map || c.kind === 'led' || c.kind === 'screen') continue;
-    if (c.kind === 'foot') {
-      c.map = c.param === 'Tap tempo' && C.stages.find((s) => STAGES[s.type].tap) ? { to: C.stages.find((s) => STAGES[s.type].tap).id + '.tap' } : { to: 'bypass' };
-      continue;
-    }
-    if (c.kind === 'dip') continue;
-    const words = [c.param, c.label].filter(Boolean).map((w) => w.toLowerCase().trim());
-    let hit = null;
-    for (const w of words) {
-      const keys = SYN[w] || [w];
-      hit = all.find((t) => !used.has(t[0]) && keys.includes(t[0].split('.')[1])) || all.find((t) => !used.has(t[0]) && t[2].label && t[2].label.toLowerCase() === w);
-      if (hit) break;
-    }
-    if (!hit && (c.kind === 'knob' || c.kind === 'slider' || c.kind === 'trim' || c.kind === 'pedal')) hit = all.find((t) => !used.has(t[0]) && !t[2].i);
-    if (!hit && (c.kind === 'toggle' || c.kind === 'sel')) hit = all.find((t) => !used.has(t[0]) && t[2].i && t[2].max > 1);
-    if (hit) {
-      used.add(hit[0]);
-      c.map = mapTo(C, hit[0]);
-      if ((c.kind === 'toggle' || c.kind === 'sel') && hit[2].opts) c.map.max = Math.min(hit[2].max, hit[2].min + ((c.ways || c.n || 2) - 1));
-    } else c.map = { to: '' };
+/** A control's targets: its main one plus the extra ones. */
+export const mappingsOf = (c) => [c.map, ...(c.more || [])].filter((m) => m && m.to);
+export const COMBINES = [['sum', 'Add up'], ['max', 'Highest'], ['min', 'Lowest'], ['avg', 'Average']];
+/** Every control (and expression jack) that drives target `to`. */
+export function driversOf(D, to) {
+  const out = [];
+  for (const c of D.ctls) {
+    mappingsOf(c).forEach((m) => m.to === to && out.push({ c, m }));
+    (c.maps || []).forEach((m, i) => m && m.to === to && out.push({ c, m, sw: i }));
   }
-  for (const l of d.ctls) if (l.kind === 'led' && !l.bind) l.bind = 'on';
+  for (const j of D.jacks) (j.maps || []).forEach((m) => m && m.to === to && out.push({ j, m }));
+  return out;
 }
 
-// ------------------------------------------------------------------ the block definition
+// ------------------------------------------------------------------ values
 const TAPERS = { lin: (t) => t, audio: (t) => t * t, rev: (t) => 1 - (1 - t) * (1 - t), log: (t) => t };
 export const TAPER_NAMES = [['lin', 'Linear'], ['log', 'Log'], ['audio', 'Audio'], ['rev', 'Reverse']];
 export function mapValue(m, info, t) {
@@ -222,19 +107,106 @@ export function mapValue(m, info, t) {
   let v;
   if (m.taper === 'log' && lo > 0 && hi > 0) v = lo * Math.pow(hi / lo, t);
   else v = lo + (hi - lo) * (TAPERS[m.taper] || TAPERS.lin)(t);
+  if (m.offset) v += m.offset;
   if (info && (info.i || info.key === 'on')) v = Math.round(v);
   return v;
 }
-const fmtV = (v, info) => {
-  if (!info) return '';
-  if (info.opts && info.i) return info.opts[Math.round(v) - (info.min || 0)] ?? String(Math.round(v));
-  if (info.i) return String(Math.round(v));
-  if (info.unit === 'ms') return v >= 1000 ? (v / 1000).toFixed(2) + ' s' : Math.round(v) + ' ms';
-  if (info.unit === 'dB' || (info.min < 0 && info.max > 0 && info.max >= 12)) return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB';
-  if (info.max > 20) return String(Math.round(v));
-  return ((v - (info.min || 0)) / ((info.max - info.min) || 1) * 10).toFixed(1);
-};
-export const S = 2; // board units per millimetre
+
+// ------------------------------------------------------------------ migration
+const OLD = { boost: 'boost', drive: 'overdrive', dist: 'distortion', fuzz: 'fuzz', comp: 'comp', eq: 'amp', chorus: 'chorus', phaser: 'phaser', flanger: 'flanger', trem: 'tremolo', delay: 'delay', reverb: 'reverb', octave: 'octave', pitch: 'octave', filter: 'autowah', synth: 'synth' };
+/** Bring d.circuit up to v3 (in place). Returns false: controls are already mapped afterwards. */
+export function migrateCircuit(d) {
+  if (isV3(d.circuit)) {
+    const C = d.circuit;
+    if (!Array.isArray(C.insts)) C.insts = [];
+    if (!Array.isArray(C.wires)) C.wires = [];
+    for (const i of C.insts) if (!i.graph || !Array.isArray(i.graph.nodes)) i.graph = { nodes: [], wires: [] };
+    if (!C.stages) syncStages(C);
+    return false;
+  }
+  if (!d.circuit || d.circuit.v !== 2) {
+    const old = d.circuit || {};
+    d.circuit = makeCircuit(OLD[old.type] || 'overdrive').circuit;
+    v2AutoMap(d);
+  }
+  v2ToV3(d);
+  return false;
+}
+function v2ToV3(d) {
+  const C2 = d.circuit;
+  const refs = [], pend = [];
+  const names = new Map();
+  const nameFor = (c, info) => {
+    let n = c && c.label ? titleCase(c.label) : info.label || 'Knob';
+    const k = n.toLowerCase();
+    names.set(k, (names.get(k) || 0) + 1);
+    if (names.get(k) > 1) n += ' ' + names.get(k);
+    return n;
+  };
+  const consider = (m, c) => {
+    if (!m || !m.to || m.to === 'bypass' || m.to === 'mix' || m.to.endsWith('.tap')) return;
+    const info = v2TargetInfo(C2, m.to);
+    if (!info) {
+      m.to = '';
+      return;
+    }
+    const ref = { to: m.to, name: nameFor(c, info), def: 0.5 };
+    let nm;
+    if (Array.isArray(m.values) && m.values.length) {
+      const lo = Math.min(...m.values), hi = Math.max(...m.values);
+      Object.assign(ref, { lo, hi });
+      nm = { values: m.values.map((v) => (hi === lo ? 0 : (v - lo) / (hi - lo))) };
+    } else {
+      const lo = m.min ?? info.min ?? 0, hi = m.max ?? info.max ?? 1;
+      Object.assign(ref, { lo, hi, log: m.taper === 'log' && lo > 0 && hi > 0 });
+      nm = { min: 0, max: 1, taper: m.taper === 'log' ? 'lin' : m.taper || 'lin', invert: !!m.invert };
+    }
+    pend.push({ m, i: refs.length, nm });
+    refs.push(ref);
+  };
+  for (const c of d.ctls || []) {
+    consider(c.map, c);
+    (c.maps || []).forEach((m) => consider(m, c));
+  }
+  const { graph, knobs } = stagesToGraph(C2, refs);
+  const inst = { id: uid('c'), ref: C2.tpl ? 'b.' + C2.tpl : null, ver: 1, name: C2.name || circuitById(C2.tpl)?.name || 'Circuit', graph, x: 0, y: 0, on: true };
+  for (const { m, i, nm } of pend) {
+    for (const k of ['min', 'max', 'values', 'taper', 'invert']) delete m[k];
+    Object.assign(m, nm, { to: inst.id + '.' + knobs[i] });
+  }
+  for (const c of d.ctls || []) {
+    for (const m of [c.map, ...(c.maps || [])]) if (m && m.to && m.to.endsWith('.tap')) m.to = inst.id + '.tap';
+    if (c.kind === 'led' && c.bind && c.bind.startsWith('tap:')) c.bind = 'tap:' + inst.id;
+  }
+  d.circuit = { v: 3, insts: [inst], wires: [], mix: !!C2.mix, mixDef: C2.mixDef ?? 1, combine: {} };
+  seriesWires(d);
+  syncStages(d.circuit);
+}
+/** Wire every circuit in a row: first input jack -> circuits -> every output jack. */
+export function seriesWires(d) {
+  const C = d.circuit;
+  const J = jackList(d);
+  const W = (a, b) => C.wires.push({ id: uid('w'), a, b });
+  C.wires = [];
+  let src = J.ins.length ? [{ n: 'jack:' + J.ins[0].id, p: '' }] : [];
+  for (const inst of C.insts) {
+    const i = instAudioIns(inst)[0], o = instAudioOuts(inst)[0];
+    if (!i || !o) continue;
+    for (const s of src) W(s, { n: inst.id, p: i.id });
+    src = [{ n: inst.id, p: o.id }];
+  }
+  for (const s of src) for (const j of J.outs) W(s, { n: 'jack:' + j.id, p: '' });
+}
+export function autoMap(d) {
+  const C = d.circuit;
+  if (!isV3(C)) return v2AutoMap(d);
+  autoMapWith(d, (k) => targetsFor(C, k), (to) => mapTo(C, to), () => {
+    const i = C.insts.find((x) => hasTap(x.graph));
+    return i ? i.id + '.tap' : null;
+  });
+}
+
+// ------------------------------------------------------------------ jacks and pedal wiring
 // audio jacks in port order: inputs, then outputs (main out first)
 export function portJacks(D) {
   const order = { out: 0, stereo: 1, phones: 2, xlr: 3 };
@@ -244,113 +216,331 @@ export function portJacks(D) {
     exps: D.jacks.filter((j) => j.kind === 'exp'),
   };
 }
-// the block list category for a circuit built by hand
-const CAT_OF = { boost: 'Boost', overdrive: 'Overdrive', amp: 'Overdrive', distortion: 'Distortion', fuzz: 'Fuzz', comp: 'Dynamics', gate: 'Dynamics', swell: 'Dynamics', eq: 'EQ', wah: 'Filter',
-  chorus: 'Modulation', phaser: 'Modulation', flanger: 'Modulation', vibe: 'Modulation', tremolo: 'Modulation', rotary: 'Modulation', ringmod: 'Modulation', delay: 'Delay', slicer: 'Modulation',
-  reverb: 'Reverb', freeze: 'Reverb', octave: 'Pitch', pitch: 'Pitch', synth: 'Synth', lofi: 'Utility', crusher: 'Utility', volume: 'Volume', level: 'Utility' };
-function catFor(stages) {
-  const cats = [...new Set(stages.filter((s) => s.type !== 'gate' && s.type !== 'level').map((s) => CAT_OF[s.type] || 'Utility'))];
-  return cats.length === 1 ? cats[0] : cats.length ? 'Multi-FX' : 'Utility';
+// like portJacks, with stand-ins when the pedal has no input or output jack (the block still has one)
+export function jackList(D) {
+  const p = portJacks(D);
+  return {
+    ins: p.ins.length ? p.ins : [{ id: '__in', kind: 'in', label: 'INPUT', virtual: true }],
+    outs: p.outs.length ? p.outs : [{ id: '__out', kind: 'out', label: 'OUTPUT', virtual: true }],
+    exps: p.exps,
+  };
 }
-// stage index in the chain (taps are routed by index)
-const stageIndex = (C, sid) => C.stages.findIndex((s) => s.id === sid);
+// the stand-ins follow the first real jack once there is one
+export function resolveJack(J, id, dir) {
+  const list = dir === 'in' ? J.ins : J.outs;
+  const hit = list.find((j) => j.id === id);
+  if (hit) return hit;
+  if (id === '__in' || id === '__out') return list[0];
+  return null;
+}
+const endOk = (D, J, e, dir) => {
+  if (!e || !e.n) return false;
+  if (e.n.startsWith('jack:')) return !!resolveJack(J, e.n.slice(5), dir === 'src' ? 'in' : 'out');
+  const inst = instOf(D.circuit, e.n);
+  if (!inst) return false;
+  const n = inst.graph.nodes.find((x) => x.id === e.p);
+  return !!n && PARTS[n.t]?.io === (dir === 'src' ? 'out' : 'in');
+};
+/** The pedal's audio wires that work, plus outputs nobody wired following the main output (auto). */
+export function effectiveWires(D) {
+  const C = D.circuit;
+  if (!isV3(C)) return [];
+  const J = jackList(D);
+  const ws = C.wires.filter((w) => endOk(D, J, w.a, 'src') && endOk(D, J, w.b, 'dst'));
+  const fed = (j) => ws.filter((w) => w.b.n.startsWith('jack:') && resolveJack(J, w.b.n.slice(5), 'out') === j);
+  const main = J.outs.find((j) => fed(j).length);
+  if (!main) return ws;
+  const out = ws.slice();
+  for (const j of J.outs) if (!fed(j).length) for (const w of fed(main)) out.push({ id: 'auto-' + j.id + '-' + w.id, a: w.a, b: { n: 'jack:' + j.id, p: '' }, auto: true });
+  return out;
+}
+
+// ------------------------------------------------------------------ editing helpers (used by the circuit UI)
+/** Add a library circuit to the pedal, wired in before the outputs. Returns the instance. */
+export function addInstance(D, rec, at) {
+  const C = D.circuit;
+  const inst = { id: uid('c'), ref: rec.id || null, ver: rec.ver || 1, name: rec.name || 'Circuit', graph: clone(rec.graph), x: 0, y: 0, on: true };
+  const n = C.insts.length;
+  Object.assign(inst, at || { x: 0, y: n * 150 });
+  const i = instAudioIns(inst)[0], o = instAudioOuts(inst)[0];
+  const J = jackList(D);
+  const intoOuts = effectiveWires(D).filter((w) => !w.auto && w.b.n.startsWith('jack:'));
+  C.insts.push(inst);
+  if (i && o) {
+    if (intoOuts.length) {
+      // insert before the outputs: what fed them now feeds the new circuit
+      const srcs = [];
+      for (const w of intoOuts) if (!srcs.some((s) => s.n === w.a.n && s.p === w.a.p)) srcs.push(w.a);
+      const outsHit = [...new Set(intoOuts.map((w) => w.b.n))];
+      const gone = new Set(intoOuts.map((w) => w.id));
+      C.wires = C.wires.filter((w) => !gone.has(w.id));
+      for (const s of srcs) C.wires.push({ id: uid('w'), a: s, b: { n: inst.id, p: i.id } });
+      for (const b of outsHit) C.wires.push({ id: uid('w'), a: { n: inst.id, p: o.id }, b: { n: b, p: '' } });
+    } else {
+      C.wires.push({ id: uid('w'), a: { n: 'jack:' + J.ins[0].id, p: '' }, b: { n: inst.id, p: i.id } });
+      for (const j of J.outs) C.wires.push({ id: uid('w'), a: { n: inst.id, p: o.id }, b: { n: 'jack:' + j.id, p: '' } });
+    }
+  }
+  syncStages(C);
+  return inst;
+}
+/** Remove a circuit from the pedal; what fed it now feeds what it fed. */
+export function removeInstance(D, id) {
+  const C = D.circuit;
+  const ins = C.wires.filter((w) => w.b.n === id), outs = C.wires.filter((w) => w.a.n === id);
+  C.wires = C.wires.filter((w) => w.a.n !== id && w.b.n !== id);
+  for (const a of ins) for (const b of outs) if (!C.wires.some((w) => w.a.n === a.a.n && w.a.p === a.a.p && w.b.n === b.b.n && w.b.p === b.b.p)) C.wires.push({ id: uid('w'), a: a.a, b: b.b });
+  C.insts = C.insts.filter((i) => i.id !== id);
+  pruneTargets(D);
+  syncStages(C);
+}
+/** New graph for an instance (after editing its circuit): drops wiring that no longer has an end. */
+export function setInstanceGraph(D, inst, graph, o = {}) {
+  inst.graph = clone(graph);
+  Object.assign(inst, o);
+  const J = jackList(D);
+  D.circuit.wires = D.circuit.wires.filter((w) => endOk(D, J, w.a, 'src') && endOk(D, J, w.b, 'dst'));
+  pruneTargets(D);
+  syncStages(D.circuit);
+}
+/** Mappings whose target is gone are cleared. */
+export function pruneTargets(D) {
+  const C = D.circuit;
+  const ok = (m) => !m || !m.to || m.to === 'bypass' || !!targetInfo(C, m.to);
+  for (const c of D.ctls) {
+    if (c.map && !ok(c.map)) c.map = { to: '' };
+    if (c.more) c.more = c.more.filter((m) => m && m.to && ok(m));
+    if (c.maps) c.maps = c.maps.map((m) => (ok(m) ? m : null));
+    if (c.kind === 'led' && c.bind && c.bind.startsWith('tap:') && !instOf(C, c.bind.slice(4))) c.bind = 'on';
+  }
+  for (const j of D.jacks) if (j.maps) j.maps = j.maps.filter((m) => m && m.to && ok(m));
+  if (C.combine) for (const k of Object.keys(C.combine)) if (!targetInfo(C, k)) delete C.combine[k];
+}
+/** Add a mapping from control c to target `to` (its main one if it has none). */
+export function addMapping(D, c, to, o = {}) {
+  if (mappingsOf(c).some((x) => x.to === to)) return null;
+  const m = mapTo(D.circuit, to, o);
+  if (!c.map || !c.map.to || (c.map.to === 'bypass' && c.kind === 'foot')) c.map = m;
+  else c.more = [...(c.more || []), m];
+  return m;
+}
+/** Remove mapping number i of control c (0 = the main one). */
+export function removeMapping(c, i) {
+  const all = [c.map, ...(c.more || [])];
+  all.splice(i, 1);
+  const rest = all.filter((m) => m && m.to);
+  c.map = rest.shift() || (c.kind === 'foot' ? { to: 'bypass' } : { to: '' });
+  c.more = rest;
+}
+
+// ------------------------------------------------------------------ compiling to the engine
+const portIdx = (list, key) => Math.max(0, list.findIndex((x) => x[0] === key));
+function slotFor(p, v, w) {
+  const s = { p: p.key, def: v, lo: p.min, hi: p.max, log: !!p.l, int: !!p.i };
+  if (w) {
+    if (w.lo != null) s.lo = w.lo;
+    if (w.hi != null) s.hi = w.hi;
+    if (w.log != null) s.log = !!w.log;
+    if (Array.isArray(w.tab) && w.tab.length) s.tab = w.tab.slice();
+  }
+  return s;
+}
+/** One engine 'patch' node (its opts) for the whole pedal. */
+export function compilePatch(D) {
+  const C = D.circuit;
+  const J = jackList(D);
+  const E = { params: [], nodes: [], edges: [], outs: [] };
+  const addParam = (name, def, min, max) => E.params.push({ name, def, min, max }) - 1;
+  const add = (n) => E.nodes.push(n) - 1;
+  const ain = J.ins.map((_, i) => add({ k: 'ain', idx: i }));
+  const aout = J.outs.map((_, i) => add({ k: 'aout', idx: i }));
+  const maps = new Map();
+  C.insts.forEach((inst, gi) => {
+    const G = inst.graph;
+    const by = new Map(G.nodes.map((n) => [n.id, n]));
+    const idx = new Map(), slotsOf = new Map();
+    const wired = new Map();
+    for (const w of G.wires) {
+      if (!w.b.p.startsWith('@')) continue;
+      if (!wired.has(w.b.n)) wired.set(w.b.n, new Map());
+      if (!wired.get(w.b.n).has(w.b.p.slice(1))) wired.get(w.b.n).set(w.b.p.slice(1), w);
+    }
+    const onNode = add({ k: 'param', pi: addParam(inst.id + '.on', inst.on === false ? 0 : 1, 0, 1) });
+    for (const n of G.nodes) {
+      const pt = PARTS[n.t];
+      if (!pt || pt.io === 'note') continue;
+      if (pt.io === 'in') idx.set(n.id, add({ k: 'sum' }));
+      else if (pt.io === 'out') idx.set(n.id, add({ k: 'bypass', slots: [{ p: 'on', def: 1, lo: 0, hi: 1 }] }));
+      else if (pt.io === 'ctl') {
+        const info = knobInfo(n);
+        idx.set(n.id, add({ k: 'param', pi: addParam(inst.id + '.' + n.id, clamp(n.def ?? info.def, info.min, info.max), info.min, info.max) }));
+      } else {
+        const slots = [], sm = new Map(), fixed = {};
+        const wp = wired.get(n.id) || new Map();
+        for (const p of pt.params) {
+          const v = val(n, p), w = wp.get(p.key);
+          if (pt.native || w || p.key === 'on') {
+            sm.set(p.key, slots.length);
+            slots.push(slotFor(p, v, w));
+          } else fixed[p.key] = v;
+        }
+        let en;
+        if (pt.native) en = { k: pt.native, slots };
+        else {
+          const st = STAGES[n.t];
+          const opts = Object.assign({}, st.opts || {});
+          if (n.voice && st.algo === 'drive') opts.clip = n.voice;
+          if (n.voice && st.algo === 'comp') opts.type = n.voice;
+          if (n.opts) Object.assign(opts, n.opts);
+          en = { k: 'algo', algo: st.algo, opts, params: fixed, slots };
+        }
+        if (pt.tap) en.tap = gi;
+        idx.set(n.id, add(en));
+        slotsOf.set(n.id, sm);
+      }
+    }
+    for (const w of G.wires) {
+      const na = by.get(w.a.n), nb = by.get(w.b.n);
+      if (!na || !nb || !idx.has(na.id) || !idx.has(nb.id)) continue;
+      const ka = portKind(na, w.a.p, true), kb = portKind(nb, w.b.p, false);
+      if (!ka || ka !== kb) continue;
+      if (ka === 'a') E.edges.push([idx.get(na.id), portIdx(PARTS[na.t].aout, w.a.p), idx.get(nb.id), portIdx(PARTS[nb.t].ain, w.b.p), 0]);
+      else {
+        const si = slotsOf.get(nb.id)?.get(w.b.p.slice(1));
+        if (si != null) E.edges.push([idx.get(na.id), portIdx(PARTS[na.t].cout, w.a.p), idx.get(nb.id), si, 1]);
+      }
+    }
+    // each audio out crossfades to the circuit's dry input when the circuit is switched off
+    const first = ioNodes(G, 'in')[0];
+    for (const o of ioNodes(G, 'out')) {
+      if (first) E.edges.push([idx.get(first.id), 0, idx.get(o.id), 1, 0]);
+      E.edges.push([onNode, 0, idx.get(o.id), 0, 1]);
+    }
+    maps.set(inst.id, idx);
+  });
+  for (const w of effectiveWires(D)) {
+    const a = w.a.n.startsWith('jack:') ? ain[J.ins.indexOf(resolveJack(J, w.a.n.slice(5), 'in'))] : maps.get(w.a.n)?.get(w.a.p);
+    const b = w.b.n.startsWith('jack:') ? aout[J.outs.indexOf(resolveJack(J, w.b.n.slice(5), 'out'))] : maps.get(w.b.n)?.get(w.b.p);
+    if (a != null && b != null) E.edges.push([a, 0, b, 0, 0]);
+  }
+  // engine outputs: a stereo pair is OUT = left, STEREO = right; phones carry both; anything else a mono sum
+  const hasPair = J.outs.some((j) => j.kind === 'stereo') && J.outs.some((j) => j.kind === 'out');
+  J.outs.forEach((j, i) => {
+    if (j.kind === 'phones') E.outs.push([i, 0], [i, 1]);
+    else E.outs.push([i, hasPair && j.kind === 'out' ? 0 : hasPair && j.kind === 'stereo' ? 1 : -1]);
+  });
+  if (C.mix) Object.assign(E, { mix: true, mixDef: C.mixDef ?? 1 });
+  return E;
+}
+
+// ------------------------------------------------------------------ the block definition
+const fmtV = (v, info) => {
+  if (!info) return '';
+  if (info.opts && info.i) return info.opts[Math.round(v) - (info.min || 0)] ?? String(Math.round(v));
+  if (info.i) return String(Math.round(v));
+  if (info.unit === 'ms') return v >= 1000 ? (v / 1000).toFixed(2) + ' s' : Math.round(v) + ' ms';
+  if (info.unit === 'dB' || (info.min < 0 && info.max > 0 && info.max >= 12)) return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB';
+  if (info.max > 20) return String(Math.round(v));
+  return ((v - (info.min || 0)) / ((info.max - info.min) || 1) * 10).toFixed(1);
+};
+// the delay time an instance's tap LED blinks at: the first tap part's time, from a control input or fixed
+function tapTime(inst) {
+  const n = inst.graph.nodes.find((x) => STAGES[x.t]?.tap);
+  if (!n) return { knob: null, ms: () => 400 };
+  const p = STAGES[n.t].params.find((q) => q.key === 'time');
+  const w = inst.graph.wires.find((x) => x.b.n === n.id && x.b.p === '@time');
+  const k = w && inst.graph.nodes.find((x) => x.id === w.a.n && PARTS[x.t]?.io === 'ctl');
+  const fixed = val(n, p);
+  if (!k) return { knob: null, ms: () => fixed };
+  const lo = w.lo ?? p.min, hi = w.hi ?? p.max, log = w.log ?? !!p.l;
+  return { knob: inst.id + '.' + k.id, def: k.def ?? 0.5, ms: (x) => (log && lo > 0 ? lo * Math.pow(hi / lo, clamp(x, 0, 1)) : lo + (hi - lo) * clamp(x, 0, 1)) };
+}
 
 /** Build a catalog block definition from a factory design. */
 export function designToDef(design, o = {}) {
   const D = clone(design);
+  if (!isV3(D.circuit)) migrateCircuit(D);
   const C = D.circuit;
-  const stages = C.stages.filter((s) => STAGES[s.type]);
-  // parallel groups: a stage marked par joins the group of the stage before it
-  let gid = 0;
-  const groups = stages.map((s, i) => (s.par && i > 0 ? 0 : ++gid));
-  stages.forEach((s, i) => {
-    if (s.par && i > 0) groups[i] = groups[i - 1];
-  });
-  const groupSize = (g) => groups.filter((x) => x === g).length;
-  const chain = stages.map((s, i) => {
-    const st = STAGES[s.type];
-    const opts = Object.assign({}, st.opts || {});
-    if (s.voice && st.algo === 'drive') opts.clip = s.voice;
-    if (s.voice && st.algo === 'comp') opts.type = s.voice;
-    const params = {};
-    for (const p of st.params) params[p.key] = s.params[p.key] ?? p.def;
-    const sj = { prefix: s.id, algo: st.algo, opts, params, on: s.on !== false };
-    if (groupSize(groups[i]) > 1) sj.group = groups[i];
-    return sj;
-  });
+  const opts = compilePatch(D);
+  // every exposed value is sent, so a changed default reaches a running engine
   const fixed = {};
-  stages.forEach((s) => {
-    for (const p of STAGES[s.type].params) fixed[s.id + '.' + p.key] = s.params[p.key] ?? p.def;
-    fixed[s.id + '.on'] = s.on !== false ? 1 : 0;
-    if (s.par || groupSize(groups[stages.indexOf(s)]) > 1) fixed[s.id + '.lvl'] = s.lvl ?? 1;
-  });
+  for (const p of opts.params) fixed[p.name] = p.def;
   if (C.mix) fixed.mix = C.mixDef ?? 1;
 
-  // jacks -> ports
-  const { ins, outs } = portJacks(D);
+  const { ins, outs } = jackList(D);
   const jackKinds = {};
   outs.forEach((j, i) => {
     if (j.kind === 'phones') jackKinds['o' + i] = 'phones';
     if (j.kind === 'xlr') jackKinds['o' + i] = 'xlr';
   });
-  // which channel each output gets: a stereo pair is out = left, stereo out = right; anything else gets both mixed
-  const hasPair = outs.some((j) => j.kind === 'stereo') && outs.some((j) => j.kind === 'out');
-  const outMap = outs.length ? outs.map((j) => (hasPair && j.kind === 'out' ? 0 : hasPair && j.kind === 'stereo' ? 1 : -1)) : [-1];
-  const ports = { ins: ins.length ? ins.map((j, i) => j.label || (ins.length > 1 ? 'IN ' + (i + 1) : 'INPUT')) : ['INPUT'], outs: outs.length ? outs.map((j) => j.label || 'OUTPUT') : ['OUTPUT'] };
+  const ports = { ins: ins.map((j, i) => (j.virtual ? 'INPUT' : j.label || (ins.length > 1 ? 'IN ' + (i + 1) : 'INPUT'))), outs: outs.map((j) => (j.virtual ? 'OUTPUT' : j.label || 'OUTPUT')) };
 
   // controls and their mappings
   const controls = [];
-  const maps = []; // {key, n, def, m, info}
+  const maps = []; // {key, n, def, m, info, to, opt}
   const knobLike = { knob: 'knob', trim: 'knob', slider: 'slider', pedal: 'treadle' };
-  const disp = (m, info) => (v) => (m && info && !info.tap ? fmtV(mapValue(m, info, v), info) : (v * 10).toFixed(1));
-  const addMap = (key, n, def, m) => {
-    if (!m || !m.to || m.to === 'bypass' || m.to.endsWith('.tap')) return;
-    const info = targetInfo(C, m.to);
-    if (info) maps.push({ key, n, def, m, info, to: m.to });
+  const instIndex = (to) => C.insts.findIndex((i) => to.startsWith(i.id + '.'));
+  const disp = (list) => (v) => {
+    const m = list.find((x) => x && x.to);
+    const info = m && targetInfo(C, m.to);
+    return m && info && !info.tap ? fmtV(mapValue(m, info, v), info) : (v * 10).toFixed(1);
+  };
+  const addMaps = (key, n, def, list, opt) => {
+    for (const m of list) {
+      if (!m || !m.to || m.to === 'bypass' || m.to.endsWith('.tap')) continue;
+      const info = targetInfo(C, m.to);
+      if (info && !info.tap) maps.push({ key, n, def, m, info, to: m.to, opt });
+    }
   };
   let tapSub = null;
   for (const c of D.ctls) {
     if (c.hidden) continue;
     const key = 'u.' + c.id;
-    const m = c.map || null;
-    const info = m && targetInfo(C, m.to);
+    const list = mappingsOf(c);
     const base = { cid: c.id, label: c.label || '', virtual: true };
     if (knobLike[c.kind]) {
-      const val = c.kind === 'pedal' ? c.value ?? 0.5 : c.value ?? 0.5;
-      controls.push(Object.assign(base, { t: knobLike[c.kind], p: key, min: 0, max: 1, def: val, display: disp(m, info) }, c.kind === 'slider' ? { h: (c.h || 24) * S, orient: c.orient } : {}, c.kind === 'pedal' ? { h: (c.h || 60) * S, w: (c.w || 40) * S } : {}));
-      addMap(key, 0, val, m);
+      const v0 = c.value ?? 0.5;
+      controls.push(Object.assign(base, { t: knobLike[c.kind], p: key, min: 0, max: 1, def: v0, display: disp(list) }, c.kind === 'slider' ? { h: (c.h || 24) * S, orient: c.orient } : {}, c.kind === 'pedal' ? { h: (c.h || 60) * S, w: (c.w || 40) * S } : {}));
+      addMaps(key, 0, v0, list);
     } else if (c.kind === 'toggle' || c.kind === 'sel') {
       const n = c.kind === 'toggle' ? c.ways : c.n || 4;
-      const opts = (c.opts || []).slice(0, n);
-      while (opts.length < n) opts.push(String(opts.length + 1));
-      controls.push(Object.assign(base, { t: c.kind === 'toggle' ? 'toggle' : 'sel', p: key, options: opts, def: c.pos || 0 }));
-      addMap(key, n, c.pos || 0, m);
+      const ol = (c.opts || []).slice(0, n);
+      while (ol.length < n) ol.push(String(ol.length + 1));
+      controls.push(Object.assign(base, { t: c.kind === 'toggle' ? 'toggle' : 'sel', p: key, options: ol, def: c.pos || 0 }));
+      addMaps(key, n, c.pos || 0, list);
     } else if (c.kind === 'button') {
-      if (m && m.to && m.to.endsWith('.tap')) controls.push(Object.assign(base, { t: 'button', event: { type: 1, arg: stageIndex(C, m.to.split('.')[0]) * 100 }, virtual: undefined }));
+      const m = c.map;
+      if (m && m.to && m.to.endsWith('.tap')) controls.push(Object.assign(base, { t: 'button', event: { type: 1, arg: Math.max(0, instIndex(m.to)) * 100 }, virtual: undefined }));
       else {
         controls.push(Object.assign(base, { t: 'button', toggle: true, p: key, def: c.on ? 1 : 0, led: c.led, ledColor: c.ledColor }));
-        addMap(key, 2, c.on ? 1 : 0, m);
+        addMaps(key, 2, c.on ? 1 : 0, list);
       }
     } else if (c.kind === 'foot') {
-      const to = m ? m.to : 'bypass';
+      const to = c.map ? c.map.to : 'bypass';
       if (!to || to === 'bypass') controls.push(Object.assign(base, { t: 'foot', action: 'bypass', virtual: undefined }));
       else if (to.endsWith('.tap')) {
-        const idx = stageIndex(C, to.split('.')[0]);
+        const idx = Math.max(0, instIndex(to));
         if (tapSub == null) tapSub = idx;
         controls.push(Object.assign(base, { t: 'foot', action: 'tap', tapSub: idx, tapTarget: '_tap', virtual: undefined }));
       } else {
-        // latching footswitch on a param (stage on / off by default)
-        const def0 = to.endsWith('.on') ? (stages.find((s) => s.id === to.split('.')[0])?.on !== false ? 1 : 0) : 1;
+        // latching footswitch (a circuit on / off by default)
+        const inst = to.endsWith('.on') ? instOf(C, to.slice(0, -3)) : null;
+        const def0 = inst ? (inst.on !== false ? 1 : 0) : 1;
         controls.push(Object.assign(base, { t: 'foot', action: 'toggle', p: key, def: def0 }));
-        addMap(key, 2, def0, m);
+        addMaps(key, 2, def0, list);
       }
     } else if (c.kind === 'dip') {
       const n = c.n || 4;
       for (let i = 0; i < n; i++) {
         const k2 = key + '.' + i;
-        const mi = (c.maps || [])[i] || null;
         controls.push({ cid: c.id + '.' + i, t: 'toggle', p: k2, options: ['OFF', 'ON'], def: c.bits?.[i] ? 1 : 0, virtual: true, label: (c.label || 'DIP') + ' ' + (i + 1) });
-        addMap(k2, 2, c.bits?.[i] ? 1 : 0, mi);
+        addMaps(k2, 2, c.bits?.[i] ? 1 : 0, [(c.maps || [])[i]]);
+      }
+    } else if (c.kind === 'xy') {
+      // XY pad / joystick (factory-kinds.js): one slider per axis, wired by c.maps[0] and c.maps[1]
+      for (const x of xyControls(c, S)) {
+        controls.push(Object.assign(x.ctl, { display: disp([x.map]) }));
+        addMaps(x.ctl.p, 0, x.ctl.def, [x.map]);
       }
     } else if (c.kind === 'led') {
       const bind = c.bind || 'on';
@@ -364,43 +554,81 @@ export function designToDef(design, o = {}) {
         const n = src ? (src.kind === 'toggle' ? src.ways : src.kind === 'sel' ? src.n || 4 : 2) : 2;
         const knob = src && knobLike[src.kind];
         Object.assign(l, { bind: 'fn', ledFn: (ui, b) => !b.bypass && ((ui[k3] ?? 0) / (knob ? 1 : Math.max(1, n - 1))) > (knob ? 0.05 : 0.5) });
-      } else if (bind.startsWith('tap:')) l.bind = 'tap:' + bind.slice(4) + '.time';
+      } else if (bind.startsWith('tap:')) l.bind = 'tap:_tap.' + bind.slice(4);
       controls.push(l);
     }
   }
-  // expression input: drives one of the knob-like controls
+  // board hints for the extra control types (factory-kinds.js)
+  const byId = new Map(D.ctls.map((c) => [c.id, c]));
+  for (const x of controls) {
+    const c = byId.get(x.cid) || byId.get(String(x.cid).split('.')[0]);
+    if (!c || !c.part) continue;
+    x.part = c.part;
+    if (c.part === 'lever' || c.part === 'pad') x.spring = true;
+    if (c.part === 'arcade') x.momentary = true;
+    if (c.part === 'encoder') x.endless = true;
+  }
+  // expression jacks: move a control (j.drive) or drive circuit inputs directly (j.maps)
   const ctrlIns = [];
   for (const j of D.jacks.filter((x) => x.kind === 'exp')) {
+    if (j.maps && j.maps.length) {
+      const key = 'u.x.' + j.id;
+      ctrlIns.push({ label: j.label || 'EXP', param: key, min: 0, max: 1, _jack: j.id });
+      addMaps(key, 0, undefined, j.maps, true);
+      continue;
+    }
     const tgt = D.ctls.find((c) => c.id === j.drive) || D.ctls.find((c) => c.kind === 'pedal') || D.ctls.find((c) => c.kind === 'knob');
     if (tgt && knobLike[tgt.kind]) ctrlIns.push({ label: j.label || 'EXP', param: 'u.' + tgt.id, min: 0, max: 1, _jack: j.id });
   }
+  const taps = C.insts.filter((i) => hasTap(i.graph)).map((i) => ({ id: i.id, ...tapTime(i) }));
+  const combine = C.combine || {};
   const derive = (ui) => {
-    const out = {};
+    const got = new Map();
     for (const x of maps) {
       let v = ui[x.key];
-      if (v == null) v = x.def;
-      if (x.n && Array.isArray(x.m.values) && x.m.values.length) out[x.to] = x.m.values[clamp(Math.round(v), 0, x.m.values.length - 1)];
-      else out[x.to] = mapValue(x.m, x.info, x.n ? v / Math.max(1, x.n - 1) : v);
+      if (v == null) {
+        if (x.opt) continue; // nothing plugged into the expression jack
+        v = x.def;
+      }
+      const r = x.n && Array.isArray(x.m.values) && x.m.values.length ? x.m.values[clamp(Math.round(v), 0, x.m.values.length - 1)] : mapValue(x.m, x.info, x.n ? v / Math.max(1, x.n - 1) : v);
+      if (!got.has(x.to)) got.set(x.to, []);
+      got.get(x.to).push(r);
+    }
+    const out = {};
+    for (const [to, vs] of got) {
+      const info = targetInfo(C, to) || { min: 0, max: 1 };
+      const how = combine[to] || 'sum';
+      let v = how === 'max' ? Math.max(...vs) : how === 'min' ? Math.min(...vs) : vs.reduce((a, b) => a + b, 0) / (how === 'avg' ? vs.length : 1);
+      v = clamp(v, info.min ?? 0, info.max ?? 1);
+      if (info.i) v = Math.round(v);
+      out[to] = v;
+    }
+    for (const t of taps) {
+      const k = t.knob ? out[t.knob] ?? t.def : 0.5;
+      out['_tap.' + t.id] = t.ms(k);
     }
     return out;
   };
   const mat = D.enc.mat || {};
-  const cost = 0.1 + stages.reduce((a, s) => a + (STAGES[s.type].cost || 0.4), 0);
-  const names = stages.map((s) => STAGES[s.type].name);
+  const graphs = C.insts.map((i) => i.graph);
+  const cost = 0.1 + graphs.reduce((a, g) => a + graphCost(g) - 0.1, 0);
+  const names = [...new Set(graphs.flatMap(graphNames))];
+  const instNames = C.insts.map((i) => i.name || 'Circuit');
+  const cats = [...new Set(graphs.map(graphCat))];
   const def = {
     id: o.id || D.blockId || 'custom.' + uid('x'),
     name: D.name || 'Custom pedal',
     code: D.name || 'Custom',
     kind: 'Custom',
-    cat: o.cat || (C.tpl && C.cat) || catFor(stages),
+    cat: o.cat || (cats.length === 1 ? cats[0] : cats.length ? 'Multi-FX' : 'Utility'),
     brand: 'Custom',
-    typeName: names.join(' + ') || 'Custom pedal',
-    desc: (D.desc ? D.desc + ' ' : '') + 'Made in the Pedal Factory: ' + (names.join(' into ') || 'clean pass-through') + '.',
+    typeName: instNames.join(' + ') || 'Custom pedal',
+    desc: (D.desc ? D.desc + ' ' : '') + 'Made in the Pedal Factory: ' + (instNames.join(' into ') || 'clean pass-through') + '.',
     form: 'custom',
     design: D,
     color: /^#[0-9a-f]{6}$/i.test(mat.c || '') ? mat.c : '#555555',
-    algo: 'chain',
-    opts: { chain, mix: !!C.mix, mixDef: C.mixDef ?? 1, outMap },
+    algo: 'patch',
+    opts,
     fixed,
     derive,
     ports,
@@ -415,4 +643,17 @@ export function designToDef(design, o = {}) {
   if (ctrlIns.length) def.ctrl = { ins: ctrlIns };
   if (o.hidden) def.hidden = true;
   return def;
+}
+
+/** A pedal design that plays one circuit alone (Test circuit in the editor): its inputs stay at their defaults. */
+export function soloDesign(graph, name) {
+  const inst = { id: 'csolo', ref: null, name: name || 'Circuit', graph: clone(graph), x: 0, y: 0, on: true };
+  const d = {
+    name: name || 'Circuit', enc: { w: 60, h: 100, mat: {} }, labels: {}, ctls: [], art: [], title: {}, sub: {},
+    jacks: [{ id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' }, { id: 'jst', kind: 'stereo', edge: 'left', t: 0.6, label: 'OUT R' }],
+    circuit: { v: 3, insts: [inst], wires: [], combine: {} },
+  };
+  seriesWires(d);
+  syncStages(d.circuit);
+  return d;
 }

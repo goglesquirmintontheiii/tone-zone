@@ -80,3 +80,13 @@ export function registerTestDef(design) {
 export function unregisterTestDef() {
   unregisterPlugin('custom-test');
 }
+// a single circuit played alone from the circuit editor
+export const SOLO_ID = 'custom.__solo';
+export function registerSoloDef(design) {
+  const d = designToDef(design, { id: SOLO_ID, hidden: true });
+  registerPluginDefs('custom-solo', [d]);
+  return d;
+}
+export function unregisterSoloDef() {
+  unregisterPlugin('custom-solo');
+}

@@ -32,15 +32,17 @@ export function mixHex(a, b, t) {
 }
 const polar = (a, r) => [Math.sin((a * Math.PI) / 180) * r, -Math.cos((a * Math.PI) / 180) * r];
 // a lamp: lens + halo, lit with set(colour | null)
-function lamp(g, x, y, r, color, shape = 'circle') {
+function lamp(g, x, y, r, color, shape = 'circle', cls) {
   const halo = svg('circle', { cx: x, cy: y, r: r * 3.2, 'fill-opacity': 0, 'pointer-events': 'none' }, g);
-  const lens = shape === 'rect' ? svg('rect', { x: x - r, y: y - r * 0.7, width: r * 2, height: r * 1.4, rx: r * 0.25, fill: offCol(color) }, g) : svg('circle', { cx: x, cy: y, r, fill: offCol(color) }, g);
+  const lens = shape === 'rect' ? svg('rect', { x: x - r, y: y - r * 0.7, width: r * 2, height: r * 1.4, rx: r * 0.25, fill: offCol(color), class: cls }, g) : svg('circle', { cx: x, cy: y, r, fill: offCol(color), class: cls }, g);
+  if (cls) lens.dataset.on = '0';
   let cur;
   return (on) => {
     const c = on === true ? color : on || null;
     if (c === cur) return;
     cur = c;
     setA(lens, 'fill', c || offCol(color));
+    if (cls) lens.dataset.on = c ? '1' : '0';
     if (c) setA(halo, 'fill', haloFill(c));
     setA(halo, 'fill-opacity', c ? 0.85 : 0);
   };
@@ -64,7 +66,7 @@ export function encoderPart(parent, c) {
       const t = c.detent ? Math.min(i, n - i) / (n / 2) : i / Math.max(1, n - 1);
       const col = c2 ? mixHex(c1, c2, t) : c1;
       const [x, y] = polar(a, rr);
-      leds.push({ set: lamp(g, x, y, lr, col), col });
+      leds.push({ set: lamp(g, x, y, lr, col, 'circle', 'enc-led'), col });
     }
   }
   svg('circle', { r: r + 2.4, cy: 2.2, fill: 'url(#g-knobShadow)', opacity: 0.8 }, g);
@@ -264,7 +266,7 @@ export function stepsPart(parent, c, th) {
     svg('rect', { x: -2.9, y: -2.6, width: 5.8, height: 5.8, rx: 1, fill: '#000', opacity: 0.5 }, b);
     paint(b, 'rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9 }, spec, opt(c, { seed: c.id + i }));
     const shade2 = svg('rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9, fill: '#000', 'fill-opacity': 0 }, b);
-    const set = lamp(g, x, -4.6, 0.85, col);
+    const set = lamp(g, x, -4.6, 0.85, col, 'circle', 'step-led');
     if (c.marks !== false && opts[i]) label(g, x, 5.6, opts[i], { size: 2.1, fill: th.text, weight: 700, ls: 0 });
     items.push({ set, shade2 });
   }

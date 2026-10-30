@@ -53,7 +53,7 @@ function format(fmt, ...args) {
 export function makeTable(o) {
   const t = new LTable();
   if (Array.isArray(o)) o.forEach((v, i) => t.set(i + 1, toScript(v)));
-  else if (o) for (const k of Object.keys(o)) t.set(k, toScript(o[k]));
+  else if (o) for (const k of Object.keys(o)) t.set(/^[1-9]\d{0,8}$/.test(k) ? +k : k, toScript(o[k]));
   return t;
 }
 // JS value -> script value (plain data only)

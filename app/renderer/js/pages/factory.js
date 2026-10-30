@@ -11,9 +11,14 @@ import {
 } from './factory-render.js';
 import { STAGES, makeCircuit, migrateCircuit, autoMap, targetsFor, targetInfo, mapTo } from './factory-circuit.js';
 import { applyCircuit, renderCircuitPane, wiringSection, expSection } from './factory-wiring.js';
+import { initCircuitUI, refreshCircuitUI, circuitKeysBusy } from './factory-circuits.js';
 import { startTest, stopTest, updateTest, testing, renderPlay, playDown, updateViews, engineRunning, testValues, testInfo, playSet } from './factory-play.js';
 import { saveCustomBlock, customBlocks, deleteCustomBlock } from '../catalog/custom.js';
 import { state, graphOverridden } from '../state.js';
+import { EXTRA_PARTS, EXTRA_LAYER_ICONS, EXTRA_PART_NAMES, NEW_KNOBS, partName, partKey, partInspector, extraSections, xyWiring, jackAngleSection, dotsSection, dotsOn } from './factory-extras.js';
+import { openLibrary } from './factory-library.js';
+import { jackOnOutline } from './factory-render.js';
+import { screenInspector, liveStage } from '../screenscript/factory-ui.js';
 
 const STORE = 'tz.factory.design.v1';
 const PREFS = 'tz.factory.prefs.v1';
@@ -34,6 +39,7 @@ const PCB_COLORS = ['#1f6b3a', '#1d3f8a', '#7a1f2a', '#222428', '#c9a14a'];
 const KNOB_STYLES = [
   ['boss', 'Skirted'], ['mxr', 'Ribbed'], ['strymon', 'Soft touch'], ['chrome', 'Chrome'], ['fender', 'Chrome ring'],
   ['marshall', 'Gold cap'], ['white', 'White'], ['red', 'Red'], ['cream', 'Cream'], ['chicken', 'Chicken head'], ['vox', 'Pointer'],
+  ...NEW_KNOBS,
 ];
 const KNOB_SIZES = [[5.5, 'S'], [8, 'M'], [10.5, 'L'], [13, 'XL']];
 const KNOBLIKE = new Set(['knob', 'trim', 'slider', 'pedal']);
@@ -343,7 +349,7 @@ function find(id) {
   return null;
 }
 const selItems = () => [...sels].map(find).filter((f) => f && f.kind !== 'enc');
-const typeKey = (f) => (f.kind === 'ctl' ? 'ctl:' + f.item.kind : f.kind);
+const typeKey = (f) => (f.kind === 'ctl' ? 'ctl:' + f.item.kind + (f.item.part ? ':' + f.item.part : '') + (f.item.kind === 'xy' ? ':' + (f.item.look || 'pad') : '') : f.kind);
 function commit() {
   const s = JSON.stringify(D);
   if (hist.stack[hist.idx] === s) return;
@@ -469,6 +475,7 @@ function applyMirror(f, tw) {
   const it = f.item, W = D.enc.w, H = D.enc.h;
   if (f.kind === 'jack') {
     tw.edge = mirrorEdge(it.edge);
+    tw.angle = typeof it.angle === 'number' ? (((vAxis() ? 180 - it.angle : -it.angle) % 360) + 360) % 360 : undefined;
     const flipT = vAxis() ? it.edge === 'top' || it.edge === 'bottom' : it.edge === 'left' || it.edge === 'right';
     tw.t = flipT ? Math.round((1 - it.t) * 1000) / 1000 : it.t;
     return;
@@ -510,7 +517,7 @@ function makeTwin(f) {
       const info = targetInfo(D.circuit, c.map.to);
       if (KNOBLIKE.has(c.kind) && c.label) c.label = info ? (info.label || '').toUpperCase().slice(0, 10) : '';
     }
-    if (c.kind === 'dip') c.maps = [];
+    if (c.kind === 'dip' || c.kind === 'xy') c.maps = [];
   }
   f.item.twin = c.id;
   c.twin = f.item.id;
@@ -587,6 +594,7 @@ const PARTS = {
   screen: { name: 'Screen', make: () => ({ id: uid('s'), kind: 'screen', w: 30, h: 14, type: 'oled', text: 'HELLO', label: '', labelPos: 'none' }) },
   dip: { name: 'DIP switch', make: () => ({ id: uid('d'), kind: 'dip', n: 4, bits: [1, 0, 0, 1], maps: [], color: '#c8102e', label: '', labelPos: 'none' }) },
 };
+Object.assign(PARTS, EXTRA_PARTS); // factory-extras.js
 
 function freeSpot(c, d = D, o = {}) {
   const W = d.enc.w, H = d.enc.h;
@@ -614,14 +622,9 @@ function freeSpot(c, d = D, o = {}) {
   const p = best || { x: o.half ? W * 0.3 : W / 2, y: H / 2 };
   return { x: snap(p.x), y: snap(p.y) };
 }
+// snaps to the nearest point of the outline (factory-render.js)
 function jackAt(p) {
-  const W = D.enc.w, H = D.enc.h;
-  const dists = { top: p.y, bottom: H - p.y, left: p.x, right: W - p.x };
-  const edge = Object.keys(dists).sort((a, b) => dists[a] - dists[b])[0];
-  const len = edge === 'top' || edge === 'bottom' ? W : H;
-  let t = (edge === 'top' || edge === 'bottom' ? p.x : p.y) / len;
-  if (prefs.grid) t = (Math.round((t * len) / prefs.grid) * prefs.grid) / len;
-  return { edge, t: clamp(t, 0.06, 0.94) };
+  return jackOnOutline(D, p, prefs.grid);
 }
 function addPart(kind, payload, at) {
   let item;
@@ -645,6 +648,11 @@ function addPart(kind, payload, at) {
     if (item.kind === 'pedal' && !at) Object.assign(item, { x: snap(D.enc.w / 2), y: snap(D.enc.h * 0.55) });
     D.ctls.push(item);
     if (item.kind === 'dip') item.maps = [];
+    else if (item.kind === 'xy') {
+      item.maps = [];
+      item.maps.push(nextMap('knob', item.id));
+      item.maps.push(nextMap('knob', item.id));
+    }
     else if (item.kind !== 'led' && item.kind !== 'screen') {
       item.map = nextMap(item.kind, item.id);
       const info = targetInfo(D.circuit, item.map.to);
@@ -785,10 +793,12 @@ function renderStage() {
   ui.pedalG.textContent = '';
   if (testing()) renderPlay(ui.pedalG, D);
   else renderPedal(ui.pedalG, D, { edit: true, grid: prefs.showGrid ? prefs.grid || 0 : 0 });
+  liveStage(ui.pedalG, D, testing() ? 'test' : 'edit'); // live custom screens
   ui.stageWrap.classList.toggle('has-sel', !!sel);
   renderOverlay();
   renderDims();
   renderStatus();
+  refreshCircuitUI(); // wiring diagram follows the design
 }
 function renderDims() {
   const g = ui.dimsG;
@@ -1301,7 +1311,7 @@ function itemName(f) {
   if (f.kind === 'jack') return JACKS[f.item.kind].name + ' jack';
   if (f.kind === 'art') return (ART_KINDS.find((a) => a[0] === f.item.kind) || [0, 'Shape'])[1];
   const c = f.item;
-  const k = c.kind === 'toggle' ? c.ways + ' way toggle' : CTL_NAMES[c.kind] || 'Control';
+  const k = c.kind === 'toggle' ? c.ways + ' way toggle' : partName(c) || CTL_NAMES[c.kind] || 'Control';
   return c.label ? `${k} "${c.label}"` : k;
 }
 function scaleDesign(kx, ky) {
@@ -1442,6 +1452,7 @@ function inspEnclosure(host) {
   } else el('p', { class: 'fz-note fz-note-top' }, s5).textContent = 'Pick a clear glass or acrylic material to show the circuit board inside.';
 
   patternInspector(host, E, { sec, row, slider, colors, seg, selectField, check, changed, rerender: renderInspector });
+  dotsSection(host, E, H());
 
   const s4 = sec(host, 'Printed labels');
   selectField(s4, 'Font', FONTS, D.labels.font, (v) => (D.labels.font = v));
@@ -1504,12 +1515,13 @@ function inspJack(host, j, multi) {
   if (!multi) slider(s, 'Along', j.t, 0.04, 0.96, 0.01, (v) => (j.t = v));
   el('p', { class: 'fz-note' }, s).textContent = { phones: 'A stereo headphone out (TRS) on the board.', xlr: 'A balanced XLR out on the board.', exp: 'A control input: an expression pedal plugged in here turns one of your controls.', power: 'Just for looks: the board does not need power.' }[j.kind] || 'Drag a jack around the pedal to move it to another edge.';
   if (j.kind === 'exp' && !multi) expSection(host, D, j, H());
+  if (j.kind !== 'power') jackAngleSection(host, D, j, multi, H());
   if (j.kind !== 'power') partMaterial(host, j, 'Nut');
 }
-const PART_NAMES = { knob: 'knobs', toggle: 'toggles', button: 'buttons', foot: 'footswitches', led: 'LED bezels', screen: 'screen bezels', jack: 'jack nuts' };
+const PART_NAMES = { knob: 'knobs', toggle: 'toggles', button: 'buttons', foot: 'footswitches', led: 'LED bezels', screen: 'screen bezels', jack: 'jack nuts', ...EXTRA_PART_NAMES };
 // material picker for one part, plus "apply to all" shortcuts
 function partMaterial(host, c, title) {
-  const kind = JACKS[c.kind] ? 'jack' : c.kind;
+  const kind = JACKS[c.kind] ? 'jack' : partKey(c);
   const s = sec(host, title ? title + ' material' : { led: 'Bezel material', screen: 'Bezel material' }[kind] || 'Material');
   s.classList.add('fz-partmat');
   materialPicker(s, {
@@ -1527,13 +1539,15 @@ function partMaterial(host, c, title) {
   };
   const isJack = (o) => !!JACKS[o.kind] && o.kind !== 'power';
   const ar = el('div', { class: 'fz-actrow' }, s);
-  el('button', { class: 'btn small', 'data-apply': 'kind', onclick: () => all((o) => (kind === 'jack' ? isJack(o) : o.kind === c.kind)) }, ar, 'Apply to all ' + PART_NAMES[kind]);
-  el('button', { class: 'btn small', 'data-apply': 'all', onclick: () => all((o) => PART_NAMES[o.kind] || isJack(o)) }, ar, 'Apply to every part');
-  if (kind === 'knob') el('button', { class: 'btn small', onclick: () => { for (const o of D.ctls) if (o.kind === 'knob') { o.style = c.style; o.mat = c.mat ? clone(c.mat) : null; } changed(false); } }, ar, 'Copy cap and material to all knobs');
+  el('button', { class: 'btn small', 'data-apply': 'kind', onclick: () => all((o) => (kind === 'jack' ? isJack(o) : partKey(o) === kind)) }, ar, 'Apply to all ' + PART_NAMES[kind]);
+  el('button', { class: 'btn small', 'data-apply': 'all', onclick: () => all((o) => PART_NAMES[partKey(o)] || isJack(o)) }, ar, 'Apply to every part');
+  if (kind === 'knob') el('button', { class: 'btn small', onclick: () => { for (const o of D.ctls) if (o.kind === 'knob' && !o.part) { o.style = c.style; o.mat = c.mat ? clone(c.mat) : null; } changed(false); } }, ar, 'Copy cap and material to all knobs');
 }
 function inspControl(host, c, multi) {
-  const s = sec(host, itemName({ kind: 'ctl', item: { kind: c.kind, ways: c.ways, label: '' } }));
-  if (c.kind === 'knob') {
+  const s = sec(host, itemName({ kind: 'ctl', item: { kind: c.kind, ways: c.ways, part: c.part, look: c.look, label: '' } }));
+  if (partInspector(s, c, multi, H(), { knobStyles: KNOB_STYLES })) {
+    /* extra controls and looks: factory-extras.js */
+  } else if (c.kind === 'knob') {
     selectField(s, 'Cap', KNOB_STYLES, c.style, (v) => (c.style = v));
     seg(s, 'Size', KNOB_SIZES, c.r, (v) => (c.r = +v), false);
     slider(s, 'Pointer', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
@@ -1606,7 +1620,7 @@ function inspControl(host, c, multi) {
     seg(s, 'Type', Object.entries(SCREENS).map(([k, v]) => [k, v.name]), c.type, (v) => (c.type = v), false);
     slider(s, 'Width', c.w, 12, 90, 1, (v) => (c.w = v));
     slider(s, 'Height', c.h, 8, 50, 1, (v) => (c.h = v));
-    textField(s, 'Shows', c.text, (v) => (c.text = v), { multi: true });
+    screenInspector(s, c, H(), { getD: () => D, multi }); // Basic text or Custom (screenscript/factory-ui.js)
   } else if (c.kind === 'dip') {
     slider(s, 'Switches', c.n, 2, 12, 1, (v) => {
       c.n = v;
@@ -1631,8 +1645,10 @@ function inspControl(host, c, multi) {
     }
     colors(s, 'Body', c.color, ['#c8102e', '#1f4fbf', '#1d1f24', '#3a9a5b'], (v) => (c.color = v), 'dip');
   }
-  wiringSection(host, D, c, H());
-  if (PART_NAMES[c.kind] && c.kind !== 'screen') partMaterial(host, c);
+  extraSections(host, D, c, multi, H());
+  if (c.kind === 'xy') xyWiring(host, D, c, H());
+  else wiringSection(host, D, c, H());
+  if (PART_NAMES[partKey(c)] && c.kind !== 'screen') partMaterial(host, c);
   else if (c.kind === 'screen') partMaterial(host, c);
   const s2 = sec(host, 'Label');
   textField(s2, 'Text', c.label, (v) => (c.label = v.toUpperCase()));
@@ -1707,6 +1723,7 @@ function paintTestVals() {
     let v = '';
     if (c.kind === 'foot') v = !c.map || c.map.to === 'bypass' ? (info.bypass ? 'Bypassed' : 'On') : c.map.to.endsWith('.tap') ? 'Tap' : P['u.' + c.id] > 0.5 ? 'On' : 'Off';
     else if (c.kind === 'dip') v = [...Array(c.n)].map((_, i) => (P['u.' + c.id + '.' + i] ? '1' : '0')).join('');
+    else if (c.kind === 'xy') v = ['x', 'y'].map((a) => Math.round((P['u.' + c.id + '.' + a] ?? 0.5) * 100) + '%').join(' / ');
     else if (KNOBLIKE.has(c.kind)) v = Math.round((P['u.' + c.id] ?? 0.5) * 100) + '%';
     else if (c.kind === 'toggle' || c.kind === 'sel') v = (c.opts || [])[P['u.' + c.id] | 0] || String((P['u.' + c.id] | 0) + 1);
     else if (c.kind === 'button') v = P['u.' + c.id] ? 'On' : 'Off';
@@ -1721,6 +1738,7 @@ function keepTestValues() {
     else if ((c.kind === 'toggle' || c.kind === 'sel') && P[k] != null) c.pos = P[k] | 0;
     else if (c.kind === 'button' && P[k] != null) c.on = !!P[k];
     else if (c.kind === 'dip') c.bits = [...Array(c.n)].map((_, i) => (P[k + '.' + i] ? 1 : 0));
+    else if (c.kind === 'xy') for (const a of ['x', 'y']) if (P[k + '.' + a] != null) c['v' + a] = Math.round(P[k + '.' + a] * 1000) / 1000;
   }
   commit();
   toast('Kept the test settings as the pedal defaults', 'ok', 1800);
@@ -1760,6 +1778,7 @@ function updateBar() {
   if (!ui.saveBtn) return;
   const saved = D.blockId && customBlocks().some((r) => r.id === D.blockId);
   ui.saveBtn.innerHTML = `<i class="ic ic-import"></i>${saved ? 'Update block' : 'Save as block'}`;
+  if (ui.gridBtn) ui.gridBtn.classList.toggle('on', dotsOn(D.enc));
   ui.saveNew.hidden = !saved;
   ui.mirrorBtn.classList.toggle('on', MIR().on);
   ui.mirrorAxis.hidden = !MIR().on;
@@ -1778,6 +1797,7 @@ function tile(parent, name, kind, payload, draw) {
   return t;
 }
 const TILE_SAMPLES = {
+  ...Object.fromEntries(Object.entries(EXTRA_PARTS).map(([k, p]) => [k, p.sample])),
   knob: [{ kind: 'knob', r: 9, style: 'boss', value: 0.6 }, 1],
   trim: [{ kind: 'trim', r: 6, value: 0.3, color: '#2b6fd6' }, 1],
   slider: [{ kind: 'slider', h: 18, w: 6, value: 0.65 }, 1],
@@ -1829,6 +1849,7 @@ const LAYER_ICONS = {
   knob: 'M12 4a8 8 0 1 0 0.01 0M12 12V6', toggle: 'M12 21v-6M9 15h6M12 15l3-11', button: 'M12 7a5 5 0 1 0 0.01 0M5 21h14',
   foot: 'M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9zM12 9a3 3 0 1 0 0.01 0', led: 'M12 8a4 4 0 1 0 0.01 0M12 2v2M4 12H2M22 12h-2',
   screen: 'M3 6h18v12H3zM7 10h6M7 14h3', dip: 'M3 7h18v10H3zM7 10v4M12 10v4M17 10v4',
+  ...EXTRA_LAYER_ICONS,
   trim: 'M6 6h12v12H6zM9 15l6-6', slider: 'M12 3v18M8 10h8v4H8z', sel: 'M12 4a8 8 0 1 0 0.01 0M12 12l4-5M4 12h1M19 12h1', pedal: 'M7 3h10l2 18H5zM9 8h6',
 };
 function layerRow(parent, id, f, o = {}) {
@@ -1971,6 +1992,24 @@ function openTemplates() {
     if (e.target === layer) closeTemplates();
   };
 }
+// My pedals (factory-library.js), in the same overlay as the templates
+function openMine() {
+  if (testing()) setTesting(false);
+  openLibrary(ui.tpl, {
+    migrate: migrateDesign,
+    current: () => D.blockId,
+    close: closeTemplates,
+    edit: (d, test) => {
+      closeTemplates();
+      loadDesign(d, true);
+      if (test) setTesting(true);
+    },
+    deleted: (id) => {
+      if (D.blockId === id) delete D.blockId;
+      updateBar();
+    },
+  });
+}
 function closeTemplates() {
   ui.tpl.classList.remove('show');
   ui.tpl.textContent = '';
@@ -1980,6 +2019,7 @@ function closeTemplates() {
 function onKey(e) {
   const v = document.getElementById('view-factory');
   if (!v || !v.classList.contains('active')) return;
+  if (circuitKeysBusy(e)) return; // circuit editor and wiring diagram keys
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
   const k = e.key.toLowerCase();
@@ -2054,6 +2094,7 @@ function build(v) {
   ui.name.oninput = () => (D.name = ui.name.value);
   ui.name.onchange = () => commit();
   el('button', { class: 'btn small', id: 'fzTemplates', onclick: openTemplates }, bar, '<i class="ic ic-board"></i>Templates');
+  el('button', { class: 'btn small', id: 'fzLibrary', title: 'View, test and edit your saved pedals', onclick: openMine }, bar, '<i class="ic ic-lib"></i>My pedals');
   el('i', { class: 'fz-sep' }, bar);
   ui.undo = el('button', { class: 'icon-btn', id: 'fzUndo', title: 'Undo (Ctrl+Z)', onclick: undo }, bar, '<i class="ic ic-undo"></i>');
   ui.redo = el('button', { class: 'icon-btn', id: 'fzRedo', title: 'Redo (Ctrl+Shift+Z)', onclick: redo }, bar, '<i class="ic ic-redo"></i>');
@@ -2067,12 +2108,14 @@ function build(v) {
     savePrefs();
     renderStage();
   };
-  const gb = el('button', { class: 'icon-btn fz-gridbtn' + (prefs.showGrid ? ' on' : ''), title: 'Show grid' }, bar, '<i class="ic fz-ic-grid"></i>');
+  // the dot grid belongs to the design (it shows on the board too), so this toggles it for this pedal
+  const gb = el('button', { class: 'icon-btn fz-gridbtn', id: 'fzDots', title: 'Dot grid on this pedal (shows on the board too)' }, bar, '<i class="ic fz-ic-grid"></i>');
+  ui.gridBtn = gb;
   gb.onclick = () => {
-    prefs.showGrid = !prefs.showGrid;
-    gb.classList.toggle('on', prefs.showGrid);
-    savePrefs();
-    renderStage();
+    D.enc.dots = !dotsOn(D.enc);
+    changed(false);
+    updateBar();
+    if (sel === 'enc' || !sel) renderInspector();
   };
   ui.mirrorBtn = el('button', { class: 'icon-btn', id: 'fzMirror', title: 'Mirror mode (M): parts get a twin on the other side' }, bar, '<i class="ic fz-ic-mirror"></i>');
   ui.mirrorBtn.onclick = () => setMirror(!MIR().on);
@@ -2114,6 +2157,8 @@ function build(v) {
   el('button', { class: 'icon-btn', title: 'Fit (0)', onclick: () => { view.touched = false; fit(); renderOverlay(); } }, zb, '<i class="ic ic-fit"></i>');
   ui.status = el('div', { class: 'fz-status' }, ui.stageWrap);
   el('div', { class: 'fz-hint' }, ui.stageWrap).textContent = 'Scroll to zoom · drag to select · Space or right drag to pan · Alt skips snapping';
+  // wiring diagram and circuit editor (factory-circuits.js)
+  initCircuitUI(mid, { design: () => D, commit: () => commit(), refresh: () => refreshAll(), select: (id) => select(id), selected: () => [...sels], place: (c) => freeSpot(c), name: (c) => itemName({ kind: 'ctl', item: c }), setTab: (t) => setTab(t), stopTest: () => setTesting(false) });
   // right
   const right = el('aside', { class: 'fz-right' }, root);
   ui.insp = el('div', { class: 'fz-insp' }, right);
@@ -2177,6 +2222,7 @@ export function renderFactory() {
       graphOverridden: () => graphOverridden(),
       save: (asNew) => saveBlock(asNew),
       templates: () => TEMPLATES.map((t) => t.id),
+      library: () => openMine(),
       template: (id) => clone(migrateDesign(TEMPLATES.find((t) => t.id === id).make())),
       stages: () => Object.keys(STAGES),
     };

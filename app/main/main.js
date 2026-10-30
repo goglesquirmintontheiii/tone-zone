@@ -146,6 +146,7 @@ function setupIpc() {
   ipcMain.handle('offline:evalGraphs', (_e, graphs, di) => offline.evalGraphs(graphs, di));
   // ---- Pedal Factory designs saved as blocks
   require('./custom-blocks').setup(ipcMain, lib.dataRoot());
+  require('./circuits').setup(ipcMain, lib.dataRoot());
   // ---- capture (NAM models from presets)
   capture.init({ dataRoot: lib.dataRoot(), engineBin: () => (engine && engine.binPath) || findEngine(APP_ROOT, app.isPackaged), send });
   ipcMain.handle('capture:status', () => capture.status());

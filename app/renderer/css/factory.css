@@ -312,3 +312,11 @@ textarea.fz-text { resize: vertical; font-family: 'Share Tech Mono', monospace; 
 .fz-tpl-h { margin: 14px 18px 0; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .fz-tpl-card.mine { cursor: default; }
 .fz-tpl-card.mine .btn.sure { color: var(--bad); border-color: rgba(var(--bad-rgb), 0.5); }
+/* My pedals (factory-library.js) */
+.fz-lib .fz-lib-search { width: 180px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg1); color: var(--text); font: inherit; font-size: 12px; }
+.fz-lib .art { cursor: pointer; }
+.fz-lib-card.open { border-color: rgba(var(--accent-rgb), 0.7); }
+.fz-lib-card .fz-lib-meta { font-size: 11px; opacity: 0.8; }
+.fz-lib-card .fz-actrow { margin-top: 8px; flex-wrap: wrap; }
+.fz-lib-empty { padding: 30px 18px; color: var(--muted); font-size: 13px; text-align: center; }
+.fz-lib .fz-tpl-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
