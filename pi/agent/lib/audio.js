@@ -32,6 +32,28 @@ function listDevices() {
   return { inputs, outputs };
 }
 
+// ---- PipeWire: the sound cards are PipeWire's, so list its hardware ports (from the engine's ports listing),
+// one device per client. Ids are "pw:<client name>".
+function pwKind(n) {
+  return /usb/i.test(n) ? 'usb' : /hdmi/i.test(n) ? 'hdmi' : /headphone|bcm2835/i.test(n) ? 'builtin' : 'hat';
+}
+function pwDevices(ports) {
+  const group = (list) => {
+    const m = new Map();
+    for (const p of list || []) {
+      if (!p.physical || (ports.self && p.name.startsWith(ports.self + ':'))) continue;
+      const i = p.name.indexOf(':');
+      const client = i > 0 ? p.name.slice(0, i) : p.name;
+      if (!m.has(client)) m.set(client, { id: 'pw:' + client, name: client, kind: pwKind(client), driver: 'pipewire', ports: [] });
+      m.get(client).ports.push(p.name);
+    }
+    for (const d of m.values()) d.ports.sort();
+    return [...m.values()];
+  };
+  // hardware capture ports are sources (we read from them), playback ports are sinks
+  return { inputs: group(ports.sources), outputs: group(ports.sinks) };
+}
+
 // sensible defaults: one USB / HAT device for both directions when there is one, else USB in and the jack out
 function pickDefaults(cfg, devs) {
   const pref = (list) => list.find((d) => d.kind === 'hat') || list.find((d) => d.kind === 'usb') || list.find((d) => d.kind === 'builtin') || list[0];
@@ -65,6 +87,12 @@ class AudioServer {
     const devs = listDevices();
     const sel = pickDefaults(cfg, devs);
     this.sel = sel;
+    if (hw.FAKE && cfg.server === 'pipewire') {
+      // tests: the fake JACK library stands in for PipeWire
+      this.mode = 'pipewire';
+      log.info('fake audio through the PipeWire path', 'engine');
+      return { mode: 'pipewire', jackLib: process.env.TZ_JACK_LIB || '', sel };
+    }
     if (hw.FAKE) {
       this.mode = 'fake';
       log.info(`fake audio: input ${sel.input || 'none'}, output ${sel.output || 'none'}, ${cfg.rate} Hz, ${cfg.buffer} frames`, 'engine');
@@ -139,4 +167,4 @@ function waitJack(ms) {
   });
 }
 
-module.exports = { listDevices, pickDefaults, AudioServer };
+module.exports = { listDevices, pwDevices, pickDefaults, AudioServer };

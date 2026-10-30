@@ -4,17 +4,12 @@
 // phase-regression refinement on the strongest harmonic, giving sub-cent accuracy down to ~25 Hz
 // (low B on 5/6-string bass, F#1 on 8-string guitar, etc.).
 #include "common.h"
+#include "../dsp/yin.h"
 
 namespace tz
 {
 namespace
 {
-struct PitchResult
-{
-  double freq = 0;
-  double conf = 0;
-};
-
 class TunerBlock : public Block
 {
 public:
@@ -94,58 +89,7 @@ public:
     const int w = wpos.load(std::memory_order_acquire);
     for (int i = 0; i < len; ++i) work[i] = ring[(w - len + i + RING) & (RING - 1)];
   }
-  PitchResult yin(const float* x, int len, double fmin, double fmax)
-  {
-    const int tauMin = std::max(2, int(dsr / fmax));
-    const int tauMax = std::min(len / 2, int(dsr / fmin) + 2);
-    const int W = len - tauMax;
-    if (W < 64) return {};
-    yinBuf.assign(tauMax + 2, 0.f);
-    // difference function
-    for (int tau = 1; tau <= tauMax; ++tau)
-    {
-      double s = 0;
-      for (int i = 0; i < W; ++i)
-      {
-        const double d = double(x[i]) - double(x[i + tau]);
-        s += d * d;
-      }
-      yinBuf[tau] = float(s);
-    }
-    // cumulative mean normalised difference
-    double run = 0;
-    yinBuf[0] = 1;
-    for (int tau = 1; tau <= tauMax; ++tau)
-    {
-      run += yinBuf[tau];
-      yinBuf[tau] = run > 0 ? float(yinBuf[tau] * tau / run) : 1.f;
-    }
-    int best = -1;
-    const float thr = 0.15f;
-    for (int tau = tauMin; tau < tauMax; ++tau)
-      if (yinBuf[tau] < thr)
-      {
-        while (tau + 1 < tauMax && yinBuf[tau + 1] < yinBuf[tau]) ++tau;
-        best = tau;
-        break;
-      }
-    if (best < 0)
-    {
-      // no clear dip: take global minimum if reasonably periodic
-      float mv = 1e9;
-      for (int tau = tauMin; tau < tauMax; ++tau)
-        if (yinBuf[tau] < mv) { mv = yinBuf[tau]; best = tau; }
-      if (mv > 0.4f) return {};
-    }
-    double t = best;
-    if (best > 1 && best + 1 <= tauMax)
-    {
-      const double a = yinBuf[best - 1], b = yinBuf[best], c = yinBuf[best + 1];
-      const double den = a - 2 * b + c;
-      if (std::fabs(den) > 1e-12) t = best + 0.5 * (a - c) / den;
-    }
-    return {dsr / t, 1.0 - yinBuf[best]};
-  }
+  PitchResult yin(const float* x, int len, double fmin, double fmax) { return yinDetect(x, len, dsr, fmin, fmax, yinBuf); }
   // complex demodulation at frequency f; returns (energy, refined freq) via phase regression
   std::pair<double, double> refine(const float* x, int len, double f, int K = 16)
   {

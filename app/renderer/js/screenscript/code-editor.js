@@ -219,7 +219,8 @@ export class CodeEditor {
     return this._pad;
   }
   render() {
-    this.hl.innerHTML = highlight(this.ta.value);
+    // plain: a data file (no highlighting or hints)
+    this.hl.innerHTML = this.o.plain ? escH(this.ta.value) + '\n' : highlight(this.ta.value);
     this.renderGutter();
     if (this.find.open) this.runFind(false);
     this.paintMarks();
@@ -456,7 +457,7 @@ export class CodeEditor {
     const v = this.ta.value;
     let list = [];
     try {
-      list = lint(v, this.context());
+      list = this.o.plain ? [] : lint(v, this.context());
     } catch (_) {
       list = []; // a check never gets in the way
     }
@@ -491,7 +492,7 @@ export class CodeEditor {
   }
   openAC(force) {
     const ta = this.ta;
-    if (ta.selectionStart !== ta.selectionEnd) return this.closeAC();
+    if (this.o.plain || ta.selectionStart !== ta.selectionEnd) return this.closeAC();
     let r = null;
     try {
       r = completions(ta.value, ta.selectionStart, this.context(), force);
@@ -562,7 +563,7 @@ export class CodeEditor {
     if (force) this.sigDismissed = false;
     const ta = this.ta;
     let r = null;
-    if (!this.sigDismissed && ta.selectionStart === ta.selectionEnd && document.activeElement === ta) {
+    if (!this.o.plain && !this.sigDismissed && ta.selectionStart === ta.selectionEnd && document.activeElement === ta) {
       try {
         r = signatureAt(ta.value, ta.selectionStart);
       } catch (_) {
@@ -606,7 +607,7 @@ export class CodeEditor {
   hoverText(i) {
     let h = null;
     try {
-      h = hoverAt(this.ta.value, i, this.context());
+      h = this.o.plain ? null : hoverAt(this.ta.value, i, this.context());
     } catch (_) {
       h = null;
     }

@@ -13,17 +13,24 @@
  "order": 363,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 100,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tc.polytune3",
-   "x": -144,
-   "y": 108,
+   "x": -226,
+   "y": 58,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "dt.drop",
-   "x": -360,
-   "y": 108,
+   "x": -467,
+   "y": 58,
    "params": {
     "dsel": 1
    },
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "ehx.greenmuff",
-   "x": -666,
-   "y": 70,
+   "x": -872,
+   "y": 6,
    "params": {
     "level": 0.55,
     "tone": 0.4,
@@ -55,8 +62,8 @@
   {
    "id": "b4",
    "type": "orange.amp-thunderverb",
-   "x": -1204,
-   "y": 0,
+   "x": -1228,
+   "y": -804,
    "params": {
     "a.gain": 0.6,
     "a.master": 0.55,
@@ -72,8 +79,8 @@
   {
    "id": "b5",
    "type": "cab.4x12orange",
-   "x": -1190,
-   "y": 214,
+   "x": -1214,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -94,8 +101,8 @@
   {
    "id": "b6",
    "type": "tz.reverb",
-   "x": -1476,
-   "y": 80,
+   "x": -1335,
+   "y": 26,
    "params": {
     "decay": 0.4,
     "mix": 0.12
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "tz.meter",
-   "x": -1676,
-   "y": 95,
+   "x": -1659,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -115,8 +122,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1916,
-   "y": 100,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

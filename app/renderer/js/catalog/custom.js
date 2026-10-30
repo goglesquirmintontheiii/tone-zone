@@ -7,8 +7,10 @@ import { state, setParam, blockById, uiParams } from '../state.js';
 import { sendCtrl } from '../control.js';
 import { installCustomForm } from '../gfx/forms-custom.js';
 import { bus } from '../util.js';
+import { installScriptAudio } from '../pages/circuit-audio.js';
 
 installCustomForm();
+installScriptAudio(); // screen scripts reach the engine's patch block (pages/circuit-audio.js)
 
 // circuit outputs wired to EXP / footswitch OUT jacks: the engine reports them (status cv[]), and they move
 // whatever is plugged in on the board, like an expression pedal or a footswitch would. Jacks wired straight to
@@ -76,7 +78,7 @@ function encTurned(b, d, p, v) {
   if (!e) return;
   const k = b.id + ':' + p;
   if (!encState.has(k)) encState.set(k, { last: null });
-  const n = encSteps(encState.get(k), v, e.wrap);
+  const n = encSteps(encState.get(k), v, e.wrap, e.steps);
   if (!n) return;
   setParam(b.id, e.n, Math.max(-255, Math.min(255, (+b.params[e.n] || 0) + n)), { silent: true });
   // the pulse params are [block, param] pairs so one pulser serves every block
@@ -134,6 +136,8 @@ function registerAll() {
 /** Read the saved designs and register them (at startup). */
 export async function loadCustomBlocks() {
   hookCtrlOuts();
+  // the Pedal Factory templates as ready made blocks (catalog/templates.js)
+  await import('./templates.js').then((m) => m.loadTemplateBlocks()).catch((e) => console.warn('factory templates', e));
   const a = api();
   if (!a) return 0;
   try {

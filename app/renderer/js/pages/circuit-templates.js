@@ -173,6 +173,29 @@ const HAND = [
       w(k1, 'cv', c, '@thr', { lo: 0.1, hi: 0.7 }); w(k2, 'cv', lf, '@rate'); w(k3, 'cv', sq, '@rate'); w(k4, 'cv', mx, '@g2', { lo: 0, hi: 1 });
       note('The comparator picks fuzz over the compressor when you dig in. The phaser only swirls while you play softly, unless Always swirl is on.', 470, 250, 230, 70);
     })),
+  R('scriptsynth', 'Script synth', 'Utility', 'An oscillator and an envelope a screen script plays: wire the screen\'s outputs to Note, Gate, Level and Wave in the wiring diagram. Your guitar passes through next to it.', ['script', 'synth', 'screen', 'oscillator'],
+    build(({ n, w, knob, note }) => {
+      const i = n('in', 40, 60);
+      const os = n('osc', 260, 220, { note: 57, amp: 0.5 });
+      const env = n('adsr', 500, 220, { attack: 5, decay: 150, sustain: 0.7, release: 250 });
+      const mx = n('mixer', 740, 80, { g1: 1, g2: 1 });
+      const o = n('out', 960, 80);
+      w(i, 'out', mx, 'in1'); w(os, 'out', env, 'in'); w(env, 'out', mx, 'in2'); w(mx, 'out', o, 'in');
+      const kn = knob('Note', 40, 340, 57, { min: 0, max: 127 }), kg = knob('Gate', 40, 410, 0, { steps: 2, opts: ['Off', 'On'] });
+      const kl = knob('Level', 40, 480, 0.5), kw = knob('Wave', 40, 550, 0, { steps: 5, opts: ['Sine', 'Triangle', 'Saw', 'Square', 'Pulse'] });
+      w(kn, 'cv', os, '@note'); w(kg, 'cv', env, '@gate'); w(kl, 'cv', os, '@amp'); w(kw, 'cv', os, '@shape');
+      note('Note is a MIDI note number (69 = A 440 Hz). In a script: screen.out("Note", 64) and screen.out("Gate", 1).', 260, 380, 260, 60);
+    })),
+  R('scriptsampler', 'Script sampler', 'Utility', 'Plays a sound a screen script loads (slot 1) each time Trigger goes on, mixed with your guitar.', ['script', 'sampler', 'screen'],
+    build(({ n, w, knob }) => {
+      const i = n('in', 40, 60);
+      const sp = n('sampler', 300, 220, { slot: 1, mode: 0 });
+      const mx = n('mixer', 600, 80, { g1: 1, g2: 1 });
+      const o = n('out', 820, 80);
+      w(i, 'out', mx, 'in1'); w(sp, 'out', mx, 'in2'); w(mx, 'out', o, 'in');
+      const kt = knob('Trigger', 40, 340, 0, { steps: 2, opts: ['Off', 'On'] }), ks = knob('Speed', 40, 410, 0.5), kl = knob('Level', 40, 480, 0.5);
+      w(kt, 'cv', sp, '@gate'); w(ks, 'cv', sp, '@rate'); w(kl, 'cv', sp, '@level', { lo: 0, hi: 2 });
+    })),
 ];
 const titled = (s) => String(s || '').toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 // the classic single-effect circuits, built the way old designs are migrated

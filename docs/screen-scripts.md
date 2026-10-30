@@ -30,6 +30,21 @@ function draw()
 end
 ```
 
+### Several files
+
+The file list on the left of the code editor has **main** (this screen's own code) and the pedal's other
+files. All screens of a pedal share them.
+
+* **New** makes a file: a name ending in `.lua` is a code file (for `require`), anything else is data
+  (`presets.txt`, `notes.json`). Use `/` for folders: `lib/notes.lua`.
+* **Rename**, **Copy** and **Delete** work on the selected file. Data files open as plain text, files of
+  bytes as a read only hex view.
+* The bar at the bottom shows how much of the 1 MB the pedal's files use (the screens' code counts too).
+* Files the preview writes while you try the screen are marked in italics with **Keep** (copy it into the
+  design). **Reset** forgets them and runs the screen again.
+* An error in a code file shows its file and line in the status. Click it to open the file there. The file
+  with the error is marked red in the list.
+
 ### Hints while you type
 
 The code editor knows the API and the pedal you are working on:
@@ -42,6 +57,9 @@ The code editor knows the API and the pedal you are working on:
   you are typing in bold. Ctrl+Shift+Space shows it again.
 * **Hovers**: rest the pointer on an API name to see its parameters and description, or on your own function
   to see where it is defined.
+* **Other files**: after `local util = require("util")`, typing `util.` lists the functions util.lua
+  returns, and functions other code files define as globals are offered too. Inside `require("` the code
+  files are offered, inside `fs.read("` the pedal's files.
 * **Checks**: obvious mistakes get a dotted underline and a mark in the line numbers: a wrong number of
   arguments, a function that does not exist, text where a number goes (or the other way round), and a control
   or port name the pedal does not have. They are only hints: the script still runs. Hover the underline to
@@ -54,7 +72,8 @@ The code editor knows the API and the pedal you are working on:
   `clear()`. On the board, screens only repaint while the pedal is in view.
 * Event functions (`onPress`, `onControl`, `onFoot` ...) run when something happens.
 * Variables keep their values while the screen runs. `save(key, value)` keeps a value with the preset so it
-  is still there next time.
+  is still there next time. For more, a pedal has its own files (`fs.write`, `fs.read`).
+* A screen can use code files of its pedal with `require("util")`, so several screens share functions.
 * Setting a control from a script (`setKnob`, `setDip` ...) works like turning it by hand: the value is saved
   with the preset, can be undone, and the circuit follows. A burst of changes is one undo step.
 
@@ -85,8 +104,9 @@ not equal, `math.clamp`, `math.map`, `math.round`, `math.lerp`, `s:split(sep)`, 
 
 ### Safety
 
-Scripts run in a sandbox: they can only call the functions on this page, with no access to the app, files,
-network or other pedals. Each frame has a work budget, so a loop that never ends is stopped (the screen shows
+Scripts run in a sandbox: they can only call the functions on this page, with no access to the app, the
+computer's files, the network or other pedals. The only files a script sees are its own pedal's files (see
+Files below), inside a 1 MB budget. Each frame has a work budget, so a loop that never ends is stopped (the screen shows
 the error and its line) instead of freezing the app. Errors never crash the app: the screen shows
 `ERROR LINE n` and the editor marks the line.
 
@@ -475,6 +495,240 @@ end
 | `load(key, [default])` | Read a kept value back. |
 | `print(...)` | Show values in the editor console. |
 
+## Code files
+
+A pedal can have code files next to the code of each screen: write shared functions once and use them from every screen of the pedal. Add them with New in the file list on the left of the code editor (a code file ends in .lua). Code files are saved with the design and with the saved pedal.
+
+| Call | What it does |
+| --- | --- |
+| `m = require(name)` | Run a code file of this pedal and get what it returns (usually a table of functions). name is the file without .lua, folders with / or . ("util", "lib/notes"). A file runs once: the next require gives the same value. |
+
+### Writing a code file
+
+* A code file is a normal script. What it returns is what require gives back, so most code files make a table, put functions in it and return it at the end.
+* Functions written without local (function helper() ... end) become globals that every file can call, like in Lua. A local table you return keeps things tidy.
+* Code files can require other code files. Two files that require each other in a loop are an error that names both.
+* All files share the screen's globals (W, H, colors, the drawing functions ...) and its work budget.
+* An error in a code file names the file and its line, like **util.lua line 3**. Click it in the status to open the file at that line. The hints know the functions of the other files: after m. the completion lists what util.lua returns.
+* A screen restarts when its code or any code file changes. require only loads code saved with the design: a .lua file a script writes with fs.write is data.
+
+```lua
+-- util.lua: shared helpers
+local M = {}
+function M.db(v)
+  return 20 * math.log(math.max(v, 0.00001), 10)
+end
+function M.title(s)
+  text(s, 2, 2, colors.dim, "small")
+end
+return M
+```
+
+```lua
+-- the screen: use them
+local util = require("util")
+function draw()
+  clear()
+  util.title("LEVEL")
+  text(string.format("%.1f dB", util.db(signal("in"))), 2, 12)
+end
+```
+
+## Files
+
+Every pedal has its own small store of files, shared by all its screens: settings, user presets, lists, logs or your own file formats. Paths look like "presets/1.txt": letters, digits, space, _ - and ., with / between folders (no .., no / at the start). Everything together (the screens' code, code files and data files) can use 1 MB per pedal.
+
+| Call | What it does |
+| --- | --- |
+| `fs.read(path)` | The text of a file, or nil when there is no such file. |
+| `fs.write(path, text)` | Write a file (made if needed, replaced if it is there). Folders are made as needed. |
+| `fs.append(path, text)` | Add text to the end of a file (made if needed). |
+| `fs.exists(path)` | True when there is a file or folder there. |
+| `fs.remove(path)` | Remove a file (or an empty folder). True when something was removed. |
+| `fs.rename(from, to)` | Rename or move a file. |
+| `fs.list([folder])` | The names in a folder (the top when left out): files first, then folders with / at the end. |
+| `fs.mkdir(path)` | Make an empty folder. |
+| `fs.isDir(path)` | True when the path is a folder. |
+| `fs.size(path)` | Size of a file in bytes, or nil. |
+| `fs.free(), fs.used(), fs.budget()` | Bytes left, bytes used and the budget (1048576) of the pedal's files. |
+| `fs.readBytes(path)` | A file as a list of numbers from 0 to 255. |
+| `fs.readBin(path)` | A file as a byte string (one character per byte), for bin.unpack and s:byte(i). |
+| `fs.writeBytes(path, bytes)` | Write bytes: a list of numbers from 0 to 255, or a byte string from bin.pack. |
+| `fs.appendBytes(path, bytes)` | Add bytes to the end of a file. |
+
+### Where files are kept
+
+* **Files you make in the code editor** (code files and any starting data) belong to the design: they are saved with it and with the saved pedal.
+* **Files a script writes on the board** belong to that pedal on the board: they are saved with the preset, so user presets kept on a pedal are still there next time. Each pedal on the board has its own. A script that writes over a file of the design changes it for that pedal only, and a new version of the design still brings its new code.
+* **In the code editor preview and in Test mode** scripts write to a sandbox for this session. The file list shows those files marked preview: **Keep** copies one into the design, **Reset** forgets them.
+* Writing is cheap: files are saved a moment after the last write, not on every call. Undo does not undo file writes.
+
+### Text and bytes
+
+* fs.read and fs.write are for text (saved as UTF-8). For your own formats use fs.readBin / fs.writeBytes with bin.pack and bin.unpack (or lists of numbers with fs.readBytes).
+* A byte string has one character per byte (0 to 255): s:byte(i) gives byte i, #s the length, string.char(65, 66) makes one.
+* When a write would go over 1 MB, or a path is not allowed, the call stops the script with an error that says why (use pcall to catch it). fs.free() tells how much room is left.
+
+```lua
+-- user presets kept on the pedal: tap SAVE to store the knobs, tap a slot to load it
+local slot = 1
+function draw()
+  clear()
+  slot = tabs({"1", "2", "3"}, 0, 0, W, 12, slot)
+  local path = "presets/" .. slot .. ".txt"
+  if button("SAVE", 2, 16, 40, 14) then
+    fs.write(path, knob(1) .. "," .. knob(2))
+  end
+  if fs.exists(path) and button("LOAD", 46, 16, 40, 14) then
+    local v = fs.read(path):split(",")
+    setKnob(1, tonumber(v[1]))
+    setKnob(2, tonumber(v[2]))
+  end
+  text(string.format("%d KB free", fs.free() // 1024), 2, H - 9, colors.dim, "small")
+end
+```
+
+```lua
+-- a log that keeps the last notes, one line each
+on("footswitch_down", function(e)
+  fs.append("log.txt", string.format("%.1f %s\n", time(), e.name))
+end)
+function draw()
+  clear()
+  local lines = (fs.read("log.txt") or ""):split("\n")
+  for i = math.max(1, #lines - 4), #lines do
+    text(lines[i], 2, 2 + (i - math.max(1, #lines - 4)) * 9)
+  end
+end
+```
+
+## Binary data
+
+bin turns numbers and text into bytes and back, for your own file formats. The format is a string of letters, like Lua's string.pack: "<I2 f s1" is a 16 bit number, a float and a short text.
+
+| Call | What it does |
+| --- | --- |
+| `bin.pack(fmt, ...)` | The values packed into a byte string. |
+| `a, b, next = bin.unpack(fmt, data, [pos])` | The values from a byte string, starting at byte pos (default 1), and the position after them. |
+| `bin.size(fmt)` | How many bytes a format takes (not for s and z). |
+| `bin.bytes(data, [i], [j])` | The bytes of a byte string as a list of numbers. |
+| `bin.str(list)` | A byte string from a list of numbers from 0 to 255. |
+| `bin.hex(data, [sep])` | The bytes as hex text, like "01 ff 3a", to look at in print(). |
+| `bin.utf8(text), bin.text(data)` | Text to UTF-8 bytes, and back. |
+
+### Format letters
+
+* **<** little endian (the default), **>** big endian.
+* **b** / **B** 8 bit number (signed / unsigned), **h** / **H** 16 bit, **i** / **I** 32 bit (i1 to i4 and I1 to I4 for other sizes).
+* **f** 32 bit float, **d** 64 bit float.
+* **s** text with its length in front (s1, s2 or s4 bytes for the length, s is s4), **z** text ending with a zero byte, **c8** exactly 8 bytes of text (padded with zeros), **x** one zero byte.
+* Spaces are ignored. A number that does not fit its size is an error.
+
+```lua
+-- a small custom format: a header, then points
+local pts = {{10, 0.5}, {20, 0.25}, {30, 1}}
+local data = bin.pack("<c4 I2", "PNTS", #pts)
+for _, p in ipairs(pts) do data = data .. bin.pack("<H f", p[1], p[2]) end
+fs.writeBytes("points.bin", data)
+
+-- and read it back
+local s = fs.readBin("points.bin")
+local magic, n, pos = bin.unpack("<c4 I2", s)
+local back = {}
+for i = 1, n do
+  local x, y
+  x, y, pos = bin.unpack("<H f", s, pos)
+  back[i] = {x, y}
+end
+function draw()
+  clear()
+  text(magic .. " " .. n .. " points, " .. #s .. " bytes", 2, 2)
+  text(bin.hex(s:sub(1, 8)), 2, 12, colors.dim, "small")
+end
+```
+
+## Audio
+
+Scripts run at the screen's frame rate (20 to 30 a second), not for every sample, so they never slow the audio down. They read what the engine measures on the pedal's audio jacks, and they start and steer small sound makers that run inside the engine: oscillators, noise, envelopes and sample players that play buffers the script fills. Jacks are found by label (any case), "in" (the first input), "out" (the main output), "in 2", "out 2".
+
+| Call | What it does |
+| --- | --- |
+| `audio.level([jack])` | How loud the jack is (RMS, 0 to 1). Default: the first input. |
+| `audio.peak([jack])` | The peak level (0 to 1). |
+| `audio.spectrum([jack], [bins])` | A list of bins (4 to 64, default 32) from 0 to 1, low to high (40 Hz to 16 kHz). |
+| `audio.wave([jack], [n])` | The last n samples (16 to 1024, default 128) from -1 to 1, to draw a scope. |
+| `audio.pitch([jack])` | The pitch in Hz, 0 when there is none. |
+| `audio.onset([jack])` | True in the frame a new note started. |
+| `audio.analysis([jack], [bins], [n])` | All of it in one table: rms, peak, pitch, onset, onsets (a count), bands, wave. |
+| `audio.jacks()` | The names of the pedal's audio jacks. |
+| `audio.ready()` | True when the engine takes sounds (on the board without it, audio.gen gives false). |
+| `audio.gen(name, settings)` | Start a sound maker, or change one that runs: {type = "saw", freq = 110, amp = 0.3, to = "out"}. Only changes are sent. |
+| `audio.note(name, [freq], [amp])` | Start a note on a sound maker (its envelope starts again). |
+| `audio.release(name)` | Let the note go (the envelope releases). |
+| `audio.stop(name)` | Stop and remove a sound maker or a processor. |
+| `audio.buffer(name, samples, [rate])` | Fill a buffer with samples from -1 to 1 (a wavetable or a short sample, up to 96000 samples). rate in Hz, default 48000. |
+| `audio.play(name, buffer, [settings])` | Play a buffer, from the start each time: {loop = true, rate = 1, amp = 0.5, to = "out"}. |
+| `audio.fx(name, settings)` | A simple processor on a jack: {type = "lowpass", jack = "out", freq = 800, q = 0.7}. Types: gain, lowpass, highpass, bandpass, drive. |
+
+### Settings
+
+* **type**: sine, square, saw, tri, pulse, noise or sample (audio.play sets sample).
+* **freq** (Hz), **amp** (0 to 1), **pw** (pulse width for pulse, 0 to 1).
+* **attack**, **decay**, **release** (seconds) and **sustain** (0 to 1): an envelope. With one, **gate = true** starts the note and **gate = false** lets it go (audio.note and audio.release do that for you). Without an envelope the sound plays while it runs.
+* **to**: where it goes. An output jack ("out") adds it after the circuit, an input jack ("in") adds it to what goes into the circuit, "circuit:Name" feeds a circuit input part with that name.
+* **buffer**, **loop**, **rate** (1 is as written), **start** (0 to 1) for samples, **pan** (-1 to 1).
+* For audio.fx: **jack**, **gain**, **freq**, **q**, **amount** (drive) and **mix** (0 to 1).
+
+### Keep it light
+
+* A screen can run 16 sound makers and 16 processors, with 192000 samples of buffers. Sounds stop when the screen starts again (a code change, a new preset).
+* Only changes reach the engine, so calling audio.gen every frame is fine. Steer the circuit itself with output() and setInput() as before.
+* There is no code for every sample: make your own sound by writing it into a buffer (a wavetable, a short sample) and playing it.
+* In the code editor preview the jacks carry a demo guitar plus your own sounds (not played out loud), so the analysis moves. On the board the engine does the work.
+
+```lua
+-- a spectrum and a scope of the input
+function draw()
+  clear()
+  local bands = audio.spectrum("in", 32)
+  local bw = W / #bands
+  for i, v in ipairs(bands) do
+    fillRect((i - 1) * bw, H - v * H, bw - 1, v * H, hsv(i * 8, 0.8, 1))
+  end
+  graph(0, 0, W, H / 2, audio.wave("in", 128), colors.fg, -1, 1)
+end
+```
+
+```lua
+-- a drone: a knob sets the pitch, the footswitch plays a note
+audio.gen("drone", {type = "saw", freq = 55, amp = 0.2, attack = 0.05, release = 0.8, to = "out"})
+on("footswitch_down", function(e) audio.note("drone") end)
+on("footswitch_up", function(e) audio.release("drone") end)
+function draw()
+  clear()
+  local f = 40 + knob(1) * 200
+  audio.gen("drone", {freq = math.round(f)})
+  text(math.round(f) .. " Hz", 2, 2)
+  meter(2, H - 10, W - 4, 8, audio.level("out"))
+end
+```
+
+```lua
+-- a wavetable made in the script, played in a loop
+local wt = {}
+for i = 1, 256 do
+  local t = (i - 1) / 256
+  wt[i] = 0.6 * math.sin(t * 2 * math.pi) + 0.3 * math.sin(t * 6 * math.pi)
+end
+audio.buffer("table", wt)
+audio.play("pad", "table", {loop = true, rate = 220 * 256 / 48000, amp = 0.25})
+function draw()
+  clear()
+  graph(0, 0, W, H, wt, colors.accent, -1, 1)
+  text(audio.ready() and "PLAYING" or "NO ENGINE", 2, 2, colors.dim, "small")
+end
+```
+
 ## Language
 
 Screen scripts use a small Lua: local x = 1, if ... then ... elseif ... else ... end, for i = 1, 10 do ... end, while ... do ... end, function name(a, b) ... end, tables {1, 2, x = 3}. Comments start with --. Also allowed: x += 1, != for not equal.
@@ -503,6 +757,8 @@ screen runs (board, test mode, factory preview, editor preview) gives the same i
 | `screenInput(n)` / `screenOutput(n, v)` | this screen's own inputs and outputs (`io.cid` says which screen); an input reads the block status `cv[idx]` of the circuit output wired to it (or a control, jack or screen output linked straight to it, see `pages/circuit-links.js`), an output sets the block param `u.s.<screen id>.<n - 1>` that drives the circuit inputs wired to it |
 | `screenOutputValue(n)` / `screenPorts()` | an output's current value, and the port names and kinds |
 | `io.screenIn(i)` (optional) | a value for input i (0 based) that wins over the wiring: the code editor's Test tab uses it |
+| `files` / `codeFile(path)` / `codeFiles()` | the pedal's file store (`files.js`, shared by its screens), and the code files saved with the design (for `require`) |
+| `audio` | script audio: analysis of the jacks and engine side generators, see below |
 
 `<stage>.<key>` is a stage of the design's circuit, by its id or type (`delay.time`, `overdrive.gain`): the
 block's live status for that stage first, then the value the circuit runs with.
@@ -518,7 +774,55 @@ addSignalSource({
 addInputSink({ set: (ctx, name, v) => false /* true when handled */ });
 ```
 
+### Where files are stored
+
+* `D.files` in the design: `{ "path": "utf-8 text" | { b64 } , "folder/": true }`. Code files and starting
+  data made in the code editor. Saved with the design and the saved custom block.
+* `block.params._fs` on the board: a JSON string with what that block's scripts wrote, on top of `D.files`
+  (`null` marks a design file removed for this block). Saved with the preset, written about 0.6 s after the
+  last write (`setParam` without an undo step, the preset is marked changed). Code is always read from
+  `D.files`, so a new version of the design brings its new code to every pedal on the board.
+* The factory preview and test mode use a sandbox in memory per design (`sandboxStore`), thumbnails a
+  throwaway one.
+* The budget is 1 MB per pedal for the screens' own code, code files and data files together, checked on
+  every write (`FileStore.write`). Paths are relative, `/` between folders, no `..` or `.`, at most 6 folders
+  and 160 characters.
+
+### Script audio
+
+Lua runs at the screen's frame rate in the renderer, so scripts never process samples. They read analysis
+and drive small engine side sound makers through `host.audio`, which calls a backend the engine side
+registers:
+
+```js
+import { setAudioBackend } from './screenscript/host.js';
+setAudioBackend({
+  analysis(ctx, jack, want) { return { rms, peak, bands, wave, pitch, onset }; }, // or null
+  gen(ctx, id, params) { return true; },        // start or update a generator (only changes are sent)
+  stop(ctx, id) {},
+  buffer(ctx, id, samples, rate) { return true; }, // Float32Array, up to 96000 samples
+  fx(ctx, id, params) { return true; },          // gain, lowpass, highpass, bandpass, drive on a jack
+  reset(ctx) {},                                  // a screen starts again: drop what ctx.screen made
+});
+```
+
+* `ctx` = `{ design, block, blockId, def, mode, screen }`. Ids are `"<screen id>:<script name>"`, unique per
+  block.
+* `jack` = `{ dir: 'in' | 'out', index, name, id }`, the block's audio ports in `jackList()` order.
+  `want` = `{ bands: 4..64, wave: 16..1024 }`. bands are 0..1 on a dB scale (-72 to 0) at log spaced
+  centres from 40 Hz to 16 kHz, `wave` the newest samples last, `onset` a counter of note starts.
+* Generator params: `type` (sine, square, saw, tri, pulse, noise, sample), `freq`, `amp`, `pw`, `attack`,
+  `decay`, `sustain`, `release`, `gate`, `trig` (a counter, a new value restarts the note), `buffer`, `loop`,
+  `rate`, `start`, `pan`, `to` (`{ dir, index }` for a jack, `{ circuit: name }` for a circuit input part).
+* Limits per screen: 16 generators, 16 processors, 192000 samples of buffers. There is no per sample script
+  code on purpose.
+* Without a backend the board answers analysis from the level meters (rms and peak only) and generators
+  give false (`audio.ready()` is false). The code editor preview has its own fake (`audio.js`): the input
+  jack carries a demo guitar, generators add to the jacks they go to, nothing is played out loud.
+
+The full contract is at the top of `host.js`.
+
 Files: `lang.js` (tokenizer, parser, compiler), `stdlib.js`, `vm.js` (budget), `runtime.js` (the API),
-`host.js` (bridge), `surface.js` / `board.js` / `factory-ui.js` (where screens run), `code-editor.js`,
+`host.js` (bridge), `files.js` (the file store), `binfmt.js` (bin.pack), `audio.js` (jacks, the preview's fake audio), `surface.js` / `board.js` / `factory-ui.js` (where screens run), `code-editor.js`,
 `hints.js` (completion, signature help, hovers, checks), `screen-editor.js`, `generator.js`, `gen-ui.js`, `templates.js`, `docs.js` (this reference).
 Tests: `app/scripts/screenscript-test.js`.

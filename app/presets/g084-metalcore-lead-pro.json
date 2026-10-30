@@ -12,17 +12,24 @@
  "order": 184,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 100,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 101,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "tz.whammy",
-   "x": -368,
-   "y": 78,
+   "x": -590,
+   "y": 22,
    "params": {
     "expr": 0
    },
@@ -41,8 +48,8 @@
   {
    "id": "b3",
    "type": "ib.tsmini",
-   "x": -534,
-   "y": 137,
+   "x": -922,
+   "y": 87,
    "params": {
     "gain": 0.1,
     "tone": 0.6,
@@ -54,8 +61,8 @@
   {
    "id": "b4",
    "type": "tz.hush",
-   "x": -754,
-   "y": 118.5,
+   "x": -1189,
+   "y": 69,
    "params": {
     "threshold": 0.35,
     "decay": 0.4
@@ -66,8 +73,8 @@
   {
    "id": "b5",
    "type": "revv.amp-generator",
-   "x": -1336,
-   "y": 0,
+   "x": -1010,
+   "y": -804,
    "params": {
     "gain": 0.68,
     "bass": 0.55,
@@ -83,8 +90,8 @@
   {
    "id": "b6",
    "type": "engl.cab-pro4x12",
-   "x": -1300,
-   "y": 214,
+   "x": -974,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -105,8 +112,8 @@
   {
    "id": "b7",
    "type": "tz.halo",
-   "x": -1556,
-   "y": 108.5,
+   "x": -1429,
+   "y": 59,
    "params": {
     "rate": 0.3,
     "depth": 0.3,
@@ -118,8 +125,8 @@
   {
    "id": "b8",
    "type": "bx.dd500",
-   "x": -1896,
-   "y": 97,
+   "x": -409,
+   "y": 360,
    "params": {
     "time": 260.4561,
     "feedback": 0.3675,
@@ -131,8 +138,8 @@
   {
    "id": "b9",
    "type": "mrs.mercury7",
-   "x": -2172,
-   "y": 114,
+   "x": -737,
+   "y": 376,
    "params": {
     "inf": 0,
     "decay": 0.6,
@@ -144,8 +151,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2372,
-   "y": 95,
+   "x": -939,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -153,8 +160,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2612,
-   "y": 100,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

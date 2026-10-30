@@ -1,4 +1,5 @@
-// Generates the factory presets shipped with Tone Zone.
+// Generates the factory presets 01-09 shipped with Tone Zone. Run scripts/build-presets.js afterwards: it puts the
+// ones with 3 or more pedals on a pedalboard, like the generated presets.
 const fs = require('fs');
 const path = require('path');
 const W = { compact: 146, nine: 150, mxr: 128, mxrw: 196, strymon: 204, strymonS: 128, amp: 440, combo: 440, cab4: 364, cab2: 380, cab1: 250, cab810: 270, rc500: 300, rc600: 620, tz: 150, rat: 150, pod: 184, treadle: 152, poly: 144, drop: 146, rack: 440, io: 150, util: 118 };

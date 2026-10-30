@@ -177,7 +177,7 @@ export function installStdlib(G, R, log) {
     } catch (e) {
       R.depth = depth;
       if (e instanceof ScriptError && e.kind === 'budget') throw e; // a runaway loop is never caught
-      return new Multi([false, e instanceof ScriptError && e.line ? `line ${e.line}: ${e.message}` : String(e.message || e)]);
+      return new Multi([false, e instanceof ScriptError && e.line ? (e.file ? `${e.file}:${e.line}: ` : `line ${e.line}: `) + e.message : String(e.message || e)]);
     }
   });
   set('rawequal', (a, b) => a === b);

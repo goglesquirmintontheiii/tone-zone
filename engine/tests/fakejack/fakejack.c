@@ -75,17 +75,40 @@ void* jack_port_register(void* c, const char* name, const char* t, unsigned long
 void* jack_port_get_buffer(void* p, jack_nframes_t n) { return ((port_t*)p)->buf; }
 const char* jack_port_name(const void* p) { return ((const port_t*)p)->name; }
 int jack_port_set_alias(void* p, const char* a) { return 0; }
-int jack_connect(void* c, const char* a, const char* b) { return 0; }
-int jack_disconnect(void* c, const char* a, const char* b) { return 0; }
+// links are remembered so tests can check what's connected
+typedef struct { char a[128], b[128]; } link_t;
+static link_t links[256];
+static int nlinks = 0;
+static pthread_mutex_t lk = PTHREAD_MUTEX_INITIALIZER;
+int jack_connect(void* c, const char* a, const char* b) {
+  pthread_mutex_lock(&lk);
+  for (int i = 0; i < nlinks; i++) if (!strcmp(links[i].a, a) && !strcmp(links[i].b, b)) { pthread_mutex_unlock(&lk); return 17; }
+  if (nlinks < 256) { snprintf(links[nlinks].a, 128, "%s", a); snprintf(links[nlinks].b, 128, "%s", b); nlinks++; }
+  pthread_mutex_unlock(&lk); return 0; }
+int jack_disconnect(void* c, const char* a, const char* b) {
+  pthread_mutex_lock(&lk);
+  for (int i = 0; i < nlinks; i++) if (!strcmp(links[i].a, a) && !strcmp(links[i].b, b)) { links[i] = links[--nlinks]; break; }
+  pthread_mutex_unlock(&lk); return 0; }
 const char** jack_get_ports(void* c, const char* a, const char* b, unsigned long f) {
-  const char** r = calloc(nports + 3, sizeof(char*)); int k = 0;
+  const char** r = calloc(nports + 4, sizeof(char*)); int k = 0;
   if (f & 0x4) { if (f & 0x2) r[k++] = "system:capture_1"; else { r[k++] = "system:playback_1"; r[k++] = "system:playback_2"; } return r; }
   for (int i = 0; i < nports; i++) if (!f || (ports[i].flags & f)) r[k++] = ports[i].name;
-  if (f & 0x2) r[k++] = "system:capture_1"; else if (f & 0x1) r[k++] = "system:playback_1";
+  if (f & 0x2) r[k++] = "system:capture_1"; else if (f & 0x1) { r[k++] = "system:playback_1"; r[k++] = "system:playback_2"; }
   return r; }
 void* jack_port_by_name(void* c, const char* n) { for (int i = 0; i < nports; i++) if (!strcmp(ports[i].name, n)) return &ports[i]; return 0; }
 int jack_port_flags(const void* p) { return p ? ((const port_t*)p)->flags : 0x4; }
-const char** jack_port_get_all_connections(const void* c, const void* p) { return 0; }
+const char** jack_port_get_all_connections(const void* c, const void* p) {
+  const char* n = p ? ((const port_t*)p)->name : 0;
+  if (!n) return 0;
+  pthread_mutex_lock(&lk);
+  int k = 0; char** r = calloc(nlinks + 1, sizeof(char*));
+  for (int i = 0; i < nlinks; i++) {
+    if (!strcmp(links[i].a, n)) r[k++] = strdup(links[i].b);
+    else if (!strcmp(links[i].b, n)) r[k++] = strdup(links[i].a);
+  }
+  pthread_mutex_unlock(&lk);
+  if (!k) { free(r); return 0; }
+  return (const char**)r; }
 void jack_free(void* p) { free(p); }
 jack_nframes_t jack_get_sample_rate(void* c) { return srate; }
 jack_nframes_t jack_get_buffer_size(void* c) { return bufsize; }

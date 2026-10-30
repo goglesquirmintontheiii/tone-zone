@@ -12,17 +12,24 @@
  "order": 352,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "zvex.fuzzfactory",
-   "x": -150,
-   "y": 47,
+   "x": -229,
+   "y": 76,
    "params": {
     "f.level": 0.5,
     "gate": 0.9,
@@ -36,8 +43,8 @@
   {
    "id": "b2",
    "type": "amp.ac30",
-   "x": -640,
-   "y": 0,
+   "x": -964,
+   "y": -500,
    "params": {
     "gain": 0.4,
     "treble": 0.5,
@@ -51,8 +58,8 @@
   {
    "id": "b3",
    "type": "cab.2x12blue",
-   "x": -1110,
-   "y": 34,
+   "x": -1444,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -67,8 +74,8 @@
   {
    "id": "b4",
    "type": "tz.delay",
-   "x": -1396,
-   "y": 30,
+   "x": -622,
+   "y": 45,
    "params": {
     "time": 230.3651,
     "feedback": 0.55,
@@ -81,8 +88,8 @@
   {
    "id": "b5",
    "type": "tz.shimmer",
-   "x": -1630,
-   "y": 36,
+   "x": -1076,
+   "y": 51,
    "params": {
     "decay": 0.8,
     "mix": 0.45
@@ -93,8 +100,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1870,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

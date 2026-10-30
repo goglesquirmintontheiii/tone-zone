@@ -14,6 +14,7 @@ import { designToDef } from '../pages/factory-circuit.js';
 import { openScreenEditor, screenEditor } from './screen-editor.js';
 import { openGenerator, generatorOpen } from './gen-ui.js';
 import { generate, STYLES } from './generator.js';
+import { codeSig, sandboxStore } from './files.js';
 
 let cssDone = false;
 export function loadCSS() {
@@ -67,7 +68,13 @@ function openers(H, getD) {
     }
   };
   const openGen = (id, onUse) => openGenerator({ getD, id, paramsFor, onUse: onUse || ((code) => setCode(id, code, true)) });
-  const openEditor = (id) => openScreenEditor({ getD, id, paramsFor, onCode: (code, final) => setCode(id, code, final), openGen });
+  // the pedal's files (D.files): live while typing, one undo step when the editor closes
+  const onFiles = (final, any) => {
+    if (!final) return H.changed(true);
+    if (any) H.changed(false);
+    H.rerender();
+  };
+  const openEditor = (id) => openScreenEditor({ getD, id, paramsFor, onCode: (code, final) => setCode(id, code, final), onFiles, openGen });
   return { openEditor, openGen };
 }
 
@@ -112,11 +119,13 @@ export function screenInspector(s, c, H, o = {}) {
   const { W, H: Hp } = screenPixels(c);
   const info = el('p', { class: 'fz-note ss-insp-info' }, s);
   const lines = String(c.script || '').split('\n').length;
-  info.textContent = `${W} x ${Hp} pixels, ${lines} lines of code.`;
+  const nf = D && D.files ? Object.keys(D.files).filter((p) => !p.endsWith('/')).length : 0;
+  info.textContent = `${W} x ${Hp} pixels, ${lines} lines of code` + (nf ? `, the pedal has ${nf} file${nf === 1 ? '' : 's'}.` : '.');
   const st = stageEntries.get('edit|' + c.id);
   if (st && st.rt.error) {
     const e = el('p', { class: 'fz-note ss-insp-err' }, s);
-    e.textContent = (st.rt.error.line ? `Line ${st.rt.error.line}: ` : '') + st.rt.error.message;
+    const er = st.rt.error;
+    e.textContent = (er.line ? (er.file ? `${er.file} line ${er.line}: ` : `Line ${er.line}: `) : '') + er.message;
   }
 }
 
@@ -138,15 +147,17 @@ function designIO(getD) {
     if (c.kind === 'foot') return 1;
     return c.value ?? 0.5;
   };
-  const { io } = simIO({ ctls: [] }, { readOnly: true, demo: true });
+  const { io } = simIO({ ctls: [] }, { readOnly: true, demo: true, files: sandboxStore(getD()) });
   return Object.assign(io, { mode: 'edit', get: val, set() {}, setBypass() {}, bypassed: () => false });
 }
-function testIO() {
+function testIO(getD) {
   let info = null;
   const I = () => info || (info = testInfo() || { params: {}, bypass: false });
   return {
     mode: 'test',
     block: null,
+    blockId: NODE,
+    files: sandboxStore(getD()), // test mode writes to the session sandbox, like the preview
     get def() {
       return getDef(TEST_ID);
     },
@@ -179,11 +190,11 @@ function canvasPos(canvas, e, rt) {
 function makeEntry(c, mode, getD) {
   const { W, H } = screenPixels(c);
   const canvas = document.createElement('canvas');
-  const io = mode === 'test' ? testIO() : designIO(getD);
+  const io = mode === 'test' ? testIO(getD) : designIO(getD);
   io.cid = c.id; // the screen's own inputs and outputs
   const host = makeHost(getD(), io);
   const rt = new ScreenRuntime({ src: c.script || '', w: W, h: H, host, canvas, palette: paletteOf(c), screen: { type: c.type, name: c.label || '' } });
-  const ent = { rt, canvas, src: c.script || '', W, H, type: c.type, mode, last: 0 };
+  const ent = { rt, canvas, src: codeSig(c, getD()), W, H, type: c.type, mode, last: 0 };
   if (mode === 'test') {
     canvas.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
@@ -219,7 +230,8 @@ export function liveStage(root, D, mode) {
     const key = mode + '|' + c.id;
     const { W, H } = screenPixels(c);
     let ent = stageEntries.get(key);
-    if (!ent || ent.src !== (c.script || '') || ent.W !== W || ent.H !== H || ent.type !== c.type) {
+    if (!ent || ent.src !== codeSig(c, getD()) || ent.W !== W || ent.H !== H || ent.type !== c.type) {
+      if (ent) ent.rt.stop();
       ent = makeEntry(c, mode, getD);
       stageEntries.set(key, ent);
     }
@@ -233,7 +245,10 @@ export function liveStage(root, D, mode) {
     }
   }
   // drop runtimes that are no longer on the stage (other mode, deleted screens, another design)
-  for (const [k, e] of stageEntries) if (!e.canvas.isConnected) stageEntries.delete(k);
+  for (const [k, e] of stageEntries) if (!e.canvas.isConnected) {
+    e.rt.stop();
+    stageEntries.delete(k);
+  }
   if (!loop) loop = requestAnimationFrame(tick);
 }
 function tick(now) {

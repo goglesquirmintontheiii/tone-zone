@@ -147,3 +147,41 @@
   .ss-gmain { grid-template-columns: 1fr; }
 }
 .ss-status .ss-handlererr { margin-left: 12px; color: var(--bad-text); }
+
+/* files: this screen's code, the pedal's code files and data files */
+.ss-edrow { flex: 1; min-height: 0; display: flex; }
+.ss-codes { flex: 1; min-width: 0; min-height: 0; display: flex; position: relative; }
+.ss-code[hidden], .ss-hex[hidden] { display: none; }
+.ss-files { width: 186px; flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-right: 1px solid var(--line); background: var(--bg1); min-height: 0; }
+.ss-fhead { display: flex; align-items: center; font-size: 12px; color: var(--text2); }
+.ss-fbtns { display: flex; flex-wrap: wrap; gap: 4px; }
+.ss-fbtns .btn { padding: 2px 7px; font-size: 11px; }
+.ss-fask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); padding: 6px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--line2); }
+.ss-fask[hidden], .ss-fprev[hidden] { display: none; }
+.ss-fask input { flex: 1; min-width: 0; width: 100%; font-size: 12px; padding: 3px 6px; }
+.ss-ferr { color: var(--bad-text); flex-basis: 100%; }
+.ss-flist { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
+.ss-frow { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text); }
+.ss-frow:hover { background: var(--bg3); }
+.ss-frow.on { background: rgba(var(--accent-rgb), 0.18); color: var(--accent-text); }
+.ss-frow.main .ss-fname { font-weight: 700; }
+.ss-frow.code .ss-fname::before { content: 'lua'; font-size: 9px; margin-right: 5px; padding: 0 3px; border-radius: 3px; background: rgba(var(--teal-rgb), 0.25); color: var(--teal-text); }
+.ss-frow.data .ss-fname::before { content: 'data'; font-size: 9px; margin-right: 5px; padding: 0 3px; border-radius: 3px; background: var(--bg3); color: var(--muted); }
+.ss-frow.err { box-shadow: inset 2px 0 0 var(--bad); }
+.ss-frow.err .ss-fname { color: var(--bad-text); }
+.ss-frow.prev .ss-fname { font-style: italic; }
+.ss-fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-fsize { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.ss-fkeep { all: unset; cursor: pointer; font-size: 10px; padding: 0 5px; border-radius: 4px; background: rgba(var(--warn-rgb), 0.25); color: var(--text); }
+.ss-fprev { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.ss-usage { font-size: 11px; color: var(--muted); }
+.ss-usebar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--bg3); margin-bottom: 3px; }
+.ss-usebar i { display: block; height: 100%; min-width: 2px; }
+.ss-frow.dir { cursor: default; color: var(--muted); }
+.ss-frow.dir:hover { background: none; }
+.ss-usebar i.code { background: var(--teal, var(--accent)); }
+.ss-usebar i.data { background: var(--accent); opacity: 0.7; }
+.ss-usage.over .ss-usetext { color: var(--bad-text); }
+.ss-usage.over .ss-usebar { outline: 1px solid var(--bad); }
+.ss-hex { flex: 1; margin: 0; padding: 10px 12px; overflow: auto; font: 12px/17px ui-monospace, 'DejaVu Sans Mono', monospace; color: var(--text2); background: var(--bg0); white-space: pre; }
+.ss-simaudio { font: 11px/15px ui-monospace, 'DejaVu Sans Mono', monospace; color: var(--text2); white-space: pre-wrap; padding: 2px 0 4px; }

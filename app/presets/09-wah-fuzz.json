@@ -1,157 +1,164 @@
 {
-  "version": 1,
-  "name": "Wah into Fuzz",
-  "blocks": [
-    {
-      "id": "b95",
-      "type": "dn.gcb95",
-      "x": -152,
-      "y": 80,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b96",
-      "type": "tz.fuzzface",
-      "x": -392,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b97",
-      "type": "mx.m169",
-      "x": -610,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b98",
-      "type": "amp.twin",
-      "x": -1170,
-      "y": 0,
-      "params": {
-        "gain": 0.4
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b99",
-      "type": "cab.2x12twin",
-      "x": -1640,
-      "y": 120,
-      "params": {
-        "level": -5.3
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "__in",
-      "type": "__in",
-      "x": 120,
-      "y": 120,
-      "params": {}
-    },
-    {
-      "id": "__out",
-      "type": "__out",
-      "x": -1880,
-      "y": 120,
-      "params": {}
-    }
-  ],
-  "cables": [
-    {
-      "id": "c100",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b95",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c101",
-      "from": {
-        "node": "b95",
-        "port": 0
-      },
-      "to": {
-        "node": "b96",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c102",
-      "from": {
-        "node": "b96",
-        "port": 0
-      },
-      "to": {
-        "node": "b97",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
-      "id": "c103",
-      "from": {
-        "node": "b97",
-        "port": 0
-      },
-      "to": {
-        "node": "b98",
-        "port": 0
-      },
-      "color": "#2ecc71"
-    },
-    {
-      "id": "c104",
-      "from": {
-        "node": "b98",
-        "port": 0
-      },
-      "to": {
-        "node": "b99",
-        "port": 0
-      },
-      "color": "#3498db"
-    },
-    {
-      "id": "c105",
-      "from": {
-        "node": "b99",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 0
-      },
-      "color": "#6c5ce7"
-    },
-    {
-      "id": "c106",
-      "from": {
-        "node": "b99",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 1
-      },
-      "color": "#e84393"
-    }
-  ],
-  "view": null,
-  "factory": true
+ "version": 1,
+ "name": "Wah into Fuzz",
+ "blocks": [
+  {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
+   "id": "b95",
+   "type": "dn.gcb95",
+   "x": -350,
+   "y": 22,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b96",
+   "type": "tz.fuzzface",
+   "x": -845,
+   "y": 89,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b97",
+   "type": "mx.m169",
+   "x": -1178,
+   "y": 69,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b98",
+   "type": "amp.twin",
+   "x": -964,
+   "y": -500,
+   "params": {
+    "gain": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b99",
+   "type": "cab.2x12twin",
+   "x": -1444,
+   "y": -432,
+   "params": {
+    "level": -5.3
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 90,
+   "y": 70,
+   "params": {}
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -2248,
+   "y": 70,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c100",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b95",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c101",
+   "from": {
+    "node": "b95",
+    "port": 0
+   },
+   "to": {
+    "node": "b96",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c102",
+   "from": {
+    "node": "b96",
+    "port": 0
+   },
+   "to": {
+    "node": "b97",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c103",
+   "from": {
+    "node": "b97",
+    "port": 0
+   },
+   "to": {
+    "node": "b98",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c104",
+   "from": {
+    "node": "b98",
+    "port": 0
+   },
+   "to": {
+    "node": "b99",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c105",
+   "from": {
+    "node": "b99",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c106",
+   "from": {
+    "node": "b99",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null,
+ "factory": true
 }

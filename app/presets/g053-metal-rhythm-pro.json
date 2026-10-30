@@ -11,17 +11,24 @@
  "order": 153,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 100,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tc.polytune3",
-   "x": -144,
-   "y": 108,
+   "x": -226,
+   "y": 58,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,8 +36,8 @@
   {
    "id": "b2",
    "type": "ib.ts9",
-   "x": -364,
-   "y": 105,
+   "x": -469,
+   "y": 55,
    "params": {
     "gain": 0,
     "tone": 0.55,
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "tz.gate",
-   "x": -588,
-   "y": 103,
+   "x": -831,
+   "y": 53,
    "params": {
     "threshold": 0.45,
     "attack": 0.2,
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "amp.recto",
-   "x": -1090,
-   "y": 0,
+   "x": -1206,
+   "y": -804,
    "params": {
     "gain": 0.65,
     "treble": 0.55,
@@ -73,8 +80,8 @@
   {
    "id": "b5",
    "type": "cab.4x12v30",
-   "x": -1098,
-   "y": 214,
+   "x": -1214,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -95,8 +102,8 @@
   {
    "id": "b6",
    "type": "bx.ge7",
-   "x": -1314,
-   "y": 101,
+   "x": -1187,
+   "y": 51,
    "params": {
     "b0": 1.5,
     "b1": 0,
@@ -113,8 +120,8 @@
   {
    "id": "b7",
    "type": "tz.vaulted",
-   "x": -1594,
-   "y": 108.5,
+   "x": -1579,
+   "y": 59,
    "params": {
     "decay": 0.3,
     "mix": 0.1
@@ -125,8 +132,8 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -1794,
-   "y": 95,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -134,8 +141,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2034,
-   "y": 100,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

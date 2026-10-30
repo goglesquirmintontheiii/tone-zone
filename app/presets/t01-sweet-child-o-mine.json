@@ -13,17 +13,24 @@
  "order": 201,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 42,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bh.tm300",
-   "x": -140,
-   "y": 26,
+   "x": -224,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "dn.sw95",
-   "x": -412,
-   "y": 0,
+   "x": -615,
+   "y": 22,
    "params": {
     "w.pos": 0.55
    },
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "box.split2",
-   "x": -578,
-   "y": 94,
+   "x": -922,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -51,8 +58,8 @@
   {
    "id": "b4",
    "type": "amp.plexi",
-   "x": -1050,
-   "y": 394,
+   "x": -706,
+   "y": -804,
    "params": {
     "gain": 0.85,
     "master": 0.6,
@@ -68,8 +75,8 @@
   {
    "id": "b5",
    "type": "cab.4x12gb",
-   "x": -1058,
-   "y": 608,
+   "x": -714,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -90,8 +97,8 @@
   {
    "id": "b6",
    "type": "amp.jcm800",
-   "x": -1050,
-   "y": 1118,
+   "x": -1226,
+   "y": -804,
    "params": {
     "gain": 0.68,
     "master": 0.5,
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "cab.4x12t75",
-   "x": -1058,
-   "y": 1332,
+   "x": -1234,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -128,8 +135,8 @@
   {
    "id": "b8",
    "type": "tz.delay",
-   "x": -1314,
-   "y": 1857,
+   "x": -1342,
+   "y": 45,
    "params": {
     "time": 420,
     "feedback": 0.275,
@@ -143,8 +150,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -1586,
-   "y": 1842,
+   "x": -375,
+   "y": 326,
    "params": {
     "mode": 2,
     "decay": 0.3,
@@ -156,8 +163,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -1786,
-   "y": 1857,
+   "x": -699,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -165,8 +172,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2026,
-   "y": 42,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

@@ -72,16 +72,24 @@ function arcLamp(g, a0, a1, ri, ro, color, cls) {
   // a brighter core along the middle when lit, like the light pipe in the reference
   const core = svg('path', { d: arcPath(a0 + 0.6, a1 - 0.6, rm - th * 0.18, rm + th * 0.18), fill: mixHex(color, '#ffffff', 0.55), opacity: 0, 'pointer-events': 'none' }, g);
   let cur;
-  return (on) => {
+  // on: true (its colour), a colour or null; k: brightness 0..1 (an analog input dims it)
+  return (on, k = 1) => {
     const col = on === true ? color : on || null;
-    if (col === cur) return;
-    cur = col;
-    setA(lens, 'fill', col || off);
-    setA(lens, 'stroke', col || off);
+    k = col ? clamp(k, 0, 1) : 0;
+    const key = col + '|' + k.toFixed(2);
+    if (key === cur) return;
+    cur = key;
+    const lit = col ? (k > 0.98 ? col : mixHex(off, col, 0.25 + 0.75 * k)) : null;
+    setA(lens, 'fill', lit || off);
+    setA(lens, 'stroke', lit || off);
     lens.dataset.on = col ? '1' : '0';
-    if (col) setA(glow, 'stroke', col);
-    setA(glow, 'stroke-opacity', col ? 0.45 : 0);
-    setA(core, 'opacity', col ? 0.55 : 0);
+    lens.dataset.k = k.toFixed(2);
+    if (col) {
+      setA(glow, 'stroke', col);
+      setA(core, 'fill', mixHex(col, '#ffffff', 0.55));
+    }
+    setA(glow, 'stroke-opacity', col ? 0.45 * k : 0);
+    setA(core, 'opacity', col ? 0.55 * k : 0);
   };
 }
 
@@ -141,8 +149,14 @@ export function encoderPart(parent, c) {
         const k = Math.min(Math.floor(n / 2), Math.round(Math.abs(v - 0.5) * n));
         on = v >= 0.5 ? i <= k : i === 0 || n - i <= k;
       } else on = i < Math.round(v * n);
-      if (over && over.leds && over.leds[i] != null) on = over.leds[i]; // one LED wired on its own
-      L.set(on ? L.col : null);
+      let col = on ? (over && over.col !== undefined ? over.col : L.col) : null; // RGB inputs colour the whole ring
+      let k = 1;
+      const one = over && over.leds ? over.leds[i] : null;
+      // one LED wired on its own: on / off, a brightness, or a colour (RGB)
+      if (one === true || one === false) col = one ? L.col : null;
+      else if (typeof one === 'number') [col, k] = one > 0.02 ? [L.col, one] : [null, 0];
+      else if (typeof one === 'string') col = one;
+      L.set(col, k);
     });
   };
   return {
@@ -151,7 +165,7 @@ export function encoderPart(parent, c) {
       v = clamp(v, 0, 1);
       if (v === last) return;
       last = v;
-      rot.setAttribute('transform', `rotate(${(v * 540).toFixed(1)})`);
+      rot.setAttribute('transform', `rotate(${(v * 360).toFixed(1)})`); // one turn of the value is one turn of the knob
       if (!over || over.v == null) paintRing(v);
     },
     // the ring driven from the wiring diagram: {v} and / or {leds: [true | false | null]}; null follows the knob

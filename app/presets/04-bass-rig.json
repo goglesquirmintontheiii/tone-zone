@@ -1,158 +1,165 @@
 {
-  "version": 1,
-  "name": "Bass · Grind & Fridge",
-  "blocks": [
-    {
-      "id": "b36",
-      "type": "bx.tu3",
-      "x": -146,
-      "y": 120,
-      "params": {},
-      "bypass": true,
-      "variant": "mono"
-    },
-    {
-      "id": "b37",
-      "type": "mx.m102",
-      "x": -364,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b38",
-      "type": "pre.sansamp",
-      "x": -604,
-      "y": 120,
-      "params": {
-        "gain": 0.35,
-        "blend": 0.65
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b39",
-      "type": "amp.svt",
-      "x": -1200,
-      "y": -200,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b40",
-      "type": "cab.8x10svt",
-      "x": -1082,
-      "y": 14,
-      "params": {
-        "level": 0.6
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "__in",
-      "type": "__in",
-      "x": 120,
-      "y": 120,
-      "params": {}
-    },
-    {
-      "id": "__out",
-      "type": "__out",
-      "x": -1440,
-      "y": 120,
-      "params": {}
-    }
-  ],
-  "cables": [
-    {
-      "id": "c41",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b36",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c42",
-      "from": {
-        "node": "b36",
-        "port": 0
-      },
-      "to": {
-        "node": "b37",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c43",
-      "from": {
-        "node": "b37",
-        "port": 0
-      },
-      "to": {
-        "node": "b38",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
-      "id": "c44",
-      "from": {
-        "node": "b38",
-        "port": 0
-      },
-      "to": {
-        "node": "b39",
-        "port": 0
-      },
-      "color": "#2ecc71"
-    },
-    {
-      "id": "c45",
-      "from": {
-        "node": "b39",
-        "port": 0
-      },
-      "to": {
-        "node": "b40",
-        "port": 0
-      },
-      "color": "#3498db"
-    },
-    {
-      "id": "c46",
-      "from": {
-        "node": "b40",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 0
-      },
-      "color": "#6c5ce7"
-    },
-    {
-      "id": "c47",
-      "from": {
-        "node": "b40",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 1
-      },
-      "color": "#e84393"
-    }
-  ],
-  "view": null,
-  "factory": true
+ "version": 1,
+ "name": "Bass · Grind & Fridge",
+ "blocks": [
+  {
+   "id": "board1",
+   "type": "pb.tiny",
+   "x": -1028,
+   "y": 0,
+   "params": {}
+  },
+  {
+   "id": "b36",
+   "type": "bx.tu3",
+   "x": -227,
+   "y": 51,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b37",
+   "type": "mx.m102",
+   "x": -458,
+   "y": 69,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b38",
+   "type": "pre.sansamp",
+   "x": -709,
+   "y": 55,
+   "params": {
+    "gain": 0.35,
+    "blend": 0.65
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b39",
+   "type": "amp.svt",
+   "x": -726,
+   "y": -864,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b40",
+   "type": "cab.8x10svt",
+   "x": -649,
+   "y": -650,
+   "params": {
+    "level": 0.6
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 90,
+   "y": 70,
+   "params": {}
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1288,
+   "y": 70,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c41",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b36",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c42",
+   "from": {
+    "node": "b36",
+    "port": 0
+   },
+   "to": {
+    "node": "b37",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c43",
+   "from": {
+    "node": "b37",
+    "port": 0
+   },
+   "to": {
+    "node": "b38",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c44",
+   "from": {
+    "node": "b38",
+    "port": 0
+   },
+   "to": {
+    "node": "b39",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c45",
+   "from": {
+    "node": "b39",
+    "port": 0
+   },
+   "to": {
+    "node": "b40",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c46",
+   "from": {
+    "node": "b40",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c47",
+   "from": {
+    "node": "b40",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null,
+ "factory": true
 }

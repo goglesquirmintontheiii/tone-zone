@@ -6,6 +6,7 @@ import { soloDesign } from './factory-circuit.js';
 import { renderPedal } from './factory-render.js';
 import { clamp } from '../util.js';
 import { encSteps, makePulser } from './circuit-links.js';
+import { encSnap } from './factory-kinds.js';
 
 export const NODE = 'fztest';
 let T = null;
@@ -150,7 +151,7 @@ function turned(p, prev, v) {
   const e = (T.def.encoders || []).find((x) => x.p === p);
   if (!e) return;
   const st = T.enc[p] || (T.enc[p] = { last: prev ?? e.def });
-  const n = encSteps(st, v, e.wrap);
+  const n = encSteps(st, v, e.wrap, e.steps);
   if (!n) return;
   T.block.params[e.n] = clamp((T.block.params[e.n] || 0) + n, -255, 255);
   follow(e.n);
@@ -194,7 +195,7 @@ export function playDown(e, stage, zoom, onChange) {
       const range = c.t === 'slider' ? ((c.h || 48) / 2) * zoom() * 1.6 : c.t === 'treadle' ? ((c.h || 120) / 2) * zoom() * 0.7 : 170;
       const d = c.t === 'slider' && c.orient === 'h' ? -dx : dy;
       const raw = start - (d / range) * fine;
-      setP(c.p, c.endless ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1)); // an endless encoder goes round
+      setP(c.p, c.steps ? encSnap(raw, c.steps, c.endless) : c.endless ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1)); // an endless encoder goes round, in detent steps
       onChange && onChange();
     } else if (c.t === 'sel') {
       const idx = clamp(Math.round(start - dy / 16), 0, c.options.length - 1);

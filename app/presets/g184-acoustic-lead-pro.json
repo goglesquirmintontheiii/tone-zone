@@ -11,17 +11,24 @@
  "order": 284,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 25,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bh.tm300",
-   "x": -140,
-   "y": 9,
+   "x": -224,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,8 +36,8 @@
   {
    "id": "b2",
    "type": "gd.alix",
-   "x": -370,
-   "y": 11,
+   "x": -474,
+   "y": 78,
    "params": {
     "mute": 0,
     "a.level": 4.8,
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "tz.featherweight",
-   "x": -590,
-   "y": 39.5,
+   "x": -709,
+   "y": 85,
    "params": {
     "sustain": 0.35,
     "level": 0.55,
@@ -55,8 +62,8 @@
   {
    "id": "b4",
    "type": "tz.spruce",
-   "x": -810,
-   "y": 0.5,
+   "x": -949,
+   "y": 46,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -64,8 +71,8 @@
   {
    "id": "b5",
    "type": "lrb.alignchorus",
-   "x": -1008,
-   "y": 28,
+   "x": -1178,
+   "y": 73,
    "params": {
     "mix": 0.25
    },
@@ -75,8 +82,8 @@
   {
    "id": "b6",
    "type": "fm.echoback",
-   "x": -1224,
-   "y": 6,
+   "x": -1427,
+   "y": 51,
    "params": {
     "time": 424,
     "feedback": 0.25,
@@ -88,8 +95,8 @@
   {
    "id": "b7",
    "type": "tz.steelplate",
-   "x": -1504,
-   "y": 41.5,
+   "x": -379,
+   "y": 387,
    "params": {
     "decay": 0.5,
     "mix": 0.25
@@ -100,8 +107,8 @@
   {
    "id": "b8",
    "type": "ut.width",
-   "x": -1692,
-   "y": 36,
+   "x": -693,
+   "y": 381,
    "params": {
     "level": -7.1
    },
@@ -111,8 +118,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -1892,
-   "y": 0,
+   "x": -939,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -120,8 +127,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2132,
-   "y": 25,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

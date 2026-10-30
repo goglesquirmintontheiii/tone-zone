@@ -11,17 +11,24 @@
  "order": 384,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,8 +36,8 @@
   {
    "id": "b2",
    "type": "tz.trebleboost",
-   "x": -352,
-   "y": 58,
+   "x": -462,
+   "y": 73,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -38,8 +45,8 @@
   {
    "id": "b3",
    "type": "fender.amp-superreverb",
-   "x": -934,
-   "y": 0,
+   "x": -1060,
+   "y": -500,
    "params": {
     "a.gain": 0.4,
     "a.treble": 0.65,
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "fender.cab-super4x10",
-   "x": -1304,
-   "y": 0,
+   "x": -1440,
+   "y": -500,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -78,8 +85,8 @@
   {
    "id": "b5",
    "type": "bx.re2",
-   "x": -1520,
-   "y": 36,
+   "x": -707,
+   "y": 51,
    "params": {
     "wf": 0.3
    },
@@ -89,8 +96,8 @@
   {
    "id": "b6",
    "type": "jhs.springtank",
-   "x": -1722,
-   "y": 41,
+   "x": -940,
+   "y": 76,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -98,8 +105,8 @@
   {
    "id": "b7",
    "type": "tz.meter",
-   "x": -1922,
-   "y": 30,
+   "x": -1179,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -107,8 +114,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2162,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

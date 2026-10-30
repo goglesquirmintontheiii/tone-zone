@@ -13,17 +13,24 @@
  "order": 208,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 16,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.tuner",
-   "x": -150,
-   "y": 0,
+   "x": -229,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "mx.m102",
-   "x": -348,
-   "y": 15,
+   "x": -458,
+   "y": 69,
    "params": {
     "level": 0.55,
     "sustain": 0.35
@@ -43,8 +50,8 @@
   {
    "id": "b3",
    "type": "box.split2",
-   "x": -514,
-   "y": 68,
+   "x": -682,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -52,8 +59,8 @@
   {
    "id": "b4",
    "type": "fender.amp-tweeddeluxe",
-   "x": -974,
-   "y": 342,
+   "x": -634,
+   "y": -500,
    "params": {
     "gain": 0.72,
     "treble": 0.62,
@@ -65,8 +72,8 @@
   {
    "id": "b5",
    "type": "cab.1x12us",
-   "x": -1294,
-   "y": 389,
+   "x": -964,
+   "y": -406,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -87,8 +94,8 @@
   {
    "id": "b6",
    "type": "tz.boost",
-   "x": -704,
-   "y": 803,
+   "x": -949,
+   "y": 56,
    "params": {
     "gain": 0.3,
     "bass": 0.55,
@@ -100,8 +107,8 @@
   {
    "id": "b7",
    "type": "fender.amp-tweeddeluxe",
-   "x": -1194,
-   "y": 762,
+   "x": -1464,
+   "y": -500,
    "params": {
     "gain": 0.82,
     "treble": 0.5,
@@ -113,8 +120,8 @@
   {
    "id": "b8",
    "type": "fender.cab-princeton",
-   "x": -1494,
-   "y": 817,
+   "x": -1774,
+   "y": -390,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -129,8 +136,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -1536,
-   "y": 1182,
+   "x": -1335,
+   "y": 26,
    "params": {
     "mode": 0,
     "decay": 0.3,
@@ -142,8 +149,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -1736,
-   "y": 1197,
+   "x": -1659,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -151,8 +158,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1976,
-   "y": 16,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

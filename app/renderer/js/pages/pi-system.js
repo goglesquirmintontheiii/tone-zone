@@ -2,6 +2,7 @@
 import { el, toast, bus } from '../util.js';
 import { MODELS, audioDevicesFor, audioDevice, audioNote, latencyFor, isPi3, savePi, piLog, piLogs, setLogs, act } from './pi-data.js';
 import { card, field, seg, select, toggle, meter, demoNote, fakeProgress, copyBox } from './pi-ui.js';
+import { uiAudioId } from './pi-live.js';
 
 // ------------------------------------------------------------------ Audio
 export function renderAudio(main, ctx) {
@@ -13,18 +14,34 @@ export function renderAudio(main, ctx) {
   // a device that does not exist on this board (the 3.5 mm jack on a Pi 5) falls back to the input device
   const outs = audioDevicesFor(model, 'out'), ins = audioDevicesFor(model, 'in');
   if (!ins.some((d) => d.id === a.input)) a.input = ins[0].id;
-  if (!outs.some((d) => d.id === a.output)) a.output = a.input;
+  if (!outs.some((d) => d.id === a.output)) a.output = outs.some((d) => d.id === a.input) ? a.input : outs[0].id;
 
   const cols = el('div', { class: 'pi-cols' }, main);
   const left = el('div', { class: 'pi-col' }, cols);
   const right = el('div', { class: 'pi-col' }, cols);
   const io = card(left, 'Input and output', 'They can be two different devices, like a USB adapter in and the headphone jack out.');
+  // a real Pi lists the sound cards it actually has; the demo picks from the common ones
+  const al = ctx.live && a.alsa ? a.alsa : null;
   const devRow = (label, dir, list, key) => {
     field(io, label);
     const fc = io.lastChild.lastChild;
-    select(fc, list.map((d) => [d.id, d.name]), a[key], (v) => { a[key] = v; savePi(); piLog(`Audio ${dir}: ${audioDevice(v).name}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-' + dir });
+    if (al) {
+      const real = dir === 'in' ? al.inputs : al.outputs;
+      if (!real.length) {
+        el('div', { class: 'pi-warn', 'data-q': 'none-' + dir }, fc).textContent = dir === 'in' ? 'No audio input found. Plug in a USB interface or add a HAT.' : 'No audio output found.';
+        return;
+      }
+      const opts = real.map((d) => [d.id, `${d.name} (${d.id.replace(/^hw:/, '')})`]);
+      select(fc, opts, al[key], (v) => {
+        al[key] = v;
+        a[key] = uiAudioId(real.find((d) => d.id === v));
+        savePi();
+        piLog(`Audio ${dir}: ${(real.find((d) => d.id === v) || {}).name || v}`, 'info', 'engine');
+        ctx.rerender();
+      }, { 'data-ctl': 'audio-' + dir });
+    } else select(fc, list.map((d) => [d.id, d.name]), a[key], (v) => { a[key] = v; savePi(); piLog(`Audio ${dir}: ${audioDevice(v).name}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-' + dir });
     const d = audioDevice(a[key]);
-    el('div', { class: 'pi-devq ' + d.kind, 'data-q': d.id }, io).textContent = audioNote(d, model);
+    if (d) el('div', { class: 'pi-devq ' + d.kind, 'data-q': d.id }, io).textContent = audioNote(d, model);
   };
   devRow('Input (guitar)', 'in', ins, 'input');
   devRow('Output (amp, headphones, PA)', 'out', outs, 'output');
@@ -35,6 +52,25 @@ export function renderAudio(main, ctx) {
       : 'The Pi 4 has a 3.5 mm output (no input). It hisses a little: good for practice, not for gigs.';
   if (isPi3(model)) el('li', {}, notes).textContent = 'On a Pi 3, USB and Ethernet share one connection. USB audio works well at buffer 128 or 256; avoid big file copies while you play.';
   if (MODELS[model].jack && a.output === 'jack35') el('li', {}, notes).textContent = 'The jack uses the hardware PWM channels, so dimmable LEDs switch to software PWM.';
+
+  if (al) {
+    // everything the Pi can play to or record from, with the ones in use marked
+    const lc = card(left, 'Audio devices on this Pi', 'Every sound card the Pi sees right now. Plug in a device and open this page again to see it.');
+    const t = el('table', { class: 'pi-table compact', 'data-ctl': 'audio-list' }, lc);
+    const tb = el('tbody', {}, t);
+    const byId = new Map();
+    for (const d of al.inputs) byId.set(d.id, Object.assign({ in: true }, d));
+    for (const d of al.outputs) byId.set(d.id, Object.assign(byId.get(d.id) || {}, d, { out: true }));
+    if (!byId.size) el('tr', {}, tb, '<td>No sound cards found.</td>');
+    for (const d of byId.values()) {
+      const tr = el('tr', { 'data-dev': d.id }, tb);
+      el('td', {}, tr).textContent = d.name;
+      el('td', { class: 'dim' }, tr).textContent = d.id.replace(/^hw:/, '');
+      el('td', {}, tr).textContent = [d.in && 'in', d.out && 'out'].filter(Boolean).join(' + ');
+      const use = [d.id === al.input && 'input', d.id === al.output && 'output'].filter(Boolean);
+      el('td', { class: use.length ? 'ok' : 'dim' }, tr).textContent = use.length ? 'in use as ' + use.join(' and ') : '';
+    }
+  }
 
   const st = card(left, 'Engine', null);
   field(st, 'Sample rate');
@@ -61,8 +97,8 @@ export function renderAudio(main, ctx) {
   const tb = el('tbody', {}, t);
   for (const [k, v] of lat.parts) { const tr = el('tr', {}, tb); el('td', {}, tr).textContent = k; el('td', { class: 'num' }, tr).textContent = v.toFixed(1) + ' ms'; }
   if (lat.split) el('p', { class: 'pi-warn' }, lc).textContent = 'Input and output are two devices with their own clocks. The engine resamples one side to keep them in sync: a bit more latency and CPU. One device for both is best.';
-  if (audioDevice(a.output).id === 'hdmi') el('p', { class: 'pi-warn' }, lc).textContent = 'HDMI audio adds a lot of latency. Use it for listening only.';
-  if (audioDevice(a.input).kind === 'aux') el('p', { class: 'pi-warn' }, lc).textContent = 'USB audio adapters expect mic or line level. Put a boost, buffer pedal or DI box before it for a full guitar sound.';
+  if ((audioDevice(a.output) || {}).id === 'hdmi') el('p', { class: 'pi-warn' }, lc).textContent = 'HDMI audio adds a lot of latency. Use it for listening only.';
+  if ((audioDevice(a.input) || {}).kind === 'aux') el('p', { class: 'pi-warn' }, lc).textContent = 'USB audio adapters expect mic or line level. Put a boost, buffer pedal or DI box before it for a full guitar sound.';
 
   const lv = card(right, 'Levels', null);
   const mi = meter(lv, 42, 'ok', 'Input');

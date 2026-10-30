@@ -24,7 +24,7 @@
 // Older designs (v2: a list of stages) are migrated on load (circuit-migrate.js), old 'knob' inputs become
 // analog or binary inputs (migrateGraph).
 import { clamp } from '../util.js';
-import { xyControls } from './factory-kinds.js';
+import { xyControls, encSteps } from './factory-kinds.js';
 import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, LIM, ioNodes, nid, clone, val, portKind, graphCat, graphCost, graphNames, hasTap, migrateGraph, newNode } from './circuit-parts.js';
 import {
   CIRCUITS, circuitById, makeCircuit, newStage, stageParam, v2TargetsFor, v2TargetInfo, v2MapTo, v2AutoMap, autoMapWith, stagesToGraph,
@@ -468,6 +468,15 @@ function slotFor(p, v, w, src) {
   }
   return s;
 }
+/** Circuit inputs a screen output drives: '<inst>.<input>' -> glide ms (the output's p.glide, default 15). */
+export function screenGlide(D) {
+  const out = new Map();
+  for (const c of D.ctls || []) {
+    if (c.kind !== 'screen' || !c.sio) continue;
+    for (const p of (c.sio.outs || []).slice(0, SCREEN_PORTS)) for (const m of (p && p.maps) || []) if (m && m.to) out.set(m.to, Math.max(out.get(m.to) || 0, clamp(p.glide ?? 15, 0, 2000)));
+  }
+  return out;
+}
 /** One engine 'patch' node (its opts) for the whole pedal. */
 export function compilePatch(D) {
   const C = D.circuit;
@@ -475,18 +484,20 @@ export function compilePatch(D) {
   const E = { params: [], nodes: [], edges: [], outs: [] };
   const addParam = (name, def, min, max) => E.params.push({ name, def, min, max }) - 1;
   const add = (n) => E.nodes.push(n) - 1;
-  const ain = J.ins.map((_, i) => add({ k: 'ain', idx: i }));
+  // jk: the jack a node stands for, so the engine can analyse it for a screen script (scope)
+  const ain = J.ins.map((j, i) => add({ k: 'ain', idx: i, jk: j.id }));
   const ew = effectiveWires(D);
   const outJack = (w) => J.outs.indexOf(resolveJack(J, w.b.n.slice(5), 'out'));
   // a PHONES jack wired L and R on their own gets an engine output per side
   const split = J.outs.map((j, i) => j.kind === 'phones' && ew.some((w) => w.b.n.startsWith('jack:') && outJack(w) === i && (w.b.p === 'L' || w.b.p === 'R')));
-  const aout = J.outs.map((_, i) => add({ k: 'aout', idx: i }));
+  const aout = J.outs.map((j, i) => add({ k: 'aout', idx: i, jk: j.id }));
   const aoutR = J.outs.map((_, i) => (split[i] ? add({ k: 'aout', idx: J.outs.length + i }) : aout[i]));
   const maps = new Map();
   const outsList = circuitOutputs(D);
   const outIdx = new Map(outsList.map((o) => [o.key, o.idx]));
   const fedIns = new Set((C.cwires || []).map((w) => outKey(w.b)));
   const coutNode = new Map(); // '<inst>.<node>' -> engine node
+  const glide = screenGlide(D);
   C.insts.forEach((inst, gi) => {
     const G = inst.graph;
     const by = new Map(G.nodes.map((n) => [n.id, n]));
@@ -509,6 +520,8 @@ export function compilePatch(D) {
         const pn = { k: 'param', pi: addParam(inst.id + '.' + n.id, clamp(n.def ?? info.def, lo, hi), lo, hi) };
         // fed by another circuit's output: the wire wins over the param
         if (fedIns.has(inst.id + '.' + n.id)) pn.slots = [{ p: 'in', def: 0, lo: -LIM, hi: LIM, raw: true }];
+        // set by a screen script once per frame: the engine glides to each new value
+        else if (glide.has(inst.id + '.' + n.id) && nodeSig(n) === 'n' && !(n.steps >= 2) && glide.get(inst.id + '.' + n.id) > 0) pn.sm = glide.get(inst.id + '.' + n.id);
         idx.set(n.id, add(pn));
       } else if (pt.io === 'cout') {
         const ni = add({ k: 'cout', idx: outIdx.get(inst.id + '.' + n.id) ?? 0, slots: [{ p: 'in', def: 0, lo: -LIM, hi: LIM, raw: true }] });
@@ -526,8 +539,11 @@ export function compilePatch(D) {
           } else fixed[p.key] = v;
         }
         let en;
-        if (pt.native) en = { k: pt.native, slots };
-        else {
+        if (pt.native) {
+          en = { k: pt.native, slots };
+          // a script audio input: found by its label or the circuit's name
+          if (n.t === 'scriptin') Object.assign(en, { sn: n.label || '', sni: inst.name || '' });
+        } else {
           const st = STAGES[n.t];
           const opts = Object.assign({}, st.opts || {});
           if (n.voice && st.algo === 'drive') opts.clip = n.voice;
@@ -786,7 +802,7 @@ export function designToDef(design, o = {}) {
       if (isEnc(c)) {
         // encoders: CW / CCW pulses and a step count next to the position (circuit-links.js)
         const rel = c.encMode === 'relative';
-        encoders.push({ p: key, cw: key + '.cw', ccw: key + '.ccw', n: key + '.n', def: v0, wrap: c.encMode !== 'clamp' });
+        encoders.push({ p: key, cw: key + '.cw', ccw: key + '.ccw', n: key + '.n', def: v0, wrap: c.encMode !== 'clamp', steps: encSteps(c) });
         if (rel) addMaps(key + '.n', 0, 0, list.map((m) => ({ ...m, raw: true })));
         else addMaps(key, 0, v0, list);
         for (const sw of ['cw', 'ccw']) addMaps(key + '.' + sw, 2, 0, (c.smore || []).filter((m) => m && m.sw === sw));
@@ -864,7 +880,7 @@ export function designToDef(design, o = {}) {
     x.part = c.part;
     if (c.part === 'lever' || c.part === 'pad') x.spring = true;
     if (c.part === 'arcade') x.momentary = true;
-    if (c.part === 'encoder') x.endless = c.encMode !== 'clamp';
+    if (c.part === 'encoder') Object.assign(x, { endless: c.encMode !== 'clamp', steps: encSteps(c) }); // detent steps a turn
   }
   // expression jacks: move a control (j.drive) or drive circuit inputs directly (j.maps)
   const ctrlIns = [], ctrlOuts = [];
@@ -1004,10 +1020,31 @@ export function designToDef(design, o = {}) {
   if (split) def.loopSplit = split;
   if (couts.length) def.couts = couts.map((x) => ({ key: x.key, name: x.name, sig: x.sig, idx: x.idx, min: x.min, max: x.max }));
   if (Object.keys(screenIO).length) def.screenIO = screenIO;
+  const sa = scriptAudio(D, ins, outs, ports);
+  if (sa) def.scriptAudio = sa;
   if (plinks.length) def.plinks = plinks;
   if (encoders.length) def.encoders = encoders;
   if (o.hidden) def.hidden = true;
   return def;
+}
+
+/**
+ * What a screen script can reach in the engine (only for pedals with a screen):
+ *   jacks: [{key, dir: 'in' | 'out', label, role: 'send' | 'return' | null}]   status scope[key] (the 'scope' command)
+ *   samplers: [{inst, node, name, slot}]                                         the 'sample' command fills a slot
+ *   gens: [{inst, node, t, name}]                                                Script osc / noise / envelope / gain parts
+ */
+function scriptAudio(D, ins, outs, ports) {
+  if (!D.ctls.some((c) => c.kind === 'screen')) return null;
+  const jacks = [...ins.map((j, i) => ({ key: j.id, dir: 'in', label: ports.ins[i], role: loopRole(j) })), ...outs.map((j, i) => ({ key: j.id, dir: 'out', label: ports.outs[i], role: loopRole(j) }))];
+  const samplers = [], gens = [];
+  for (const inst of D.circuit.insts || [])
+    for (const n of inst.graph.nodes) {
+      const nm = (inst.name || 'Circuit') + ': ' + (n.label || PARTS[n.t]?.name || n.t);
+      if (n.t === 'sampler') samplers.push({ inst: inst.id, node: n.id, name: nm, slot: clamp(Math.round(val(n, PARTS.sampler.params[0])), 1, 8) });
+      else if (PARTS[n.t]?.group === 'script') gens.push({ inst: inst.id, node: n.id, t: n.t, name: nm });
+    }
+  return { jacks, samplers, gens };
 }
 
 // an LED driven by circuit output co: ledFn(ui, block, status) -> true | colour | null

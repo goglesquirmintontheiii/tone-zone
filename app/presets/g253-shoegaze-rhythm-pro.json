@@ -12,17 +12,24 @@
  "order": 353,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.tuner",
-   "x": -150,
-   "y": 39,
+   "x": -229,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "ehx.bigmuff",
-   "x": -456,
-   "y": 5,
+   "x": -632,
+   "y": 6,
    "params": {
     "level": 0.5,
     "tone": 0.45,
@@ -43,8 +50,8 @@
   {
    "id": "b3",
    "type": "tz.warble",
-   "x": -742,
-   "y": 23,
+   "x": -1102,
+   "y": 38,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -52,8 +59,8 @@
   {
    "id": "b4",
    "type": "amp.ac30",
-   "x": -1232,
-   "y": 0,
+   "x": -964,
+   "y": -500,
    "params": {
     "gain": 0.4,
     "treble": 0.5,
@@ -67,8 +74,8 @@
   {
    "id": "b5",
    "type": "cab.2x12blue",
-   "x": -1702,
-   "y": 34,
+   "x": -1444,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -89,8 +96,8 @@
   {
    "id": "b6",
    "type": "ehx.memorytoy",
-   "x": -1912,
-   "y": 47,
+   "x": -1424,
+   "y": 62,
    "params": {
     "mix": 0.4,
     "feedback": 0.5775,
@@ -102,8 +109,8 @@
   {
    "id": "b7",
    "type": "eqd.afterneath",
-   "x": -2106,
-   "y": 46,
+   "x": -1656,
+   "y": 76,
    "params": {
     "decay": 0.7,
     "mix": 0.5,
@@ -115,8 +122,8 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -2306,
-   "y": 30,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -124,8 +131,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2546,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

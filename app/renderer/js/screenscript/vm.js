@@ -39,6 +39,10 @@ export class VM {
   start(steps = 1e6, ms = 60) {
     return this.run(this.main, [], steps, ms);
   }
+  /** Compile another file into this program (same globals and budget), for require. Throws a syntax ScriptError. */
+  compileFile(src, file) {
+    return compile(src, this.R, file);
+  }
   has(name) {
     return typeof this.G.get(name) === 'function';
   }

@@ -13,17 +13,24 @@
  "order": 307,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 19,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3",
-   "x": -146,
-   "y": 0,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "ib.ts808",
-   "x": -366,
-   "y": 4,
+   "x": -469,
+   "y": 55,
    "params": {
     "gain": 0.15,
     "tone": 0.55,
@@ -44,8 +51,8 @@
   {
    "id": "b3",
    "type": "tz.hush",
-   "x": -586,
-   "y": 17.5,
+   "x": -709,
+   "y": 69,
    "params": {
     "threshold": 0.3,
     "decay": 0.3
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "mx.m101",
-   "x": -784,
-   "y": 18,
+   "x": -938,
+   "y": 69,
    "params": {
     "rate": 0.3
    },
@@ -67,8 +74,8 @@
   {
    "id": "b5",
    "type": "box.split2",
-   "x": -950,
-   "y": 71,
+   "x": -1162,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -76,8 +83,8 @@
   {
    "id": "b6",
    "type": "amp.plexi",
-   "x": -1422,
-   "y": 348,
+   "x": -716,
+   "y": -804,
    "params": {
     "gain": 0.9,
     "master": 0.6,
@@ -93,8 +100,8 @@
   {
    "id": "b7",
    "type": "cab.4x12gb",
-   "x": -1430,
-   "y": 562,
+   "x": -724,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -115,8 +122,8 @@
   {
    "id": "b8",
    "type": "amp.ac30",
-   "x": -1410,
-   "y": 1072,
+   "x": -1224,
+   "y": -500,
    "params": {
     "gain": 0.62,
     "treble": 0.55,
@@ -130,8 +137,8 @@
   {
    "id": "b9",
    "type": "cab.2x12blue",
-   "x": -1880,
-   "y": 1106,
+   "x": -1704,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -152,8 +159,8 @@
   {
    "id": "b10",
    "type": "tz.reverb",
-   "x": -1672,
-   "y": 1492,
+   "x": -1575,
+   "y": 26,
    "params": {
     "mode": 0,
     "decay": 0.2,
@@ -165,8 +172,8 @@
   {
    "id": "b11",
    "type": "tz.meter",
-   "x": -1872,
-   "y": 1507,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -174,8 +181,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2120,
-   "y": 19,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

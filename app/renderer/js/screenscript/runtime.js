@@ -1,7 +1,9 @@
 // A running screen: one script, one canvas, one host. Draws a frame on request and takes pointer and key input.
 // Everything a script can call lives here (drawing, widgets, input, time, controls, circuit signals, storage).
 import { VM, ScriptError } from './vm.js';
-import { LTable, tostr, truthy } from './lang.js';
+import { LTable, Multi, tostr, truthy } from './lang.js';
+import { checkPath, textBytes, bytesText, bytesBin, binBytes, FILE_BUDGET } from './files.js';
+import { packBin, unpackBin, sizeBin } from './binfmt.js';
 import { makeTable, toJS, toScript } from './stdlib.js';
 import { PIXEL_FONT, PIXEL_W, PIXEL_H, PIXEL_ADV, SEG7, ICONS } from './font.js';
 
@@ -98,6 +100,7 @@ export class ScreenRuntime {
     this.canvas = o.canvas || document.createElement('canvas');
     this.canvas.width = this.W;
     this.canvas.height = this.H;
+    this.k = 1; // backing pixels per screen pixel: below 1 on the board when the screen is small on screen
     this.g = this.canvas.getContext('2d', o.readBack ? { willReadFrequently: true } : undefined);
     this.palName = o.palette || 'oled';
     this.pal = { ...(PALETTES[this.palName] || PALETTES.oled) };
@@ -143,7 +146,7 @@ export class ScreenRuntime {
   }
   fail(e) {
     const err = e instanceof ScriptError ? e : new ScriptError(String((e && e.message) || e), 0);
-    this.error = { message: err.message, line: err.line || 0, kind: err.kind || 'runtime' };
+    this.error = { message: err.message, line: err.line || 0, kind: err.kind || 'runtime', file: err.file || '' };
     if (this.o.onError) this.o.onError(this.error);
     this.drawError();
   }
@@ -164,15 +167,42 @@ export class ScreenRuntime {
       this.g.fillStyle = this.pal.bg;
       this.g.fillRect(0, 0, this.W, this.H);
       if (this.host) this.host.beginFrame(now);
+      if (this.host && this.host.audio) this.host.audio.reset(); // generators of an earlier run of this screen
       this.vm.start(SETUP_STEPS, SETUP_MS);
       if (this.vm.has('setup')) this.vm.call('setup', [], SETUP_STEPS, SETUP_MS);
     } catch (e) {
       this.fail(e);
     }
   }
+  /** Draw at a lower (or full) resolution. Scripts keep their W x H coordinates; only the canvas behind them shrinks. */
+  setScale(k) {
+    k = Math.max(0.05, Math.min(1, +k || 1));
+    const w = Math.max(4, Math.round(this.W * k)), h = Math.max(4, Math.round(this.H * k));
+    if (w === this.canvas.width && h === this.canvas.height) return false;
+    // keep the picture: scripts that only draw what changed would otherwise go blank until they redraw
+    let old = null;
+    try {
+      old = document.createElement('canvas');
+      old.width = this.canvas.width;
+      old.height = this.canvas.height;
+      old.getContext('2d').drawImage(this.canvas, 0, 0);
+    } catch (_) {
+      old = null;
+    }
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.k = k;
+    if (old) {
+      this.g.setTransform(1, 0, 0, 1, 0, 0);
+      this.g.imageSmoothingEnabled = true;
+      this.g.drawImage(old, 0, 0, w, h);
+    }
+    this.resetDraw();
+    return true;
+  }
   resetDraw() {
     const g = this.g;
-    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.setTransform(this.k, 0, 0, this.k, 0, 0);
     g.globalAlpha = 1;
     g.shadowBlur = 0;
     g.imageSmoothingEnabled = true;
@@ -332,11 +362,12 @@ export class ScreenRuntime {
       this.vm.run(h.fn, [makeTable(data)], EVENT_STEPS, EVENT_MS);
     } catch (e) {
       const line = (e && e.line) || 0;
-      const msg = `on("${h.event}") handler${line ? ', line ' + line : ''}: ${(e && e.message) || e}`;
+      const file = (e && e.file) || '';
+      const msg = `on("${h.event}") handler${line ? (file ? ', ' + file + ' line ' : ', line ') + line : ''}: ${(e && e.message) || e}`;
       if (this.handlerError && this.handlerError.message === msg) this.handlerError.t = this.now;
       else {
         this.log('Error in ' + msg);
-        this.handlerError = { message: msg, line, kind: 'handler', t: this.now };
+        this.handlerError = { message: msg, line, file, kind: 'handler', t: this.now };
       }
     }
   }
@@ -415,6 +446,15 @@ export class ScreenRuntime {
     }
     return false;
   }
+  /** The screen goes away: stop its sounds and save its files now. */
+  stop() {
+    try {
+      if (this.host && this.host.audio) this.host.audio.reset();
+      if (this.host && this.host.files) this.host.files.flush();
+    } catch (_) {
+      /* nothing to stop */
+    }
+  }
   wantsKeys() {
     return !this.error && (!!this.focus || (this.vm && this.vm.has('onKey')) || this.handlers.some((h) => h.event === 'key' && !h.dead));
   }
@@ -435,7 +475,8 @@ export class ScreenRuntime {
       g.fillRect(0, 0, this.W, this.H);
       g.fillStyle = '#ff4d5e';
       g.fillRect(0, 0, this.W, 9);
-      this.pixelText(this.error.line ? `ERROR LINE ${this.error.line}` : 'SCRIPT ERROR', 2, 1, '#2a0608', 1);
+      const at = this.error.file ? `${this.error.file.toUpperCase()}:${this.error.line}` : `LINE ${this.error.line}`;
+      this.pixelText(this.error.line ? `ERROR ${at}` : 'SCRIPT ERROR', 2, 1, '#2a0608', 1);
       const words = this.error.message.split(/\s+/);
       const per = Math.max(4, Math.floor((this.W - 4) / PIXEL_ADV));
       const lines = [];
@@ -736,7 +777,7 @@ export class ScreenRuntime {
     def('clear', (c) => {
       const gg = g();
       gg.save();
-      gg.setTransform(1, 0, 0, 1, 0, 0);
+      gg.setTransform(this.k, 0, 0, this.k, 0, 0);
       gg.globalAlpha = 1;
       gg.shadowBlur = 0;
       gg.fillStyle = this.col(c, this.pal.bg);
@@ -1300,6 +1341,304 @@ export class ScreenRuntime {
     });
     def('off', (t) => offH(this.handlers.find((h) => h.table === t)));
     def('events', () => makeTable(EVENTS));
+
+    // ---- code files: require("name") runs another file of the pedal once and gives what it returns
+    const modules = new Map(); // path -> value
+    const loading = [];
+    def('require', (name) => {
+      if (typeof name !== 'string') throw new Error('require: give the name of a code file, like require("util")');
+      const h = H();
+      const n = name.trim();
+      const tries = /\.lua$/i.test(n) ? [n] : [n + '.lua', n.replace(/\./g, '/') + '.lua'];
+      let path = null, text = null;
+      for (const t of tries) {
+        const c = h && h.codeFile ? h.codeFile(t) : null;
+        if (c !== null && c !== undefined) {
+          path = t;
+          text = c;
+          break;
+        }
+      }
+      if (path === null) {
+        const have = h && h.codeFiles ? h.codeFiles() : [];
+        throw new Error(`require: there is no code file "${tries[0]}"` + (have.length ? ` (code files: ${have.join(', ')})` : ' (add code files in the code editor)'));
+      }
+      if (modules.has(path)) return modules.get(path);
+      if (loading.includes(path)) throw new Error(`require: ${[...loading, path].join(' needs ')}: files can not require each other in a loop`);
+      loading.push(path);
+      try {
+        const fn = this.vm.compileFile(text, path);
+        const r = fn();
+        const v = r instanceof Multi ? r.v[0] : r;
+        const out = v === undefined ? true : v;
+        modules.set(path, out);
+        return out;
+      } finally {
+        loading.pop();
+      }
+    }, 5);
+
+    // ---- files: the pedal's own store, shared by its screens (1 MB for everything)
+    const FS = () => {
+      const f = H() && H().files;
+      if (!f) throw new Error('fs: there are no files here');
+      return f;
+    };
+    const cost = (n) => (R.steps -= n >> 8);
+    const fsT = new LTable();
+    vm.set('fs', fsT);
+    const fdef = (name, fn) => fsT.set(name, (...a) => { R.steps -= 2; return fn(...a); });
+    const FP = (p, fn, dir) => checkPath(p, 'fs.' + fn, dir);
+    const textArg = (s, fn) => {
+      if (typeof s === 'string' || typeof s === 'number') return tostr(s);
+      throw new Error(`fs.${fn}: the second argument is the text to write`);
+    };
+    const bytesArg = (d, fn) => {
+      if (typeof d === 'string') return binBytes(d, 'fs.' + fn);
+      if (d instanceof LTable) {
+        const n = d.len();
+        const u8 = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+          const v = d.a[i];
+          if (typeof v !== 'number' || v < 0 || v > 255 || v !== Math.floor(v)) throw new Error(`fs.${fn}: item ${i + 1} should be a whole number from 0 to 255, got ${tostr(v)}`);
+          u8[i] = v;
+        }
+        return u8;
+      }
+      throw new Error(`fs.${fn}: give the bytes as a list of numbers (0 to 255) or a byte string`);
+    };
+    fdef('read', (p) => {
+      const u8 = FS().read(FP(p, 'read'));
+      if (!u8) return undefined;
+      cost(u8.length);
+      return bytesText(u8);
+    });
+    fdef('write', (p, s) => {
+      const u8 = textBytes(textArg(s, 'write'));
+      cost(u8.length);
+      return FS().write(FP(p, 'write'), u8, 'fs.write');
+    });
+    fdef('append', (p, s) => {
+      const u8 = textBytes(textArg(s, 'append'));
+      cost(u8.length);
+      return FS().append(FP(p, 'append'), u8, 'fs.append');
+    });
+    fdef('readBytes', (p) => {
+      const u8 = FS().read(FP(p, 'readBytes'));
+      if (!u8) return undefined;
+      R.steps -= u8.length >> 4;
+      const t = new LTable();
+      t.a = Array.from(u8);
+      return t;
+    });
+    fdef('readBin', (p) => {
+      const u8 = FS().read(FP(p, 'readBin'));
+      if (!u8) return undefined;
+      cost(u8.length);
+      return bytesBin(u8);
+    });
+    fdef('writeBytes', (p, d) => {
+      const u8 = bytesArg(d, 'writeBytes');
+      cost(u8.length);
+      return FS().write(FP(p, 'writeBytes'), u8, 'fs.writeBytes');
+    });
+    fdef('appendBytes', (p, d) => {
+      const u8 = bytesArg(d, 'appendBytes');
+      cost(u8.length);
+      return FS().append(FP(p, 'appendBytes'), u8, 'fs.appendBytes');
+    });
+    fdef('exists', (p) => {
+      const q = FP(p, 'exists', true);
+      return FS().has(q) || FS().isDir(q);
+    });
+    fdef('isDir', (p) => FS().isDir(FP(p, 'isDir', true)));
+    fdef('remove', (p) => FS().remove(FP(p, 'remove'), 'fs.remove'));
+    fdef('rename', (a, b) => FS().rename(FP(a, 'rename'), FP(b, 'rename'), 'fs.rename'));
+    fdef('mkdir', (p) => FS().mkdir(FP(p, 'mkdir'), 'fs.mkdir'));
+    fdef('list', (d) => {
+      const q = FP(d ?? '', 'list', true);
+      R.steps -= 8;
+      return makeTable(FS().isDir(q) ? FS().list(q) : []);
+    });
+    fdef('size', (p) => FS().size(FP(p, 'size')) ?? undefined);
+    fdef('used', () => FS().used());
+    fdef('free', () => FS().free());
+    fdef('budget', () => FILE_BUDGET);
+
+    // ---- binary data: byte strings (one character per byte, 0 to 255)
+    const binT = new LTable();
+    vm.set('bin', binT);
+    const bdef = (name, fn) => binT.set(name, (...a) => { R.steps -= 2; return fn(...a); });
+    bdef('pack', (fmt, ...vals) => {
+      const s = packBin(tostr(fmt), vals.map((v) => (v instanceof LTable ? v : v)));
+      cost(s.length);
+      return s;
+    });
+    bdef('unpack', (fmt, s, pos) => {
+      if (typeof s !== 'string') throw new Error('bin.unpack: the second argument is a byte string (from fs.readBin or bin.pack)');
+      const out = unpackBin(tostr(fmt), s, pos === undefined ? 1 : num(pos, 1));
+      R.steps -= out.length;
+      return new Multi(out);
+    });
+    bdef('size', (fmt) => sizeBin(tostr(fmt)));
+    bdef('bytes', (s, i, j) => {
+      if (typeof s !== 'string') throw new Error('bin.bytes: give a byte string');
+      const a = Math.max(1, num(i, 1)), b = Math.min(s.length, j === undefined ? s.length : num(j, s.length));
+      R.steps -= (b - a) >> 4;
+      const t = new LTable();
+      for (let k = a; k <= b; k++) t.a.push(s.charCodeAt(k - 1) & 255);
+      return t;
+    });
+    bdef('str', (t) => {
+      if (!(t instanceof LTable)) throw new Error('bin.str: give a list of numbers from 0 to 255');
+      R.steps -= t.len() >> 4;
+      return bytesBin(bytesArg(t, 'str'));
+    });
+    bdef('hex', (s, sep = ' ') => {
+      if (typeof s !== 'string') throw new Error('bin.hex: give a byte string');
+      cost(s.length * 4);
+      return Array.from(s.slice(0, 4096), (c) => (c.charCodeAt(0) & 255).toString(16).padStart(2, '0')).join(tostr(sep));
+    });
+    bdef('utf8', (s) => bytesBin(textBytes(tostr(s))));
+    bdef('text', (s) => bytesText(binBytes(tostr(s), 'bin.text')));
+
+    // ---- audio: analysis of the pedal's jacks, and engine side generators, buffers and processors
+    const AU = () => {
+      const a = H() && H().audio;
+      if (!a) throw new Error('audio: there is no audio here');
+      return a;
+    };
+    const auT = new LTable();
+    vm.set('audio', auT);
+    const adef = (name, fn) => auT.set(name, (...a) => { R.steps -= 4; return fn(...a); });
+    const jackName = (j) => (j === undefined || j === null ? undefined : tostr(j));
+    const AN = (j, bands, wave) => {
+      const r = AU().analysis(jackName(j), { bands, wave });
+      if (!r) throw new Error(`audio: there is no audio jack "${tostr(j)}" (jacks: ${AU().jacks().map((x) => x.name).join(', ')})`);
+      return r;
+    };
+    const onsetSeen = new Map();
+    adef('jacks', () => makeTable(AU().jacks().map((j) => j.name)));
+    adef('ready', () => AU().ready());
+    adef('level', (j) => AN(j).rms || 0);
+    adef('peak', (j) => AN(j).peak || 0);
+    adef('pitch', (j) => AN(j).pitch || 0);
+    adef('onset', (j) => {
+      const r = AN(j);
+      const k = tostr(j ?? 'in').toLowerCase();
+      const was = onsetSeen.get(k);
+      // true in the frame where the counter moved (every call in that frame)
+      if (was && was.f === this.frameN) return was.hit;
+      const hit = !!was && r.onset !== was.n;
+      onsetSeen.set(k, { n: r.onset, f: this.frameN, hit });
+      return hit;
+    });
+    adef('spectrum', (j, n) => {
+      const r = AN(j, n === undefined ? 32 : num(n, 32));
+      R.steps -= (r.bands || []).length;
+      const t = new LTable();
+      t.a = Array.from(r.bands || []);
+      return t;
+    });
+    adef('wave', (j, n) => {
+      const r = AN(j, undefined, n === undefined ? 128 : num(n, 128));
+      R.steps -= (r.wave || []).length >> 2;
+      const t = new LTable();
+      t.a = Array.from(r.wave || []);
+      return t;
+    });
+    adef('analysis', (j, bands, n) => {
+      const r = AN(j, bands === undefined ? 32 : num(bands, 32), n === undefined ? 128 : num(n, 128));
+      const k = tostr(j ?? 'in').toLowerCase();
+      const was = onsetSeen.get(k);
+      const hit = was && was.f === this.frameN ? was.hit : !!was && r.onset !== was.n;
+      if (!was || was.f !== this.frameN) onsetSeen.set(k, { n: r.onset, f: this.frameN, hit });
+      return makeTable({ rms: r.rms || 0, peak: r.peak || 0, pitch: r.pitch || 0, onset: hit, onsets: r.onset || 0, bands: Array.from(r.bands || []), wave: Array.from(r.wave || []) });
+    });
+    // generator params from a script table, checked and kept within range
+    const genState = new Map(); // id -> params last given
+    const NUMS = { freq: [0, 20000], amp: [0, 1], pw: [0.01, 0.99], attack: [0, 10], decay: [0, 10], release: [0, 10], sustain: [0, 1], rate: [0.01, 8], start: [0, 1], pan: [-1, 1], gain: [0, 8], q: [0.1, 20], amount: [0, 1], mix: [0, 1] };
+    const genParams = (t, base, fn) => {
+      const p = { ...(base || {}) };
+      if (t !== undefined && !(t instanceof LTable)) throw new Error(`audio.${fn}: the settings are a table, like {type = "saw", freq = 110, amp = 0.3}`);
+      if (t) for (const k of t.keys()) {
+        const v = t.get(k);
+        if (NUMS[k]) p[k] = clamp(num(v, 0), NUMS[k][0], NUMS[k][1]);
+        else if (k === 'type') p.type = tostr(v);
+        else if (k === 'gate' || k === 'loop') p[k] = truthy(v);
+        else if (k === 'trig') p.trig = num(v, 0);
+        else if (k === 'to' || k === 'jack') p[k] = AU().target(tostr(v));
+        else if (k === 'buffer') p.buffer = AU().bufferKey(tostr(v));
+        else throw new Error(`audio.${fn}: there is no setting "${tostr(k)}"`);
+      }
+      return p;
+    };
+    const idArg = (id, fn) => {
+      if (typeof id !== 'string' && typeof id !== 'number') throw new Error(`audio.${fn}: the first argument is a name for the sound, like "bass"`);
+      return tostr(id);
+    };
+    const sendGen = (id, p, fn) => {
+      if (!p.type) p.type = 'sine';
+      if (!p.to) p.to = AU().target();
+      genState.set(id, p);
+      try {
+        return AU().gen(id, p);
+      } catch (e) {
+        throw new Error(`audio.${fn}: ${e.message.replace(/^audio[.\w]*: /, '')}`);
+      }
+    };
+    adef('gen', (id, t) => {
+      const k = idArg(id, 'gen');
+      return sendGen(k, genParams(t, genState.get(k), 'gen'), 'gen');
+    });
+    adef('note', (id, freq, amp) => {
+      const k = idArg(id, 'note');
+      const p = { ...(genState.get(k) || {}), gate: true, trig: ((genState.get(k) || {}).trig || 0) + 1 };
+      if (freq !== undefined) p.freq = clamp(num(freq, 220), 0, 20000);
+      if (amp !== undefined) p.amp = clamp(num(amp, 0.5), 0, 1);
+      return sendGen(k, p, 'note');
+    });
+    adef('release', (id) => {
+      const k = idArg(id, 'release');
+      if (!genState.has(k)) return false;
+      return sendGen(k, { ...genState.get(k), gate: false }, 'release');
+    });
+    adef('play', (id, buf, t) => {
+      const k = idArg(id, 'play');
+      const p = genParams(t, genState.get(k), 'play');
+      p.type = 'sample';
+      p.buffer = AU().bufferKey(tostr(buf));
+      p.trig = ((genState.get(k) || {}).trig || 0) + 1;
+      return sendGen(k, p, 'play');
+    });
+    adef('stop', (id) => {
+      const k = idArg(id, 'stop');
+      genState.delete(k);
+      return AU().stop(k);
+    });
+    adef('buffer', (id, samples, rate) => {
+      const k = idArg(id, 'buffer');
+      if (!(samples instanceof LTable)) throw new Error('audio.buffer: give the samples as a list of numbers from -1 to 1');
+      const n = samples.len();
+      R.steps -= n >> 4;
+      const x = new Float32Array(n);
+      for (let i = 0; i < n; i++) x[i] = clamp(num(samples.a[i], 0), -1, 1);
+      try {
+        return AU().buffer(k, x, clamp(num(rate, 48000), 1000, 192000));
+      } catch (e) {
+        throw new Error(e.message);
+      }
+    });
+    adef('fx', (id, t) => {
+      const k = idArg(id, 'fx');
+      const p = genParams(t, null, 'fx');
+      if (!p.jack) p.jack = AU().target('out');
+      try {
+        return AU().fx(k, p);
+      } catch (e) {
+        throw new Error(e.message);
+      }
+    });
 
     // ---- state that is saved with the preset
     def('save', (key, v) => {

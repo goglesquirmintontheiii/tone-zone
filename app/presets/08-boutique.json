@@ -1,188 +1,195 @@
 {
-  "version": 1,
-  "name": "Boutique Board",
-  "blocks": [
-    {
-      "id": "b80",
-      "type": "sy.fairfax",
-      "x": -128,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b81",
-      "type": "sy.riverside",
-      "x": -422,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b82",
-      "type": "amp.ac30",
-      "x": -952,
-      "y": 0,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b83",
-      "type": "cab.2x12blue",
-      "x": -1422,
-      "y": 120,
-      "params": {
-        "level": -5.2
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b84",
-      "type": "sy.elcap",
-      "x": -1716,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "stereo"
-    },
-    {
-      "id": "b85",
-      "type": "sy.bluesky",
-      "x": -2010,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "stereo"
-    },
-    {
-      "id": "__in",
-      "type": "__in",
-      "x": 120,
-      "y": 120,
-      "params": {}
-    },
-    {
-      "id": "__out",
-      "type": "__out",
-      "x": -2250,
-      "y": 120,
-      "params": {}
-    }
-  ],
-  "cables": [
-    {
-      "id": "c86",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b80",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c87",
-      "from": {
-        "node": "b80",
-        "port": 0
-      },
-      "to": {
-        "node": "b81",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c88",
-      "from": {
-        "node": "b81",
-        "port": 0
-      },
-      "to": {
-        "node": "b82",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
-      "id": "c89",
-      "from": {
-        "node": "b82",
-        "port": 0
-      },
-      "to": {
-        "node": "b83",
-        "port": 0
-      },
-      "color": "#2ecc71"
-    },
-    {
-      "id": "c90",
-      "from": {
-        "node": "b83",
-        "port": 0
-      },
-      "to": {
-        "node": "b84",
-        "port": 0
-      },
-      "color": "#3498db"
-    },
-    {
-      "id": "c91",
-      "from": {
-        "node": "b84",
-        "port": 0
-      },
-      "to": {
-        "node": "b85",
-        "port": 0
-      },
-      "color": "#6c5ce7"
-    },
-    {
-      "id": "c92",
-      "from": {
-        "node": "b84",
-        "port": 1
-      },
-      "to": {
-        "node": "b85",
-        "port": 1
-      },
-      "color": "#6c5ce7"
-    },
-    {
-      "id": "c93",
-      "from": {
-        "node": "b85",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 0
-      },
-      "color": "#e84393"
-    },
-    {
-      "id": "c94",
-      "from": {
-        "node": "b85",
-        "port": 1
-      },
-      "to": {
-        "node": "__out",
-        "port": 1
-      },
-      "color": "#e84393"
-    }
-  ],
-  "view": null,
-  "factory": true
+ "version": 1,
+ "name": "Boutique Board",
+ "blocks": [
+  {
+   "id": "board1",
+   "type": "pb.tiny",
+   "x": -1028,
+   "y": 0,
+   "params": {}
+  },
+  {
+   "id": "b80",
+   "type": "sy.fairfax",
+   "x": -218,
+   "y": 76,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b81",
+   "type": "sy.riverside",
+   "x": -496,
+   "y": 76,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b82",
+   "type": "amp.ac30",
+   "x": -484,
+   "y": -500,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b83",
+   "type": "cab.2x12blue",
+   "x": -964,
+   "y": -432,
+   "params": {
+    "level": -5.2
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b84",
+   "type": "sy.elcap",
+   "x": -736,
+   "y": 76,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b85",
+   "type": "sy.bluesky",
+   "x": -976,
+   "y": 76,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 90,
+   "y": 70,
+   "params": {}
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1288,
+   "y": 70,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c86",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b80",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c87",
+   "from": {
+    "node": "b80",
+    "port": 0
+   },
+   "to": {
+    "node": "b81",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c88",
+   "from": {
+    "node": "b81",
+    "port": 0
+   },
+   "to": {
+    "node": "b82",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c89",
+   "from": {
+    "node": "b82",
+    "port": 0
+   },
+   "to": {
+    "node": "b83",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c90",
+   "from": {
+    "node": "b83",
+    "port": 0
+   },
+   "to": {
+    "node": "b84",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c91",
+   "from": {
+    "node": "b84",
+    "port": 0
+   },
+   "to": {
+    "node": "b85",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c92",
+   "from": {
+    "node": "b84",
+    "port": 1
+   },
+   "to": {
+    "node": "b85",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c93",
+   "from": {
+    "node": "b85",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c94",
+   "from": {
+    "node": "b85",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e84393"
+  }
+ ],
+ "view": null,
+ "factory": true
 }

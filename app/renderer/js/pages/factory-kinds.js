@@ -31,6 +31,11 @@ export function migrateCtl(c) {
     c.look = 'toggle';
     changed = true;
   }
+  // LED rings with LEDs wired one by one (before the One input / Each LED choice) are Each LED rings
+  if (c.part === 'encoder' && !c.ringIn && c.ringLeds && Object.keys(c.ringLeds).some((k) => /^\d+$/.test(k))) {
+    c.ringIn = 'each';
+    changed = true;
+  }
   // knob skirts used to share the dial's material; now they have their own (null = stock)
   if (c.kind === 'knob' && !c.part && c.skirtMat === undefined) {
     c.skirtMat = c.dialMat ? JSON.parse(JSON.stringify(c.dialMat)) : null;
@@ -46,6 +51,15 @@ export function drawable(c) {
   const x = { ...c };
   migrateCtl(x);
   return x;
+}
+
+// rotary encoders click round in detent steps: c.encSteps a turn (one turn = the value going 0 to 1)
+export const ENC_STEPS_DEF = 24;
+export const encSteps = (c) => Math.max(4, Math.min(64, Math.round((c && c.encSteps) || ENC_STEPS_DEF)));
+/** v snapped to the nearest step (wraps: a value of 1 is 0 again when wrap). */
+export function encSnap(v, steps, wrap) {
+  const q = Math.round(v * steps) / steps;
+  return wrap ? ((q % 1) + 1) % 1 : Math.min(1, Math.max(0, q));
 }
 
 export const XY_LOOKS = [['pad', 'XY pad'], ['glow', 'Glow pad'], ['stick', 'Joystick'], ['thumb', 'Thumbstick']];

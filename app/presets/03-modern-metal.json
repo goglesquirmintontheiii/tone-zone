@@ -1,140 +1,140 @@
 {
-  "version": 1,
-  "name": "Modern Metal (gated)",
-  "blocks": [
-    {
-      "id": "b26",
-      "type": "bx.ns2",
-      "x": -146,
-      "y": 120,
-      "params": {},
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b27",
-      "type": "bx.mt2",
-      "x": -382,
-      "y": 120,
-      "params": {
-        "gain": 0.35,
-        "level": 0.6
-      },
-      "bypass": true,
-      "variant": "mono"
-    },
-    {
-      "id": "b28",
-      "type": "amp.5150",
-      "x": -934,
-      "y": -120,
-      "params": {
-        "gain": 0.7,
-        "master": 0.45
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b29",
-      "type": "cab.4x12v30",
-      "x": -923,
-      "y": 94,
-      "params": {
-        "level": -3.8
-      },
-      "bypass": false,
-      "variant": "stereo"
-    },
-    {
-      "id": "__in",
-      "type": "__in",
-      "x": 120,
-      "y": 120,
-      "params": {}
-    },
-    {
-      "id": "__out",
-      "type": "__out",
-      "x": -1174,
-      "y": 120,
-      "params": {}
-    }
-  ],
-  "cables": [
-    {
-      "id": "c30",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b26",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c31",
-      "from": {
-        "node": "b26",
-        "port": 0
-      },
-      "to": {
-        "node": "b27",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c32",
-      "from": {
-        "node": "b27",
-        "port": 0
-      },
-      "to": {
-        "node": "b28",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
-      "id": "c33",
-      "from": {
-        "node": "b28",
-        "port": 0
-      },
-      "to": {
-        "node": "b29",
-        "port": 0
-      },
-      "color": "#2ecc71"
-    },
-    {
-      "id": "c34",
-      "from": {
-        "node": "b29",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 0
-      },
-      "color": "#3498db"
-    },
-    {
-      "id": "c35",
-      "from": {
-        "node": "b29",
-        "port": 1
-      },
-      "to": {
-        "node": "__out",
-        "port": 1
-      },
-      "color": "#3498db"
-    }
-  ],
-  "view": null,
-  "factory": true
+ "version": 1,
+ "name": "Modern Metal (gated)",
+ "blocks": [
+  {
+   "id": "b26",
+   "type": "bx.ns2",
+   "x": -146,
+   "y": 120,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b27",
+   "type": "bx.mt2",
+   "x": -382,
+   "y": 120,
+   "params": {
+    "gain": 0.35,
+    "level": 0.6
+   },
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b28",
+   "type": "amp.5150",
+   "x": -934,
+   "y": -120,
+   "params": {
+    "gain": 0.7,
+    "master": 0.45
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b29",
+   "type": "cab.4x12v30",
+   "x": -923,
+   "y": 94,
+   "params": {
+    "level": -3.8
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 120,
+   "y": 120,
+   "params": {}
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1174,
+   "y": 120,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c30",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b26",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b26",
+    "port": 0
+   },
+   "to": {
+    "node": "b27",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b27",
+    "port": 0
+   },
+   "to": {
+    "node": "b28",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c33",
+   "from": {
+    "node": "b28",
+    "port": 0
+   },
+   "to": {
+    "node": "b29",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c34",
+   "from": {
+    "node": "b29",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c35",
+   "from": {
+    "node": "b29",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#3498db"
+  }
+ ],
+ "view": null,
+ "factory": true
 }

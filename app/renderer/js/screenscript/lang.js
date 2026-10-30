@@ -640,13 +640,33 @@ const kindWord = (v) => {
   return t === 'nil' ? 'nil' : t === 'table' ? 'a table' : t === 'function' ? 'a function' : t === 'boolean' ? 'a boolean' : t === 'number' ? 'a number' : 'a string';
 };
 
-export function compile(src, R) {
-  const tree = parse(src);
+export function compile(src, R, file) {
+  // errors carry the file they happened in (several files share one program through require)
+  const E = (m, line, kind) => {
+    const e = new ScriptError(m, line, kind);
+    if (file) e.file = file;
+    return e;
+  };
+  const out = (line) => {
+    try {
+      R.out(line);
+    } catch (e) {
+      if (e instanceof ScriptError && file && !e.file) e.file = file;
+      throw e;
+    }
+  };
+  let tree;
+  try {
+    tree = parse(src);
+  } catch (e) {
+    if (e instanceof ScriptError && file) e.file = file;
+    throw e;
+  }
   const strlib = R.strlib || new Map();
   const G = R.G;
 
   const rterr = (m, line) => {
-    throw new ScriptError(m, line);
+    throw E(m, line);
   };
   function index(o, k, line, e) {
     if (o instanceof LTable) return o.get(k);
@@ -663,16 +683,19 @@ export function compile(src, R) {
   }
   function call(fn, args, line, e) {
     if (typeof fn !== 'function') rterr(fn === undefined ? `tried to call ${desc(e)}, which is not defined (nil)` : `tried to call ${desc(e)}, which is ${kindWord(fn)}, not a function`, line);
-    if (--R.steps < 0) R.out(line);
+    if (--R.steps < 0) out(line);
     try {
       return fn(...args);
     } catch (err) {
       if (err instanceof ScriptError) {
-        if (!err.line) err.line = line;
+        if (!err.line) {
+          err.line = line;
+          if (file) err.file = file;
+        }
         throw err;
       }
-      if (err instanceof RangeError) throw new ScriptError('too many nested calls (endless recursion?)', line);
-      throw new ScriptError(String(err.message || err), line);
+      if (err instanceof RangeError) throw E('too many nested calls (endless recursion?)', line);
+      throw E(String(err.message || err), line);
     }
   }
   const num = (v, line, what) => {
@@ -805,7 +828,7 @@ export function compile(src, R) {
         };
       }
     }
-    throw new ScriptError('can not compile ' + e.k, e.line);
+    throw E('can not compile ' + e.k, e.line);
   }
   function cbin(e) {
     const a = cexpr(e.a), b = cexpr(e.b), line = e.line, op = e.op;
@@ -822,7 +845,7 @@ export function compile(src, R) {
       case '<=': case '>=': return (f, u) => compare(op, a(f, u), b(f, u), line);
       case '..': return (f, u) => concat(a(f, u), b(f, u), line);
     }
-    throw new ScriptError('unknown operator ' + op, line);
+    throw E('unknown operator ' + op, line);
   }
   // a list of expressions -> array, the last one expanded
   function cargs(list) {
@@ -858,7 +881,7 @@ export function compile(src, R) {
         return (f, u, v) => setIndex(o(f, u), k(f, u), v, line, oe);
       }
     }
-    throw new ScriptError('can not assign to this', t.line);
+    throw E('can not assign to this', t.line);
   }
   const declareSet = (info) => {
     const s = info.slot;
@@ -938,7 +961,7 @@ export function compile(src, R) {
         const c = cexpr(s.cond), body = cblock(s.body);
         return (f, u) => {
           while (truthy(c(f, u))) {
-            if (--R.steps < 0) R.out(line);
+            if (--R.steps < 0) out(line);
             const r = body(f, u);
             if (r !== undefined) {
               if (r === BREAK) break;
@@ -952,7 +975,7 @@ export function compile(src, R) {
         const c = cexpr(s.cond), body = cblock(s.body);
         return (f, u) => {
           while (true) {
-            if (--R.steps < 0) R.out(line);
+            if (--R.steps < 0) out(line);
             const r = body(f, u);
             if (r !== undefined) {
               if (r === BREAK) break;
@@ -970,7 +993,7 @@ export function compile(src, R) {
           const i0 = num(a(f, u), line, 'for start'), i1 = num(b(f, u), line, 'for end'), d = st ? num(st(f, u), line, 'for step') : 1;
           if (d === 0) rterr('a for loop step can not be 0', line);
           for (let i = i0; d > 0 ? i <= i1 : i >= i1; i += d) {
-            if (--R.steps < 0) R.out(line);
+            if (--R.steps < 0) out(line);
             if (cap) f[slot] = { v: i };
             else f[slot] = i;
             const r = body(f, u);
@@ -990,7 +1013,7 @@ export function compile(src, R) {
           let ctl = v[2];
           if (typeof it !== 'function') rterr(it instanceof LTable ? 'a for ... in loop needs pairs(t) or ipairs(t), not the table itself' : `tried to loop over ${kindWord(it)}`, line);
           while (true) {
-            if (--R.steps < 0) R.out(line);
+            if (--R.steps < 0) out(line);
             const r0 = it(st, ctl);
             let k, rest;
             if (r0 instanceof Multi) { k = r0.v[0]; rest = r0.v; } else { k = r0; rest = null; }
@@ -1018,7 +1041,7 @@ export function compile(src, R) {
       }
       case 'break': return () => BREAK;
     }
-    throw new ScriptError('can not compile ' + s.k, line);
+    throw E('can not compile ' + s.k, line);
   }
   function cfunc(e) {
     const body = cblock(e.body);
@@ -1034,7 +1057,7 @@ export function compile(src, R) {
       return function script(...args) {
         if (++R.depth > 160) {
           R.depth--;
-          throw new ScriptError('too many nested calls (endless recursion?)', line);
+          throw E('too many nested calls (endless recursion?)', line);
         }
         const nf = new Array(nslots);
         for (let i = 0; i < np; i++) {

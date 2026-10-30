@@ -131,11 +131,12 @@ export function renderSettings() {
   // ---------------- routing
   const r = el('div', { class: 'panel' }, grid);
   el('h3', {}, r, '<i class="ic ic-cable"></i>PipeWire connections');
-  el('p', {}, r).textContent = 'Tone Zone shows up as “Tone Zone” in Helvum, qpwgraph, Carla and other patchbays. You can also connect it here.';
-  srow(r, 'Auto-connect on start', 'Connect the first hardware input and the stereo outputs when the app starts.', toggle(s.autoConnect !== false, (x) => applySettings({ autoConnect: x })));
+  el('p', {}, r).textContent = 'Tone Zone shows up as “Tone Zone” in Helvum, qpwgraph, Carla and other patchbays. You can also connect it here. Connections are remembered and come back the next time the app starts, also for a device you plug in later.';
+  srow(r, 'Auto-connect on start', 'On the first start (nothing remembered yet), connect the first hardware input and the stereo outputs.', toggle(s.autoConnect !== false, (x) => applySettings({ autoConnect: x })));
   const ac = srow(r, 'Connect defaults now', '', null);
   el('button', { class: 'btn small', onclick: () => window.tz.engine.send({ cmd: 'autoConnect' }) }, ac, 'Auto-connect');
   el('button', { class: 'btn small', onclick: () => window.tz.engine.send({ cmd: 'ports' }) }, ac, '<i class="ic ic-reload"></i>Refresh');
+  el('button', { class: 'btn small', title: 'Forget the remembered connections (the current ones stay)', onclick: () => { state.settings.pwLinks = []; window.tz.settings.set({ pwLinks: [] }); toast('Remembered connections cleared. The current ones are remembered again from now on.', 'ok', 3500); } }, ac, 'Forget');
   el('div', { class: 'ports', id: 'portsBox' }, r);
   renderPorts();
   window.tz.engine.send({ cmd: 'ports' });

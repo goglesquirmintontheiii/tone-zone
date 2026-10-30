@@ -142,6 +142,16 @@ public:
   json info;
   // In stereo-normalling: if input 1 is unconnected but 0 is, feed 0 to 1.
   virtual bool normalInputs() const { return true; }
+  // Script audio (control thread): a sample buffer for slot n (null clears it) and analysis requests.
+  // The engine keeps both and hands them to a new instance of the block when the graph is rebuilt.
+  struct SampleData
+  {
+    std::vector<float> x; // mono
+    float sr = 48000;
+  };
+  virtual void setSample(int /*slot*/, std::shared_ptr<const SampleData>) {}
+  // {cmd: 'scope' | 'voice' | 'fx', ...} (see blocks/patch.cpp)
+  virtual void scriptCmd(const json&) {}
 };
 
 using BlockFactory = std::function<std::unique_ptr<Block>(const json& opts, int nIn, int nOut)>;

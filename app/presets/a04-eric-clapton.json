@@ -14,17 +14,24 @@
  "order": 304,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.large",
+   "x": -2228,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 0,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tc.polytune3mini",
-   "x": -96,
-   "y": 10,
+   "x": -202,
+   "y": 85,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -32,8 +39,8 @@
   {
    "id": "b2",
    "type": "tz.select4",
-   "x": -470,
-   "y": 0,
+   "x": -687,
+   "y": 76,
    "params": {
     "fade": 40.8,
     "sel": 0,
@@ -45,8 +52,8 @@
   {
    "id": "b3",
    "type": "marshall.amp-bluesbreaker",
-   "x": -1022,
-   "y": 300,
+   "x": -512,
+   "y": -500,
    "params": {
     "a.gain": 0.85,
     "a.master": 0.6,
@@ -62,8 +69,8 @@
   {
    "id": "b4",
    "type": "cab.2x12cream",
-   "x": -1492,
-   "y": 334,
+   "x": -992,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -84,8 +91,8 @@
   {
    "id": "b5",
    "type": "tz.contour",
-   "x": -720,
-   "y": 831.5,
+   "x": -1099,
+   "y": 62,
    "params": {
     "highcut": 1700,
     "lowcut": 70,
@@ -99,8 +106,8 @@
   {
    "id": "b6",
    "type": "amp.plexi",
-   "x": -1222,
-   "y": 720,
+   "x": -1504,
+   "y": -804,
    "params": {
     "gain": 0.82,
     "master": 0.65,
@@ -116,8 +123,8 @@
   {
    "id": "b7",
    "type": "cab.4x12gb",
-   "x": -1230,
-   "y": 934,
+   "x": -1512,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -132,8 +139,8 @@
   {
    "id": "b8",
    "type": "tz.comp",
-   "x": -710,
-   "y": 1539,
+   "x": -1574,
+   "y": 45,
    "params": {
     "sustain": 0.35,
     "ratio": 0.45,
@@ -147,8 +154,8 @@
   {
    "id": "b9",
    "type": "tz.boost",
-   "x": -930,
-   "y": 1550,
+   "x": -1909,
+   "y": 56,
    "params": {
     "gain": 0.3,
     "bass": 0.45,
@@ -160,8 +167,8 @@
   {
    "id": "b10",
    "type": "amp.slo",
-   "x": -1424,
-   "y": 1444,
+   "x": -2016,
+   "y": -646,
    "params": {
     "gain": 0.5,
     "master": 0.5,
@@ -176,8 +183,8 @@
   {
    "id": "b11",
    "type": "cab.2x12cream",
-   "x": -1412,
-   "y": 1658,
+   "x": -2004,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -192,8 +199,8 @@
   {
    "id": "b12",
    "type": "amp.twin",
-   "x": -930,
-   "y": 2010,
+   "x": -2516,
+   "y": -500,
    "params": {
     "gain": 0.4,
     "treble": 0.55,
@@ -208,8 +215,8 @@
   {
    "id": "b13",
    "type": "cab.2x12twin",
-   "x": -1400,
-   "y": 2044,
+   "x": -2996,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -224,8 +231,8 @@
   {
    "id": "b14",
    "type": "ehx.lester",
-   "x": -1740,
-   "y": 2057,
+   "x": -409,
+   "y": 362,
    "params": {
     "level": 0.55,
     "drive": 0.3,
@@ -240,8 +247,8 @@
   {
    "id": "b15",
    "type": "box.merge4",
-   "x": -1548,
-   "y": 2492,
+   "x": -682,
+   "y": 392,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -249,8 +256,8 @@
   {
    "id": "b16",
    "type": "tz.delay",
-   "x": -1834,
-   "y": 2445,
+   "x": -1102,
+   "y": 345,
    "params": {
     "time": 380,
     "feedback": 0.22,
@@ -263,8 +270,8 @@
   {
    "id": "b17",
    "type": "tz.reverb",
-   "x": -2106,
-   "y": 2430,
+   "x": -1575,
+   "y": 326,
    "params": {
     "mode": 0,
     "decay": 0.35,
@@ -276,8 +283,8 @@
   {
    "id": "b18",
    "type": "tz.meter",
-   "x": -2306,
-   "y": 2445,
+   "x": -1899,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -285,8 +292,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2546,
-   "y": 0,
+   "x": -2488,
+   "y": 370,
    "params": {}
   }
  ],

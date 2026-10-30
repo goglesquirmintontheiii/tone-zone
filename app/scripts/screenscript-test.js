@@ -111,6 +111,41 @@ async function unit() {
   ok(tgt && tgt.items.map((i) => i.label).join(',') === 'Rate', 'on("encoder", " offers the knobs');
   const evl = HN.lint('on("chnge", function(e) end)\non("input", "Nope", function(e) end)\non("touch", "x", function(e) end)\non("footswitch_down", "A", function(e) end)', hctx).map((w) => w.message);
   ok(evl.length === 3 && /Did you mean "change"/.test(evl[0]) && /no input called "Nope"/.test(evl[1]) && /takes no name/.test(evl[2]), 'on() checks the event and its name: ' + evl.join(' | '));
+
+  // files: paths, the store and its budget, bin.pack / bin.unpack
+  const F = await import(pathToFileURL(path.join(JS, 'files.js')).href);
+  const BF = await import(pathToFileURL(path.join(JS, 'binfmt.js')).href);
+  const pathErr = (p) => { try { F.checkPath(p); return ''; } catch (e) { return e.message; } };
+  ok(F.checkPath('presets/a b-1.txt') === 'presets/a b-1.txt' && /\.\./.test(pathErr('../x')) && /start inside/.test(pathErr('/etc/x')) && /empty folder/.test(pathErr('a//b')) && /not a good name/.test(pathErr('.hidden')) && pathErr('a\\b') !== '', 'paths are sandboxed (no .., no absolute paths, sane names)');
+  const st = new F.FileStore({ base: () => ({ 'util.lua': 'return 1', 'seed.txt': 'x' }), fixed: () => 1000 });
+  st.write('d/a.bin', new Uint8Array([0, 255, 7]));
+  st.remove('seed.txt');
+  ok(st.list('').join(',') === 'util.lua,d/' && st.list('d').join(',') === 'a.bin' && st.used() === 1000 + 8 + 3 && F.toStored(st.read('d/a.bin')).b64 === 'AP8H', 'the store lists, removes base files and keeps bytes: ' + st.list('').join(','));
+  let bigErr = '';
+  try { st.write('big.bin', new Uint8Array(F.FILE_BUDGET - 1000)); } catch (e) { bigErr = e.message; }
+  ok(/1 MB/.test(bigErr) && !st.has('big.bin'), 'a write over 1 MB is refused: ' + bigErr);
+  const packed = BF.packBin('<I2 h > I f d s1 z c4 x B', [513, -2, 0x01020304, 1.5, Math.PI, 'hi', 'zero', 'ab', 200]);
+  const back = BF.unpackBin('<I2 h > I f d s1 z c4 x B', packed);
+  ok(packed.length === 2 + 2 + 4 + 4 + 8 + 3 + 5 + 4 + 1 + 1 && back[0] === 513 && back[1] === -2 && back[2] === 0x01020304 && back[3] === 1.5 && back[4] === Math.PI && back[5] === 'hi' && back[6] === 'zero' && back[7] === 'ab\0\0' && back[8] === 200 && back[9] === packed.length + 1, 'bin.pack and bin.unpack round trip little and big endian ints, floats and text');
+  let fitErr = '';
+  try { BF.packBin('B', [300]); } catch (e) { fitErr = e.message; }
+  ok(/does not fit/.test(fitErr) && BF.sizeBin('<I2 f d') === 14, 'bin checks sizes: ' + fitErr);
+  // hints across files: what a code file returns, completion after util., require(" and checks
+  const mods = [{ name: 'util', path: 'util.lua', info: HN.moduleInfo('local M = {}\nfunction M.twice(x) return x * 2 end\nM.half = function(v) return v / 2 end\nfunction shout(s) return s end\nreturn M') }];
+  const mctx = { ...hctx, modules: mods, files: ['util.lua', 'presets/1.txt'], file: '' };
+  const src1 = 'local util = require("util")\nutil.';
+  const mc = HN.completions(src1, src1.length, mctx);
+  ok(mc && mc.items.map((i) => i.label).sort().join(',') === 'half,twice' && /from util.lua/.test(mc.items[0].detail), 'util. offers the functions util.lua returns: ' + (mc && mc.items.map((i) => i.label + ' ' + i.detail).join('; ')));
+  const rq = HN.completions('require("u', 10, mctx);
+  ok(rq && rq.items[0].label === 'util', 'require(" offers the code files');
+  const fr = HN.completions('fs.read("pre', 12, mctx);
+  ok(fr && fr.items.some((i) => i.label === 'presets/1.txt'), 'fs.read(" offers the pedal\'s files');
+  const gl = HN.completions('sho', 3, mctx);
+  ok(gl && gl.items[0].label === 'shout' && /util.lua/.test(gl.items[0].detail), 'globals of other files are offered');
+  const ml = HN.lint('local u = require("utl")\nshout("x")\nfs.reed("a")', mctx).map((w) => w.message);
+  ok(ml.length === 2 && /no code file "utl.lua".*"util"/.test(ml[0]) && /fs.reed is not a fs function.*fs.read/.test(ml[1]), 'checks: a missing code file, a typo in fs: ' + ml.join(' | '));
+  const hv = HN.hoverAt('local util = require("util")\nutil.twice(2)', 36, mctx);
+  ok(hv && /function util.twice\(x\)/.test(hv.title) && /util.lua on line 2/.test(hv.body), 'hovering util.twice says where it is: ' + (hv && hv.title));
 }
 
 (async () => {
@@ -260,6 +295,125 @@ function draw() clear() end
   ok(evs.good === 2 && !evs.err && evs.herr && evs.herr.line === 13 && /boom|nil/.test(evs.herr.message), 'a handler that throws does not stop the others or the screen: ' + (evs.herr && evs.herr.message));
   ok(evs.log.includes('off') && evs.timers >= 3, `bypass and timer events (timer ran ${evs.timers} times)`);
   ok(evs.log.join(',').startsWith('down A,up,enc,enc,change'), 'events run in order: ' + evs.log.join(','));
+
+  // ---- code files, the file store and audio
+  const fl = await win.evaluate(async () => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const design = {
+      ctls: [{ id: 's1', kind: 'screen', shows: 'custom', script: 'x' }, { id: 's2', kind: 'screen', shows: 'custom', script: 'y' }],
+      files: {
+        'util.lua': 'loads = (loads or 0) + 1\nlocal M = {}\nfunction M.twice(x) return x * 2 end\nfunction M.bad()\n  local t = nil\n  return t.x\nend\nreturn M\n',
+        'lib/a.lua': 'return require("lib.b")',
+        'lib/b.lua': 'return require("lib/a")',
+        'syn.lua': 'local x = 1\nif x then\n',
+      },
+    };
+    const run = (src, cid = 's1', o = {}) => {
+      const { io, sim } = simIO(design, { demo: o.demo !== false });
+      io.cid = cid;
+      const rt = new ScreenRuntime({ src, w: 64, h: 32, host: makeHost(design, io) });
+      let t = 1000;
+      for (let i = 0; i < (o.frames || 2); i++) rt.frame((t += 40));
+      return { rt, sim, g: (n) => rt.vm.get(n) };
+    };
+    const out = {};
+    // require: caching, a loop, a syntax error and a missing file, all with file and line
+    const a = run('local u = require("util")\nlocal u2 = require("util.lua")\nr = u.twice(21)\nsame = u == u2\nok1, e1 = pcall(u.bad)\nok2, e2 = pcall(require, "lib.a")\nok3, e3 = pcall(require, "syn")\nok4, e4 = pcall(require, "nope")');
+    Object.assign(out, { r: a.g('r'), same: a.g('same'), loads: a.g('loads'), e1: a.g('e1'), e2: a.g('e2'), e3: a.g('e3'), e4: a.g('e4'), err: a.rt.error });
+    const b = run('local u = require("util")\nfunction draw()\n  u.bad()\nend');
+    out.uncaught = b.rt.error;
+    // fs: write, read, append, list, remove, binary
+    const c = run(`fs.write("presets/1.txt", "gain=0.5")
+fs.append("presets/1.txt", ";tone=0.2")
+fs.mkdir("empty")
+txt = fs.read("presets/1.txt")
+top = table.concat(fs.list(), ",")
+sub = table.concat(fs.list("presets"), ",")
+missing = fs.read("nope.txt")
+fs.writeBytes("raw.bin", {0, 1, 2, 255})
+raw = fs.readBytes("raw.bin")
+rawSum = raw[1] + raw[2] + raw[3] + raw[4]
+local data = bin.pack("<c4 I2 f s1", "TZFX", 3, 0.25, "hello")
+fs.writeBytes("fmt.bin", data)
+local back = fs.readBin("fmt.bin")
+magic, n, f, s, nextPos = bin.unpack("<c4 I2 f s1", back)
+size = fs.size("fmt.bin")
+hex = bin.hex(back:sub(1, 4))
+removed = fs.remove("raw.bin")
+gone = not fs.exists("raw.bin")
+okDots, eDots = pcall(fs.write, "../x.txt", "no")
+okAbs, eAbs = pcall(fs.read, "/etc/passwd")`);
+    for (const k of ['txt', 'top', 'sub', 'missing', 'rawSum', 'magic', 'n', 'f', 's', 'nextPos', 'size', 'hex', 'removed', 'gone', 'okDots', 'eDots', 'okAbs', 'eAbs']) out['fs_' + k] = c.g(k);
+    out.fsErr = c.rt.error;
+    // the budget is shared by the screens of one pedal
+    const s1 = run('local chunk = string.rep("a", 100000)\nlocal big = ""\nfor i = 1, 6 do big = big .. chunk end\nfs.write("one.txt", big)\nleft = fs.free()');
+    const s2 = run('seen = #(fs.read("one.txt") or "")\nlocal chunk = string.rep("b", 100000)\nlocal big = ""\nfor i = 1, 6 do big = big .. chunk end\nok, e = pcall(fs.write, "two.txt", big)\nsmall = pcall(fs.write, "two.txt", "fine")', 's2');
+    Object.assign(out, { left: s1.g('left'), seen: s2.g('seen'), budgetOk: s2.g('ok'), budgetErr: s2.g('e'), small: s2.g('small') });
+    // audio in the preview: the demo guitar on the input, a generator on the output
+    const d = run(`audio.gen("bass", {type = "saw", freq = 110, amp = 0.6, to = "out"})
+function draw()
+  lvl = audio.level("in")
+  pk = audio.peak("in")
+  bands = audio.spectrum("in", 16)
+  wave = audio.wave("out", 64)
+  pitch = audio.pitch("out")
+  outLvl = audio.level("out")
+  jacks = table.concat(audio.jacks(), ",")
+  ready = audio.ready()
+end`, 's1', { frames: 3, demo: false });
+    const bands = d.g('bands').a, wave = d.g('wave').a;
+    Object.assign(out, { lvl: d.g('lvl'), pk: d.g('pk'), nb: bands.length, bandMax: Math.max(...bands), nw: wave.length, waveMax: Math.max(...wave.map(Math.abs)), pitch: d.g('pitch'), outLvl: d.g('outLvl'), jacks: d.g('jacks'), ready: d.g('ready'), gens: [...d.sim.audio.gens.keys()], audioErr: d.rt.error });
+    return out;
+  });
+  ok(fl.r === 42 && fl.same === true && fl.loads === 1 && !fl.err, `require runs a code file once and caches it (r ${fl.r}, loads ${fl.loads})`);
+  ok(/^util\.lua:6: /.test(fl.e1) && /loop/.test(fl.e2) && /lib\/a\.lua needs lib\/b\.lua needs lib\/a\.lua/.test(fl.e2) && /^syn\.lua:3: /.test(fl.e3) && /no code file "nope\.lua"/.test(fl.e4), 'require errors name the file and line: ' + [fl.e1, fl.e2, fl.e3, fl.e4].join(' | '));
+  ok(fl.uncaught && fl.uncaught.file === 'util.lua' && fl.uncaught.line === 6, 'an error inside a code file stops the screen with its file and line: ' + JSON.stringify(fl.uncaught));
+  ok(fl.fs_txt === 'gain=0.5;tone=0.2' && fl.fs_top === 'syn.lua,util.lua,empty/,lib/,presets/' && fl.fs_sub === '1.txt' && fl.fs_missing === undefined, 'fs write, append, read and list: ' + fl.fs_top + ' | ' + fl.fs_sub);
+  ok(fl.fs_rawSum === 258 && fl.fs_removed === true && fl.fs_gone === true, 'fs.writeBytes, readBytes and remove');
+  ok(fl.fs_magic === 'TZFX' && fl.fs_n === 3 && fl.fs_f === 0.25 && fl.fs_s === 'hello' && fl.fs_size === 16 && fl.fs_nextPos === 17 && fl.fs_hex === '54 5a 46 58', 'a binary file round trips through bin.pack, fs.writeBytes, fs.readBin and bin.unpack');
+  ok(fl.fs_okDots === false && /not allowed/.test(fl.fs_eDots) && fl.fs_okAbs === false && /start inside/.test(fl.fs_eAbs) && !fl.fsErr, 'scripts can not leave the sandbox: ' + fl.fs_eDots);
+  ok(fl.seen === 600000 && fl.budgetOk === false && /1 MB/.test(fl.budgetErr) && fl.small === true && fl.left < 1048576 - 600000, 'two screens of one pedal share the files and the 1 MB budget: ' + fl.budgetErr);
+  ok(fl.lvl > 0.01 && fl.pk >= fl.lvl && fl.nb === 16 && fl.bandMax > 0.3 && fl.nw === 64 && fl.waveMax > 0.05 && fl.pitch === 110 && fl.outLvl > 0.1 && fl.ready === true && !fl.audioErr, `audio analysis in the preview (level ${fl.lvl.toFixed(2)}, ${fl.nb} bands, ${fl.nw} samples, pitch ${fl.pitch})`);
+  ok(fl.gens.join(',') === 's1:bass' && /IN/i.test(fl.jacks), 'a generator runs in the preview fake: ' + fl.gens.join(',') + ' jacks ' + fl.jacks);
+  // the bridge: on the board the engine side gets the calls through setAudioBackend
+  const br = await win.evaluate(async () => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, setAudioBackend } = await import('./js/screenscript/host.js');
+    const design = { ctls: [{ id: 'sx', kind: 'screen', shows: 'custom' }], jacks: [{ id: 'j1', kind: 'in', label: 'GTR' }, { id: 'j2', kind: 'out', label: 'MAIN' }, { id: 'j3', kind: 'out', label: 'AUX' }] };
+    const calls = [];
+    const off = setAudioBackend({
+      analysis: (ctx, j, want) => (calls.push(['analysis', j.dir + j.index, want.bands]), { rms: 0.3, peak: 0.5, bands: new Array(want.bands).fill(0.2), wave: [0, 0.5, -0.5], pitch: 196, onset: calls.length > 3 ? 2 : 1 }),
+      gen: (ctx, id, p) => (calls.push(['gen', id, p.type, p.freq, JSON.stringify(p.to), ctx.mode, ctx.blockId]), true),
+      buffer: (ctx, id, x, rate) => (calls.push(['buffer', id, x.length, rate]), true),
+      fx: (ctx, id, p) => (calls.push(['fx', id, p.type, JSON.stringify(p.jack)]), true),
+      stop: (ctx, id) => calls.push(['stop', id]),
+      reset: (ctx) => calls.push(['reset', ctx.screen]),
+    });
+    const io = { mode: 'board', cid: 'sx', blockId: 'b9', get: () => undefined, set() {}, bypassed: () => false, levels: () => ({ inPk: 0, outPk: 0 }), blockStatus: () => null, params: () => ({}) };
+    const rt = new ScreenRuntime({ src: `audio.gen("lead", {type = "square", freq = 440, amp = 0.3, to = "AUX"})
+audio.gen("lead", {freq = 440})
+audio.buffer("wt", {0, 0.5, 1, 0.5, 0, -0.5, -1, -0.5}, 44100)
+audio.play("loop", "wt", {loop = true, to = "circuit:Synth in"})
+audio.fx("lp", {type = "lowpass", jack = "MAIN", freq = 900})
+audio.stop("lp")
+function draw()
+  lvl = audio.level("GTR")
+  p = audio.pitch("gtr")
+  nb = #audio.spectrum("GTR")
+end`, w: 32, h: 16, host: makeHost(design, io) });
+    let t = 0;
+    rt.frame((t += 40));
+    rt.frame((t += 40));
+    off();
+    return { calls, err: rt.error, lvl: rt.vm.get('lvl'), p: rt.vm.get('p'), nb: rt.vm.get('nb') };
+  });
+  const gens = br.calls.filter((c) => c[0] === 'gen');
+  ok(!br.err && br.calls[0][0] === 'reset' && br.calls[0][1] === 'sx', 'a screen start resets its sounds on the bridge');
+  ok(gens.length === 2 && gens[0][1] === 'sx:lead' && gens[0][2] === 'square' && gens[0][3] === 440 && gens[0][4] === '{"dir":"out","index":1}' && gens[0][5] === 'board' && gens[0][6] === 'b9', 'a generator call reaches the bridge once (only changes are sent): ' + JSON.stringify(gens));
+  ok(gens[1][1] === 'sx:loop' && gens[1][2] === 'sample' && gens[1][4] === '{"circuit":"Synth in"}' && br.calls.some((c) => c[0] === 'buffer' && c[1] === 'sx:wt' && c[2] === 8 && c[3] === 44100), 'buffers and sample playback into a circuit input reach the bridge');
+  ok(br.calls.some((c) => c[0] === 'fx' && c[1] === 'sx:lp' && c[2] === 'lowpass' && c[3] === '{"dir":"out","index":0}') && br.calls.some((c) => c[0] === 'stop' && c[1] === 'sx:lp'), 'processors and stop reach the bridge');
+  ok(br.lvl === 0.3 && br.p === 196 && br.nb === 32 && br.calls.filter((c) => c[0] === 'analysis').length === 2, 'analysis comes from the backend, once per jack per frame: ' + br.calls.filter((c) => c[0] === 'analysis').length);
 
   // ---- the factory: Shows -> Custom, code editor, generator
   await win.click('#tabs [data-tab="factory"]');
@@ -442,7 +596,7 @@ end
   ok(ed.warnings.some((w) => /rect needs at least 4 arguments \(x, y, w, h\), this call has 2/.test(w.message)), 'a wrong argument count is underlined: ' + wmsg);
   ok(/no knob called "Cutof".*CUTOFF/.test(wmsg) && /no output called "Nope"/.test(wmsg), 'unknown control and port names are flagged');
   ok(/filRect is not a Tone Zone function.*fillRect/.test(wmsg) && /x should be a number, not text/.test(wmsg), 'unknown functions and text for a number are flagged');
-  ok(!ed.error && ed.frames > 0, 'the checks do not stop the script');
+  ok(!ed.error && ed.frames > 0, 'the checks do not stop the script' + (ed.error || !ed.frames ? ': ' + JSON.stringify({ error: ed.error, frames: ed.frames }) : ''));
   ok((await win.$$('.ss-marks .ss-warn')).length === ed.warnings.length && (await win.$$('.ss-gutter-in div.warn')).length >= 4, 'warnings are underlined and marked in the gutter');
   ok(/5 hints/.test(await win.$eval('.ss-status', (s) => s.textContent)), 'the status counts the hints');
   // hover a warning, then an API name
@@ -496,7 +650,9 @@ end
     const { API } = await import('./js/screenscript/docs.js');
     const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
     const { makeHost, simIO } = await import('./js/screenscript/host.js');
-    const d = window.__tzFactory.design();
+    // the code files example is there as util.lua
+    const util = API.find((g) => g.group === 'Code files').guide.find(([k]) => k === 'code')[1];
+    const d = { ...window.__tzFactory.design(), files: { 'util.lua': util } };
     const out = [];
     for (const g of API) for (const [k, v] of g.guide || []) {
       if (k !== 'code') continue;
@@ -515,6 +671,116 @@ end
   }, { id: scr.id, src: keepScript });
   await win.click('[data-ss="done"]');
   await win.waitForTimeout(300);
+
+  // ---- files in the code editor: a code file, an error in it, rename / copy / delete, files from the preview
+  await win.click('[data-ss="edit"]');
+  await win.waitForSelector('.ss-win .ss-ta');
+  await win.waitForTimeout(300);
+  const peekEd = () => win.evaluate(() => window.__tzScreens.editor().peek());
+  const visTa = '.ss-codes .ss-code:not([hidden]) .ss-ta';
+  const setCode = async (code) => {
+    await win.click(visTa);
+    await win.keyboard.press('Control+A');
+    await win.keyboard.press('Delete');
+    await win.keyboard.insertText(code);
+    await win.waitForTimeout(700);
+  };
+  ok(!!(await win.$('.ss-files [data-file="main"].on')) && /of 1 MB/.test(await win.$eval('[data-ss="usage"]', (e) => e.textContent)), 'the editor has a file list with main and a usage bar');
+  await win.click('[data-ss="file-new"]');
+  await win.fill('[data-ss="file-name"]', 'util');
+  await win.keyboard.press('Enter');
+  await win.waitForTimeout(300);
+  let pe = await peekEd();
+  ok(pe.file === 'util.lua' && /local M/.test((await D()).files['util.lua']), 'New makes util.lua (a code file) and opens it');
+  await setCode('local M = {}\nfunction M.scale(v, k)\n  return v * k\nend\nfunction M.label(s)\n  text(s, 2, 2, colors.dim, "small")\nend\nreturn M\n');
+  await win.click('.ss-files [data-file="main"]');
+  await setCode('local util = require("util")\nx = util.');
+  await win.keyboard.type('sc');
+  await win.waitForTimeout(150);
+  labels = await acLabels();
+  ok(labels[0] === 'scale', 'after util. the completion offers what util.lua returns: ' + labels.join(', '));
+  await win.keyboard.press('Escape');
+  await setCode(`local util = require("util")
+local saved = 0
+function draw()
+  clear()
+  util.label("x " .. util.scale(2, 21))
+  if button("SAVE", 2, 14, 40, 12) then
+    saved += 1
+    fs.write("presets/" .. saved .. ".txt", "gain=" .. knob(1))
+  end
+  text(fs.free() // 1024 .. " KB free", 2, H - 9, colors.dim, "small")
+end
+`);
+  pe = await peekEd();
+  ok(!pe.error && pe.frames > 0, 'the preview runs a screen that requires util.lua: ' + JSON.stringify(pe.error));
+  {
+    const pcb = await (await win.$('.ss-pcanvas')).boundingBox();
+    const sz = await win.evaluate(() => { const c = document.querySelector('.ss-pcanvas'); return { w: c.width, h: c.height }; });
+    await win.mouse.click(pcb.x + (20 / sz.w) * pcb.width, pcb.y + (20 / sz.h) * pcb.height);
+    await win.waitForTimeout(400);
+  }
+  pe = await peekEd();
+  ok(pe.preview.includes('presets/1.txt') && !!(await win.$('.ss-frow.prev [data-keep="presets/1.txt"]')), 'a file the preview writes shows in the list with Keep: ' + pe.preview.join(','));
+  await win.click('.ss-files [data-file="util.lua"]');
+  await win.waitForTimeout(200);
+  await shotEd('screens-files.png');
+  await win.click('[data-keep="presets/1.txt"]');
+  await win.waitForTimeout(200);
+  ok(/^gain=/.test((await D()).files['presets/1.txt'] || ''), 'Keep copies it into the design');
+  // an error in the code file: the status names the file and line, a click opens it there
+  await setCode('local M = {}\nfunction M.scale(v, k)\n  return v * k + nil\nend\nfunction M.label(s)\n  text(s, 2, 2, colors.dim, "small")\nend\nreturn M\n');
+  pe = await peekEd();
+  const stText = await win.$eval('.ss-status', (e) => e.textContent);
+  ok(pe.error && pe.error.file === 'util.lua' && pe.error.line === 3 && /^util\.lua line 3: /.test(stText) && !!(await win.$('.ss-frow.err[data-file="util.lua"]')), 'an error in util.lua shows its file and line: ' + stText);
+  await win.click('.ss-files [data-file="main"]');
+  await win.click('.ss-status [data-ss="error"]');
+  await win.waitForTimeout(200);
+  pe = await peekEd();
+  ok(pe.file === 'util.lua' && (await win.$$('.ss-codes .ss-code:not([hidden]) .ss-gutter-in div.err')).length === 1, 'clicking the error opens util.lua with the line marked');
+  await shotEd('screens-files-error.png');
+  await setCode('local M = {}\nfunction M.scale(v, k)\n  return v * k\nend\nfunction M.label(s)\n  text(s, 2, 2, colors.dim, "small")\nend\nreturn M\n');
+  ok(!(await peekEd()).error, 'fixing it runs the screen again');
+  // rename, copy, delete
+  await win.click('[data-ss="file-rename"]');
+  await win.fill('[data-ss="file-name"]', 'helpers.lua');
+  await win.keyboard.press('Enter');
+  await win.waitForTimeout(700);
+  pe = await peekEd();
+  ok(pe.files.includes('helpers.lua') && !pe.files.includes('util.lua') && pe.error && !pe.error.file && /no code file "util.lua"/.test(pe.error.message), 'Rename renames the file (and require("util") then says it is missing)');
+  await win.click('[data-ss="file-dup"]');
+  await win.keyboard.press('Enter');
+  await win.waitForTimeout(200);
+  pe = await peekEd();
+  ok(pe.files.includes('helpers copy.lua') && pe.file === 'helpers copy.lua', 'Copy makes helpers copy.lua');
+  await win.click('[data-ss="file-del"]');
+  await win.click('[data-ss="file-del-ok"]');
+  await win.waitForTimeout(200);
+  pe = await peekEd();
+  ok(!pe.files.includes('helpers copy.lua') && pe.file === '', 'Delete removes it');
+  await win.click('.ss-files [data-file="helpers.lua"]');
+  await win.click('[data-ss="file-rename"]');
+  await win.fill('[data-ss="file-name"]', 'util.lua');
+  await win.keyboard.press('Enter');
+  await win.waitForTimeout(700);
+  pe = await peekEd();
+  ok(!pe.error && pe.files.includes('util.lua') && pe.used.all > 300 && pe.used.code > pe.used.data, `back to util.lua, the screen runs (${pe.used.all} bytes used)`);
+  await shotEd('screens-files-example.png');
+  // audio in the preview: the spectrum and scope example, and a drone from the docs
+  await win.click('.ss-files [data-file="main"]');
+  await setCode('-- a spectrum and a scope of the input, and a drone on the output\naudio.gen("drone", {type = "saw", freq = 82, amp = 0.2, to = "out"})\nfunction draw()\n  clear()\n  local bands = audio.spectrum("in", 32)\n  local bw = W / #bands\n  for i, v in ipairs(bands) do\n    fillRect((i - 1) * bw, H - v * H, bw - 1, v * H, hsv(i * 8, 0.8, 1))\n  end\n  graph(0, 0, W, H / 2, audio.wave("out", 128), colors.fg, -1, 1)\n  text(string.format("%.0f Hz", audio.pitch("out")), 2, 2, colors.accent, "small")\nend\n');
+  await win.waitForTimeout(500);
+  pe = await peekEd();
+  ok(!pe.error && pe.gens.includes(pe.gens.find((g) => /:drone$/.test(g))) && /drone: saw 82 Hz/.test(await win.$eval('[data-ss="audio"]', (e) => e.textContent)), 'the Test tab lists the sounds the script runs: ' + pe.gens.join(',') + ' | ' + (await win.$eval('[data-ss="audio"]', (e) => e.textContent)));
+  await win.evaluate(() => { const h = [...document.querySelectorAll('.ss-pane-test h5')].find((x) => x.textContent === 'Audio'); if (h) h.scrollIntoView({ block: 'start' }); });
+  await shotEd('screens-audio.png');
+  await win.click('[data-ss="done"]');
+  await win.waitForTimeout(300);
+  {
+    const d = await D();
+    const st = await win.evaluate(() => window.__tzScreens.stage());
+    ok(d.files && /M\.scale/.test(d.files['util.lua']) && st.every((x) => !x.error), 'the code file is kept in the design and the stage runs it: ' + Object.keys(d.files || {}).join(',') + ' ' + JSON.stringify(st.filter((x) => x.error)));
+  }
 
   // generator
   await win.click('[data-ss="gen"]');
@@ -590,6 +856,7 @@ end
   const saved = JSON.parse(fs.readFileSync(path.join(data, 'tone-zone', 'custom-blocks', blockId + '.json'), 'utf8'));
   const sc0 = saved.design.ctls.find((c) => c.kind === 'screen');
   ok(sc0.shows === 'custom' && /setKnob/.test(sc0.script), 'the script is saved with the pedal');
+  ok(saved.design.files && /M\.scale/.test(saved.design.files['util.lua']) && /^gain=/.test(saved.design.files['presets/1.txt']), 'the pedal\'s files are saved with the block');
 
   // ---- on the board
   await win.click('#tabs [data-tab="board"]');
@@ -691,6 +958,66 @@ end
     return boardScreens().filter((s) => out.some((b) => s.key.startsWith(b + '|')));
   }, placed);
   ok(running.length === looks.length && running.every((s) => !s.error && s.frames > 3), 'six generated screens run on the board: ' + running.filter((s) => s.error).map((s) => s.error.message).join('; '));
+
+  // ---- files written on the board are saved with the preset and come back after a reload
+  const fileBlock = await win.evaluate(async () => {
+    const { saveCustomBlock } = await import('./js/catalog/custom.js');
+    const D = window.__tzFactory.template('delay');
+    const c = D.ctls.find((x) => x.kind === 'screen');
+    c.shows = 'custom';
+    c.script = 'local n = tonumber(fs.read("boots.txt") or "0") + 1\nfs.write("boots.txt", tostring(n))\nfs.writeBytes("state.bin", bin.pack("<I2 f", n, 0.5))\nfunction draw()\n  clear()\n  text("BOOT " .. n .. " " .. fs.read("seed.txt"), 2, 2)\nend\n';
+    D.files = { 'seed.txt': 'from the design' };
+    D.name = 'Files test';
+    D.blockId = null;
+    const id = await saveCustomBlock(D, { asNew: true });
+    const m = await import('./js/state.js');
+    const b = m.addBlock(id, 6000, 3000);
+    await new Promise((r) => setTimeout(r, 300));
+    const ed2 = window.__tz.editor;
+    const v = ed2.views.get(b.id);
+    ed2.view.z = 1.5;
+    ed2.view.x = -(v.block.x + v.w / 2) * 1.5 + 640;
+    ed2.view.y = -(v.block.y + v.h / 2) * 1.5 + 470;
+    ed2.applyView && ed2.applyView();
+    await new Promise((r) => setTimeout(r, 1800));
+    const bb = m.blockById(b.id);
+    const p = m.serialize();
+    const file = await window.tz.presets.save(p, null);
+    localStorage.setItem('tz.lastPreset', file);
+    return { id, bid: b.id, fs: bb.params._fs, file };
+  });
+  const fs0 = JSON.parse(fileBlock.fs || '{}');
+  ok(fs0['boots.txt'] === '1' && fs0['state.bin'] && fs0['seed.txt'] === undefined, 'files written on the board go to the block (saved with the preset): ' + fileBlock.fs);
+  await win.reload();
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
+  await win.waitForTimeout(500);
+  const after = await win.evaluate(async ({ bid }) => {
+    const m = await import('./js/state.js');
+    const b = m.blockById(bid);
+    if (!b) return { missing: true, blocks: m.state.preset.blocks.map((x) => x.id) };
+    // the screen starts again on the board: it reads the saved count and adds one
+    const ed2 = window.__tz.editor;
+    const v = ed2.views.get(bid);
+    ed2.view.z = 1.5;
+    ed2.view.x = -(v.block.x + v.w / 2) * 1.5 + 640;
+    ed2.view.y = -(v.block.y + v.h / 2) * 1.5 + 470;
+    ed2.applyView && ed2.applyView();
+    await new Promise((r) => setTimeout(r, 1500));
+    const { boardIO } = await import('./js/screenscript/board.js');
+    const { makeHost } = await import('./js/screenscript/host.js');
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { getDef } = await import('./js/catalog/index.js');
+    const D = getDef(b.type).design;
+    const c = D.ctls.find((x) => x.kind === 'screen');
+    const rt = new ScreenRuntime({ src: 'boots = fs.read("boots.txt")\nseed = fs.read("seed.txt")\nn, f = bin.unpack("<I2 f", fs.readBin("state.bin"))', w: 32, h: 16, host: makeHost(D, boardIO(bid, b, c.id, D)) });
+    rt.frame(performance.now());
+    return { boots: rt.vm.get('boots'), seed: rt.vm.get('seed'), n: rt.vm.get('n'), f: rt.vm.get('f'), err: rt.error };
+  }, { bid: fileBlock.bid });
+  {
+    const box = await win.evaluate((bid) => { const r = window.__tz.editor.views.get(bid).g.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }, fileBlock.bid);
+    await win.screenshot({ path: path.join(S, 'screens-files-board.png'), clip: { x: Math.max(0, box.x - 10), y: Math.max(60, box.y - 10), width: Math.min(1280, box.width + 20), height: Math.min(860, box.height + 20) } });
+  }
+  ok(after.boots === '2' && after.seed === 'from the design' && after.n === 2 && after.f === 0.5 && !after.err, 'after a reload the pedal on the board still has its files: ' + JSON.stringify(after));
 
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await app.close();

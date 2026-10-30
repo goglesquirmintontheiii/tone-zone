@@ -12,17 +12,24 @@
  "order": 392,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.tiny",
+   "x": -1028,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "eqd.plumes",
-   "x": -104,
-   "y": 65,
+   "x": -206,
+   "y": 80,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "vox.amp-ac15",
-   "x": -686,
-   "y": 0,
+   "x": -605,
+   "y": -500,
    "params": {
     "a.gain": 0.45,
     "a.treble": 0.55,
@@ -48,8 +55,8 @@
   {
    "id": "b3",
    "type": "vox.cab-ac15",
-   "x": -1006,
-   "y": 47,
+   "x": -935,
+   "y": -406,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -64,8 +71,8 @@
   {
    "id": "b4",
    "type": "bx.dd3",
-   "x": -1222,
-   "y": 36,
+   "x": -467,
+   "y": 51,
    "params": {
     "mix": 0.2,
     "feedback": 0.294,
@@ -77,8 +84,8 @@
   {
    "id": "b5",
    "type": "tz.reverb",
-   "x": -1494,
-   "y": 15,
+   "x": -855,
+   "y": 26,
    "params": {
     "decay": 0.35,
     "mix": 0.15
@@ -89,8 +96,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1734,
-   "y": 55,
+   "x": -1288,
+   "y": 70,
    "params": {}
   }
  ],

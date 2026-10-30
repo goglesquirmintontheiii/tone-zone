@@ -10,12 +10,25 @@
 // 'cvsend' turns a control value into an audio channel and 'cvrecv' reads it back, so control wires can cross
 // from one half to the other in the same cycle; an 'ain' with idx2 reads its right channel from another input.
 //
+// Script audio (screen scripts make and read audio, docs/engine-blocks.md):
+// * parts 'osc', 'noise', 'adsr', 'sampler' and 'sgain', wired like any other and smoothed per sample, so values
+//   set once per screen frame do not step; a 'param' node with sm (ms) glides to its value;
+// * a pool of voices (oscillators, noise, sample players with an envelope) and processors (gain, filters, drive)
+//   that the 'voice' and 'fx' commands start, change and stop without a rebuild. A voice is added to a jack (an
+//   'ain' or 'aout' node with that jack key jk) or to a 'scriptin' part by name; a processor works on a jack;
+// * sample buffers (setSample: slot 1..32, made on the control thread, swapped in with an atomic pointer and freed
+//   once the audio thread has moved on) for samplers and voices;
+// * jack analysis: 'ain' / 'aout' nodes with a jk are tapped while a 'scope' command asks, and the status reports
+//   scope: {<jk>: {rms, peak, db, onset, spec: [bands, dB], wave: [...], hz, conf}}.
+// Nothing of it runs while nobody asks (no voice, no processor, no scope), and the audio thread never allocates.
+//
 // opts: { params: [{name, def, min, max}],            exposed params (the pedal's circuit inputs)
-//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int, tab, raw, xlo, xhi}]}],
+//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, jk?, sm?, slots: [{p, def, lo, hi, log, int, tab, raw, xlo, xhi}]}],
 //         edges:  [[fromNode, fromPort, toNode, toPort, isControl]],
 //         outs:   [[aoutIdx, ch]] per engine output (ch 0 = L, 1 = R, -1 = mono sum), mix, mixDef,
 //         ch:     internal channels (1 or 2, default from the block's inputs and outputs) }
 #include "common.h"
+#include "../dsp/yin.h"
 
 namespace tz
 {
@@ -24,12 +37,17 @@ namespace
 constexpr int kChunk = 64;
 constexpr float kLim = 255.f;     // control values stay within -255..255
 constexpr float kMaxDelay = 10.f; // seconds a control delay can hold
+constexpr int kSlots = 32;         // sample buffers per block (circuit samplers use 1..8)
+constexpr int kVoices = 32, kFxs = 32; // script voices and processors per block
+constexpr int kRing = 4096;        // analysis ring per tapped jack
+constexpr int kFft = 2048, kMaxBands = 64, kMaxWave = 1024;
 
 enum Kind
 {
   K_ALGO, K_SUM, K_AIN, K_AOUT, K_VCA, K_FILTER, K_SHAPER, K_MIXER, K_XFADE, K_SWITCH, K_POL, K_FB, K_BYPASS,
   K_PARAM, K_CONST, K_LFO, K_ENV, K_SEQ, K_SCALE, K_MATH, K_SMOOTH, K_SH, K_AND, K_OR, K_XOR, K_NOT, K_TOGGLE,
-  K_CMP, K_WINDOW, K_ADD, K_SUB, K_MUL, K_DIV, K_CDELAY, K_COUT, K_CVSEND, K_CVRECV, K_UNKNOWN
+  K_CMP, K_WINDOW, K_ADD, K_SUB, K_MUL, K_DIV, K_CDELAY, K_COUT, K_CVSEND, K_CVRECV, K_OSC, K_NOISE, K_ADSR, K_SAMPLER,
+  K_SGAIN, K_SIN, K_UNKNOWN
 };
 struct KindInfo
 {
@@ -77,6 +95,12 @@ const std::vector<KindInfo>& kinds()
     {"cout", K_COUT, 0, 0, 1, {"in"}},
     {"cvsend", K_CVSEND, 0, 1, 0, {"in"}},
     {"cvrecv", K_CVRECV, 1, 0, 1, {}},
+    {"osc", K_OSC, 0, 1, 0, {"freq", "amp", "shape", "pw", "glide", "note"}},
+    {"noise", K_NOISE, 0, 1, 0, {"amp", "color"}},
+    {"adsr", K_ADSR, 1, 1, 1, {"gate", "attack", "decay", "sustain", "release"}},
+    {"sampler", K_SAMPLER, 0, 1, 2, {"slot", "gate", "mode", "rate", "level", "start"}},
+    {"sgain", K_SGAIN, 1, 1, 0, {"gain", "lp", "hp", "smooth"}},
+    {"scriptin", K_SIN, 0, 1, 0, {"level"}},
   };
   return v;
 }
@@ -120,7 +144,79 @@ struct Node
   DelayLine dl[2];
   TapTempo tt;
   float tapHz = 0.f;
+  // script audio
+  std::string jk;  // ain / aout: the jack it stands for (analysis, voices, processors)
+  std::string sn[2]; // scriptin: its names (part label, circuit name), lower case
+  float sm = 0.f;  // param: glide time (ms)
+  float gF = -1.f, gA = 0.f, gW = 0.5f, gL = -1.f, gH = -1.f; // smoothed values
+  float pk[3] = {0, 0, 0}; // pink noise
+  int stage = 0;           // adsr: 0 idle, 1 attack, 2 decay / sustain, 3 release
+  double spos = 0;         // sampler
+  bool playing = false, restart = false;
+  float fade = 0.f;
+  const Block::SampleData* sd = nullptr;
 };
+
+inline float polyBlep(float t, float dt)
+{
+  if (t < dt)
+  {
+    t /= dt;
+    return t + t - t * t - 1.f;
+  }
+  if (t > 1.f - dt)
+  {
+    t = (t - 1.f) / dt;
+    return t * t + t + t + 1.f;
+  }
+  return 0.f;
+}
+// per sample one-pole coefficient for a glide of ms
+inline float glideK(float ms, double sr) { return ms <= 0.f ? 1.f : 1.f - std::exp(-1.f / std::max(1.f, ms * 0.001f * float(sr))); }
+
+struct Tap
+{
+  std::string jk;
+  int node = -1;
+  std::vector<float> ring;
+  std::atomic<int> wpos{0};
+  std::atomic<float> peak{0.f};
+  std::atomic<int> onsets{0};
+  float fast = 0.f, slow = 0.f; // onset detector (audio thread)
+  bool armed = true;
+  int hold = 0;
+  std::vector<float> spec; // smoothed band levels (control thread)
+};
+
+// control thread -> audio thread: one voice or processor, all of its values
+struct ScriptMsg
+{
+  bool fx = false, stop = false, env = false, gate = true, loop = false;
+  int idx = 0, type = 0, trig = 0, slot = 0, target = -1;
+  float freq = 220, amp = 0.5f, pw = 0.5f, att = 0.005f, dec = 0.1f, sus = 1.f, rel = 0.05f;
+  float rate = 1, start = 0, pan = 0, gain = 1, q = 0.7f, amount = 0.5f, mix = 1;
+};
+struct Voice
+{
+  ScriptMsg m;
+  bool on = false, dying = false, silent = true, playing = false;
+  float ph = 0, gF = 0, gA = 0, gW = 0.5f, e = 0, pk[3] = {0, 0, 0};
+  int stage = 0, lastTrig = 0;
+  bool lastGate = false;
+  double spos = 0;
+  uint32_t rng = 0x2545f491u;
+  float buf[kChunk];
+};
+struct Fx
+{
+  ScriptMsg m;
+  bool on = false, dying = false;
+  float fade = 0, gG[2] = {1, 1}, fz = 0;
+  SVF svf[2];
+};
+// voice types and processor types, as the commands name them
+const char* const kVoiceTypes[] = {"sine", "square", "saw", "tri", "pulse", "noise", "sample"};
+const char* const kFxTypes[] = {"gain", "lowpass", "highpass", "bandpass", "drive"};
 
 class PatchBlock : public Block
 {
@@ -136,6 +232,33 @@ public:
   std::vector<float> dryBuf[2];
   int mixParam = -1, ain0 = -1;
   int nBufs = 0;
+  // script audio: sample slots (RT reads cur), analysis taps
+  struct SlotBuf
+  {
+    std::atomic<const SampleData*> cur{nullptr};
+    std::shared_ptr<const SampleData> hold; // control thread
+  };
+  std::array<SlotBuf, kSlots + 1> sbuf;
+  std::vector<std::pair<std::shared_ptr<const SampleData>, uint64_t>> retired;
+  std::atomic<uint64_t> epoch{0};
+  std::vector<std::unique_ptr<Tap>> taps;
+  std::atomic<bool> scopeOn{false};
+  bool wantLevel = false, wantSpec = false, wantWave = false, wantPitch = false, waveSync = true;
+  int nBands = 32, nWave = 128, waveSpan = 2048;
+  std::vector<std::string> scopeJacks; // empty = all
+  std::vector<int> tapOf;     // node -> tap index or -1
+  std::vector<int> tapChunk;  // aout taps: the chunk they were last written in
+  int chunkNo = 0;
+  // voices and processors (audio thread state; set through smsg)
+  std::array<Voice, kVoices> voices;
+  std::array<Fx, kFxs> fxs;
+  SpscQueue<ScriptMsg, 256> smsg;
+  std::vector<ScriptMsg> pend; // control thread: what did not fit in the queue yet
+  std::vector<char> nodeScript; // node has a voice or processor on it (audio thread)
+  bool anyScript = false, recount = false;
+  FFT fft;
+  std::vector<std::complex<float>> fbuf;
+  std::vector<float> win, work, dec, yinBuf;
 
   int buf(int id, int c) const { return id * C + c; }
 
@@ -155,6 +278,14 @@ public:
       n.idx2 = nj.value("idx2", -1);
       n.pi = nj.value("pi", -1);
       n.tap = nj.value("tap", -1);
+      n.jk = nj.value("jk", "");
+      for (int q = 0; q < 2; ++q)
+      {
+        std::string v = nj.value(q ? "sni" : "sn", "");
+        for (auto& ch : v) ch = char(std::tolower((unsigned char)ch));
+        n.sn[q] = v;
+      }
+      n.sm = nj.value("sm", 0.f);
       if (k == "algo")
       {
         n.kind = K_ALGO;
@@ -253,6 +384,16 @@ public:
         aoutNode[nodes[i].idx] = i;
       }
       if (nodes[i].kind == K_AIN && nodes[i].idx == 0 && ain0 < 0) ain0 = i;
+      if ((nodes[i].kind == K_AIN || nodes[i].kind == K_AOUT) && !nodes[i].jk.empty())
+      {
+        bool dup = false;
+        for (auto& t : taps) dup = dup || t->jk == nodes[i].jk;
+        if (dup) continue;
+        auto t = std::make_unique<Tap>();
+        t->jk = nodes[i].jk;
+        t->node = i;
+        taps.push_back(std::move(t));
+      }
     }
   }
   // Kahn's sort; nodes left in a loop go in anyway (their unresolved inputs read the last chunk)
@@ -319,6 +460,24 @@ public:
       }
       // per input: read the single source directly, sum several into the node's own buffer
       for (int a = 0; a < n.ain; ++a) n.inBuf[a] = n.inSrc[a].empty() ? -1 : n.inSrc[a].size() == 1 ? n.inSrc[a][0] : -2;
+    }
+    for (auto& t : taps)
+    {
+      t->ring.assign(kRing, 0.f);
+      t->spec.assign(kMaxBands, -120.f);
+    }
+    tapOf.assign(nodes.size(), -1);
+    tapChunk.assign(taps.size(), -1);
+    for (size_t q = 0; q < taps.size(); ++q) tapOf[taps[q]->node] = int(q);
+    nodeScript.assign(nodes.size(), 0);
+    if (!taps.empty())
+    {
+      fft.init(kFft);
+      fbuf.assign(kFft, 0.f);
+      win.resize(kFft);
+      for (int i = 0; i < kFft; ++i) win[i] = 0.5f - 0.5f * std::cos(float(kTwoPi) * i / kFft);
+      work.assign(kRing, 0.f);
+      dec.assign(kRing / 4, 0.f);
     }
     // node scratch for summed inputs: a buffer per input port of each node that needs one
     for (auto& n : nodes)
@@ -586,6 +745,223 @@ public:
         const int si = n.nat.empty() ? -1 : n.nat[0];
         if (si >= 0 && !n.slots[si].src.empty()) n.cv[0] = clampf(n.slots[si].v, -kLim, kLim);
         else n.cv[0] = n.pi >= 0 && n.pi < int(defs.size()) ? clampf(p(n.pi), -kLim, kLim) : 0.f;
+        if (n.sm > 0.f)
+        {
+          // set by a script once per frame: glide there
+          if (n.first) n.last = n.cv[0], n.first = false;
+          n.last += (n.cv[0] - n.last) * (1.f - std::exp(-dt * 1000.f / n.sm));
+          n.cv[0] = n.last;
+        }
+        break;
+      }
+      case K_OSC:
+      {
+        // sine, triangle, saw, square, pulse (band limited with polyBLEP)
+        // pitch from `note` (MIDI note number, fractions allowed) when it is there, else `freq` in Hz
+        const float hz = n.nat[5] >= 0 ? 440.f * std::exp2((clampf(nat(n, 5), -24.f, 160.f) - 69.f) / 12.f) : natIn(n, 0, 220.f);
+        const float f = clampf(hz, 0.f, float(sr) * 0.45f), amp = clampf(natIn(n, 1, 0.5f), 0.f, 4.f);
+        const int shape = int(natIn(n, 2, 0.f) + 0.5f);
+        const float pw = clampf(shape == 3 ? 0.5f : natIn(n, 3, 0.5f), 0.02f, 0.98f);
+        const float kf = glideK(natIn(n, 4, 10.f), sr), ka = glideK(8.f, sr);
+        if (n.gF < 0.f) n.gF = f, n.gW = pw;
+        float* y = output(n, 0, 0);
+        for (int i = 0; i < len; ++i)
+        {
+          n.gF += (f - n.gF) * kf;
+          n.gA += (amp - n.gA) * ka;
+          n.gW += (pw - n.gW) * ka;
+          const float dt1 = n.gF / float(sr), t = n.ph;
+          float w;
+          switch (shape)
+          {
+            default:
+            case 0: w = std::sin(float(kTwoPi) * t); break;
+            case 1: w = 1.f - 4.f * std::fabs(t - 0.5f); break;
+            case 2: w = 2.f * t - 1.f - polyBlep(t, dt1); break;
+            case 3:
+            case 4:
+            {
+              float t2 = t - n.gW;
+              if (t2 < 0.f) t2 += 1.f;
+              w = (t < n.gW ? 1.f : -1.f) + polyBlep(t, dt1) - polyBlep(t2, dt1);
+              break;
+            }
+          }
+          y[i] = w * n.gA;
+          n.ph += dt1;
+          if (n.ph >= 1.f) n.ph -= 1.f;
+        }
+        for (int c = 1; c < C; ++c) std::memcpy(output(n, 0, c), y, sizeof(float) * len);
+        break;
+      }
+      case K_NOISE:
+      {
+        const float amp = clampf(natIn(n, 0, 0.5f), 0.f, 4.f), ka = glideK(8.f, sr);
+        const bool pink = natIn(n, 1, 0.f) > 0.5f;
+        float* y = output(n, 0, 0);
+        for (int i = 0; i < len; ++i)
+        {
+          n.rng ^= n.rng << 13, n.rng ^= n.rng >> 17, n.rng ^= n.rng << 5;
+          float w = float(n.rng & 0xffffff) / float(0xffffff) * 2.f - 1.f;
+          if (pink)
+          {
+            // Paul Kellet's economy pink filter
+            n.pk[0] = 0.99765f * n.pk[0] + w * 0.0990460f;
+            n.pk[1] = 0.96300f * n.pk[1] + w * 0.2965164f;
+            n.pk[2] = 0.57000f * n.pk[2] + w * 1.0526913f;
+            w = (n.pk[0] + n.pk[1] + n.pk[2] + w * 0.1848f) * 0.22f;
+          }
+          n.gA += (amp - n.gA) * ka;
+          y[i] = w * n.gA;
+        }
+        for (int c = 1; c < C; ++c) std::memcpy(output(n, 0, c), y, sizeof(float) * len);
+        break;
+      }
+      case K_ADSR:
+      {
+        // gate opens the envelope: linear attack, exponential decay to sustain and release; the input goes through it
+        const bool gate = natIn(n, 0, 0.f) > 0.5f;
+        const float fsr = float(sr);
+        const float att = 1.f / std::max(1.f, clampf(natIn(n, 1, 5.f), 0.f, 20000.f) * 0.001f * fsr);
+        const float dk = 1.f - std::exp(-4.6f / std::max(1.f, clampf(natIn(n, 2, 120.f), 0.f, 20000.f) * 0.001f * fsr));
+        const float sus = clampf(natIn(n, 3, 0.7f), 0.f, 1.f);
+        const float rk = 1.f - std::exp(-4.6f / std::max(1.f, clampf(natIn(n, 4, 200.f), 0.f, 20000.f) * 0.001f * fsr));
+        if (gate && (!n.prevTrig || n.stage == 3 || n.stage == 0)) n.stage = 1;
+        if (!gate && n.stage && n.stage != 3) n.stage = 3;
+        n.prevTrig = gate;
+        const float* x[2] = {input(n, 0, 0, len), C > 1 ? input(n, 0, 1, len) : nullptr};
+        float* y[2] = {output(n, 0, 0), C > 1 ? output(n, 0, 1) : nullptr};
+        float e = n.g;
+        for (int i = 0; i < len; ++i)
+        {
+          if (n.stage == 1)
+          {
+            e += att;
+            if (e >= 1.f) e = 1.f, n.stage = 2;
+          }
+          else if (n.stage == 2) e += (sus - e) * dk;
+          else if (n.stage == 3)
+          {
+            e -= e * rk;
+            if (e < 1e-5f) e = 0.f, n.stage = 0;
+          }
+          y[0][i] = x[0][i] * e;
+          if (y[1]) y[1][i] = x[1][i] * e;
+        }
+        n.g = e;
+        n.cv[0] = e;
+        break;
+      }
+      case K_SAMPLER:
+      {
+        // plays sample slot `slot`: mode 0 one shot (gate starts it), 1 while the gate is on, 2 loops while it is on
+        const int slot = std::max(1, std::min(kSlots, int(natIn(n, 0, 1.f) + 0.5f)));
+        const bool gate = natIn(n, 1, 0.f) > 0.5f;
+        const int mode = int(natIn(n, 2, 0.f) + 0.5f);
+        const float rate = clampf(natIn(n, 3, 1.f), 0.f, 8.f), lvl = clampf(natIn(n, 4, 1.f), 0.f, 4.f);
+        const SampleData* sd = sbuf[slot].cur.load(std::memory_order_acquire);
+        if (sd != n.sd)
+        {
+          n.sd = sd;
+          if (!sd) n.playing = false;
+        }
+        const int L = sd ? int(sd->x.size()) : 0;
+        const double startAt = double(clampf(natIn(n, 5, 0.f), 0.f, 1.f)) * L;
+        if (gate && !n.prevTrig && L)
+        {
+          if (n.playing && n.fade > 0.f) n.restart = true; // fade out first, then start again
+          else n.playing = true, n.spos = startAt, n.fade = 0.f;
+        }
+        n.prevTrig = gate;
+        const bool hold = mode == 0 || gate;
+        const float fstep = 1.f / (0.002f * float(sr)), ka = glideK(10.f, sr);
+        const double ratio = sd ? double(sd->sr) / sr : 1.0;
+        if (n.gF < 0.f) n.gF = rate;
+        float* y = output(n, 0, 0);
+        for (int i = 0; i < len; ++i)
+        {
+          n.gF += (rate - n.gF) * ka;
+          n.gA += (lvl - n.gA) * ka;
+          float v = 0.f;
+          if (n.playing && L)
+          {
+            const float tgt = n.restart || !hold ? 0.f : 1.f;
+            n.fade = tgt > n.fade ? std::min(tgt, n.fade + fstep) : std::max(tgt, n.fade - fstep);
+            if (n.fade <= 0.f && tgt == 0.f)
+            {
+              if (n.restart) n.restart = false, n.spos = startAt;
+              else n.playing = false;
+            }
+            const int k = int(n.spos);
+            if (k >= 0 && k < L)
+            {
+              const float fr = float(n.spos - k);
+              const float a = sd->x[k], b = k + 1 < L ? sd->x[k + 1] : (mode == 2 ? sd->x[int(startAt) < L ? int(startAt) : 0] : 0.f);
+              v = (a + (b - a) * fr) * n.fade;
+            }
+            n.spos += n.gF * ratio;
+            if (n.spos >= L)
+            {
+              if (mode == 2 && L - startAt >= 1.0) n.spos = startAt + std::fmod(n.spos - startAt, double(L) - startAt);
+              else n.playing = false;
+            }
+          }
+          y[i] = v * n.gA;
+        }
+        for (int c = 1; c < C; ++c) std::memcpy(output(n, 0, c), y, sizeof(float) * len);
+        n.cv[0] = n.playing ? 1.f : 0.f;
+        n.cv[1] = L ? clampf(float(n.spos / L), 0.f, 1.f) : 0.f;
+        break;
+      }
+      case K_SIN:
+      {
+        // a script audio input: the voices sent to this part (by name), times its level
+        const float lvl = clampf(natIn(n, 0, 1.f), 0.f, 4.f);
+        for (int c = 0; c < C; ++c)
+        {
+          float* y = output(n, 0, c);
+          std::fill(y, y + len, 0.f);
+          if (anyScript && nodeScript[&n - nodes.data()])
+          {
+            scriptOn(int(&n - nodes.data()), y, c, C == 2 ? c : -1, len);
+            for (int i = 0; i < len; ++i) y[i] *= lvl;
+          }
+        }
+        break;
+      }
+      case K_SGAIN:
+      {
+        // gain plus a low and high cut, every value glides over `smooth` ms
+        const float g = clampf(natIn(n, 0, 1.f), 0.f, 8.f), lpf = clampf(natIn(n, 1, 20000.f), 20.f, 20000.f), hpf = clampf(natIn(n, 2, 20.f), 20.f, 20000.f);
+        const float ms = clampf(natIn(n, 3, 20.f), 0.f, 2000.f), k = glideK(ms, sr);
+        const float kc = ms <= 0.f ? 1.f : std::min(1.f, 1.f - std::exp(-dt * 1000.f / std::max(1.f, ms)));
+        const float l2 = std::log2(lpf), h2 = std::log2(hpf);
+        if (n.gL < 0.f) n.gL = l2, n.gH = h2, n.gA = g;
+        n.gL += (l2 - n.gL) * kc;
+        n.gH += (h2 - n.gH) * kc;
+        const bool lpOn = n.gL < 14.25f, hpOn = n.gH > 4.4f; // under ~19.5 kHz, over ~21 Hz
+        float g0 = n.gA;
+        for (int c = 0; c < C; ++c)
+        {
+          if (lpOn) n.lp[c].lp(std::exp2(n.gL), float(sr));
+          if (hpOn) n.svf[c].set(std::exp2(n.gH), 0.7071f, float(sr));
+          const float* x = input(n, 0, c, len);
+          float* y = output(n, 0, c);
+          float gg = g0;
+          for (int i = 0; i < len; ++i)
+          {
+            gg += (g - gg) * k;
+            float v = x[i];
+            if (hpOn)
+            {
+              n.svf[c].process(v);
+              v = n.svf[c].hp;
+            }
+            if (lpOn) v = n.lp[c].processLP(v);
+            y[i] = v * gg;
+          }
+          n.gA = gg;
+        }
         break;
       }
       case K_ADD: n.cv[0] = clampf(natIn(n, 0, 0.f) + natIn(n, 1, 0.f), -kLim, kLim); break;
@@ -747,10 +1123,27 @@ public:
   }
   void process(const float* const* in, float* const* out, int n) override
   {
+    drainScript();
     for (int off = 0; off < n; off += kChunk)
     {
       const int len = std::min(kChunk, n - off);
-      for (int i : order) runNode(nodes[i], in, nIn, off, len);
+      ++chunkNo;
+      if (anyScript)
+        for (auto& v : voices)
+          if (v.on) renderVoice(v, len);
+      const bool scope = scopeOn.load(std::memory_order_relaxed);
+      for (int i : order)
+      {
+        runNode(nodes[i], in, nIn, off, len);
+        if (nodes[i].kind != K_AIN) continue;
+        if (anyScript && nodeScript[i])
+          for (int c = 0; c < C; ++c) scriptOn(i, output(nodes[i], 0, c), c, C == 2 ? c : -1, len);
+        if (scope && tapOf[i] >= 0)
+        {
+          const float* b = C > 1 ? output(nodes[i], 0, 1) : nullptr;
+          capture(*taps[tapOf[i]], output(nodes[i], 0, 0), b, len);
+        }
+      }
       // feedback parts take their input last, so the loop closes one chunk later
       for (auto& nd : nodes)
         if (nd.kind == K_FB)
@@ -786,13 +1179,449 @@ public:
           const float* d = output(nodes[ain0], 0, 0);
           for (int i = 0; i < len; ++i) y[i] = d[i] * (1.f - mix) + y[i] * mix;
         }
+        // script voices and processors on this output jack, then what the jack puts out is analysed
+        if (anyScript && nodeScript[ni]) scriptOn(ni, y, ch == 1 ? 1 : 0, ch, len);
+        const int ti = tapOf[ni];
+        if (scope && ti >= 0 && tapChunk[ti] != chunkNo)
+        {
+          tapChunk[ti] = chunkNo;
+          capture(*taps[ti], y, nullptr, len);
+        }
       }
     }
+    epoch.fetch_add(1, std::memory_order_release);
+  }
+
+  // ---- script voices and processors (audio thread) ----
+  // new values from the control thread
+  void drainScript()
+  {
+    ScriptMsg m;
+    bool changed = false;
+    while (smsg.pop(m))
+    {
+      changed = true;
+      if (m.fx)
+      {
+        if (m.idx < 0 || m.idx >= kFxs) continue;
+        Fx& f = fxs[m.idx];
+        if (m.stop || m.target < 0)
+        {
+          if (f.on) f.dying = true;
+          continue;
+        }
+        if (!f.on || f.m.target != m.target || f.m.type != m.type)
+        {
+          f.svf[0].reset(), f.svf[1].reset();
+          f.fade = 0.f, f.fz = 0.f, f.gG[0] = f.gG[1] = m.gain;
+        }
+        f.m = m, f.on = true, f.dying = false;
+        continue;
+      }
+      if (m.idx < 0 || m.idx >= kVoices) continue;
+      Voice& v = voices[m.idx];
+      if (m.stop || m.target < 0)
+      {
+        if (v.on) v.dying = true;
+        continue;
+      }
+      const bool fresh = !v.on || v.dying;
+      v.m = m;
+      if (fresh)
+      {
+        v.on = true, v.dying = false, v.ph = 0, v.gF = m.freq, v.gA = 0, v.gW = m.pw;
+        v.e = m.env ? 0.f : 1.f;
+        v.stage = 0, v.lastGate = false, v.lastTrig = m.trig, v.playing = false;
+        if (!m.env || m.gate) start(v);
+      }
+      else
+      {
+        if (m.trig != v.lastTrig) start(v);
+        else if (m.env && m.gate && !v.lastGate) start(v);
+        else if (m.env && !m.gate && v.lastGate && v.stage) v.stage = 3;
+      }
+      v.lastTrig = m.trig, v.lastGate = m.gate;
+    }
+    if (!changed && !recount) return;
+    recount = false;
+    // where they are
+    std::fill(nodeScript.begin(), nodeScript.end(), 0);
+    anyScript = false;
+    for (auto& v : voices)
+      if (v.on && v.m.target >= 0 && v.m.target < int(nodeScript.size())) nodeScript[v.m.target] = 1, anyScript = true;
+    for (auto& f : fxs)
+      if (f.on && f.m.target >= 0 && f.m.target < int(nodeScript.size())) nodeScript[f.m.target] = 1, anyScript = true;
+  }
+  void start(Voice& v)
+  {
+    v.stage = v.m.env ? 1 : 2;
+    if (!v.m.env) v.e = 1.f;
+    v.lastGate = v.m.gate;
+    const SampleData* sd = v.m.type == 6 ? sbuf[std::max(1, std::min(kSlots, v.m.slot))].cur.load(std::memory_order_acquire) : nullptr;
+    v.spos = sd ? double(clampf(v.m.start, 0.f, 1.f)) * double(sd->x.size()) : 0.0;
+    v.playing = true;
+  }
+  void renderVoice(Voice& v, int len)
+  {
+    const ScriptMsg& m = v.m;
+    const float fsr = float(sr);
+    // an envelope (or a 5 ms fade when it has none or is stopping)
+    const float att = 1.f / std::max(1.f, std::max(0.f, m.att) * fsr);
+    const float dk = 1.f - std::exp(-4.6f / std::max(1.f, std::max(0.f, m.dec) * fsr));
+    const float rk = 1.f - std::exp(-4.6f / std::max(1.f, (v.dying || !m.env ? 0.005f : std::max(0.f, m.rel)) * fsr));
+    const float sus = clampf(m.sus, 0.f, 1.f);
+    if (v.dying) v.stage = 3;
+    if (v.stage == 0 || (!v.playing && m.type == 6))
+    {
+      v.silent = true;
+      if (v.dying) v.on = v.dying = false, recount = true;
+      return;
+    }
+    v.silent = false;
+    const float f = clampf(m.freq, 0.f, fsr * 0.45f), amp = clampf(m.amp, 0.f, 4.f), pw = clampf(m.pw, 0.02f, 0.98f);
+    const float kf = glideK(8.f, sr), ka = glideK(8.f, sr);
+    const SampleData* sd = m.type == 6 ? sbuf[std::max(1, std::min(kSlots, m.slot))].cur.load(std::memory_order_acquire) : nullptr;
+    const int L = sd ? int(sd->x.size()) : 0;
+    const double step = sd ? double(clampf(m.rate, 0.f, 8.f)) * sd->sr / sr : 0.0;
+    const double s0 = double(clampf(m.start, 0.f, 1.f)) * L;
+    float e = v.e;
+    for (int i = 0; i < len; ++i)
+    {
+      if (v.stage == 1)
+      {
+        e += att;
+        if (e >= 1.f) e = 1.f, v.stage = 2;
+      }
+      else if (v.stage == 2) e += ((m.env ? sus : 1.f) - e) * dk;
+      else if (v.stage == 3)
+      {
+        e -= e * rk;
+        if (e < 1e-5f) e = 0.f, v.stage = 0;
+      }
+      v.gF += (f - v.gF) * kf;
+      v.gA += (amp - v.gA) * ka;
+      v.gW += ((m.type == 1 ? 0.5f : pw) - v.gW) * ka;
+      const float dt1 = v.gF / fsr, t = v.ph;
+      float w = 0.f;
+      switch (m.type)
+      {
+        default:
+        case 0: w = std::sin(float(kTwoPi) * t); break;
+        case 3: w = 1.f - 4.f * std::fabs(t - 0.5f); break;
+        case 2: w = 2.f * t - 1.f - polyBlep(t, dt1); break;
+        case 1:
+        case 4:
+        {
+          float t2 = t - v.gW;
+          if (t2 < 0.f) t2 += 1.f;
+          w = (t < v.gW ? 1.f : -1.f) + polyBlep(t, dt1) - polyBlep(t2, dt1);
+          break;
+        }
+        case 5:
+          v.rng ^= v.rng << 13, v.rng ^= v.rng >> 17, v.rng ^= v.rng << 5;
+          w = float(v.rng & 0xffffff) / float(0xffffff) * 2.f - 1.f;
+          break;
+        case 6:
+          if (v.playing && L)
+          {
+            const int k = int(v.spos);
+            if (k >= 0 && k < L)
+            {
+              const float a = sd->x[k], b = k + 1 < L ? sd->x[k + 1] : (m.loop ? sd->x[std::min(L - 1, int(s0))] : 0.f);
+              w = a + (b - a) * float(v.spos - k);
+            }
+            v.spos += step;
+            if (v.spos >= L)
+            {
+              if (m.loop && L - s0 >= 1.0) v.spos = s0 + std::fmod(v.spos - s0, double(L) - s0);
+              else v.playing = false;
+            }
+          }
+          break;
+      }
+      if (m.type != 5 && m.type != 6)
+      {
+        v.ph += dt1;
+        if (v.ph >= 1.f) v.ph -= 1.f;
+      }
+      v.buf[i] = w * v.gA * e;
+    }
+    v.e = e;
+    if (v.stage == 0 && v.dying) v.on = v.dying = false, v.silent = true, recount = true;
+  }
+  // voices and processors on node ni, into one channel of its signal (ch: 0 left, 1 right, -1 mono)
+  void scriptOn(int ni, float* y, int fc, int ch, int len)
+  {
+    for (auto& v : voices)
+    {
+      if (!v.on || v.silent || v.m.target != ni) continue;
+      const float pan = clampf(v.m.pan, -1.f, 1.f), g = ch == 0 ? std::min(1.f, 1.f - pan) : ch == 1 ? std::min(1.f, 1.f + pan) : 1.f;
+      for (int i = 0; i < len; ++i) y[i] += v.buf[i] * g;
+    }
+    for (auto& f : fxs)
+      if (f.on && f.m.target == ni) runFx(f, y, fc, len);
+  }
+  void runFx(Fx& f, float* y, int c, int len)
+  {
+    const ScriptMsg& m = f.m;
+    const float k = glideK(10.f, sr);
+    const float gT = clampf(m.gain, 0.f, 8.f), mix = clampf(m.mix, 0.f, 1.f);
+    const float fT = f.dying ? 0.f : 1.f, fstep = 1.f / (0.005f * float(sr));
+    const bool filt = m.type >= 1 && m.type <= 3;
+    if (filt && c == 0)
+    {
+      // the cutoff glides in octaves, once per chunk
+      const float lf = std::log2(clampf(m.freq, 20.f, 20000.f));
+      f.fz = f.fz == 0.f ? lf : f.fz + (lf - f.fz) * std::min(1.f, len / (0.01f * float(sr)));
+    }
+    if (filt) f.svf[c].set(std::exp2(f.fz == 0.f ? std::log2(clampf(m.freq, 20.f, 20000.f)) : f.fz), clampf(m.q, 0.1f, 20.f), float(sr));
+    const float drive = 1.f + 30.f * clampf(m.amount, 0.f, 1.f) * clampf(m.amount, 0.f, 1.f);
+    const float comp = 1.f / fastTanh(drive);
+    float g = f.gG[c], fade = f.fade;
+    for (int i = 0; i < len; ++i)
+    {
+      g += (gT - g) * k;
+      fade = fT > fade ? std::min(fT, fade + fstep) : std::max(fT, fade - fstep);
+      const float x = y[i];
+      float w;
+      switch (m.type)
+      {
+        default:
+        case 0: w = x; break;
+        case 1: f.svf[c].process(x), w = f.svf[c].lp; break;
+        case 2: f.svf[c].process(x), w = f.svf[c].hp; break;
+        case 3: f.svf[c].process(x), w = f.svf[c].bp; break;
+        case 4: w = fastTanh(x * drive) * comp; break;
+      }
+      w *= g;
+      const float wet = x + (w - x) * mix; // mix 0 = untouched
+      y[i] = x + (wet - x) * fade;
+    }
+    f.gG[c] = g;
+    if (c == 0 || C == 1) f.fade = fade;
+    if (f.dying && fade <= 0.f) f.on = f.dying = false, recount = true;
+  }
+  // analysis taps: the mono signal at a jack into its ring, its peak and note starts (audio thread)
+  void capture(Tap& tp, const float* a, const float* b, int len)
+  {
+    int w = tp.wpos.load(std::memory_order_relaxed);
+    float pk = 0.f, s2 = 0.f;
+    for (int i = 0; i < len; ++i)
+    {
+      const float v = b ? 0.5f * (a[i] + b[i]) : a[i];
+      tp.ring[w] = v;
+      w = (w + 1) & (kRing - 1);
+      pk = std::max(pk, std::fabs(v));
+      s2 += v * v;
+    }
+    tp.wpos.store(w, std::memory_order_release);
+    if (pk > tp.peak.load(std::memory_order_relaxed)) tp.peak.store(pk, std::memory_order_relaxed);
+    // onsets: the chunk's energy jumps well over its slow average
+    const float ms = s2 / float(std::max(1, len)), dt = float(len / sr);
+    tp.fast = std::max(ms, tp.fast * std::exp(-dt / 0.02f));
+    tp.slow += (ms - tp.slow) * (1.f - std::exp(-dt / 0.25f));
+    if (tp.hold > 0) --tp.hold;
+    if (tp.armed && tp.hold == 0 && tp.fast > 1e-4f && tp.fast > 4.f * tp.slow + 1e-7f)
+    {
+      tp.onsets.fetch_add(1, std::memory_order_relaxed);
+      tp.armed = false;
+      tp.hold = int(0.06 * sr / kChunk) + 1;
+    }
+    else if (!tp.armed && tp.fast < 2.f * tp.slow) tp.armed = true;
+  }
+  // ---- script audio, control thread ----
+  void setSample(int slot, std::shared_ptr<const SampleData> sd) override
+  {
+    if (slot < 1 || slot > kSlots) return;
+    auto& sb = sbuf[slot];
+    if (sb.hold) retired.push_back({sb.hold, epoch.load(std::memory_order_acquire)});
+    sb.hold = std::move(sd);
+    sb.cur.store(sb.hold.get(), std::memory_order_release);
+    freeRetired();
+  }
+  void freeRetired()
+  {
+    // a buffer can go once a whole process call has started after it was swapped out
+    const uint64_t e = epoch.load(std::memory_order_acquire);
+    retired.erase(std::remove_if(retired.begin(), retired.end(), [&](auto& r) { return e >= r.second + 2; }), retired.end());
+  }
+  static int typeIndex(const json& v, const char* const* names, int n, int def)
+  {
+    if (v.is_number()) return std::max(0, std::min(n - 1, v.get<int>()));
+    if (v.is_string())
+      for (int i = 0; i < n; ++i)
+        if (v.get<std::string>() == names[i]) return i;
+    return def;
+  }
+  // a jack key or a scriptin part name to a node
+  int targetNode(const json& to, bool jackOnly)
+  {
+    if (to.is_string())
+    {
+      for (size_t i = 0; i < nodes.size(); ++i)
+        if ((nodes[i].kind == K_AIN || nodes[i].kind == K_AOUT) && nodes[i].jk == to.get<std::string>()) return int(i);
+      return -1;
+    }
+    if (!to.is_object()) return -1;
+    if (to.contains("jack")) return targetNode(to["jack"], true);
+    if (jackOnly || !to.contains("part") || !to["part"].is_string()) return -1;
+    std::string nm = to["part"].get<std::string>();
+    for (auto& ch : nm) ch = char(std::tolower((unsigned char)ch));
+    for (int q = 0; q < 2; ++q)
+      for (size_t i = 0; i < nodes.size(); ++i)
+        if (nodes[i].kind == K_SIN && (nm.empty() || nodes[i].sn[q] == nm)) return int(i);
+    return -1;
+  }
+  void scriptCmd(const json& c) override
+  {
+    const std::string cmd = c.value("cmd", "");
+    if (cmd == "scope") return setScope(c);
+    if (cmd != "voice" && cmd != "fx") return;
+    ScriptMsg m;
+    m.fx = cmd == "fx";
+    m.idx = c.value(m.fx ? "f" : "v", 0);
+    m.stop = c.value("stop", false);
+    if (!m.stop)
+    {
+      m.target = targetNode(m.fx ? c.value("jack", json()) : c.value("to", json()), m.fx);
+      m.type = m.fx ? typeIndex(c.value("type", json()), kFxTypes, 5, 0) : typeIndex(c.value("type", json()), kVoiceTypes, 7, 0);
+      auto num = [&](const char* k, float d) { return c.contains(k) && c[k].is_number() ? c[k].get<float>() : d; };
+      m.freq = num("freq", m.fx ? 1000.f : 220.f), m.amp = num("amp", 0.5f), m.pw = num("pw", 0.5f);
+      m.env = c.value("env", false);
+      m.att = num("attack", 0.005f), m.dec = num("decay", 0.1f), m.sus = num("sustain", 1.f), m.rel = num("release", 0.05f);
+      m.gate = c.contains("gate") ? (c["gate"].is_boolean() ? c["gate"].get<bool>() : num("gate", 1.f) > 0.5f) : true;
+      m.trig = int(num("trig", 0.f));
+      m.slot = int(num("slot", 0.f));
+      m.loop = c.value("loop", false);
+      m.rate = num("rate", 1.f), m.start = num("start", 0.f), m.pan = num("pan", 0.f);
+      m.gain = num("gain", 1.f), m.q = num("q", 0.7f), m.amount = num("amount", 0.5f), m.mix = num("mix", 1.f);
+    }
+    pend.push_back(m);
+    flushScript();
+  }
+  void flushScript()
+  {
+    size_t k = 0;
+    while (k < pend.size() && smsg.push(pend[k])) ++k;
+    pend.erase(pend.begin(), pend.begin() + long(k));
+  }
+  void setScope(const json& c)
+  {
+    wantLevel = wantSpec = wantWave = wantPitch = false;
+    const json what = c.value("what", json::array({"level"}));
+    for (auto& w : what)
+      if (w.is_string())
+      {
+        const std::string s = w.get<std::string>();
+        wantLevel = wantLevel || s == "level" || s == "all";
+        wantSpec = wantSpec || s == "spec" || s == "all";
+        wantWave = wantWave || s == "wave" || s == "all";
+        wantPitch = wantPitch || s == "pitch" || s == "all";
+      }
+    nBands = std::max(4, std::min(kMaxBands, c.value("bands", 32)));
+    nWave = std::max(16, std::min(kMaxWave, c.value("wave", 128)));
+    waveSync = c.value("sync", true);
+    waveSpan = std::max(nWave, std::min(waveSync ? kFft : kRing, c.value("span", std::max(nWave, kFft))));
+    scopeJacks.clear();
+    for (auto& j : c.value("jacks", json::array()))
+      if (j.is_string()) scopeJacks.push_back(j.get<std::string>());
+    const bool on = c.value("on", true) && (wantLevel || wantSpec || wantWave || wantPitch) && !taps.empty();
+    if (on && !scopeOn.load())
+      for (auto& t : taps) t->peak.store(0.f);
+    scopeOn.store(on);
+  }
+  void scopeStatus(json& j)
+  {
+    json out = json::object();
+    const double r4 = 10000.0;
+    for (auto& tp : taps)
+    {
+      if (!scopeJacks.empty() && std::find(scopeJacks.begin(), scopeJacks.end(), tp->jk) == scopeJacks.end()) continue;
+      const int w = tp->wpos.load(std::memory_order_acquire);
+      for (int i = 0; i < kRing; ++i) work[i] = tp->ring[(w + i) & (kRing - 1)]; // oldest first
+      json t = json::object();
+      if (wantLevel)
+      {
+        double s2 = 0;
+        for (int i = kRing - kFft; i < kRing; ++i) s2 += double(work[i]) * work[i];
+        const float rms = float(std::sqrt(s2 / kFft)), pk = tp->peak.exchange(0.f);
+        t["rms"] = std::round(double(rms) * r4) / r4;
+        t["peak"] = std::round(double(pk) * r4) / r4;
+        t["db"] = std::round(std::max(-120.0, 20.0 * std::log10(std::max(1e-9, double(rms)))) * 10.0) / 10.0;
+        t["onset"] = tp->onsets.load(std::memory_order_relaxed);
+      }
+      if (wantSpec)
+      {
+        // nBands bands with log spaced centres from 40 Hz to 16 kHz, dBFS (a full scale sine reads 0), fast up, slow down
+        for (int i = 0; i < kFft; ++i) fbuf[i] = work[kRing - kFft + i] * win[i];
+        fft.transform(fbuf.data(), false);
+        json a = json::array();
+        const double r = std::pow(400.0, 1.0 / (nBands - 1));
+        for (int b = 0; b < nBands; ++b)
+        {
+          const double fc = 40.0 * std::pow(r, b), f0 = fc / std::sqrt(r), f1 = fc * std::sqrt(r);
+          int k0 = int(std::round(f0 * kFft / sr)), k1 = std::max(k0 + 1, int(std::round(f1 * kFft / sr)));
+          k1 = std::min(k1, kFft / 2);
+          float m = 0;
+          for (int k = k0; k < k1; ++k) m = std::max(m, std::abs(fbuf[k]));
+          const float db = 20.f * std::log10(std::max(1e-9f, m * 4.f / kFft));
+          float& sm = tp->spec[b];
+          sm = db > sm ? db : sm * 0.75f + db * 0.25f;
+          a.push_back(int(std::round(std::max(-120.f, sm))));
+        }
+        t["spec"] = a;
+      }
+      if (wantWave)
+      {
+        // nWave points over the last waveSpan samples, newest last; with sync it starts at a rising zero crossing so
+        // a steady note stands still (then it ends up to waveSpan samples before the newest)
+        int s0 = kRing - waveSpan;
+        if (waveSync)
+          for (int i = kRing - waveSpan; i > kRing - 2 * waveSpan && i > 0; --i)
+            if (work[i - 1] <= 0.f && work[i] > 0.f)
+            {
+              s0 = i;
+              break;
+            }
+        json a = json::array();
+        for (int q = 0; q < nWave; ++q)
+        {
+          const int i0 = s0 + int(int64_t(q) * waveSpan / nWave), i1 = std::max(i0 + 1, s0 + int(int64_t(q + 1) * waveSpan / nWave));
+          float v = 0.f;
+          for (int i = i0; i < i1 && i < kRing; ++i)
+            if (std::fabs(work[i]) > std::fabs(v)) v = work[i];
+          a.push_back(std::round(double(v) * 1000.0) / 1000.0);
+        }
+        t["wave"] = a;
+      }
+      if (wantPitch)
+      {
+        // the tuner's YIN on the ring decimated by 4
+        const int D = 4, n = kRing / D;
+        double s2 = 0;
+        for (int i = 0; i < n; ++i)
+        {
+          float a = 0.f;
+          for (int k = 0; k < D; ++k) a += work[i * D + k];
+          dec[i] = a / D;
+          s2 += double(dec[i]) * dec[i];
+        }
+        PitchResult r;
+        if (std::sqrt(s2 / n) > 0.002) r = yinDetect(dec.data(), n, sr / D, 50.0, 1500.0, yinBuf);
+        const bool ok = r.freq > 0 && r.conf > 0.5;
+        t["hz"] = ok ? std::round(r.freq * 10.0) / 10.0 : 0.0;
+        t["conf"] = std::round(r.conf * 100.0) / 100.0;
+      }
+      out[tp->jk] = t;
+    }
+    j["scope"] = out;
   }
   void controlTick() override
   {
     for (auto& nd : nodes)
       if (nd.b) nd.b->controlTick();
+    if (!retired.empty()) freeRetired();
+    if (!pend.empty()) flushScript();
   }
   void status(json& j) override
   {
@@ -808,6 +1637,7 @@ public:
         if (nd.kind == K_COUT && nd.idx >= 0) cv[nd.idx] = std::round(nd.cv[0] * 1000.f) / 1000.f;
       j["cv"] = cv;
     }
+    if (scopeOn.load()) scopeStatus(j);
     for (size_t i = 0; i < nodes.size(); ++i)
       if (nodes[i].b)
       {
@@ -828,6 +1658,10 @@ public:
         nd.dl[c].clear();
       }
       std::fill(nd.hist.begin(), nd.hist.end(), 0.f);
+      nd.playing = nd.restart = false;
+      nd.stage = 0;
+      nd.fade = 0.f;
+      if (nd.kind == K_ADSR) nd.g = 0.f;
     }
   }
 };
