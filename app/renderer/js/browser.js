@@ -62,6 +62,7 @@ function stereoOf(d) {
 }
 function sourceOf(d) {
   if (d.pack) return 'Imported';
+  if (d.plugin === 'custom') return 'Custom';
   if (isOriginal(d)) return 'Tone Zone original';
   return 'Inspired by';
 }
@@ -121,7 +122,7 @@ export function initBrowser(editor) {
     return box;
   };
   segSec('Channels', 'channels', ['Any', 'Mono', 'Stereo']);
-  segSec('Source', 'source', ['Any', 'Inspired by', 'Tone Zone original', 'Imported']);
+  segSec('Source', 'source', ['Any', 'Inspired by', 'Tone Zone original', 'Custom', 'Imported']);
   const catBox = section('Effect type');
   const brandSec = section('Inspired by brand');
   const brandSearch = el('input', { placeholder: 'Find brand…', class: 'brand-find', spellcheck: 'false' }, brandSec);

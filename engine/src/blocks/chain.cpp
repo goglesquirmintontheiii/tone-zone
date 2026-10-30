@@ -25,6 +25,7 @@ public:
   int mixParam = -1;
   std::vector<std::vector<float>> dry, acc, lane;
   std::vector<Sub> subs;
+  std::vector<int> outMap;
   std::vector<std::vector<float>> bufA, bufB;
   std::vector<float> sc[2];
   int C = 1;
@@ -55,6 +56,8 @@ public:
       subs.push_back(std::move(s));
     }
     if (o.value("mix", false)) mixParam = addParam("mix", o.value("mixDef", 1.f), 0.f, 1.f);
+    // optional output channel map: one entry per output, 0 = left, 1 = right, -1 = mono sum
+    for (auto& v : o.value("outMap", json::array())) outMap.push_back(v.get<int>());
     finalizeParams();
   }
   void prepare(const PrepareCtx& c) override
@@ -187,7 +190,13 @@ public:
         for (int i = 0; i < n; ++i) bufA[c][i] = dry[c][i] * (1.f - m) + bufA[c][i] * m;
     }
     // extra outputs (XLR, phones, second pair) repeat the L/R pattern
-    for (int c = 0; c < nOut; ++c) std::memcpy(out[c], bufA[c % C].data(), sizeof(float) * n);
+    for (int c = 0; c < nOut; ++c)
+    {
+      const int m = c < int(outMap.size()) ? outMap[c] : c % C;
+      if (m < 0 && C == 2)
+        for (int i = 0; i < n; ++i) out[c][i] = 0.5f * (bufA[0][i] + bufA[1][i]);
+      else std::memcpy(out[c], bufA[std::min(std::max(m, 0), C - 1)].data(), sizeof(float) * n);
+    }
   }
   void controlTick() override
   {

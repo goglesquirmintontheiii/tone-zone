@@ -244,6 +244,14 @@ export function portJacks(D) {
     exps: D.jacks.filter((j) => j.kind === 'exp'),
   };
 }
+// the block list category for a circuit built by hand
+const CAT_OF = { boost: 'Boost', overdrive: 'Overdrive', amp: 'Overdrive', distortion: 'Distortion', fuzz: 'Fuzz', comp: 'Dynamics', gate: 'Dynamics', swell: 'Dynamics', eq: 'EQ', wah: 'Filter',
+  chorus: 'Modulation', phaser: 'Modulation', flanger: 'Modulation', vibe: 'Modulation', tremolo: 'Modulation', rotary: 'Modulation', ringmod: 'Modulation', delay: 'Delay', slicer: 'Modulation',
+  reverb: 'Reverb', freeze: 'Reverb', octave: 'Pitch', pitch: 'Pitch', synth: 'Synth', lofi: 'Utility', crusher: 'Utility', volume: 'Volume', level: 'Utility' };
+function catFor(stages) {
+  const cats = [...new Set(stages.filter((s) => s.type !== 'gate' && s.type !== 'level').map((s) => CAT_OF[s.type] || 'Utility'))];
+  return cats.length === 1 ? cats[0] : cats.length ? 'Multi-FX' : 'Utility';
+}
 // stage index in the chain (taps are routed by index)
 const stageIndex = (C, sid) => C.stages.findIndex((s) => s.id === sid);
 
@@ -285,6 +293,9 @@ export function designToDef(design, o = {}) {
     if (j.kind === 'phones') jackKinds['o' + i] = 'phones';
     if (j.kind === 'xlr') jackKinds['o' + i] = 'xlr';
   });
+  // which channel each output gets: a stereo pair is out = left, stereo out = right; anything else gets both mixed
+  const hasPair = outs.some((j) => j.kind === 'stereo') && outs.some((j) => j.kind === 'out');
+  const outMap = outs.length ? outs.map((j) => (hasPair && j.kind === 'out' ? 0 : hasPair && j.kind === 'stereo' ? 1 : -1)) : [-1];
   const ports = { ins: ins.length ? ins.map((j, i) => j.label || (ins.length > 1 ? 'IN ' + (i + 1) : 'INPUT')) : ['INPUT'], outs: outs.length ? outs.map((j) => j.label || 'OUTPUT') : ['OUTPUT'] };
 
   // controls and their mappings
@@ -381,7 +392,7 @@ export function designToDef(design, o = {}) {
     name: D.name || 'Custom pedal',
     code: D.name || 'Custom',
     kind: 'Custom',
-    cat: o.cat || C.cat || 'Multi-FX',
+    cat: o.cat || (C.tpl && C.cat) || catFor(stages),
     brand: 'Custom',
     typeName: names.join(' + ') || 'Custom pedal',
     desc: (D.desc ? D.desc + ' ' : '') + 'Made in the Pedal Factory: ' + (names.join(' into ') || 'clean pass-through') + '.',
@@ -389,7 +400,7 @@ export function designToDef(design, o = {}) {
     design: D,
     color: /^#[0-9a-f]{6}$/i.test(mat.c || '') ? mat.c : '#555555',
     algo: 'chain',
-    opts: { chain, mix: !!C.mix, mixDef: C.mixDef ?? 1 },
+    opts: { chain, mix: !!C.mix, mixDef: C.mixDef ?? 1, outMap },
     fixed,
     derive,
     ports,

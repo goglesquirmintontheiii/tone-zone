@@ -593,10 +593,11 @@ function freeSpot(c, d = D, o = {}) {
   const [hw, hh] = ctlHalf(c);
   let best = null;
   const maxX = o.half ? W / 2 - hw - 1 : W - hw - 3;
+  const maxY = o.halfY ? H / 2 - hh - 1 : H - hh - 4;
   // first try to keep clear of the printed text, then allow overlapping it
   for (const avoidText of [true, false]) {
     if (best) break;
-    for (let y = hh + 4; y <= H - hh - 4; y += 2)
+    for (let y = hh + 4; y <= maxY; y += 2)
       for (let x = hw + 3; x <= maxX; x += 2) {
         const ok = d.ctls.every((q) => {
           if (q === c || q.hidden || q.x == null) return true;
@@ -606,7 +607,7 @@ function freeSpot(c, d = D, o = {}) {
         if (!ok) continue;
         const onText = [d.title, d.sub].some((t) => !t.hidden && t.text && Math.abs(y - t.y) < t.size * 0.7 + hh && Math.abs(x - t.x) < (t.text.length * t.size * 0.55) / 2 + hw);
         if (avoidText && onText) continue;
-        const score = Math.abs(x - (o.half ? W * 0.3 : W / 2)) * 0.6 + Math.abs(y - H * 0.4);
+        const score = Math.abs(x - (o.half ? W * 0.3 : W / 2)) * 0.6 + Math.abs(y - (o.halfY ? H * 0.25 : H * 0.4));
         if (!best || score < best.score) best = { x, y, score };
       }
   }
@@ -638,7 +639,7 @@ function addPart(kind, payload, at) {
     D.jacks.push(item);
   } else {
     item = PARTS[payload].make();
-    const p = at ? { x: snap(at.x), y: snap(at.y) } : freeSpot(item, D, { half: mir && vAxis() });
+    const p = at ? { x: snap(at.x), y: snap(at.y) } : freeSpot(item, D, { half: mir && vAxis(), halfY: mir && !vAxis() });
     item.x = p.x;
     item.y = p.y;
     if (item.kind === 'pedal' && !at) Object.assign(item, { x: snap(D.enc.w / 2), y: snap(D.enc.h * 0.55) });
@@ -1168,7 +1169,7 @@ function slider(parent, label, val, min, max, step, set, cls) {
   r.value = val;
   const n = el('input', { type: 'number', min, max, step, class: 'fz-num' }, c);
   n.value = mixed ? '' : r1(val);
-  if (mixed) n.placeholder = 'Mixed';
+  if (mixed) n.placeholder = '...';
   const paint = () => r.style.setProperty('--p', ((r.value - min) / (max - min)) * 100 + '%');
   paint();
   r.oninput = () => {

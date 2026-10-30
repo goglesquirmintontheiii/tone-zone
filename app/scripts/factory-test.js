@@ -214,6 +214,7 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('[data-template="blank"]');
   await win.waitForTimeout(300);
   await win.click('#fzMirror');
+  await win.click('#fzMirrorAxis [data-v="v"]');
   await win.waitForTimeout(150);
   ok((await D()) && (await win.evaluate(() => document.querySelector('#fzMirror').classList.contains('on'))), 'mirror mode on');
   await win.click('.fz-tile[data-part="knob"]');
@@ -248,6 +249,7 @@ const S = process.env.SHOTS || '/tmp';
   dm = await D();
   const ml = dm.ctls.filter((c) => c.kind === 'led');
   ok(ml.length === 2 && Math.abs(ml[0].y + ml[1].y - dm.enc.h) < 0.01 && ml[0].x === ml[1].x, 'horizontal mirror puts the twin below');
+  await win.click('#fzMirrorAxis [data-v="v"]');
   await win.click('#fzMirror');
   await win.waitForTimeout(100);
 
@@ -308,6 +310,8 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(400);
   const names = await win.$$eval('#blockList .bl-item', (els) => els.map((e) => e.textContent));
   ok(names.length === 1 && /Glass Drive/.test(names[0]), 'the block is listed under Custom');
+  // the block list remembers its filter: put it back to All for other tests
+  await win.click('#catChips .kinds .chip:text-is("All")');
   const onBoard = await win.evaluate(async (id) => {
     const m = await import('./js/state.js');
     const b = m.addBlock(id, 900, 700);

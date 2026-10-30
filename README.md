@@ -53,12 +53,14 @@ the `fuse2` package.
 - **Presets**: a Presets tab with board thumbnails, tags and favourites, about 180 factory presets (rhythm and lead
   rigs for many genres, artist and song tones, synth and meme rigs), undo / redo, import and export.
 - **Pedalboards**: six empty boards from Tiny (4 pedals) to XL Max (28). Pedals dropped on a board snap into
-  place, and dragging the board moves its pedals. Name them, and pick the frame and velcro colours.
+  place, and dragging the board moves its pedals. Name them, pick how pedals are mounted (velcro, strips, screws),
+  and choose the frame, rail and screw materials, finishes, colours and wear.
 - **Rotate blocks** in 90 degree steps (R, or right-click). Cables follow the jacks.
 - **Couplers**: tiny double male and double female 1/4" couplers. A male coupler turns to fit the jack you drop it
   on and joins two pedals with no cable.
-- **Pedal Factory tab**: design your own pedal's look (enclosure, finish, artwork, knobs, switches, jacks). The
-  sound side comes later.
+- **Pedal Factory tab**: build your own pedals. Design the enclosure (16 shapes, materials, finishes, wear and
+  patterns) and every knob, switch and jack, wire the controls to a circuit (24 starter circuits), try it with your
+  guitar in Test mode, then save it as a block. Saved pedals appear under **Custom** in the block list.
 - **App themes**: Dark, White or Monochrome. Pedal graphics stay the same.
 - **Raspberry Pi tab**: a placeholder for now. This is where putting presets on a Pi-based pedal will live.
 
