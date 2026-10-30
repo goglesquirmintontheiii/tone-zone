@@ -2,7 +2,7 @@
 // The design is kept in memory (and in localStorage when it works). Units are millimetres.
 import { el, svg, clamp, toast } from '../util.js';
 import { installDefs } from '../gfx/defs.js';
-import { normalize, paletteFor } from '../gfx/materials.js';
+import { normalize, paletteFor, colorMode } from '../gfx/materials.js';
 import { materialPicker } from '../ui/material-picker.js';
 import { BUTTON_SHAPES, TOGGLE_TIPS } from './factory-parts.js';
 import { patternInspector, pruneImages } from './factory-patterns.js';
@@ -1427,8 +1427,8 @@ function inspEnclosure(host) {
   const s3 = sec(host, 'Material');
   if (!E.mat) E.mat = encSpec(E);
   let picker = null;
-  // quick colour: sets the finish colour (or switches to powder coat)
-  colors(s3, 'Colour', (paletteFor(E.mat) && /^#/.test(E.mat.c || '') ? E.mat.c : '') || '', BODY_SWATCHES, (v) => {
+  // quick colour: sets the finish colour. Hidden when the finish takes no colour (it would change the material).
+  if (colorMode(E.mat) === 'free') colors(s3, 'Colour', (paletteFor(E.mat) && /^#/.test(E.mat.c || '') ? E.mat.c : '') || '', BODY_SWATCHES, (v) => {
     E.mat = withColour(E.mat, v);
     if (picker) picker.set(E.mat);
   }, 'enc');

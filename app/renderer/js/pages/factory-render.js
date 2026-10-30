@@ -3,8 +3,10 @@
 import { svg, clamp, luminance } from '../util.js';
 import { drawSlider, drawSelector, drawTreadle, angleFor } from '../gfx/controls.js';
 import { drawJack } from '../gfx/jacks.js';
-import { normalize, materialFill, multiFill, wearOverlay } from '../gfx/materials.js';
-import { knobPart, buttonPart, footPart, togglePart, ledPart, bezel, nutPaint } from './factory-parts.js';
+import { normalize, materialFill, multiFill, wearOverlay, seeThrough, opacityOf } from '../gfx/materials.js';
+import { knobPart, buttonPart, footPart, togglePart, ledPart, treadlePart, bezel, nutPaint } from './factory-parts.js';
+import { encoderPart, xyPart, stripPart, arcadePart, stepsPart, tbankPart, tbankWidth, leverPart, padPart, ldrPart, meterPart, sliderLook, selLook, ledLook, ledHalf, STEP } from './factory-controls.js';
+import { xySize } from './factory-kinds.js';
 import { renderPatterns } from './factory-patterns.js';
 import { STAGES } from './factory-circuit.js';
 
@@ -176,11 +178,56 @@ export function edgePoint(pts, w, h, edge, t) {
   if (!best) best = { x: horiz ? v : edge === 'left' ? 0 : w, y: horiz ? (edge === 'top' ? 0 : h) : v, ang: { top: -90, bottom: 90, left: 180, right: 0 }[edge] };
   return best;
 }
-// a jack's spot in mm: on the edge, nudged 1 mm out like the board forms do
+// a jack's spot in mm: on the outline, nudged 1 mm out along the outline's normal. ang = the way the plug points
+// (the outward normal, or the jack's own angle), nang = the normal (labels go the other way)
 export function jackSpot(pts, d, j) {
   const p = edgePoint(pts, d.enc.w, d.enc.h, j.edge, j.t);
-  const off = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] }[j.edge] || [0, 0];
-  return { x: p.x + off[0], y: p.y + off[1], ang: p.ang, ex: p.x, ey: p.y };
+  const n = (p.ang * Math.PI) / 180;
+  const ang = typeof j.angle === 'number' ? j.angle : p.ang;
+  return { x: p.x + Math.cos(n), y: p.y + Math.sin(n), ang, nang: p.ang, ex: p.x, ey: p.y };
+}
+const EDGE_ANG = { right: 0, bottom: 90, left: 180, top: 270 };
+const norm360 = (a) => ((a % 360) + 360) % 360;
+/** The nearest of left / right / top / bottom for an angle. */
+export function sideOf(a) {
+  a = norm360(a);
+  return a < 45 || a >= 315 ? 'right' : a < 135 ? 'bottom' : a < 225 ? 'left' : 'top';
+}
+/** The angle to give a jack (board contract), or null when it points straight out of its edge. */
+export function jackAngle(s, edge) {
+  const d = Math.abs(((norm360(s.ang) - EDGE_ANG[edge] + 540) % 360) - 180);
+  return d < 0.5 ? null : Math.round(norm360(s.ang) * 10) / 10;
+}
+/** Edge and position for a jack dropped or dragged to p: the nearest point on the outline. */
+export function jackOnOutline(d, p, grid) {
+  const W = d.enc.w, H = d.enc.h;
+  const pts = shapePoints(d.enc.shape, W, H);
+  let best = null;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+    const u = clamp(((p.x - a[0]) * dx + (p.y - a[1]) * dy) / L, 0, 1);
+    const x = a[0] + dx * u, y = a[1] + dy * u;
+    const dist = Math.hypot(p.x - x, p.y - y);
+    if (!best || dist < best.dist) best = { x, y, dist, ang: (Math.atan2(-dx, dy) * 180) / Math.PI };
+  }
+  const edge = sideOf(best.ang);
+  const horiz = edge === 'top' || edge === 'bottom';
+  const len = horiz ? W : H;
+  let t = (horiz ? best.x : best.y) / len;
+  if (grid) t = (Math.round((t * len) / grid) * grid) / len;
+  t = clamp(t, 0.04, 0.96);
+  // concave outlines: if that edge reaches somewhere else here, fall back to the nearest box edge
+  const q = edgePoint(pts, W, H, edge, t);
+  if (Math.hypot(q.x - best.x, q.y - best.y) > Math.max(3, (grid || 0) * 1.5)) {
+    const dists = { top: p.y, bottom: H - p.y, left: p.x, right: W - p.x };
+    const e2 = Object.keys(dists).sort((a, b) => dists[a] - dists[b])[0];
+    const h2 = e2 === 'top' || e2 === 'bottom';
+    let t2 = (h2 ? p.x : p.y) / (h2 ? W : H);
+    if (grid) t2 = (Math.round((t2 * (h2 ? W : H)) / grid) * grid) / (h2 ? W : H);
+    return { edge: e2, t: clamp(t2, 0.06, 0.94) };
+  }
+  return { edge, t };
 }
 
 // ------------------------------------------------------------------ art shapes (unit box -0.5..0.5 scaled to w x h)
@@ -261,8 +308,7 @@ export function encSpec(E) {
 }
 // glass and acrylic you can see into
 export function isClear(E) {
-  const s = encSpec(E);
-  return (s.m === 'glass' && s.f !== 'mirror') || (s.m === 'acrylic' && s.f !== 'opaque' && s.f !== 'swirl');
+  return seeThrough(encSpec(E)); // glass or acrylic below solid (its transparency amount, spec.t)
 }
 
 // ------------------------------------------------------------------ part graphics
@@ -273,15 +319,23 @@ function drawPowerJack(parent) {
 }
 export const boardKind = (k) => (k === 'phones' ? 'phones' : k === 'xlr' ? 'xlr' : k === 'exp' ? 'ctrl' : k === 'stereo' ? 'inst' : 'inst');
 // the board's jack graphic at half scale, so the factory and the board show the same jack
-export function drawJackGfx(parent, j, side = 'left') {
+// angle: draw it pointing that way (degrees, see the board's angled jack contract) instead of straight out of side
+export function drawJackGfx(parent, j, side = 'left', angle = null) {
   if (j.kind === 'power') return drawPowerJack(parent);
   const g = svg('g', { transform: 'scale(0.5)' }, parent);
-  const jg = drawJack(g, { x: 0, y: 0, side, kind: boardKind(j.kind), key: '' }, null);
+  const jo = { x: 0, y: 0, side, kind: boardKind(j.kind), key: '' };
+  if (typeof angle === 'number') jo.angle = angle;
+  const jg = drawJack(g, jo, null);
   const hot = jg.querySelector('.jack-hot');
   if (hot) hot.remove();
   if (j.mat) {
     // nut material: a thin painted ring over the stock nut
-    const s = svg('g', { transform: { left: '', right: 'scale(-1,1)', top: 'matrix(0,1,1,0,0,0)', bottom: 'matrix(0,-1,1,0,0,0)' }[side] || '' }, g);
+    let tf = { left: '', right: 'scale(-1,1)', top: 'matrix(0,1,1,0,0,0)', bottom: 'matrix(0,-1,1,0,0,0)' }[side] || '';
+    if (typeof angle === 'number') {
+      const a = norm360(angle);
+      tf = `rotate(${(a - 180).toFixed(2)})${Math.cos((a * Math.PI) / 180) > 0.01 ? ' scale(1,-1)' : ''}`;
+    }
+    const s = svg('g', { transform: tf }, g);
     nutPaint(s, j, { x: -3, y: -7.6, width: 3.9, height: 15.2, rx: 0.9 });
   }
 }
@@ -347,8 +401,10 @@ function trimPart(parent, c) {
 
 // rough half-height used to place labels under or over a control
 export function ctlExtent(c) {
+  const p = partHalf(c);
+  if (p) return p[1];
   switch (c.kind) {
-    case 'knob': return c.r + (c.ticks ? 6.5 : 2.5);
+    case 'knob': return c.r + (c.dial && c.dial !== 'none' ? 7 : c.ticks ? 6.5 : 2.5);
     case 'trim': return (c.r || 3) + 1.5;
     case 'sel': return (c.r || 7) + 5.5;
     case 'slider': return c.orient === 'h' ? 4 : (c.h || 24) / 2 + 4;
@@ -364,6 +420,8 @@ export function ctlExtent(c) {
 }
 // half size of a control (for collision checks and mirror), as [half width, half height]
 export function ctlHalf(c) {
+  const p = partHalf(c);
+  if (p) return p;
   switch (c.kind) {
     case 'screen': return [c.w / 2 + 1.8, c.h / 2 + 1.8];
     case 'dip': return [dipWidth(c.n || 4) / 2, 4.5];
@@ -378,13 +436,52 @@ export function ctlHalf(c) {
   }
 }
 export const ctlRadius = (c) => Math.max(...ctlHalf(c));
+// sizes of the extra controls and looks (null: the kind's own size)
+function partHalf(c) {
+  const r = c.r || 8;
+  switch (c.part) {
+    case 'encoder': return [r + (c.ring ? 5 : 2.5), r + (c.ring ? 5 : 2.5)];
+    case 'lever': { const L = c.len || 26; return [L * 0.3, L * 0.5 + 1]; }
+    case 'pad': return [(c.w || 16) / 2 + 1.4, (c.w || 16) / 2 + 1.4];
+    case 'ldr': return [(c.r || 3.5) + 1.5, (c.r || 3.5) + 1.5];
+    case 'meter': return [(c.w || 28) / 2 + 1.5, (c.h || 18) / 2 + 1.5];
+    case 'strip': return c.orient === 'h' ? [(c.h || 40) / 2 + 1, (c.w || 6) / 2 + 1] : [(c.w || 6) / 2 + 1, (c.h || 40) / 2 + 1];
+    case 'arcade': return [(c.r || 7) + 2.4, (c.r || 7) + 2.4];
+    case 'steps': return [((c.n || 4) * STEP) / 2, 6];
+    case 'tbank': return [tbankWidth(c.n || 4) / 2, 5.2];
+  }
+  if (c.kind === 'xy') {
+    const [w, h] = xySize(c);
+    return [w / 2 + 1, h / 2 + 2.4];
+  }
+  if (c.kind === 'knob' && c.dial && c.dial !== 'none') return [c.r + (c.dial === 'plate' ? 6.5 : 5.2), c.r + (c.dial === 'plate' ? 6.5 : 5.2)];
+  if (c.kind === 'led' && c.look && c.look !== 'round') return ledHalf(c);
+  if (c.kind === 'sel' && c.look === 'lcd') return [Math.max(9, (c.r || 7) + 3), (c.r || 7) + 7];
+  if (c.kind === 'slider' && (c.look === 'scale' || c.look === 'long')) return c.orient === 'h' ? [(c.h || 24) / 2 + 4, 6] : [6, (c.h || 24) / 2 + 4];
+  return null;
+}
 
 // draws one control; returns a view ({set, press}) for board / test use
 export function drawControl(parent, c, th, o = {}) {
   let view = null;
   const ids = o.ids || null;
   // each part can have its own material (factory-parts.js); no material keeps the stock look
-  if (c.kind === 'knob') view = knobPart(parent, c, th);
+  const part = c.part;
+  if (part === 'encoder') view = encoderPart(parent, c, th);
+  else if (part === 'lever') view = leverPart(parent, c, th);
+  else if (part === 'pad') view = padPart(parent, c, th);
+  else if (part === 'ldr') view = ldrPart(parent, c, th);
+  else if (part === 'meter') view = meterPart(parent, c, th);
+  else if (part === 'strip') view = stripPart(parent, c, th);
+  else if (part === 'arcade') view = arcadePart(parent, c, th);
+  else if (part === 'steps') view = stepsPart(parent, c, th);
+  else if (part === 'tbank') view = tbankPart(parent, c, th, { ids });
+  else if (c.kind === 'xy') view = xyPart(parent, c, th, { ids });
+  else if (c.kind === 'slider' && c.look && c.look !== 'classic') view = sliderLook(parent, c, th);
+  else if (c.kind === 'sel' && c.look && c.look !== 'classic') view = selLook(parent, c, th, knobPart);
+  else if (c.kind === 'led' && c.look && c.look !== 'round') view = ledLook(parent, c);
+  else if (c.kind === 'led' && c.bezel && c.bezel !== 'chrome') view = ledLook(parent, c);
+  else if (c.kind === 'knob') view = knobPart(parent, c, th);
   else if (c.kind === 'trim') view = trimPart(parent, c);
   else if (c.kind === 'slider') view = drawSlider(parent, { x: 0, y: 0, cid: c.id, h: c.h || 24, w: c.w || 5, orient: c.orient, capColor: c.capColor, lineColor: c.lineColor, label: null, marks: c.marks !== false }, th);
   else if (c.kind === 'sel') {
@@ -392,7 +489,7 @@ export function drawControl(parent, c, th, o = {}) {
     const opts = (c.opts || []).slice(0, n);
     while (opts.length < n) opts.push(String(opts.length + 1));
     view = drawSelector(parent, { x: 0, y: 0, cid: c.id, r: c.r || 7, style: c.style || 'boss', options: opts, labelPos: 'none', optSize: 2.4, labelRadius: 3.8, printLabels: c.marks !== false }, th);
-  } else if (c.kind === 'pedal') view = drawTreadle(parent, { x: 0, y: 0, cid: c.id, w: c.w || 40, h: c.h || 60, color: c.color || '#1b1c1f', logo: c.logo || '', logoSize: Math.min(9, (c.h || 60) / 7), logoColor: c.logoColor || '#d9d9d9' });
+  } else if (c.kind === 'pedal') view = treadlePart(parent, c);
   else if (c.kind === 'toggle') {
     // toggles redraw on change (the lever has no transform to animate)
     const tg = svg('g', {}, parent);
@@ -410,7 +507,7 @@ export function drawControl(parent, c, th, o = {}) {
   else if (c.kind === 'foot') view = footPart(parent, c, th);
   else if (c.kind === 'led') view = ledPart(parent, c);
   else if (c.kind === 'screen') drawScreen(parent, c);
-  else if (c.kind === 'dip') {
+  else if (c.kind === 'dip' && !view) {
     const sets = drawDip(parent, c, { ids });
     view = { sets };
   }
@@ -555,6 +652,8 @@ export function drawPcb(g, d, pts, spots) {
 
 // ------------------------------------------------------------------ the whole pedal
 let rid = 0;
+/** The dot grid over the enclosure: on unless the design turns it off. */
+export const dotsOn = (E) => E.dots !== false;
 export const theme = (d) => ({ text: d.labels.color, labelFont: d.labels.font, labelSize: d.labels.size, toggleTitles: false });
 
 /**
@@ -602,7 +701,7 @@ export function renderPedal(root, d, o = {}) {
   if (mf.overlay) svg('rect', { ...full, fill: mf.overlay }, cg);
   if (spec.mc) svg('rect', { ...full, fill: multiFill(spec.mc), style: 'mix-blend-mode:multiply' }, cg);
   // tinted acrylic hides a lot: a faint second pass keeps the board readable through it
-  if (pcbOn) drawPcb(svg('g', { opacity: 0.4 }, cg), d, pts, spots);
+  if (pcbOn) drawPcb(svg('g', { opacity: 0.4 * Math.min(1, (1 - opacityOf(spec)) * 2) }, cg), d, pts, spots);
   const pats = (E.patterns || []).filter((L) => L.on);
   if (pats.length) {
     renderPatterns(cg, defs, pre, E.patterns, W, H);
@@ -626,23 +725,27 @@ export function renderPedal(root, d, o = {}) {
   svg('path', { d: body, fill: 'none', stroke: '#fff', 'stroke-opacity': 0.22, 'stroke-width': 1.4 }, ed);
   svg('path', { d: body, fill: 'none', stroke: '#000', 'stroke-opacity': 0.55, 'stroke-width': 0.5, 'pointer-events': 'none' }, root);
 
-  if (edit && o.grid) {
-    const step = o.grid >= 2.5 ? o.grid : 5;
+  // the dot grid is part of the design (enc.dots), so the board shows it too
+  if (dotsOn(E)) {
+    const step = clamp(E.dotStep || 2.5, 1.5, 10);
     const gp = svg('pattern', { id: pre + 'grid', width: step, height: step, patternUnits: 'userSpaceOnUse' }, defs);
     const dark = lum(mf.base) > 0.55;
-    svg('circle', { cx: 0, cy: 0, r: 0.22, fill: dark ? '#000' : '#fff', opacity: 0.45 }, gp);
+    svg('circle', { cx: 0, cy: 0, r: E.dotSize || 0.22, fill: dark ? '#000' : '#fff', opacity: 0.45 }, gp);
     svg('rect', { width: W + 1, height: H + 1, fill: `url(#${pre}grid)`, 'clip-path': `url(#${pre}clip)`, 'pointer-events': 'none', class: 'fz-gridfill' }, root);
   }
 
   // audio jacks (the board draws its own at the same spots)
   if (!o.board)
     for (const s of spots)
-      if (s.j.kind !== 'power') drawJackGfx(svg('g', { transform: `translate(${r1(s.x)},${r1(s.y)})`, 'data-sel': s.j.id, 'pointer-events': 'none' }, root), s.j, s.j.edge);
+      if (s.j.kind !== 'power') {
+        const a = jackAngle(s, s.j.edge);
+        drawJackGfx(svg('g', { transform: `translate(${r1(s.x)},${r1(s.y)})`, 'data-sel': s.j.id, 'pointer-events': 'none' }, root), s.j, a == null ? s.j.edge : sideOf(a), a);
+      }
 
   // jack labels are printed on the body
   for (const s of spots) {
     if (!s.j.label) continue;
-    const a = (s.ang * Math.PI) / 180;
+    const a = (s.nang * Math.PI) / 180;
     const k = s.j.kind === 'xlr' ? 8 : 5.2;
     svg('text', { x: r1(s.ex - Math.cos(a) * k), y: r1(s.ey - Math.sin(a) * k), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: th.text, 'font-family': th.labelFont, 'font-weight': 700, 'font-size': th.labelSize * 0.85, 'letter-spacing': 0.2, 'pointer-events': 'none' }, root, s.j.label);
   }
@@ -663,12 +766,13 @@ export function renderPedal(root, d, o = {}) {
       const [hw, hh] = ctlHalf(c);
       svg('rect', { x: -hw - 1, y: -hh - 1, width: hw * 2 + 2, height: hh * 2 + 2, rx: 1.5, fill: 'transparent', class: 'fz-hit' }, g);
     }
-    const ids = c.kind === 'dip' && views ? [...Array(c.n || 4)].map((_, i) => c.id + '.' + i) : null;
+    const ids = !views ? null : c.kind === 'dip' ? [...Array(c.n || 4)].map((_, i) => c.id + '.' + i) : c.kind === 'xy' ? [c.id + '.x', c.id + '.y'] : null;
     const view = drawControl(g, c, th, { ids });
     if (views && view) {
       if (c.kind === 'dip') view.sets.forEach((set, i) => defsBy.has(ids[i]) && views.set(ids[i], { ctl: defsBy.get(ids[i]), view: { set: (v) => set(!!v), press() {} } }));
+      else if (view.subs) for (const [k, v] of Object.entries(view.subs)) defsBy.has(c.id + '.' + k) && views.set(c.id + '.' + k, { ctl: defsBy.get(c.id + '.' + k), view: v });
       else if (defsBy.has(c.id)) {
-        if (c.kind !== 'led') g.dataset.ctl = c.id;
+        if (c.kind !== 'led' && !view.subs) g.dataset.ctl = c.id;
         views.set(c.id, { ctl: defsBy.get(c.id), view });
       }
     }
@@ -676,7 +780,7 @@ export function renderPedal(root, d, o = {}) {
   // jack hit areas on top so they can be grabbed through the body edge
   if (edit)
     for (const s of spots) {
-      const g = svg('g', { transform: `translate(${r1(s.ex)},${r1(s.ey)}) rotate(${r1(s.ang)})`, 'data-id': s.j.id, class: 'fz-item fz-jack' }, root);
+      const g = svg('g', { transform: `translate(${r1(s.ex)},${r1(s.ey)}) rotate(${r1(s.nang)})`, 'data-id': s.j.id, class: 'fz-item fz-jack' }, root);
       svg('rect', { x: -8, y: -6.5, width: 13, height: 13, fill: 'transparent' }, g);
     }
   return { W, H, pts, body, spots };
