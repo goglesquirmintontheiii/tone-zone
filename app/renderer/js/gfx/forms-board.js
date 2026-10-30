@@ -83,6 +83,8 @@ export function installBoardForms(registerForm) {
     const ring = `M14 0H${w - 14}A14 14 0 0 1 ${w} 14V${h - 14}A14 14 0 0 1 ${w - 14} ${h}H14A14 14 0 0 1 0 ${h - 14}V14A14 14 0 0 1 14 0Z` +
       `M${ix + 6} ${iy}H${w - ix - 6}A6 6 0 0 1 ${w - ix} ${iy + 6}V${h - iy - 6}A6 6 0 0 1 ${w - ix - 6} ${h - iy}H${ix + 6}A6 6 0 0 1 ${ix} ${h - iy - 6}V${iy + 6}A6 6 0 0 1 ${ix + 6} ${iy}Z`;
     softShadow(g, { w, h, rx: 14, blur: 14, opacity: ff.translucent ? 0.25 : 0.6, dy: 14 });
+    // invisible, but catches clicks anywhere on the board (the gaps between rails on see-through boards too)
+    svg('rect', { width: w, height: h, rx: 14, fill: 'transparent' }, g);
     // opaque boards: the floor under the deck is in shadow. See-through boards leave it empty.
     if (!ff.translucent) svg('rect', { x: ix, y: iy, width: w - ix * 2, height: h - iy * 2, rx: 6, fill: '#08090b' }, g);
     // rails: two per row of pedals (a regular pedal stands across both), each with a velcro strip
