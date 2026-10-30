@@ -95,7 +95,12 @@ const char** jack_get_ports(void* c, const char* a, const char* b, unsigned long
   for (int i = 0; i < nports; i++) if (!f || (ports[i].flags & f)) r[k++] = ports[i].name;
   if (f & 0x2) r[k++] = "system:capture_1"; else if (f & 0x1) { r[k++] = "system:playback_1"; r[k++] = "system:playback_2"; }
   return r; }
-void* jack_port_by_name(void* c, const char* n) { for (int i = 0; i < nports; i++) if (!strcmp(ports[i].name, n)) return &ports[i]; return 0; }
+// the hardware ports, so listings flag them physical like a real server does
+static port_t sysports[3] = { { "system:capture_1", 0x2 | 0x4 }, { "system:playback_1", 0x1 | 0x4 }, { "system:playback_2", 0x1 | 0x4 } };
+void* jack_port_by_name(void* c, const char* n) {
+  for (int i = 0; i < nports; i++) if (!strcmp(ports[i].name, n)) return &ports[i];
+  for (int i = 0; i < 3; i++) if (!strcmp(sysports[i].name, n)) return &sysports[i];
+  return 0; }
 int jack_port_flags(const void* p) { return p ? ((const port_t*)p)->flags : 0x4; }
 const char** jack_port_get_all_connections(const void* c, const void* p) {
   const char* n = p ? ((const port_t*)p)->name : 0;
