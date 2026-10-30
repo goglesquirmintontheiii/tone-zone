@@ -131,7 +131,12 @@ export function drawJack(parent, j, theme) {
   g.dataset.jack = j.key;
   svg('circle', { r: kind === 'xlr' ? 14 : 11, class: 'jack-hot' }, g);
   if (j.side === 'face' || j.side === 'front') faceJack(g, kind);
-  else sideJack(svg('g', { transform: SIDE_M[j.side] || SIDE_M.left }, g), kind);
+  else if (typeof j.angle === 'number') {
+    // angled jack (on a curve or slanted edge): the local frame points outward along -x, so turn it to the angle.
+    // Jacks facing right are flipped so the light still comes from above.
+    const a = ((j.angle % 360) + 360) % 360, flip = Math.cos((a * Math.PI) / 180) > 0.01;
+    sideJack(svg('g', { transform: `rotate(${(a - 180).toFixed(2)})${flip ? ' scale(1,-1)' : ''}` }, g), kind);
+  } else sideJack(svg('g', { transform: SIDE_M[j.side] || SIDE_M.left }, g), kind);
   if (j.label && theme && theme.jackLabels !== false) {
     const lx = j.side === 'left' ? 5 : j.side === 'right' ? -5 : 0;
     const ly = j.side === 'top' ? 13 : j.side === 'bottom' ? -13 : j.side === 'face' || j.side === 'front' ? 16 : -12;

@@ -290,7 +290,9 @@ export class Editor {
     if (!v) return null;
     const p = v.jackWorld(key);
     if (!p) return null;
-    const dir = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1], front: [0, 1] }[p.side] || [1, 0];
+    const dir = typeof p.angle === 'number' && p.side !== 'front'
+      ? [Math.cos((p.angle * Math.PI) / 180), Math.sin((p.angle * Math.PI) / 180)]
+      : { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1], front: [0, 1] }[p.side] || [1, 0];
     return { x: p.x, y: p.y, dx: dir[0], dy: dir[1], front: p.side === 'front', kind: p.kind || 'inst' };
   }
   cablePath(a, b) {
@@ -362,6 +364,9 @@ export class Editor {
     s.addEventListener('pointerdown', (e) => this.onDown(e));
     window.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
+    // a drag that never got its pointerup (window lost focus, pointer cancelled) must not stay active
+    window.addEventListener('pointercancel', (e) => this.onUp(e));
+    window.addEventListener('blur', () => this.drag && this.onUp(new PointerEvent('pointerup')));
     s.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     s.addEventListener('dblclick', (e) => this.onDbl(e));
     s.addEventListener('contextmenu', (e) => this.onContext(e));
@@ -610,14 +615,25 @@ export class Editor {
   hit(e) {
     const t = e.target;
     const ctlEl = t.closest && t.closest('[data-ctl]');
-    const jackEl = t.closest && t.closest('[data-jack]');
+    let jackEl = t.closest && t.closest('[data-jack]');
     const nodeEl = t.closest && t.closest('[data-node]');
     const cableEl = t.closest && t.closest('[data-cable]');
+    // zoomed out, a block is one bitmap: find a jack near the pointer so cables can still be started
+    if (!jackEl && nodeEl && t.classList && t.classList.contains('lod-img')) {
+      const v = this.views.get(nodeEl.dataset.node), w = this.toWorld(e.clientX, e.clientY);
+      let best = null;
+      for (const j of (v && v.jacks) || []) {
+        const d = Math.hypot(v.block.x + j.x - w.x, v.block.y + j.y - w.y);
+        if (d < 16 && (!best || d < best.d)) best = { d, key: j.key };
+      }
+      if (best) jackEl = { dataset: { jack: best.key } };
+    }
     return { ctlEl, jackEl, nodeEl, cableEl };
   }
 
   onDown(e) {
     this.board.focus({ preventScroll: true });
+    if (this.drag) this.onUp(e); // left over from a drag that lost its pointerup
     const { ctlEl, jackEl, nodeEl, cableEl } = this.hit(e);
     const w = this.toWorld(e.clientX, e.clientY);
     if (e.button === 1 || (e.button === 0 && this.spaceDown)) return this.startPan(e);
@@ -730,19 +746,29 @@ export class Editor {
   }
   jackUnder(e, prefix) {
     if (this.drag) this.drag.badKind = null;
+    const ok = (node, key) => {
+      if (key[0] !== prefix || node === this.drag.fixed.node) return false;
+      const fk = this.jackKind(this.drag.fixed.node, this.drag.fixed.key), tk = this.jackKind(node, key);
+      // control jacks only take control cables (and audio only audio)
+      if ((/^[io]c/.test(key)) !== (/^[io]c/.test(this.drag.fixed.key))) { this.drag.badKind = [fk, tk]; return false; }
+      if (!kindsCompatible(fk, tk)) { this.drag.badKind = [fk, tk]; return false; }
+      return true;
+    };
     const els = document.elementsFromPoint(e.clientX, e.clientY);
     for (const el of els) {
       const j = el.closest && el.closest('[data-jack]');
-      if (!j) continue;
-      const n = j.closest('[data-node]');
-      if (!n) continue;
-      if (j.dataset.jack[0] !== prefix) continue;
-      if (n.dataset.node === this.drag.fixed.node) continue;
-      const fk = this.jackKind(this.drag.fixed.node, this.drag.fixed.key), tk = this.jackKind(n.dataset.node, j.dataset.jack);
-      // control jacks only take control cables (and audio only audio)
-      if ((/^[io]c/.test(j.dataset.jack)) !== (/^[io]c/.test(this.drag.fixed.key))) { this.drag.badKind = [fk, tk]; continue; }
-      if (!kindsCompatible(fk, tk)) { this.drag.badKind = [fk, tk]; continue; }
-      return { node: n.dataset.node, key: j.dataset.jack };
+      const n = el.closest && el.closest('[data-node]');
+      if (j && n && ok(n.dataset.node, j.dataset.jack)) return { node: n.dataset.node, key: j.dataset.jack };
+      // a block drawn as a bitmap (zoomed out): use the nearest of its jacks
+      if (!j && n && el.classList.contains('lod-img')) {
+        const v = this.views.get(n.dataset.node), w = this.toWorld(e.clientX, e.clientY);
+        let best = null;
+        for (const jj of (v && v.jacks) || []) {
+          const d = Math.hypot(v.block.x + jj.x - w.x, v.block.y + jj.y - w.y);
+          if (d < 18 && (!best || d < best.d) && ok(n.dataset.node, jj.key)) best = { d, key: jj.key };
+        }
+        if (best) return { node: n.dataset.node, key: best.key };
+      }
     }
     return null;
   }
@@ -1161,6 +1187,8 @@ export class Editor {
   onMove(e) {
     const d = this.drag;
     if (!d) return;
+    // no button held any more: the pointerup went somewhere else, so finish the drag here
+    if (e.buttons === 0 && e.pointerType === 'mouse') return this.onUp(e);
     if (d.kind === 'pan') {
       this.view.x = d.vx + (e.clientX - d.sx);
       this.view.y = d.vy + (e.clientY - d.sy);
@@ -1207,19 +1235,27 @@ export class Editor {
   onUp(e) {
     const d = this.drag;
     if (!d) return;
-    this.board.classList.remove('panning');
-    if (d.kind === 'cable') this.finishCableDrag();
-    else if (d.kind === 'ctl') this.endControl(e);
-    else if (d.kind === 'node' && d.moved) {
-      this.boardSnap(d.starts.map((s) => s.id), d.grab);
-      this.coupleLinks(new Set(d.starts.map((s) => s.id)));
-      markDirty();
-    }
-    else if (d.kind === 'marquee') {
-      d.rect.remove();
-      bus.emit('selection');
-    }
+    // always end the drag, even if finishing it throws: a stuck drag blocks every later click
     this.drag = null;
+    this.board.classList.remove('panning');
+    try {
+      if (d.kind === 'cable') { this.drag = d; this.finishCableDrag(); }
+      else if (d.kind === 'ctl') { this.drag = d; this.endControl(e); }
+      else if (d.kind === 'node' && d.moved) {
+        this.boardSnap(d.starts.map((s) => s.id), d.grab);
+        this.coupleLinks(new Set(d.starts.map((s) => s.id)));
+        markDirty();
+      } else if (d.kind === 'marquee') {
+        d.rect.remove();
+        bus.emit('selection');
+      }
+    } catch (err) {
+      console.error('drag end failed', err);
+      if (d.rect) d.rect.remove();
+      this.layerDrag.innerHTML = '';
+    } finally {
+      this.drag = null;
+    }
   }
   onWheel(e) {
     e.preventDefault();

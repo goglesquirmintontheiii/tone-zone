@@ -38,7 +38,7 @@ export function rotSide(side, r) {
 }
 function rotJack(j, r, w, h) {
   const [x, y] = rotPoint(r, w, h, j.x, j.y);
-  return { ...j, x, y, side: rotSide(j.side, r) };
+  return { ...j, x, y, side: rotSide(j.side, r), ...(typeof j.angle === 'number' ? { angle: (j.angle + r) % 360 } : {}) };
 }
 
 export class NodeView {
@@ -71,7 +71,7 @@ export class NodeView {
     const content = svg('g', {}, this.rg);
     this.content = content;
     // level of detail: show a bitmap of the block instead of the live SVG when zoomed out
-    this.lodImg = svg('image', { display: 'none', 'pointer-events': 'none', preserveAspectRatio: 'none' }, this.rg);
+    this.lodImg = svg('image', { class: 'lod-img', display: 'none', preserveAspectRatio: 'none' }, this.rg);
     if (this._lodUrl) URL.revokeObjectURL(this._lodUrl);
     this._lodUrl = null;
     this._lodScale = 0;
@@ -182,7 +182,7 @@ export class NodeView {
   jackWorld(key) {
     const j = this.jack(key);
     if (!j) return null;
-    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side, kind: j.kind, male: !!j.male };
+    return { x: this.block.x + j.x, y: this.block.y + j.y, side: j.side, angle: j.angle, kind: j.kind, male: !!j.male };
   }
 
   // visual state of all controls from block params
