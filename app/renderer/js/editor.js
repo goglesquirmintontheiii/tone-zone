@@ -836,6 +836,15 @@ export class Editor {
       case 'slider':
       case 'treadle':
         this.drag.start = alt ? altPos(pName, ui[pName]) : knobPos(c, ui[pName] ?? c.def ?? 0);
+        // XY pad / joystick: its two axis controls move together, horizontal drag = x, vertical = y
+        if (c.xy) {
+          for (const [, en] of v.views) {
+            if (en.ctl !== c && en.ctl.xy === c.xy) {
+              const xAxis = /\.x$/.test(c.cid) ? c : en.ctl, yAxis = xAxis === c ? en.ctl : c;
+              this.drag.xyAxes = { x: xAxis, y: yAxis, sx: knobPos(xAxis, ui[xAxis.p] ?? xAxis.def ?? 0.5), sy: knobPos(yAxis, ui[yAxis.p] ?? yAxis.def ?? 0.5) };
+            }
+          }
+        }
         this.showTip(e, c, ui[pName]);
         break;
       case 'sel':
@@ -850,6 +859,8 @@ export class Editor {
         break;
       case 'button':
         entry.view.press && entry.view.press(true);
+        // momentary (arcade style): on while held
+        if (c.momentary && c.p) this.setCtl(v, c, c.p, 1);
         break;
     }
   }
@@ -869,9 +880,19 @@ export class Editor {
     const dy = e.clientY - d.sy, dx = e.clientX - d.sx;
     if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
     const fine = e.shiftKey ? 0.2 : 1;
+    if (d.xyAxes) {
+      const A = d.xyAxes, span = Math.max(40, (A.y.h || A.x.h || 60) * this.view.z);
+      const px = clamp(A.sx + (dx / span) * fine, 0, 1), py = clamp(A.sy - (dy / span) * fine, 0, 1);
+      this.setCtl(v, A.x, A.x.p, knobValue(A.x, px));
+      this.setCtl(v, A.y, A.y.p, knobValue(A.y, py));
+      this.tipText(e, `X ${Math.round(px * 100)}%  Y ${Math.round(py * 100)}%`);
+      return;
+    }
     if (c.t === 'knob' || c.t === 'slider' || c.t === 'treadle' || (c.t === 'sel' && d.alt)) {
       const range = c.t === 'slider' ? (c.h || 46) * this.view.z * 1.6 : c.t === 'treadle' ? (c.h || 220) * this.view.z * 0.7 : 170;
-      const pos = clamp(d.start - ((c.t === 'slider' && c.orient === 'h' ? -dx : dy) / range) * fine, 0, 1);
+      const raw = d.start - ((c.t === 'slider' && c.orient === 'h' ? -dx : dy) / range) * fine;
+      // an endless encoder wraps around instead of stopping at the ends
+      const pos = c.endless ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1);
       const val = d.alt ? altVal(d.pName, pos) : knobValue(c, pos);
       this.setCtl(v, c, d.pName, val);
       this.showTip(e, c, val);
@@ -904,6 +925,9 @@ export class Editor {
     }
     const b = v.block;
     if (c.t === 'foot') return this.footUp(v, c, d.view);
+    // spring-loaded (whammy lever, pressure pad): back to rest on release
+    if (c.spring && c.p) setParam(b.id, c.p, c.def ?? 0);
+    if (c.momentary && c.p) { d.view.press && d.view.press(false); setParam(b.id, c.p, 0); return; }
     if (d.moved) return markDirty();
     // clicks
     if (c.t === 'sel' && !d.alt) {
