@@ -50,7 +50,10 @@ case "$MODEL" in
   *) BOARD=unknown ;;
 esac
 ARCH=$(uname -m)
-. /etc/os-release 2>/dev/null || true
+# read the OS name in a subshell: /etc/os-release sets VERSION too, which would clobber our --version
+osr() { (. /etc/os-release 2>/dev/null && eval "printf '%s' \"\${$1:-}\""); }
+PRETTY_NAME=$(osr PRETTY_NAME)
+VERSION_CODENAME=$(osr VERSION_CODENAME)
 say "Board: $MODEL ($ARCH), OS: ${PRETTY_NAME:-unknown}"
 if [ "$BOARD" = unknown ] && [ $FORCE = 0 ]; then die "this is not a Raspberry Pi 3, 4 or 5 (use --force to try anyway)"; fi
 if [ "$ARCH" != aarch64 ]; then
