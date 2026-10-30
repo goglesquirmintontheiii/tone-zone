@@ -1,6 +1,11 @@
 // Tone Zone original designs: one per DSP algorithm with full access to its parameters, plus studio utilities.
 import { K, SEL, TOG, BTN, FOOT, LED, SCREEN, def, ms, db, MONO, STEREO, MONO_TO_ST, STD } from './helpers.js';
 import { TZ, UT, AMP, CAB, k } from './builders.js';
+// cutoff shown in Hz, matching the wah engine's sweep (taper pos^0.8, RANGE at its middle scales by about 0.95)
+const cutoffHz = (lo, hi) => (v) => {
+  const f = lo * 0.949 * Math.pow(hi / lo, Math.pow(Math.max(0, v), 0.8));
+  return f >= 1000 ? (f / 1000).toFixed(1) + ' kHz' : Math.round(f) + ' Hz';
+};
 
 export const originals = [
   // drives
@@ -53,6 +58,15 @@ export const originals = [
   TZ({ id: 'tz.crush', form: 'tz3-glass', name: 'Bit Crusher', cat: 'Filter', color: '#2fbf71', text: '#06140c', logo: '8-BIT', typeName: 'Bit / sample-rate crusher',
     algo: 'crusher', controls: [K('bits', 'BITS'), K('rate', 'DOWNSAMPLE'), K('mix', 'MIX', { def: 1 })] }),
   // filters
+  // fixed resonant filters (the wah engine in treadle mode, with the treadle position as the cutoff knob)
+  TZ({ id: 'tz.lowpass', name: 'Low Pass', cat: 'Filter', color: '#2b5f8a', text: '#eaf3fb', logo: 'LOW PASS', typeName: 'Resonant low-pass filter', ref: 'Tone Zone original',
+    algo: 'wah', opts: { mode: 0, filter: 0, fLo: 210, fHi: 19000, q: 1.4 },
+    desc: 'Cuts the highs above the cutoff. Turn up RESO for a resonant peak at the cutoff, like a synth filter.',
+    controls: [K('pos', 'CUTOFF', { def: 0.85, display: cutoffHz(210, 19000) }), K('q', 'RESO', { def: 0.3 }), K('level', 'LEVEL', { def: 0.5 }), K('range', 'RANGE', { def: 0.5 })] }),
+  TZ({ id: 'tz.highpass', name: 'High Pass', cat: 'Filter', color: '#8a3b2b', text: '#fbeeea', logo: 'HIGH PASS', typeName: 'Resonant high-pass filter', ref: 'Tone Zone original',
+    algo: 'wah', opts: { mode: 0, filter: 2, fLo: 21, fHi: 4000, q: 1.4 },
+    desc: 'Cuts the lows below the cutoff: tighten a muddy rig or thin a sound right out. RESO adds a peak at the cutoff.',
+    controls: [K('pos', 'CUTOFF', { def: 0.25, display: cutoffHz(21, 4000) }), K('q', 'RESO', { def: 0.3 }), K('level', 'LEVEL', { def: 0.5 }), K('range', 'RANGE', { def: 0.5 })] }),
   TZ({ id: 'tz.envfilter', form: 'tz3-funk', name: 'Envelope Funk', cat: 'Filter', color: '#f2c12e', text: '#1a1405', logo: 'ENV FILTER', typeName: 'Envelope filter', ref: 'Mu-Tron III / Q-Tron style',
     algo: 'wah', opts: { mode: 2, fLo: 250, fHi: 3000, q: 4 }, controls: [K('sens', 'SENS'), K('q', 'PEAK'), K('range', 'RANGE'), K('level', 'LEVEL'), SEL('filter', 'MODE', ['LP', 'BP', 'HP'], { def: 1, sweep: 90 }), TOG('direction', 'DRIVE', ['UP', 'DOWN'])] }),
   TZ({ id: 'tz.autowah', form: 'tz3-bubble', name: 'Auto Wah', cat: 'Filter', color: '#d14b8f', text: '#fff', logo: 'AUTO WAH', typeName: 'LFO wah',
