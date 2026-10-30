@@ -1,6 +1,6 @@
 // Shared material library: a catalogue of materials (with submaterials, finishes and colours) plus SVG fills for them.
-// A spec is { m, s, f, c }: material, submaterial, finish and colour (hex or a palette id). normalize() always returns
-// a valid one. Textures are small seamless tiles drawn once on a canvas and used as <pattern><image> defs in
+// A spec is { m, s, f, c }: material, submaterial, finish and colour (hex or a palette id), plus optional t (opacity of
+// glass and acrylic, 0 clear to 1 solid), mc (multicolour) and w (wear). normalize() always returns a valid one. Textures are small seamless tiles drawn once on a canvas and used as <pattern><image> defs in
 // #globalDefs, with stable ids derived from the spec, so raster.js can copy them into bitmaps and thumbnails.
 // To hide tiling, paint() with a seed shifts the tile per item (variants), some textures add a second alpha layer
 // at another period (layer2), and a low-res overlay stretched over a long period adds slow colour drift (macro).
@@ -47,8 +47,8 @@ export const MATERIALS = [
       ['walnut', 'Walnut', '#8d6648', '#2e1c12', { mid: '#5a3e2c', alt: '#5a4436', k: 16, warp: 1.1, streak: 0.5, con: 0.6, pore: 0.32, porL: 7, cath: 0.6, vary: 0.7 }],
       ['mahogany', 'Mahogany', '#ad613a', '#552612', { k: 24, warp: 0.4, streak: 0.45, con: 0.35, pore: 0.3, porL: 6, ribbon: 6, vary: 0.4 }],
       ['koa', 'Figured koa', '#d49450', '#5a3014', { alt: '#9a5a26', k: 18, warp: 1.2, streak: 0.4, con: 0.6, pore: 0.16, porL: 6, cath: 0.4, flame: 1.5, chatoy: true, vary: 0.6 }],
-      // zebra: dark stripe pairs per tile height, drawn by zebraAt() instead of rings
-      ['zebrawood', 'Zebrawood', '#ecdcb0', '#22150c', { mid: '#c8a66c', k: 6, warp: 0.3, streak: 0.4, con: 0.2, base: 0.7, pore: 0.16, porL: 6, zebra: 9, vary: 0.35, macro: 0.45 }],
+      // zebra: dark stripes per tile height, drawn by zebraAt() instead of rings
+      ['zebrawood', 'Zebrawood', '#ead8a8', '#2a1a10', { mid: '#c8a66c', k: 6, warp: 0.3, streak: 0.4, con: 0.2, base: 0.7, pore: 0.13, porL: 7, porH: 2, zebra: 14, vary: 0.35, macro: 0.45 }],
       ['ash', 'Ash', '#ead6aa', '#9c7a4a', { k: 8, warp: 1.3, streak: 0.4, con: 0.7, pore: 0.55, porL: 9, porH: 2, porK: 1.3, ringPorous: true, cath: 0.7, vary: 0.35 }],
       ['pine', 'Pine', '#f0d196', '#b4733a', { k: 6, warp: 1.5, streak: 0.2, con: 0.8, sharp: 3, base: 0.66, pore: 0, cath: 0.8, knots: 2, vary: 0.4 }],
       ['bamboo', 'Bamboo', '#e4c682', '#a58040', { k: 40, warp: 0.1, streak: 0.55, con: 0.18, pore: 0.2, porL: 5, nodes: true, vary: 0.3 }],
@@ -127,6 +127,36 @@ export function paletteFor(spec) {
 }
 const isHex = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
+/**
+ * How a spec takes colour: 'free' (palette plus any colour), 'palette' (palette only) or 'none' (the material sets
+ * it, so picking a colour would mean another material or finish).
+ */
+export function colorMode(spec) {
+  const s = spec && spec.m === 'stock' ? spec : normalize(spec);
+  const M = BY_ID.get(s.m);
+  const f = M && M.finishes.find((x) => x.id === s.f);
+  if (!f || !f.colors) return 'none';
+  return f.free === false ? 'palette' : 'free';
+}
+export const supportsColor = (spec) => colorMode(spec) !== 'none';
+
+// glass and acrylic: default opacity per finish (the look without a t value)
+const OPACITY = {
+  glass: { clear: 0.16, frosted: 0.62, smoked: 0.6, tinted: 0.42, mirror: 1 },
+  acrylic: { clear: 0.5, frosted: 0.75, candy: 0.55, opaque: 1, swirl: 1 },
+};
+/** True for materials with an adjustable see-through amount (spec.t). */
+export const hasOpacity = (spec) => !!(spec && OPACITY[spec.m]);
+/** Opacity of a glass or acrylic spec, 0 clear to 1 solid (1 for everything else). */
+export function opacityOf(spec) {
+  const s = normalize(spec);
+  const tab = OPACITY[s.m];
+  if (!tab) return 1;
+  return s.t != null ? s.t : tab[s.f] ?? 0.4;
+}
+/** Can you see what's behind or inside it? */
+export const seeThrough = (spec) => opacityOf(spec) < 0.95;
+
 /** Always returns a valid spec (falls back to `fallback`, then the default). 'stock' passes through for parts. */
 export function normalize(spec, fallback) {
   const s = spec && typeof spec === 'object' ? spec : {};
@@ -141,6 +171,7 @@ export function normalize(spec, fallback) {
     const c = typeof s.c === 'string' ? s.c.toLowerCase() : '';
     out.c = pal.some((p) => p.id === c) ? c : isHex(c) ? c : M.def.c && (isHex(M.def.c) || pal.some((p) => p.id === M.def.c)) ? M.def.c : pal[0].hex;
   }
+  if (OPACITY[out.m] && s.t !== '' && s.t != null && Number.isFinite(+s.t)) out.t = Math.round(Math.min(1, Math.max(0, +s.t)) * 100) / 100;
   const mc = normMulti(s.mc);
   if (mc) out.mc = mc;
   const w = normWear(s.w, out.m);
@@ -303,11 +334,11 @@ export function specLabel(spec) {
 /** Spec from block params with a prefix, e.g. frameMat/frameSub/frameFin/frameCol. */
 export function fromParams(p, prefix, fallback) {
   if (!p || !p[prefix + 'Mat']) return normalize(fallback);
-  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'], w: wearFromString(p[prefix + 'Wear']), mc: multiFromString(p[prefix + 'Multi']) }, fallback);
+  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'], t: p[prefix + 'T'], w: wearFromString(p[prefix + 'Wear']), mc: multiFromString(p[prefix + 'Multi']) }, fallback);
 }
 export function toParams(spec, prefix) {
   const s = normalize(spec);
-  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c, [prefix + 'Wear']: wearToString(s.w), [prefix + 'Multi']: multiToString(s.mc) };
+  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c, [prefix + 'T']: s.t != null ? String(s.t) : '', [prefix + 'Wear']: wearToString(s.w), [prefix + 'Multi']: multiToString(s.mc) };
 }
 
 // ------------------------------------------------------------------ colour helpers
@@ -468,7 +499,8 @@ function texWood(s, q) {
   const { sp, light, dark } = woodColor(s);
   // previews (swatches) only show a small patch, so they draw just that patch at full detail
   const pv = q < 1, qq = pv ? 1 : q;
-  const W = pv ? 128 : Math.round(1280 * q), H = pv ? 128 : Math.round(256 * q);
+  // zebrawood gets twice the rows so its crisp stripe edges hold up when zoomed in
+  const W = pv ? 128 : Math.round(1280 * q), H = pv ? 128 : Math.round(256 * q * (sp.zebra ? 2 : 1));
   const TW = pv ? 256 : 2560, TH = pv ? 128 : 256;
   const Wf = 1280 * qq;
   const sd = seedNum(sp.id) % 9973;
@@ -493,19 +525,21 @@ function texWood(s, q) {
   const zebraAt = (u, v) => {
     const wave = (fbm(u, v, 3, 1, 3, sd + 81) - 0.5) * 1.4 + (fbm(u, v, 11, 2, 2, sd + 82) - 0.5) * 0.3;
     const lock = (fbm(u, v, 5, 3, 2, sd + 83) - 0.5) * 0.9;
-    const g = Z * v + wave + lock + (fbm(u, v, 1, Z, 2, sd + 84) - 0.5) * 2.4;
+    const g = Z * v + wave + lock + (fbm(u, v, 1, Z, 2, sd + 84) - 0.5) * 0.7 + (fbm(u, v, 1, 4, 2, sd + 86) - 0.5) * 1.6;
     const fl = Math.floor(g), ri = ((fl % Z) + Z) % Z, p = g - fl;
-    const w0 = 0.07 + 0.36 * Math.pow(hash(ri, sd, 6), 1.3);
-    const w = w0 * (0.35 + 1.3 * vnoise(u * 6, ri + 0.5, 6, Z, sd + 85)) / 2;
+    const w0 = 0.2 + 0.34 * Math.pow(hash(ri, sd, 6), 1.1);
+    const tn = vnoise(u * 6, ri + 0.5, 6, Z, sd + 85);
+    const w = (w0 * (0.7 + 0.6 * tn) * smooth(0.0, 0.16, tn + 0.08 * hash(ri, sd, 11))) / 2; // now and then one tapers out
     const c0 = 0.5 + (hash(ri, sd, 7) - 0.5) * 0.3;
     const d = Math.abs(p - c0);
     let band = 1 - smooth(w - zAA, w + zAA, d);
-    if (hash(ri, sd, 8) < 0.3 && w > 0.07) band *= smooth(w * 0.16, w * 0.16 + zAA * 1.5, d); // split stripe
-    const halo = (1 - smooth(w, w + 0.06, d)) * (1 - band);
+    if (hash(ri, sd, 8) < 0.22 && w0 > 0.25) band *= 0.25 + 0.75 * smooth(w * 0.14, w * 0.14 + zAA * 1.5, d); // split stripe
+    const halo = (1 - smooth(w, w + 0.025, d)) * (1 - band);
     // faint narrow lines between the main stripes
     const g3 = g * 3 + 0.5, f3 = Math.floor(g3), i3 = ((f3 % (Z * 3)) + Z * 3) % (Z * 3);
     const minor = (1 - smooth(0.03, 0.03 + zAA * 4, Math.abs(g3 - f3 - 0.5))) * 0.22 * hash(i3, sd, 9) * (1 - band);
-    return { band, halo, minor, core: smooth(0, Math.max(0.01, w), w - d), k: 0.8 + 0.4 * hash(ri, sd, 10) };
+    const shim = Math.sin(Math.PI * 2 * (u * 16 + (fbm(u, v, 4, 2, 2, sd + 87) - 0.5) * 3));
+    return { band, halo, minor, shim, core: smooth(0, Math.max(0.01, w), w - d), k: 0.8 + 0.4 * hash(ri, sd, 10) };
   };
   const fn = (u, v, x, y) => {
     if (pv) (u *= 0.1), (v *= 0.5);
@@ -576,8 +610,9 @@ function texWood(s, q) {
     if (zb) {
       // brown feathering at the stripe edges and faint lines between stripes, then the dark stripe itself with
       // the fibres still showing in it
-      c = mix(c, zEdge, Math.min(1, zb.halo * 0.45 + zb.minor));
-      const sc = mul(mix(zEdge, dark, 0.55 + 0.45 * zb.core), (0.82 + st * 0.36) * zb.k);
+      c = mul(c, 1 + zb.shim * 0.05); // interlocked grain catches the light in soft bands
+      c = mix(c, zEdge, Math.min(1, zb.halo * 0.22 + zb.minor));
+      const sc = mul(mix(zEdge, dark, 0.7 + 0.3 * zb.core), (0.82 + st * 0.36) * zb.k);
       c = mix(c, sc, zb.band);
     }
     if (alt) c = mix(c, alt, smooth(0.5, 0.8, fbm(u, v, 3, sp.streaky ? 40 : 12, 3, sd + 33)) * (sp.streaky ? 0.75 : 0.35));
@@ -663,10 +698,11 @@ function texPlastic(s, q) {
 
 function texGlass(s, q, acrylic) {
   const tint = s.f === 'smoked' ? [34, 36, 40] : s.f === 'mirror' ? [210, 216, 222] : s.f === 'frosted' && !acrylic ? [238, 243, 247] : s.f === 'clear' && !acrylic ? [205, 230, 240] : rgb(colorHex(s));
-  const a0 = { clear: acrylic ? 0.5 : 0.16, frosted: acrylic ? 0.75 : 0.62, smoked: 0.6, tinted: 0.42, mirror: 1, candy: 0.55, opaque: 1, swirl: 1 }[s.f] ?? 0.4;
+  // t moves the whole tile's opacity; the texture keeps its small variations around it
+  const at = opacityOf(s);
   const W = 128 * q, H = 128 * q;
   const fn = (u, v, x, y) => {
-    let c = tint, a = a0;
+    let c = tint, a = at;
     if (s.f === 'frosted') {
       const n = hash(x, y, 3);
       c = mix(c, [255, 255, 255], n * 0.25);
@@ -676,16 +712,16 @@ function texGlass(s, q, acrylic) {
     } else if (s.f === 'candy') {
       if (hash(x, y, 12) > 0.94) {
         c = mix(c, [255, 255, 255], 0.6);
-        a = 0.95;
+        a = Math.max(a, 0.3 + at * 0.65); // glitter stays visible in clear acrylic
       }
     } else if (s.f === 'swirl') {
       const n = fbm(u, v, 3, 3, 4, 44);
       const b = Math.sin((u * 2 + n * 4) * Math.PI * 2);
       c = mix(c, mix(c, [255, 255, 255], 0.65), smooth(0.2, 0.9, b));
     } else if (s.f === 'clear' || s.f === 'tinted' || s.f === 'smoked') a += (fbm(u, v, 2, 2, 2, 5) - 0.5) * 0.06;
-    return [c[0], c[1], c[2], a * 255];
+    return [c[0], c[1], c[2], Math.max(0, Math.min(1, a)) * 255];
   };
-  return { url: tile(W, H, fn, true), w: 128, h: 128, alpha: true, base: hexOf(tint) };
+  return { url: tile(W, H, fn, true), w: 128, h: 128, alpha: true, see: at < 0.95, base: hexOf(tint) };
 }
 
 function texCarbon(s, q) {
@@ -1170,7 +1206,7 @@ function mk(tag, attrs, parent) {
   if (parent) parent.appendChild(e);
   return e;
 }
-const keyOf = (s) => [s.m, s.s, s.f, String(s.c || '').replace('#', '')].join('-').replace(/[^a-z0-9-]/gi, '');
+const keyOf = (s) => [s.m, s.s, s.f, String(s.c || '').replace('#', '')].join('-').replace(/[^a-z0-9-]/gi, '') + (s.t != null ? '-t' + Math.round(s.t * 100) : '');
 const num = (v) => String(Math.round(v * 1000) / 1000).replace('.', 'p').replace('-', 'm');
 const num0 = (v) => Math.round(v * 10) / 10;
 
@@ -1305,7 +1341,7 @@ export function materialFill(spec, opts = {}) {
     edge: hexOf(mul(base, 0.35)),
     ink: lumOf(base) > 0.5 ? '#141414' : '#f2f2f2',
     glow: s.m === 'glow' && s.f === 'glowing' ? colorHex(s) : null,
-    translucent: !!tex.alpha,
+    translucent: !!tex.alpha && tex.see !== false,
   };
   if (s.m === 'wood' && s.f === 'stained' && BURSTS[s.c]) out.overlay = burstId(BURSTS[s.c]);
   if (opts.round && s.m === 'metal' && ['brushed', 'polished', 'anodized', 'bare'].includes(s.f)) out.overlay = spunId();

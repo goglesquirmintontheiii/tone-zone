@@ -1,7 +1,8 @@
-// Material picker: material, then type (if any), finish and colour or stain, with small previews.
+// Material picker: material, then type (if any), finish, see-through amount (glass and acrylic) and colour or stain,
+// with small previews. The colour section only shows when the finish takes a colour.
 // materialPicker(parent, { value, onChange(spec, live), title, allowStock, collapsible, key, open, wear })
 import { el } from '../util.js';
-import { MATERIALS, normalize, finishesFor, paletteFor, colorHex, specLabel, swatchSVG, material, wearFor, MULTI, BURST_PRESETS } from '../gfx/materials.js';
+import { MATERIALS, normalize, finishesFor, paletteFor, colorHex, colorMode, hasOpacity, opacityOf, specLabel, swatchSVG, material, wearFor, MULTI, BURST_PRESETS } from '../gfx/materials.js';
 
 const openState = new Map(); // key -> open, so the picker stays open across inspector redraws
 
@@ -68,8 +69,11 @@ export function materialPicker(parent, o) {
     }
     const fins = finishesFor(spec.m);
     const gf = grid(body, 'Finish', 'mtp-fins');
-    for (const f of fins) tileBtn(gf, { ...spec, f: f.id }, f.name, spec.f === f.id, () => emit({ ...spec, f: f.id }), f.id);
-    const pal = paletteFor(spec);
+    // a new finish starts from its own see-through amount
+    for (const f of fins) tileBtn(gf, { ...spec, f: f.id, t: null }, f.name, spec.f === f.id, () => emit({ ...spec, f: f.id, t: null }), f.id);
+    if (hasOpacity(spec)) opacitySection(body);
+    const mode = colorMode(spec);
+    const pal = mode !== 'none' && paletteFor(spec);
     if (pal) {
       const sec = el('div', { class: 'mtp-sec' }, body);
       el('h6', {}, sec).textContent = spec.m === 'wood' ? 'Stain' : 'Colour';
@@ -81,14 +85,35 @@ export function materialPicker(parent, o) {
         b.style.setProperty('--c', p.hex);
         b.onclick = () => emit({ ...spec, c: spec.m === 'wood' ? p.id : p.hex });
       }
-      const pick = el('input', { type: 'color', class: 'mtp-pick', title: 'Any colour' }, row);
-      pick.value = colorHex(spec) || '#888888';
-      pick.oninput = () => emit({ ...spec, c: pick.value }, true);
-      pick.onchange = () => emit({ ...spec, c: pick.value });
+      if (mode === 'free') {
+        const pick = el('input', { type: 'color', class: 'mtp-pick', title: 'Any colour' }, row);
+        pick.value = colorHex(spec) || '#888888';
+        pick.oninput = () => emit({ ...spec, c: pick.value }, true);
+        pick.onchange = () => emit({ ...spec, c: pick.value });
+      }
     }
     if (o.multi !== false) multiSection(body);
     if (o.wear) wearSection(body);
     if (o.extra) o.extra(body, spec);
+  }
+  // glass and acrylic: how see-through it is, from clear to solid
+  function opacitySection(body) {
+    const sec = el('div', { class: 'mtp-sec' }, body);
+    el('h6', {}, sec).textContent = 'Transparency';
+    const row = el('div', { class: 'mtp-amt mtp-op' }, sec);
+    const lab = el('span', {}, row);
+    const r = el('input', { type: 'range', min: 0, max: 1, step: 0.01, 'data-opacity': 1, title: 'Clear to solid' }, row);
+    r.value = opacityOf(spec);
+    const paint = () => {
+      r.style.setProperty('--p', r.value * 100 + '%');
+      lab.textContent = +r.value <= 0.02 ? 'Fully clear' : +r.value >= 0.98 ? 'Solid' : Math.round((1 - r.value) * 100) + '% clear';
+    };
+    paint();
+    r.oninput = () => { paint(); emit({ ...spec, t: +r.value }, true); };
+    r.onchange = () => emit({ ...spec, t: +r.value });
+    const ends = el('div', { class: 'mtp-ends' }, sec);
+    el('span', {}, ends).textContent = 'Clear';
+    el('span', {}, ends).textContent = 'Solid';
   }
   // multicolour: fades, bursts, gradients... over the material
   function multiSection(body) {
