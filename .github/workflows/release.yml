@@ -82,17 +82,23 @@ jobs:
         with:
           node-version: 22
       - name: Toolchain
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake make g++-aarch64-linux-gnu gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu qemu-user
+        run: |
+          sudo apt-get update > /tmp/apt.log 2>&1 && sudo apt-get install -y --no-install-recommends cmake make g++-aarch64-linux-gnu gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu qemu-user >> /tmp/apt.log 2>&1 || { echo "::error title=toolchain::$(tail -c 1500 /tmp/apt.log | tr '\n' '|')"; exit 1; }
       - name: Build DSP engine (aarch64, Cortex-A53 baseline for Pi 3B+ / 4 / 5)
-        run: TZ_MAX_GLIBC=2.36 ./scripts/build-engine.sh arm64
+        # failures post the end of the log as an annotation (job logs are not always reachable)
+        run: |
+          set -o pipefail
+          TZ_MAX_GLIBC=2.36 ./scripts/build-engine.sh arm64 2>&1 | tee /tmp/build.log || { echo "::error title=arm build::$(grep -i -m3 -B2 -A8 'error' /tmp/build.log | tail -c 1800 | tr '\n' '|')"; exit 1; }
       - name: Engine self-test under qemu
         run: |
-          qemu-aarch64 -L /usr/aarch64-linux-gnu ./engine/dist-pi/tonezone-engine-arm64 --list > /dev/null
-          node scripts/pi-qemu-selftest.js
+          set -o pipefail
+          { qemu-aarch64 -L /usr/aarch64-linux-gnu ./engine/dist-pi/tonezone-engine-arm64 --list > /dev/null && node scripts/pi-qemu-selftest.js; } 2>&1 | tee /tmp/st.log || { echo "::error title=self test::$(tail -c 1500 /tmp/st.log | tr '\n' '|')"; exit 1; }
       - name: Build Pi bundle
         env:
           TZ_PI_SIGNING_KEY: ${{ secrets.TZ_PI_SIGNING_KEY }}
-        run: ./scripts/pi-bundle.sh "${{ needs.appimage.outputs.version }}"
+        run: |
+          set -o pipefail
+          ./scripts/pi-bundle.sh "${{ needs.appimage.outputs.version }}" 2>&1 | tee /tmp/bundle.log || { echo "::error title=bundle::$(tail -c 1500 /tmp/bundle.log | tr '\n' '|')"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: pi-bundle
