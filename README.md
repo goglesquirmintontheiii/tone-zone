@@ -19,8 +19,8 @@ the `fuse2` package.
 - **Board editor**: drag blocks in from the browser, move them around and patch them by dragging between the
   1/4" jacks. Cables sag like real ones and can be recoloured (right-click). An input takes one cable; drag a
   plugged input to move or unplug it, or Shift-drag an output to pick up its cable.
-- **1590 built-in blocks**: 919 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
-  170 preamps, 73 cabinets with up to four draggable mics each, and 247 Tone Zone originals. That covers wahs,
+- **1598 built-in blocks**: 921 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
+  170 preamps, 73 cabinets with up to four draggable mics each, 247 Tone Zone originals and 6 pedalboards. That covers wahs,
   volume and whammy pedals, loopers, synths, acoustic preamps, DIs, splitters, mergers and other utilities. Pedals
   that can be stereo come in **mono and stereo versions**.
 - **Real pedal layouts, as plugins**: blocks inspired by the units you know (BOSS, Ibanez, MXR, Dunlop, EHX, JHS,
