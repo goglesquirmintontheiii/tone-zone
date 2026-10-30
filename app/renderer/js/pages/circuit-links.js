@@ -8,6 +8,12 @@
 // Each destination takes one ref:
 //   led.bind = 'src' with led.src, or led.chans = {r, g, b} (RGB) / {c1, c2} (bicolour)
 //   j.from (an EXP / footswitch OUT jack), screen.sio.ins[i].from, c.from (a control moved by the source)
+// Rotary encoders (knobs with part 'encoder') turn endlessly; besides their position they send CW and CCW pulses
+// ({ctl, sw: 'cw' | 'ccw'}, block params u.<id>.cw / .ccw that the control layer sets to 1 for a moment per detent
+// step, makePulser below) and count steps (u.<id>.n). c.encMode: 'wrap' (default, round and round), 'clamp'
+// (stops at the ends) or 'relative' (what it drives gets the step count). An encoder's LED ring follows the
+// encoder unless something is wired to it: c.ringFrom (analog, the arc or dot position) and c.ringLeds {i: ref}
+// (binary, one LED each).
 // Values: a source reads as t (0..1; binary sources 0 or 1) and raw (circuit and screen outputs as they are).
 // A binary destination is on above 0.5; an analog one takes t (LED brightness, heel to toe, knob position).
 import { clamp } from '../util.js';
@@ -21,6 +27,8 @@ export function refKey(r) {
   if (r.jack) return 'jack:' + r.jack + (r.ch ? ':' + r.ch : '');
   return 'so:' + r.scr + ':' + r.o;
 }
+export const isEnc = (c) => !!c && c.kind === 'knob' && c.part === 'encoder';
+const PULSE = (sw) => sw === 'cw' || sw === 'ccw';
 export const sameRef = (a, b) => isRef(a) && isRef(b) && refKey(a) === refKey(b);
 
 // LED colour channels: RGB has three, bicolour two (its colour and its second colour)
@@ -49,7 +57,7 @@ export function drivable(c) {
 const steps = (c) => (c.kind === 'toggle' ? c.ways || 2 : c.kind === 'sel' ? c.n || 4 : 2);
 /** What a source sends: 'b' binary or 'n' analog. */
 export function ctlSig(c, sw) {
-  if (c.kind === 'dip') return 'b';
+  if (c.kind === 'dip' || PULSE(sw)) return 'b';
   if (c.kind === 'xy') return 'n';
   return c.kind === 'foot' || c.kind === 'button' || (c.kind === 'toggle' && (c.ways || 2) === 2) ? 'b' : 'n';
 }
@@ -69,7 +77,7 @@ export function refOk(X, r) {
   if (r.ctl) {
     const c = X.ctls.get(r.ctl);
     if (!c) return false;
-    if (r.sw != null) return c.kind === 'dip' ? r.sw < (c.n || 4) : c.kind === 'xy' ? r.sw < 2 : false;
+    if (r.sw != null) return PULSE(r.sw) ? isEnc(c) : c.kind === 'dip' ? r.sw < (c.n || 4) : c.kind === 'xy' ? r.sw < 2 : false;
     return c.kind !== 'led' && c.kind !== 'screen' && c.kind !== 'dip' && c.kind !== 'xy';
   }
   if (r.jack) {
@@ -96,6 +104,7 @@ export function refParam(X, r) {
   if (r.ctl) {
     const c = X.ctls.get(r.ctl);
     if (!c) return null;
+    if (PULSE(r.sw)) return 'u.' + c.id + '.' + r.sw;
     if (c.kind === 'dip') return 'u.' + c.id + '.' + (r.sw || 0);
     if (c.kind === 'xy') return 'u.' + c.id + '.' + (r.sw ? 'y' : 'x');
     if (c.kind === 'foot') return c.map && c.map.to && c.map.to !== 'bypass' && !c.map.to.endsWith('.tap') ? 'u.' + c.id : null;
@@ -122,7 +131,11 @@ export function readRef(X, r, ui, st, b) {
     if (!c) return null;
     const key = refParam(X, r);
     let t;
-    if (c.kind === 'dip') t = +(ui[key] ?? (c.bits && c.bits[r.sw || 0] ? 1 : 0)) > 0.5 ? 1 : 0;
+    if (PULSE(r.sw)) t = +(ui[key] ?? 0) > 0.5 ? 1 : 0;
+    else if (isEnc(c) && c.encMode === 'relative') {
+      // the step count, as it is; t is where the knob points
+      return { t: clamp(+(ui[key] ?? c.value ?? 0.5), 0, 1), raw: clamp(+(ui[key + '.n'] ?? 0) || 0, -255, 255) };
+    } else if (c.kind === 'dip') t = +(ui[key] ?? (c.bits && c.bits[r.sw || 0] ? 1 : 0)) > 0.5 ? 1 : 0;
     else if (c.kind === 'xy') t = clamp(+(ui[key] ?? (r.sw ? c.vy : c.vx) ?? 0.5), 0, 1);
     else if (KNOB.has(c.kind)) t = clamp(+(ui[key] ?? c.value ?? 0.5), 0, 1);
     else if (c.kind === 'toggle' || c.kind === 'sel') t = clamp(+(ui[key] ?? c.pos ?? 0) / Math.max(1, steps(c) - 1), 0, 1);
@@ -212,6 +225,76 @@ export function linkLedFn(X, c) {
   };
 }
 
+// ------------------------------------------------------------------ encoders
+export const ENC_STEPS = 24; // detent steps over the knob's 0..1
+/** Encoder state {last, acc} moved to position v: whole steps turned (CW positive). */
+export function encSteps(st, v, wrap) {
+  if (st.last == null) {
+    st.last = v;
+    return 0;
+  }
+  let d = v - st.last;
+  if (wrap) {
+    if (d > 0.5) d -= 1;
+    else if (d < -0.5) d += 1;
+  }
+  st.last = v;
+  st.acc = (st.acc || 0) + d * ENC_STEPS;
+  const n = st.acc > 0 ? Math.floor(st.acc + 1e-6) : Math.ceil(st.acc - 1e-6);
+  st.acc -= n;
+  return n;
+}
+export const PULSE_MS = 45, PULSE_GAP = 35;
+/** Pulses CW / CCW params one step at a time: set(param, value). Returns turn(key, enc, steps). */
+export function makePulser(set) {
+  const q = new Map();
+  const run = (k, e) => {
+    const s = q.get(k);
+    if (!s.n) {
+      s.busy = false;
+      return;
+    }
+    const dir = s.n > 0 ? 1 : -1;
+    s.n -= dir;
+    s.busy = true;
+    const p = dir > 0 ? e.cw : e.ccw;
+    set(p, 1);
+    setTimeout(() => {
+      set(p, 0);
+      setTimeout(() => run(k, e), PULSE_GAP);
+    }, PULSE_MS);
+  };
+  return (k, e, n) => {
+    let s = q.get(k);
+    if (!s) q.set(k, (s = { n: 0, busy: false }));
+    if (s.n && Math.sign(s.n) !== Math.sign(n)) s.n = 0; // turned back: drop what was still to come
+    s.n = clamp(s.n + n, -8, 8);
+    if (!s.busy) run(k, e);
+  };
+}
+/** ledFn for an encoder's ring wired in the diagram: {v} and / or {leds}, null to follow the knob. */
+export function ringFn(X, c) {
+  const n = clamp(Math.round(c.ringN || 12), 2, 32);
+  const src = isRef(c.ringFrom) ? c.ringFrom : null;
+  const per = Object.entries(c.ringLeds || {}).filter(([i, r]) => isRef(r) && +i < n);
+  return (ui, b, st) => {
+    const o = {};
+    if (src) {
+      const v = readRef(X, src, ui, st, b);
+      o.v = v ? v.t : 0;
+    }
+    if (per.length) {
+      o.leds = new Array(n).fill(null);
+      for (const [i, r] of per) {
+        const v = readRef(X, r, ui, st, b);
+        o.leds[+i] = !!v && v.t > 0.5;
+      }
+    }
+    return o;
+  };
+}
+export const ringWired = (c) => isEnc(c) && !!c.ring && (isRef(c.ringFrom) || Object.values(c.ringLeds || {}).some(isRef));
+
 // ------------------------------------------------------------------ where a design uses its sources
 /** Every direct link of design D: [{ref, dst: {led, ch} | {jout} | {screen, si} | {cin}}]. */
 export function linksOf(D) {
@@ -223,6 +306,10 @@ export function linksOf(D) {
     }
     if (c.kind === 'screen' && c.sio) (c.sio.ins || []).forEach((p, i) => isRef(p.from) && out.push({ ref: p.from, dst: { screen: c.id, si: i } }));
     if (isRef(c.from)) out.push({ ref: c.from, dst: { cin: c.id } });
+    if (isEnc(c)) {
+      if (isRef(c.ringFrom)) out.push({ ref: c.ringFrom, dst: { ring: c.id } });
+      for (const [i, r] of Object.entries(c.ringLeds || {})) isRef(r) && out.push({ ref: r, dst: { ring: c.id, li: +i } });
+    }
   }
   for (const j of D.jacks || []) if (isRef(j.from)) out.push({ ref: j.from, dst: { jout: j.id } });
   return out;
@@ -245,6 +332,11 @@ export function pruneLinks(D, X, jid) {
       }
     }
     if (c.from && (!isRef(c.from) || bad(c.from) || !drivable(c) || c.from.ctl === c.id)) delete c.from;
+    if (c.ringFrom && (!isRef(c.ringFrom) || bad(c.ringFrom))) delete c.ringFrom;
+    if (c.ringLeds) {
+      for (const k of Object.keys(c.ringLeds)) if (!isRef(c.ringLeds[k]) || bad(c.ringLeds[k])) delete c.ringLeds[k];
+      if (!Object.keys(c.ringLeds).length) delete c.ringLeds;
+    }
     if (c.sio) for (const p of c.sio.ins || []) if (p.from && !p.from.n && (!isRef(p.from) || bad(p.from))) p.from = null;
   }
   for (const j of D.jacks || []) if (j.from && !j.from.n && isRef(j.from) && bad(j.from)) delete j.from;

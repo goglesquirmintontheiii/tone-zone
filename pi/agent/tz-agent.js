@@ -274,7 +274,8 @@ function ledTick() {
       case 'tap': on = bpm > 0 && t % Math.round(60000 / bpm) < 80; break;
       case 'tuner': on = tunerOn; break;
       case 'circuit': {
-        const bs = st.blocks && st.blocks[c.block];
+        const bo = blockOf(livePreset, c.block);
+        const bs = st.blocks && st.blocks[bo ? bo.id : c.block];
         const v = bs && Array.isArray(bs.cv) ? Number(bs.cv[c.out | 0]) || 0 : 0;
         if (c.drive === 'pwm') { gpio.setLed(bcm, dim + (bright - dim) * Math.max(0, Math.min(1, v))); continue; }
         on = v > 0.5;
@@ -345,7 +346,7 @@ function benchPreset(p) {
     for (let i = 0; i < n; i++) buf.writeFloatLE(0.25 * Math.sin((2 * Math.PI * 110 * i) / sr) * Math.exp(-(i % sr) / 20000), 44 + i * 4);
     fs.writeFileSync(path.join(tmp, 'in.wav'), buf);
     fs.writeFileSync(path.join(tmp, 'g.json'), JSON.stringify({ settings: { quality: isPi3 ? 0 : 1 }, graph: store.resolveGraph(p.graph) }));
-    const proc = spawn(bin, ['--data', hw.DATA, '--offline', path.join(tmp, 'g.json'), path.join(tmp, 'in.wav'), path.join(tmp, 'out.wav'), '--block', String(S.config.audio.buffer || 128)], { stdio: ['ignore', 'ignore', 'pipe'] });
+    const proc = spawn(bin, ['--offline', path.join(tmp, 'g.json'), path.join(tmp, 'in.wav'), path.join(tmp, 'out.wav'), '--block', String(S.config.audio.buffer || 128), '--data', hw.DATA], { stdio: ['ignore', 'ignore', 'pipe'] });
     try { os.setPriority(proc.pid, 15); } catch {}
     let err = '';
     proc.stderr.on('data', (d) => (err += d));

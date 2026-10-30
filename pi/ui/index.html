@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0d0f14">
+<title>Tone Zone Pi</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <button class="nav" data-view="home">Home</button>
+    <button class="nav" data-view="presets">Presets</button>
+    <button class="nav" data-view="tuner">Tuner</button>
+    <div id="stat"><span id="s-dsp">DSP --</span><span id="s-cpu">CPU --</span><span id="s-temp">-- C</span></div>
+  </header>
+  <main id="view"></main>
+  <footer id="meters">
+    <div class="meter"><span>IN</span><i><b id="m-in"></b></i></div>
+    <div class="meter"><span>OUT</span><i><b id="m-out"></b></i></div>
+  </footer>
+</div>
+<div id="offline" hidden>Connecting to the Tone Zone agent...</div>
+<script src="ui.js"></script>
+</body>
+</html>

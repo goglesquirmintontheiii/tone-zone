@@ -4,3 +4,7 @@ engine/build*/
 engine/dist/
 *.log
 .DS_Store
+engine/dist-pi/
+dist-pi/
+*.pem.key
+tz-pi-signing-key.pem

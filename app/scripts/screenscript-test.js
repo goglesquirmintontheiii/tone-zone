@@ -102,6 +102,15 @@ async function unit() {
   ok(!/[\u2013\u2014]/.test(md + JSON.stringify(API)), 'no em or en dashes in the docs');
   const noSig = API.flatMap((g) => g.items.map(([n]) => n)).filter((n) => !SIGS.has(n) && !['W', 'screen', 'colors', 'mouse', 'math', 'string', 'table', 'pairs', 'tostring', 'pcall', 'ctl', 'pedalOn', 'clip', 'push', 'translate'].includes(n));
   ok(noSig.length === 0, 'every API function has types for the hints: ' + noSig.join(', '));
+  // hints for on(): event names, the right kind of name, checks
+  const HN = await import(pathToFileURL(path.join(JS, 'hints.js')).href);
+  const hctx = { controls: [{ name: 'Rate', kind: 'knob' }, { name: 'A', kind: 'foot' }], findControl: (n, k) => (k === 'foot' ? ['a'] : ['rate']).includes(String(n).toLowerCase()), ports: { ins: [{ name: 'Gate', sig: 'b' }], outs: [] } };
+  const evc = HN.completions('on("foot', 8, hctx);
+  ok(evc && evc.items.map((i) => i.label).sort().join(',') === 'footswitch_down,footswitch_up', 'on(" offers the event names');
+  const tgt = HN.completions('on("encoder", "', 15, hctx);
+  ok(tgt && tgt.items.map((i) => i.label).join(',') === 'Rate', 'on("encoder", " offers the knobs');
+  const evl = HN.lint('on("chnge", function(e) end)\non("input", "Nope", function(e) end)\non("touch", "x", function(e) end)\non("footswitch_down", "A", function(e) end)', hctx).map((w) => w.message);
+  ok(evl.length === 3 && /Did you mean "change"/.test(evl[0]) && /no input called "Nope"/.test(evl[1]) && /takes no name/.test(evl[2]), 'on() checks the event and its name: ' + evl.join(' | '));
 }
 
 (async () => {
@@ -189,19 +198,98 @@ end`, w: 64, h: 32, host: null, readBack: true });
   ok(ev.changes === 2 && ev.foots === 1, `onControl and onFoot are called (${ev.changes}, ${ev.foots}, ${ev.last})`);
   ok(ev.kept === '4y' && ev.missing === 7 && !ev.err, 'save and load keep values');
 
+  // events: on(event, [name], fn)
+  const evs = await win.evaluate(async () => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const design = { ctls: [
+      { id: 'k1', kind: 'knob', label: 'GAIN', value: 0.5 },
+      { id: 'e1', kind: 'knob', part: 'encoder', label: 'RATE', value: 0.95 },
+      { id: 'f1', kind: 'foot', label: 'A', map: { to: 'c1.on' } },
+      { id: 'f2', kind: 'foot', label: '', map: { to: 'bypass' } },
+      { id: 's1', kind: 'screen', label: 'S', sio: { ins: [{ id: 'p1', name: 'Env', sig: 'n' }, { id: 'p2', name: 'Gate', sig: 'b' }], outs: [] } },
+    ] };
+    const { io, sim } = simIO(design, { demo: false });
+    io.cid = 's1';
+    const host = makeHost(design, io);
+    const src = `
+log = {}
+local function add(s) log[#log + 1] = s end
+downs, ups, enc, changes, gate, offCount, good, timers = 0, 0, {}, {}, {}, 0, 0, 0
+on("footswitch_down", "A", function(e) downs += 1 add("down " .. e.name) end)
+on("footswitch_up", "A", function(e) ups += 1 add("up") end)
+on("encoder", "RATE", function(e) enc[#enc + 1] = e.dir * e.steps add("enc") end)
+on("change", "GAIN", function(e) changes[#changes + 1] = e.old .. ">" .. e.value add("change") end)
+on("input", "Gate", function(e) gate[#gate + 1] = e.port .. ":" .. e.old .. ">" .. e.value end)
+local h = on("change", function(e) offCount += 1 end)
+on("change", "GAIN", function(e)
+  local x = nil
+  return x.boom
+end)
+on("change", "GAIN", function(e) good += 1 end)
+on("bypass", function(e) add(e.on and "on" or "off") end)
+on("timer", 100, function(e) timers = e.count end)
+function stopIt() h:off() end
+function draw() clear() end
+`;
+    const rt = new ScreenRuntime({ src, w: 64, h: 32, host });
+    let t = 1000;
+    const step = () => rt.frame((t += 40));
+    io.set('u.f1', 0);
+    step();
+    io.set('u.f1', 1); step();
+    io.set('u.f1', 0); step();
+    io.set('u.e1', 0.02); step(); // clockwise through the top: wraps
+    io.set('u.e1', 0.9); step(); // back, counter clockwise
+    io.set('u.k1', 0.8); step();
+    io.set('u.k1', 0.8); step(); // no change, no event
+    sim.ports.set(1, 1); step();
+    rt.vm.call('stopIt', [], 1e5, 10);
+    io.set('u.k1', 0.3); step();
+    sim.bypass = true; step();
+    for (let i = 0; i < 6; i++) step();
+    const g = (n) => rt.vm.get(n);
+    const list = (n) => g(n).a.slice();
+    return { downs: g('downs'), ups: g('ups'), enc: list('enc'), changes: list('changes'), gate: list('gate'), offCount: g('offCount'), good: g('good'), timers: g('timers'), log: list('log'), err: rt.error, herr: rt.handlerError };
+  });
+  ok(evs.downs === 1 && evs.ups === 1 && evs.log[0] === 'down A' && evs.log[1] === 'up', 'footswitch_down and footswitch_up fire once each: ' + evs.log.slice(0, 2).join(', '));
+  ok(evs.enc.length === 2 && evs.enc[0] === 1 && evs.enc[1] === -2, 'an endless encoder gives CW through the wrap, then CCW: ' + JSON.stringify(evs.enc));
+  ok(evs.changes.join(' ') === '0.5>0.8 0.8>0.3', 'change gives the old and new value: ' + evs.changes.join(' '));
+  ok(evs.gate.join(' ') === '2:0>1', 'a screen input change fires with its port: ' + evs.gate.join(' '));
+  ok(evs.offCount === 5, 'off() stops a handler (' + evs.offCount + ' calls before)');
+  ok(evs.good === 2 && !evs.err && evs.herr && evs.herr.line === 13 && /boom|nil/.test(evs.herr.message), 'a handler that throws does not stop the others or the screen: ' + (evs.herr && evs.herr.message));
+  ok(evs.log.includes('off') && evs.timers >= 3, `bypass and timer events (timer ran ${evs.timers} times)`);
+  ok(evs.log.join(',').startsWith('down A,up,enc,enc,change'), 'events run in order: ' + evs.log.join(','));
+
   // ---- the factory: Shows -> Custom, code editor, generator
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForSelector('.fz-stage');
   await win.click('#fzTemplates');
   await win.click('[data-template="synth"]');
   await win.waitForTimeout(400);
+  // the Synth Box template comes with a coded screen: start this check from a plain text screen
+  await win.evaluate(() => {
+    const d = JSON.parse(JSON.stringify(window.__tzFactory.design()));
+    const s = d.ctls.find((c) => c.kind === 'screen');
+    delete s.shows;
+    delete s.script;
+    window.__tzFactory.load(d);
+  });
+  await win.waitForTimeout(300);
   const D = () => win.evaluate(() => JSON.parse(JSON.stringify(window.__tzFactory.design())));
   const d0 = await D();
   const scr = d0.ctls.find((c) => c.kind === 'screen');
   await win.evaluate((id) => window.__tzFactory.select(id), scr.id);
   await win.waitForTimeout(200);
   const showsSel = '.fz-row:has(> label:text-is("Shows")) select';
-  ok((await win.$eval(showsSel, (s) => s.value)) === 'text', 'a screen shows basic text by default');
+  // the Synth Box template may come with a coded screen (factory-showcase.js): go back to text first
+  const shows0 = await win.$eval(showsSel, (s) => s.value);
+  ok(shows0 === 'text' || shows0 === 'custom', 'a screen has a Shows choice (' + shows0 + ')');
+  if (shows0 !== 'text') {
+    await win.selectOption(showsSel, 'text');
+    await win.waitForTimeout(300);
+    await win.evaluate((id) => { const c = window.__tzFactory.design().ctls.find((x) => x.id === id); c.script = ''; }, scr.id);
+  }
   await win.selectOption(showsSel, 'custom');
   await win.waitForTimeout(500);
   const d1 = await D();
@@ -387,7 +475,7 @@ end
   await win.click('.ss-tabs [data-tab="ref"]');
   await win.waitForTimeout(100);
   const guide = await win.evaluate(() => {
-    const g = document.querySelector('.ss-refguide');
+    const g = document.querySelector('.ss-refguide[data-guide="Screen ports"]');
     if (!g) return null;
     g.scrollIntoView({ block: 'start' });
     return { heads: [...g.querySelectorAll('h6')].map((h) => h.textContent), code: g.querySelectorAll('.ss-refcode').length };
@@ -399,6 +487,9 @@ end
   await win.evaluate(() => { const h = [...document.querySelectorAll('.ss-refguide h6')].find((x) => x.textContent === 'Writing outputs'); if (h) h.scrollIntoView({ block: 'start' }); });
   await win.waitForTimeout(100);
   await shotEd('screens-hint-reference2.png');
+  await win.evaluate(() => { const h = [...document.querySelectorAll('.ss-ref h5')].find((x) => x.textContent === 'Events'); if (h) h.scrollIntoView({ block: 'start' }); });
+  await win.waitForTimeout(100);
+  await shotEd('screens-events-reference.png');
   await win.click('.ss-tabs [data-tab="test"]');
   // every example in the guide runs
   const exErr = await win.evaluate(async (id) => {

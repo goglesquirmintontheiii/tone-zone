@@ -716,6 +716,8 @@ export function renderPedal(root, d, o = {}) {
         if (c.kind !== 'led' && !view.subs) g.dataset.ctl = c.id;
         views.set(c.id, { ctl: defsBy.get(c.id), view });
       }
+      // an encoder's LED ring wired in the wiring diagram (circuit-links.js ringFn)
+      if (view.ring && defsBy.has(c.id + '.ring')) views.set(c.id + '.ring', { ctl: defsBy.get(c.id + '.ring'), view: { set: (o) => view.ring(o), press() {} } });
     }
   }
   // jack hit areas on top so they can be grabbed through the body edge

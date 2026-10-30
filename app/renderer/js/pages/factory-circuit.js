@@ -29,7 +29,7 @@ import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, LIM, ioNodes, nid, clone,
 import {
   CIRCUITS, circuitById, makeCircuit, newStage, stageParam, v2TargetsFor, v2TargetInfo, v2MapTo, v2AutoMap, autoMapWith, stagesToGraph,
 } from './circuit-migrate.js';
-import { isRef, hasChans, linkCtx, linkLedFn, pruneLinks, refParam, readRef, driveValue, drivable, jackLinked } from './circuit-links.js';
+import { isRef, hasChans, linkCtx, linkLedFn, pruneLinks, refParam, readRef, driveValue, drivable, jackLinked, isEnc, ringFn, ringWired } from './circuit-links.js';
 
 export { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, CIRCUITS, circuitById, makeCircuit, newStage, stageParam, nid };
 export const uid = (p) => p + Math.random().toString(36).slice(2, 7);
@@ -774,6 +774,7 @@ export function designToDef(design, o = {}) {
     }
   };
   let tapSub = null;
+  const encoders = [];
   for (const c of D.ctls) {
     if (c.hidden) continue;
     const key = 'u.' + c.id;
@@ -782,7 +783,15 @@ export function designToDef(design, o = {}) {
     if (knobLike[c.kind]) {
       const v0 = c.value ?? 0.5;
       controls.push(Object.assign(base, { t: knobLike[c.kind], p: key, min: 0, max: 1, def: v0, display: disp(list) }, c.kind === 'slider' ? { h: (c.h || 24) * S, orient: c.orient } : {}, c.kind === 'pedal' ? { h: (c.h || 60) * S, w: (c.w || 40) * S } : {}));
-      addMaps(key, 0, v0, list);
+      if (isEnc(c)) {
+        // encoders: CW / CCW pulses and a step count next to the position (circuit-links.js)
+        const rel = c.encMode === 'relative';
+        encoders.push({ p: key, cw: key + '.cw', ccw: key + '.ccw', n: key + '.n', def: v0, wrap: c.encMode !== 'clamp' });
+        if (rel) addMaps(key + '.n', 0, 0, list.map((m) => ({ ...m, raw: true })));
+        else addMaps(key, 0, v0, list);
+        for (const sw of ['cw', 'ccw']) addMaps(key + '.' + sw, 2, 0, (c.smore || []).filter((m) => m && m.sw === sw));
+        if (ringWired(c)) controls.push({ cid: c.id + '.ring', t: 'led', bind: 'fn', ledFn: ringFn(X, c), label: '', ring: true });
+      } else addMaps(key, 0, v0, list);
     } else if (c.kind === 'toggle' || c.kind === 'sel') {
       const n = c.kind === 'toggle' ? c.ways : c.n || 4;
       const ol = (c.opts || []).slice(0, n);
@@ -851,11 +860,11 @@ export function designToDef(design, o = {}) {
   const byId = new Map(D.ctls.map((c) => [c.id, c]));
   for (const x of controls) {
     const c = byId.get(x.cid) || byId.get(String(x.cid).split('.')[0]);
-    if (!c || !c.part) continue;
+    if (!c || !c.part || x.ring) continue;
     x.part = c.part;
     if (c.part === 'lever' || c.part === 'pad') x.spring = true;
     if (c.part === 'arcade') x.momentary = true;
-    if (c.part === 'encoder') x.endless = true;
+    if (c.part === 'encoder') x.endless = c.encMode !== 'clamp';
   }
   // expression jacks: move a control (j.drive) or drive circuit inputs directly (j.maps)
   const ctrlIns = [], ctrlOuts = [];
@@ -900,7 +909,8 @@ export function designToDef(design, o = {}) {
     (c.sio.outs || []).slice(0, SCREEN_PORTS).forEach((p, i) => {
       const key = 'u.s.' + c.id + '.' + i;
       sio.outs.push({ name: p.name || 'Out ' + (i + 1), sig: p.sig === 'b' ? 'b' : 'n', p: key, def: p.def ?? 0 });
-      addMaps(key, 0, undefined, (p.maps || []).map((m) => m && { ...m, raw: true }), true);
+      // never set by the script: the circuit inputs get the output's default
+      addMaps(key, 0, p.def ?? 0, (p.maps || []).map((m) => m && { ...m, raw: true }));
     });
   }
   // controls moved by a source (c.from): the board and Test mode set their params (plinks), derive follows too
@@ -995,6 +1005,7 @@ export function designToDef(design, o = {}) {
   if (couts.length) def.couts = couts.map((x) => ({ key: x.key, name: x.name, sig: x.sig, idx: x.idx, min: x.min, max: x.max }));
   if (Object.keys(screenIO).length) def.screenIO = screenIO;
   if (plinks.length) def.plinks = plinks;
+  if (encoders.length) def.encoders = encoders;
   if (o.hidden) def.hidden = true;
   return def;
 }

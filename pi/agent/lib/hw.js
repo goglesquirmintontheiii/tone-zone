@@ -7,7 +7,7 @@ const os = require('os');
 
 const FAKE = process.env.TZ_FAKE_HW === '1';
 const DATA = process.env.TZ_DATA || (FAKE ? path.join(os.tmpdir(), 'tz-agent-fake') : '/var/lib/tonezone');
-const SLOT = path.resolve(__dirname, '..', '..'); // the install slot this agent runs from (/opt/tonezone/a)
+const SLOT = fs.realpathSync(path.resolve(__dirname, '..', '..')); // the install slot this agent runs from (/opt/tonezone/a)
 const HOME = process.env.TZ_HOME || path.dirname(SLOT); // /opt/tonezone (holds a, b and the current link)
 const FAKE_ROOT = process.env.TZ_FAKE_ROOT || path.join(DATA, 'fake-root');
 

@@ -35,7 +35,8 @@ function pair(given, client) {
 }
 
 function check(req, ctx) {
-  if (ctx.loopback) return true; // the screen UI and the tonezone command on the Pi itself
+  // the screen UI and the tonezone command on the Pi itself (tests turn this off to check pairing)
+  if (ctx.loopback && process.env.TZ_LOOPBACK_TRUSTED !== '0') return true;
   const h = String(req.headers.authorization || '');
   const t = h.startsWith('Bearer ') ? h.slice(7) : ctx.query && ctx.query.token;
   if (!t) return false;

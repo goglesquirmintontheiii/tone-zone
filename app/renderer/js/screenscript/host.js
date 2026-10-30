@@ -48,7 +48,7 @@ export function controlList(D) {
     if (c.hidden) continue;
     const label = (c.label || '').trim();
     const base = { id: c.id, label, param: c.param || '', src: c };
-    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5 });
+    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5, enc: c.part === 'encoder', wrap: c.part === 'encoder' && c.encMode !== 'clamp' });
     else if (c.kind === 'toggle' || c.kind === 'sel') {
       const n = c.kind === 'toggle' ? c.ways || 2 : c.n || 4;
       const opts = (c.opts || []).slice(0, n);
@@ -195,6 +195,8 @@ export function makeHost(design, io) {
       return out;
     },
     bypassed: () => !!io.bypassed(),
+    taps: () => (io.taps ? io.taps() : 0),
+    presetSerial: () => (io.presetSerial ? io.presetSerial() : 0),
     setBypass: (on) => io.setBypass && io.setBypass(!!on),
     signals() {
       const names = ['in', 'out', 'inDb', 'outDb', 'env', 'on'];
@@ -299,7 +301,8 @@ export function makeHost(design, io) {
       if (typeof v === 'number') return p.sig === 'b' ? (v > 0.5 ? 1 : 0) : clamp(v, -255, 255);
       // wired straight from a control, jack or screen (pages/circuit-links.js)
       if (p.from && !p.from.n) v = readLink(design, p.from, new Proxy({}, { get: (_, k) => io.get(k) }), st, { bypass: !!(io.bypassed && io.bypassed()) });
-      else if (p.from && st && Array.isArray(st.cv)) {
+      // a circuit output: 0 while the pedal is bypassed (the circuits are not running), like a direct link reads it
+      else if (p.from && st && Array.isArray(st.cv) && !(io.bypassed && io.bypassed())) {
         const o = outIndex().get(outKey(p.from));
         if (o !== undefined) v = st.cv[o];
       }
@@ -325,7 +328,7 @@ export function makeHost(design, io) {
       const list = (c && c.sio && c.sio.outs) || [];
       const i = portIndex(list, which, 'Out');
       if (!list[i]) return 0;
-      return +(io.get('u.s.' + c.id + '.' + i) ?? 0) || 0;
+      return +(io.get('u.s.' + c.id + '.' + i) ?? list[i].def ?? 0) || 0; // never set: its default
     },
     // per frame: levels, envelope and a fresh param cache
     beginFrame(now) {

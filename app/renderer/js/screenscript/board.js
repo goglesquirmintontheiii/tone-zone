@@ -37,6 +37,8 @@ export function boardIO(blockId, fallback, cid) {
       ui = null;
     },
     bypassed: () => !!B().bypass,
+    taps: () => (state.ui[blockId] && state.ui[blockId].taps) || 0,
+    presetSerial: () => state.presetSerial || 0,
     setBypass: (on) => setBypass(blockId, on),
     levels: () => ({ inPk: peaks(state.status && state.status.inPeak), outPk: peaks(state.status && state.status.outPeak) }),
     blockStatus: () => (state.status && state.status.blocks && state.status.blocks[blockId]) || null,

@@ -1,0 +1,10 @@
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">Tone Zone on %h</name>
+  <service>
+    <type>_tonezone._tcp</type>
+    <port>7650</port>
+    <txt-record>api=1</txt-record>
+  </service>
+</service-group>

@@ -73,7 +73,6 @@ class Engine extends EventEmitter {
     // re-apply after (re)start
     this.send({ cmd: 'settings', ...this.settings });
     if (this.current) this.send({ cmd: 'setGraph', key: this.current.key, graph: this.current.graph });
-    this.send({ cmd: 'hello' });
     return true;
   }
 
@@ -89,6 +88,7 @@ class Engine extends EventEmitter {
       case 'error': log.warn('engine: ' + ev.error, 'engine'); break;
       case 'ports': this.ports = ev; break;
       case 'preloaded':
+        this.supportsPreload = true;
         this.cached.add(ev.key);
         if (this.preloading && this.preloading.key === ev.key) this.preloading = null;
         this.pumpPreload();
@@ -124,7 +124,7 @@ class Engine extends EventEmitter {
     if (this.cached.has(key)) this.send({ cmd: 'useGraph', key });
     else this.send({ cmd: 'setGraph', key, graph });
     // the engine keeps the outgoing graph built (stashed under its key)
-    if (prev && prev.key && prev.key !== key) this.cached.add(prev.key);
+    if (this.supportsPreload && prev && prev.key && prev.key !== key) this.cached.add(prev.key);
   }
 
   // keep exactly these presets built (besides the current one)

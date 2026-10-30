@@ -1,0 +1,2 @@
+# Tone Zone: the agent may run its small root helper, nothing else
+tonezone ALL=(root) NOPASSWD: /usr/local/sbin/tonezone-root

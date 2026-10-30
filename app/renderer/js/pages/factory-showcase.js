@@ -73,7 +73,7 @@ export function showcaseTemplates(h) {
         const c = circuit('Amp in a box');
         const i = c.node('in', 40, 60), a = c.part('amp', 260, 40), o = c.node('out', 520, 60);
         c.chain([i, a, o]);
-        const env = c.part('env', 300, 260, { sens: 0.7, release: 300 });
+        const env = c.part('env', 300, 260, { sens: 0.03, release: 300 });
         c.wire(a, 'out', env, 'in');
         const lvl = c.out('Level', env);
         const T = (name, key, def) => c.input(name, def, [[a, key]]);
@@ -133,7 +133,7 @@ export function showcaseTemplates(h) {
         const c = circuit('Compressor');
         const i = c.node('in', 40, 60), cp = c.part('comp', 300, 40), o = c.node('out', 540, 60);
         c.chain([i, cp, o]);
-        const e1 = c.part('env', 260, 240, { release: 250 }), e2 = c.part('env', 460, 240, { release: 250 });
+        const e1 = c.part('env', 260, 240, { sens: 0.03, release: 250 }), e2 = c.part('env', 460, 240, { sens: 0.03, release: 250 });
         c.wire(i, 'out', e1, 'in');
         c.wire(cp, 'out', e2, 'in');
         const inL = c.out('In', e1), outL = c.out('Out', e2);
@@ -168,7 +168,7 @@ export function showcaseTemplates(h) {
         const rv = c.part('reverb', 1040, 40, { mode: 1, mix: 0.3, decay: 0.55 });
         const o = c.node('out', 1240, 60);
         c.chain([i, cp, od, ch, dl, rv, o]);
-        const e1 = c.part('env', 240, 300, { release: 200 }), e2 = c.part('env', 1100, 300, { release: 200 });
+        const e1 = c.part('env', 240, 300, { sens: 0.03, release: 200 }), e2 = c.part('env', 1100, 300, { sens: 0.03, release: 200 });
         c.wire(i, 'out', e1, 'in');
         c.wire(rv, 'out', e2, 'in');
         const inL = c.out('In', e1), outL = c.out('Out', e2);
@@ -186,7 +186,7 @@ export function showcaseTemplates(h) {
           name: 'Command Center',
           enc: { size: 'custom', w: 220, h: 140, shape: 'box', radius: 5, mat: { m: 'metal', s: 'aluminium', f: 'anodized', c: '#23262d' } },
           labels: { font: FONTS[0][0], size: 3.2, color: '#e8ecf2' },
-          title: txt({ id: 'title', text: 'COMMAND CENTER', font: FONTS[1][0], weight: 700, x: 110, y: 101, size: 6.5, color: '#e8ecf2', ls: 1.6 }),
+          title: txt({ id: 'title', text: 'COMMAND CENTER', font: FONTS[1][0], weight: 700, x: 110, y: 97, size: 6.5, color: '#e8ecf2', ls: 1.6 }),
           art: [art('rect', 110, 40, 104, 54, '#0a0b0d', { opacity: 0.9 }), art('rect', 110, 137, 220, 6, '#ff7a2f', { opacity: 0.85 })],
           ctls: [
             screen(110, 40, 98, 48, 'tft', COMMAND_SCRIPT, {
@@ -197,11 +197,11 @@ export function showcaseTemplates(h) {
             kk(176, 22, 'RATE', rate, 0.3), kk(200, 22, 'DEPTH', dep, 0.5), kk(176, 50, 'TIME', time, 0.6), kk(200, 50, 'REPEATS', rep, 0.35),
             kk(78, 80, 'ECHO', emix, 0.3, { r: 5 }), kk(142, 80, 'VERB', vmix, 0.3, { r: 5 }),
             { id: uid('d'), kind: 'dip', x: 110, y: 79, n: 4, bits: [1, 0, 0, 0], color: '#1f4fbf', label: 'SETUP', labelPos: 'below', maps: [binMap(compOn), knobMap(tape), knobMap(shim), knobMap(vib)] },
-            led(30, 106, '#3ddc84'), led(80, 106, '#ff7a2f', { bind: 'fz1' }), led(140, 106, '#b45cff', { bind: 'fz2' }), led(190, 106, '#ff2a1a', { bind: 'tap:' + c.inst.id }),
-            stomp(30, 122, { r: 6, label: 'BYPASS', labelPos: 'none' }),
-            stomp(80, 122, { r: 6, label: 'DRIVE', labelPos: 'none', map: binMap(driveOn) }),
-            stomp(140, 122, { r: 6, label: 'MOD', labelPos: 'none', map: binMap(modOn) }),
-            stomp(190, 122, { r: 6, label: 'TAP', labelPos: 'none', map: { to: c.inst.id + '.tap' } }),
+            led(30, 109, '#3ddc84'), led(80, 109, '#ff7a2f', { bind: 'fz1' }), led(140, 109, '#b45cff', { bind: 'fz2' }), led(190, 109, '#ff2a1a', { bind: 'tap:' + c.inst.id }),
+            stomp(30, 124, { r: 6, label: 'BYPASS', labelPos: 'none' }),
+            stomp(80, 124, { r: 6, label: 'DRIVE', labelPos: 'none', map: binMap(driveOn) }),
+            stomp(140, 124, { r: 6, label: 'MOD', labelPos: 'none', map: binMap(modOn) }),
+            stomp(190, 124, { r: 6, label: 'TAP', labelPos: 'none', map: { to: c.inst.id + '.tap' } }),
           ],
           jacks: [jack('in', 'right', 0.4), jack('out', 'left', 0.35), jack('stereo', 'left', 0.6), jack('exp', 'top', 0.25), jack('power', 'top', 0.75)],
         });

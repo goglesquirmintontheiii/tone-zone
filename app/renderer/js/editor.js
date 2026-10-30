@@ -1116,6 +1116,7 @@ export class Editor {
         setParam(b.id, c.p, ui[c.p] > 0.5 ? 0 : 1);
         break;
       case 'tap': {
+        sui.taps = (sui.taps || 0) + 1; // screen scripts watch this for 'tap' events
         // tapSub: route the tap to sub-block i of a chain (arg = i * 100)
         window.tz.engine.send({ cmd: 'event', id: b.id, type: 1, value: 0, arg: (c.tapSub ?? d.tapSub ?? 0) * 100 });
         // copy tap tempo into the UI param so knobs follow (tapHz: target is a rate in Hz, like tremolo speed)

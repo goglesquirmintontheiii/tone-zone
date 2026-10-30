@@ -128,7 +128,23 @@ export function encoderPart(parent, c) {
     svg('circle', { r: r * 0.12, fill: f ? f.ink : '#111', opacity: 0.5 }, g);
   }
   svg('ellipse', { cx: -r * 0.22, cy: -r * 0.32, rx: r * 0.42, ry: r * 0.26, fill: '#fff', opacity: 0.12, 'pointer-events': 'none' }, g);
-  let last = null;
+  let last = null, over = null;
+  const paintRing = (v) => {
+    const n = leds.length;
+    if (!n) return;
+    const mode = c.ringMode || 'arc';
+    leds.forEach((L, i) => {
+      let on;
+      if (mode === 'dot') on = c.detent ? i === (Math.round((v - 0.5) * n) + n) % n : i === Math.min(n - 1, Math.round(v * (n - 1)));
+      else if (c.detent) {
+        // from the top LED (the centre) clockwise for more, anticlockwise for less
+        const k = Math.min(Math.floor(n / 2), Math.round(Math.abs(v - 0.5) * n));
+        on = v >= 0.5 ? i <= k : i === 0 || n - i <= k;
+      } else on = i < Math.round(v * n);
+      if (over && over.leds && over.leds[i] != null) on = over.leds[i]; // one LED wired on its own
+      L.set(on ? L.col : null);
+    });
+  };
   return {
     g,
     set(v) {
@@ -136,19 +152,12 @@ export function encoderPart(parent, c) {
       if (v === last) return;
       last = v;
       rot.setAttribute('transform', `rotate(${(v * 540).toFixed(1)})`);
-      const n = leds.length;
-      if (!n) return;
-      const mode = c.ringMode || 'arc';
-      leds.forEach((L, i) => {
-        let on;
-        if (mode === 'dot') on = c.detent ? i === (Math.round((v - 0.5) * n) + n) % n : i === Math.min(n - 1, Math.round(v * (n - 1)));
-        else if (c.detent) {
-          // from the top LED (the centre) clockwise for more, anticlockwise for less
-          const k = Math.min(Math.floor(n / 2), Math.round(Math.abs(v - 0.5) * n));
-          on = v >= 0.5 ? i <= k : i === 0 || n - i <= k;
-        } else on = i < Math.round(v * n);
-        L.set(on ? L.col : null);
-      });
+      if (!over || over.v == null) paintRing(v);
+    },
+    // the ring driven from the wiring diagram: {v} and / or {leds: [true | false | null]}; null follows the knob
+    ring(o) {
+      over = o && typeof o === 'object' ? o : null;
+      paintRing(over && over.v != null ? clamp(over.v, 0, 1) : last ?? clamp(c.value ?? 0.5, 0, 1));
     },
   };
 }

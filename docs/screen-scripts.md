@@ -94,7 +94,7 @@ the error and its line) instead of freezing the app. Errors never crash the app:
 
 ## Running
 
-Code at the top runs once when the screen starts. Then draw() runs for every frame (about 20 to 30 a second).
+Code at the top runs once when the screen starts. Then draw() runs for every frame (about 20 to 30 a second). The functions below are called by name when you define them. For more events, and several handlers for one, see on() under Events.
 
 | Call | What it does |
 | --- | --- |
@@ -108,6 +108,98 @@ Code at the top runs once when the screen starts. Then draw() runs for every fra
 | `function onControl(name, value) ... end` | A control on the pedal changed (knob turned, switch flipped). |
 | `function onFoot(name, on) ... end` | A footswitch was pressed. |
 | `function onKey(key) ... end` | A key was typed while the screen has focus (click it first). |
+
+## Events
+
+on(event, [name], fn) runs fn when something happens: a footswitch pressed, an encoder turned, a control changed, a screen input changed ... Add handlers once, at the top of the script (not inside draw()). The function gets one table e with the details.
+
+| Call | What it does |
+| --- | --- |
+| `h = on(event, [name], function(e) ... end)` | Run the function on an event, for one control (or input) by name or number, or for all of them when the name is left out. Returns a handle. |
+| `h:off() or off(h)` | Stop a handler. |
+| `events()` | The names of the events. |
+
+### The events
+
+* **change** (control): any control changed. e.name, e.kind, e.value, e.old.
+* **switch** (switch): a toggle or rotary switch moved. e.value and e.old (positions from 1), e.option (its label).
+* **encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (24 per turn), e.value the position. Endless encoders wrap around without a jump in direction.
+* **footswitch_down** / **footswitch_up** (footswitch): a footswitch turned on / off. e.name, e.on. The bypass switch counts too.
+* **button_down** / **button_up** (push button): the same for latching push buttons.
+* **dip** (DIP switch): e.name, e.n (its number in the block), e.on.
+* **input** (screen input): a value wired into this screen changed. e.port (number), e.name, e.value, e.old.
+* **bypass**: the pedal was turned on or off. e.on is true when it is on.
+* **tap**: the tap tempo footswitch was pressed (on the board). e.count counts the taps.
+* **preset**: a preset was loaded on the board (the pedal may be the same, its settings may have changed).
+* **touch**, **drag**, **release**: the screen was pressed, dragged, let go. e.x, e.y.
+* **wheel**: e.d is 1 (up) or -1 (down), e.x, e.y.
+* **key**: a key was typed while the screen has focus. e.key.
+* **timer**: on("timer", 500, fn) runs every 500 ms. e.count counts the runs.
+
+Names work like everywhere else: a label (any case), "Knob 2", a number (the second knob is on("encoder", 2, fn)) or a footswitch letter. Screen inputs by number or name.
+
+### When they run
+
+* Control, input, bypass and timer events are checked once per frame, before update() and draw(). Each change fires once, even if it was fast.
+* The order: controls in panel order (onControl and onFoot first, then on() handlers in the order they were added; change before the more specific event), then screen inputs, bypass and timers. touch, drag, release, wheel and key run right when they happen.
+* Each handler has its own work budget. An error in a handler shows in the console with its line and the other handlers and draw() keep running.
+* The older functions (onControl, onFoot, onPress, onMove, onRelease, onWheel, onKey) still work, next to on().
+
+```lua
+-- count presses of footswitch A and show how long it was held
+local presses, held, downAt = 0, 0, 0
+on("footswitch_down", "A", function(e)
+  presses += 1
+  downAt = time()
+end)
+on("footswitch_up", "A", function(e)
+  held = time() - downAt
+end)
+function draw()
+  clear()
+  text("A: " .. presses, 2, 2)
+  text(string.format("held %.1f s", held), 2, 12, colors.dim)
+end
+```
+
+```lua
+-- an encoder steps through a list of presets
+local names = {"CLEAN", "CRUNCH", "LEAD", "AMBIENT"}
+local pick = 1
+on("encoder", "Select", function(e)
+  pick = (pick - 1 + e.dir * e.steps) % #names + 1
+end)
+function draw()
+  clear()
+  text(names[pick], W / 2, H / 2, colors.fg, "big", "middle")
+end
+```
+
+```lua
+-- flash the screen when a control changes, and when a screen input goes high
+local flash, msg = 0, ""
+on("change", function(e)
+  msg = e.name .. ": " .. tostring(e.old) .. " > " .. tostring(e.value)
+  flash = 0.3
+end)
+on("input", "Gate", function(e)
+  if e.value == 1 then flash = 0.3 end
+end)
+function draw(dt)
+  clear(flash > 0 and colors.accent or colors.bg)
+  flash = math.max(0, flash - dt)
+  text(msg, 2, 2)
+end
+```
+
+```lua
+-- a handler that runs once, then stops itself
+local h
+h = on("touch", function(e)
+  print("first touch at", e.x, e.y)
+  h:off()
+end)
+```
 
 ## Screen
 
@@ -239,7 +331,7 @@ A screen can have its own inputs and outputs in the wiring diagram, up to 16 of 
 | --- | --- |
 | `input(n) or input(name)` | The value wired into this input: analog -255 to 255, binary 0 or 1. 0 when nothing is wired, when the pedal is not playing, or when there is no such input. |
 | `output(n, value) or output(name, value)` | Set an output. Analog takes a number (kept within -255 to 255), binary takes true / false or 0 / 1. Only changes are sent. Returns false when there is no such output. |
-| `outputValue(n) or outputValue(name)` | What the output is set to now (0 until the script sets it). Saved with the preset. |
+| `outputValue(n) or outputValue(name)` | What the output is set to now (its default, 0, until the script sets it). Saved with the preset. |
 | `ports()` | The port names: ports().ins and ports().outs are lists, in order. |
 
 ### Adding inputs and outputs
@@ -256,7 +348,7 @@ input() reads the newest value the audio engine reported for the circuit output 
 
 * Analog inputs give the value the circuit output puts out (most parts put out 0 to 1), kept within -255 to 255. Wired straight from a control or a jack they read 0 to 1 (a switch: its position from 0 to 1), from another screen's output its value as it is.
 * Binary inputs give 1 or 0 (values above 0.5 count as 1).
-* An input reads 0 when nothing is wired to it, when what it read is gone, when the pedal is not playing (the engine is off), and when an EXP jack it reads has nothing plugged in. Circuit outputs also read 0 on the factory stage outside Test mode, since the circuit only plays in Test mode and on the board. In the code editor preview it reads what you set in the Test tab.
+* An input reads 0 when nothing is wired to it, when what it read is gone, when the pedal is not playing (the engine is off), and when an EXP jack it reads has nothing plugged in. A circuit output also reads 0 while the pedal is bypassed (its circuits are not running); a control, jack or screen wired straight to the input keeps its value. Circuit outputs also read 0 on the factory stage outside Test mode, since the circuit only plays in Test mode and on the board. In the code editor preview it reads what you set in the Test tab.
 * In Lua 0 counts as true, so compare a binary input with 1: if input("Gate") == 1 then ... end
 
 ```lua
@@ -283,9 +375,21 @@ function draw()
 end
 ```
 
+```lua
+-- or react only when the input changes, with on()
+local hits = 0
+on("input", "Gate", function(e)
+  if e.value == 1 then hits += 1 end
+end)
+function draw()
+  clear()
+  text("HITS " .. hits, 2, 2)
+end
+```
+
 ### Writing outputs
 
-output(n, value) sets an output, and the circuit inputs it drives follow. The value goes in as it is (no 0 to 1 mapping like a knob), kept within the circuit input's own range: an Analog input part is 0 to 1 unless you change its Low and High, a Binary input takes 0 or 1. When a knob and a screen output drive the same input, the values are combined (averaged unless the input says otherwise). Until the script sets an output, the inputs it drives keep their default value.
+output(n, value) sets an output, and the circuit inputs it drives follow. The value goes in as it is (no 0 to 1 mapping like a knob), kept within the circuit input's own range: an Analog input part is 0 to 1 unless you change its Low and High, a Binary input takes 0 or 1. When a knob and a screen output drive the same input, the values are combined (averaged unless the input says otherwise). Until the script sets an output, it sends its default value (0 unless the design gives the output another one) to the inputs it drives.
 
 ```lua
 -- output "Boost" (binary) drives a circuit's Binary input

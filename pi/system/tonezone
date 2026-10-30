@@ -1,0 +1,22 @@
+#!/bin/sh
+# tonezone: small command for the Tone Zone Pi install.
+API=http://127.0.0.1:7650/api
+H=/opt/tonezone
+json() { "$H/node" -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);console.log($1)}catch(e){console.log(s)}})"; }
+case "$1" in
+  pair)
+    code=$(curl -fs "$API/pair/code" | json 'j.code') || { echo "The Tone Zone service is not running (sudo systemctl status tonezone)."; exit 1; }
+    echo "Pairing code: $code"
+    echo "In Tone Zone on your computer: Pi tab, Add a Pi, then type this code." ;;
+  status)
+    curl -fs "$API/info" | json '`${j.name}: ${j.board}, version ${j.version} (slot ${j.slot}), ${j.ips.join(", ")}, paired: ${j.paired}`' || echo "not running"
+    curl -fs "$API/stats" | json '`DSP ${j.dsp}%, CPU ${j.cpu}%, ${j.temp} C, dropouts ${j.xruns}, ${j.sr} Hz / ${j.buffer} frames`' ;;
+  logs) exec journalctl -u tonezone -n 200 -f ;;
+  restart) exec sudo systemctl restart tonezone ;;
+  update) curl -fs -X POST -H 'Content-Type: application/json' -d '{}' "$API/update/download" | json 'j.upToDate ? "Already up to date ("+j.version+")" : "Installing "+j.version+", the service restarts by itself"' ;;
+  rollback) curl -fs -X POST -H 'Content-Type: application/json' -d '{}' "$API/update/rollback" | json '"Going back to "+j.version' ;;
+  unpair) curl -fs -X POST -H 'Content-Type: application/json' -d '{}' "$API/unpair" >/dev/null && echo "All computers unpaired. New code:" && "$0" pair ;;
+  version) cat "$H/current/VERSION" ;;
+  uninstall) shift; exec sudo sh "$H/current/uninstall.sh" "$@" ;;
+  *) echo "usage: tonezone pair | status | logs | restart | update | rollback | unpair | version | uninstall [--keep-data]" ;;
+esac

@@ -399,6 +399,7 @@ function migrateBlock(b) {
 }
 
 export function loadPreset(p, file = null) {
+  state.presetSerial = (state.presetSerial || 0) + 1; // screen scripts watch this for 'preset' events
   // make sure the I/O blocks exist
   if (!p.blocks.find((b) => b.id === '__in')) p.blocks.push({ id: '__in', type: '__in', x: 1500, y: 120, params: {} });
   if (!p.blocks.find((b) => b.id === '__out')) p.blocks.push({ id: '__out', type: '__out', x: -300, y: 120, params: {} });

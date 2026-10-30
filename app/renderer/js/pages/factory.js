@@ -1578,7 +1578,7 @@ function inspControl(host, c, multi) {
   }
   extraSections(host, D, c, multi, H());
   // what a control drives is wired in the wiring diagram; LEDs keep their "Lights when" section
-  if (c.kind === 'led' || (c.kind === 'screen' && !multi)) wiringSection(host, D, c, H()); // screens: inputs and outputs
+  if (c.kind === 'led' || (c.kind === 'screen' && !multi) || (c.part === 'encoder' && !multi)) wiringSection(host, D, c, H()); // screens: inputs and outputs, encoders: how they turn
   partMaterial(host, c);
   const s2 = sec(host, 'Label');
   textField(s2, 'Text', c.label, (v) => (c.label = v.toUpperCase()));

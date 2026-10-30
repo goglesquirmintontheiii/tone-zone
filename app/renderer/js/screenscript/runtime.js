@@ -33,6 +33,10 @@ const FONTS = {
 };
 export const FONT_NAMES = ['pixel', 'mono', 'sans', 'condensed', 'bold', 'digits'];
 export const SIZES = { tiny: 5, small: 7, normal: 10, medium: 10, big: 16, large: 16, huge: 28 };
+// on(event, [name], fn): the events a script can listen to
+export const EVENTS = ['change', 'switch', 'encoder', 'footswitch_down', 'footswitch_up', 'button_down', 'button_up', 'dip', 'input', 'bypass', 'touch', 'drag', 'release', 'wheel', 'key', 'timer', 'tap', 'preset'];
+const EVENT_KIND = { switch: 'switch', encoder: 'knob', footswitch_down: 'foot', footswitch_up: 'foot', button_down: 'button', button_up: 'button', dip: 'dip' };
+const ENC_STEPS = 24; // encoder detents over the knob's 0..1 (as pages/circuit-links.js)
 const FRAME_STEPS = 150000, FRAME_MS = 10, SETUP_STEPS = 1500000, SETUP_MS = 80, EVENT_STEPS = 60000, EVENT_MS = 8;
 const hex2 = (n) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0');
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -113,6 +117,11 @@ export class ScreenRuntime {
     this.hist = new Map();
     this.prevCtl = null;
     this.lastCtl = { name: '', value: 0, t: -1 };
+    this.handlers = []; // on(...)
+    this.encSt = new Map(); // control id -> {last, acc} for encoder steps
+    this.prevIns = null;
+    this.prevBypass = null;
+    this.handlerError = null; // the last error in an on() handler (the screen keeps running)
     this.cur = { color: null, font: 'pixel', size: 7, lw: 1 };
     this.store = null;
     this.storeDirty = 0;
@@ -143,6 +152,7 @@ export class ScreenRuntime {
     this.started = true;
     this.t0 = now;
     this.last = now;
+    this.now = now;
     try {
       const s = this.host && this.host.store && this.host.store();
       this.store = s && typeof s === 'object' ? { ...s } : {};
@@ -217,19 +227,117 @@ export class ScreenRuntime {
     m.set('released', I.released);
     m.set('wheel', I.wheel);
   }
+  // once per frame, in this order: controls (panel order: onControl / onFoot, then on() handlers in the order
+  // they were added), screen inputs, bypass, timers. Each change fires once.
   controlEvents(now) {
-    if (!this.host) return;
-    const snap = this.host.snapshot();
-    const prev = this.prevCtl;
-    this.prevCtl = new Map(snap.map(([e, v]) => [e.id, v]));
-    if (!prev) return;
-    for (const [e, v] of snap) {
-      const was = prev.get(e.id);
-      if (was === undefined || was === v) continue;
-      this.lastCtl = { name: e.name, value: v, t: now };
-      this.callEvent('onControl', [e.name, v]);
-      if (e.kind === 'foot') this.callEvent('onFoot', [e.name, v]);
+    if (this.host) {
+      const snap = this.host.snapshot();
+      const prev = this.prevCtl;
+      this.prevCtl = new Map(snap.map(([e, v]) => [e.id, v]));
+      for (const [e, v] of snap) {
+        // encoder steps are counted every frame so a turn is never lost
+        const steps = e.kind === 'knob' ? this.encStep(e, v) : 0;
+        if (!prev) continue;
+        const was = prev.get(e.id);
+        if (was === undefined || was === v) continue;
+        this.lastCtl = { name: e.name, value: v, t: now };
+        this.callEvent('onControl', [e.name, v]);
+        if (e.kind === 'foot') this.callEvent('onFoot', [e.name, v]);
+        if (this.error) return;
+        if (!this.handlers.length) continue;
+        const base = { name: e.name, kind: e.kind, value: v, old: was };
+        this.fire('change', base, e);
+        if (e.kind === 'switch') this.fire('switch', { ...base, option: e.opts ? e.opts[v - 1] : null }, e);
+        else if (e.kind === 'foot') this.fire(v ? 'footswitch_down' : 'footswitch_up', { name: e.name, on: !!v }, e);
+        else if (e.kind === 'button') this.fire(v ? 'button_down' : 'button_up', { name: e.name, on: !!v }, e);
+        else if (e.kind === 'dip') this.fire('dip', { name: e.name, n: e.bit + 1, on: !!v }, e);
+        else if (e.kind === 'knob' && steps) this.fire('encoder', { name: e.name, dir: steps > 0 ? 1 : -1, steps: Math.abs(steps), value: v }, e);
+        if (this.error) return;
+      }
+    }
+    if (!this.handlers.length) return;
+    // this screen's inputs (only read when something listens)
+    if (this.host && this.host.screenPorts && this.handlers.some((h) => h.event === 'input')) {
+      const ins = this.host.screenPorts().ins;
+      const vals = ins.map((_, i) => this.host.screenInput(i + 1));
+      const prev = this.prevIns;
+      this.prevIns = vals;
+      if (prev) vals.forEach((v, i) => {
+        if (prev[i] !== undefined && prev[i] !== v) this.fire('input', { port: i + 1, name: ins[i].name, value: v, old: prev[i] }, { port: i, name: ins[i].name });
+      });
+    }
+    // tap tempo presses and preset loads come from counters the app keeps
+    if (this.host && this.host.taps && this.handlers.some((h) => h.event === 'tap')) {
+      const n = this.host.taps();
+      if (this.prevTaps !== undefined && n > this.prevTaps) this.fire('tap', { count: n });
+      this.prevTaps = n;
+    }
+    if (this.host && this.host.presetSerial && this.handlers.some((h) => h.event === 'preset')) {
+      const n = this.host.presetSerial();
+      if (this.prevPreset !== undefined && n !== this.prevPreset) this.fire('preset', { serial: n });
+      this.prevPreset = n;
+    }
+    if (this.host && this.handlers.some((h) => h.event === 'bypass')) {
+      const on = !this.host.bypassed();
+      if (this.prevBypass !== null && this.prevBypass !== on) this.fire('bypass', { on });
+      this.prevBypass = on;
+    }
+    for (const h of this.handlers.slice()) {
+      if (h.event !== 'timer' || h.dead || now - h.last < h.ms) continue;
+      h.last += h.ms * Math.floor((now - h.last) / h.ms);
+      h.count++;
+      this.runHandler(h, { count: h.count, ms: h.ms });
+    }
+  }
+  // whole encoder steps turned since the last frame (CW positive); endless encoders wrap around
+  encStep(e, v) {
+    let st = this.encSt.get(e.id);
+    if (!st) {
+      this.encSt.set(e.id, { last: v, acc: 0 });
+      return 0;
+    }
+    let d = v - st.last;
+    if (e.wrap) {
+      if (d > 0.5) d -= 1;
+      else if (d < -0.5) d += 1;
+    }
+    st.last = v;
+    st.acc += d * ENC_STEPS;
+    const n = st.acc > 0 ? Math.floor(st.acc + 1e-6) : Math.ceil(st.acc - 1e-6);
+    st.acc -= n;
+    return n;
+  }
+  /** Run the on() handlers for an event. src: the control entry, or {port, name} for screen inputs. */
+  fire(event, data, src) {
+    for (const h of this.handlers.slice()) {
+      if (h.dead || h.event !== event || !this.matches(h, src)) continue;
+      this.runHandler(h, data);
       if (this.error) return;
+    }
+  }
+  matches(h, src) {
+    if (h.target === undefined || h.target === null || !src) return true;
+    if (src.port !== undefined) {
+      if (typeof h.target === 'number') return Math.round(h.target) === src.port + 1;
+      const k = tostr(h.target).trim().toLowerCase();
+      return k === String(src.name).toLowerCase() || k === String(src.port + 1);
+    }
+    const f = this.host && this.host.find(typeof h.target === 'number' ? h.target : tostr(h.target), EVENT_KIND[h.event]);
+    return !!f && f.id === src.id;
+  }
+  // a handler that fails shows its error (console and editor) and the others keep running
+  runHandler(h, data) {
+    if (this.error || !this.vm) return;
+    try {
+      this.vm.run(h.fn, [makeTable(data)], EVENT_STEPS, EVENT_MS);
+    } catch (e) {
+      const line = (e && e.line) || 0;
+      const msg = `on("${h.event}") handler${line ? ', line ' + line : ''}: ${(e && e.message) || e}`;
+      if (this.handlerError && this.handlerError.message === msg) this.handlerError.t = this.now;
+      else {
+        this.log('Error in ' + msg);
+        this.handlerError = { message: msg, line, kind: 'handler', t: this.now };
+      }
     }
   }
   callEvent(name, args) {
@@ -267,19 +375,23 @@ export class ScreenRuntime {
       I.py = y;
       I.moved = 0;
       this.callEvent('onPress', [x, y]);
+      this.fire('touch', { x, y });
     } else if (type === 'move') {
       if (I.down) I.moved += 1;
       this.callEvent('onMove', [x, y]);
+      if (I.down) this.fire('drag', { x, y });
     } else if (type === 'up') {
       I.down = false;
       I.released = true;
       I.rx = x;
       I.ry = y;
       this.callEvent('onRelease', [x, y]);
+      this.fire('release', { x, y });
     } else if (type === 'wheel') {
       const d = extra.dy > 0 ? -1 : 1;
       I.wheel += d;
       this.callEvent('onWheel', [d, x, y]);
+      this.fire('wheel', { d, x, y });
     }
   }
   /** A key from the keyboard; true when the screen used it. */
@@ -295,14 +407,16 @@ export class ScreenRuntime {
       else return true;
       return true;
     }
-    if (this.vm && this.vm.has('onKey')) {
+    const keyH = this.handlers.some((h) => h.event === 'key' && !h.dead);
+    if ((this.vm && this.vm.has('onKey')) || keyH) {
       this.callEvent('onKey', [k]);
+      this.fire('key', { key: k });
       return true;
     }
     return false;
   }
   wantsKeys() {
-    return !this.error && (!!this.focus || (this.vm && this.vm.has('onKey')));
+    return !this.error && (!!this.focus || (this.vm && this.vm.has('onKey')) || this.handlers.some((h) => h.event === 'key' && !h.dead));
   }
   blur(commit = true) {
     const w = this.wid.get(this.focus);
@@ -1157,6 +1271,35 @@ export class ScreenRuntime {
     def('output', (i, v) => !!(H() && H().screenOutput && H().screenOutput(typeof i === 'number' ? i : tostr(i), typeof v === 'boolean' ? v : num(v))), 4);
     def('outputValue', (i = 1) => (H() && H().screenOutputValue ? H().screenOutputValue(typeof i === 'number' ? i : tostr(i)) : 0), 2);
     def('ports', () => makeTable(H() && H().screenPorts ? { ins: H().screenPorts().ins.map((p) => p.name), outs: H().screenPorts().outs.map((p) => p.name) } : { ins: [], outs: [] }));
+
+    // ---- events: on(event, [name], fn) -> handle with :off()
+    const offH = (h) => {
+      if (!h || h.dead) return false;
+      h.dead = true;
+      this.handlers = this.handlers.filter((x) => x !== h);
+      return true;
+    };
+    def('on', (ev, a, b) => {
+      const event = tostr(ev);
+      const fn = b === undefined ? a : b;
+      const target = b === undefined ? undefined : a;
+      if (!EVENTS.includes(event)) throw new Error(`on: there is no "${event}" event (events: ${EVENTS.join(', ')})`);
+      if (typeof fn !== 'function') throw new Error(`on("${event}"): the last argument must be a function`);
+      if (this.handlers.length >= 200) throw new Error('on: too many handlers (more than 200). Add them once, at the top of the script, not inside draw()');
+      const h = { event, target, fn, dead: false, last: this.now || 0, count: 0 };
+      if (event === 'timer') {
+        h.ms = Math.max(10, num(target, 0));
+        if (!(num(target, 0) > 0)) throw new Error('on("timer", ms, fn): give the time in milliseconds');
+        h.target = undefined;
+      }
+      this.handlers.push(h);
+      const t = makeTable({ event, name: target === undefined ? null : target });
+      t.set('off', () => offH(h));
+      h.table = t;
+      return t;
+    });
+    def('off', (t) => offH(this.handlers.find((h) => h.table === t)));
+    def('events', () => makeTable(EVENTS));
 
     // ---- state that is saved with the preset
     def('save', (key, v) => {

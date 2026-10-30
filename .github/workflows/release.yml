@@ -2,7 +2,9 @@ name: Build & release AppImage
 
 # A GitHub release is created automatically for every new version: bump "version" in app/package.json,
 # push to main, and this workflow builds the AppImage and publishes release v<version>
-# (notes from docs/releases/v<version>.md when present).
+# (notes from docs/releases/v<version>.md when present). The Raspberry Pi bundle (aarch64 engine, agent,
+# screen UI, installer) is built next to it and attached to the same release. It is signed when the
+# TZ_PI_SIGNING_KEY secret holds the Ed25519 private key (see docs/raspberry-pi.md).
 on:
   push:
     branches: [main]
@@ -19,6 +21,9 @@ concurrency:
 jobs:
   appimage:
     runs-on: ubuntu-24.04
+    outputs:
+      exists: ${{ steps.ver.outputs.exists }}
+      version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Read version
@@ -64,3 +69,44 @@ jobs:
             gh release create "v$V" --target "$GITHUB_SHA" --title "Tone Zone v$V" --notes-file "$NOTES"
           fi
           gh release upload "v$V" app/dist/*.AppImage --clobber
+
+  # Raspberry Pi: cross compiled on Debian Bookworm, so the binaries need no newer glibc than Pi OS Bookworm (2.36)
+  pi-bundle:
+    needs: appimage
+    if: needs.appimage.outputs.exists == 'false'
+    runs-on: ubuntu-24.04
+    container: debian:bookworm
+    steps:
+      - name: Toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates cmake make g++ crossbuild-essential-arm64 nodejs qemu-user
+      - uses: actions/checkout@v4
+      - name: Build DSP engine (aarch64, Cortex-A53 baseline for Pi 3B+ / 4 / 5)
+        run: TZ_MAX_GLIBC=2.36 ./scripts/build-engine.sh arm64
+      - name: Engine self-test under qemu
+        run: |
+          qemu-aarch64 -L /usr/aarch64-linux-gnu ./engine/dist-pi/tonezone-engine-arm64 --list > /dev/null
+          node scripts/pi-qemu-selftest.js
+      - name: Build Pi bundle
+        env:
+          TZ_PI_SIGNING_KEY: ${{ secrets.TZ_PI_SIGNING_KEY }}
+        run: ./scripts/pi-bundle.sh "${{ needs.appimage.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-bundle
+          path: dist-pi/
+
+  pi-release:
+    needs: [appimage, pi-bundle]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: pi-bundle
+          path: dist-pi
+      - name: Attach Pi bundle to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${{ needs.appimage.outputs.version }}" dist-pi/* --clobber

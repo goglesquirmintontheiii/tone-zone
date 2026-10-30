@@ -1,0 +1,23 @@
+#!/bin/sh
+# The few things the Tone Zone agent needs root for. Called with sudo -n by the tonezone user
+# (/etc/sudoers.d/tonezone allows only this file). Every argument is checked here.
+set -e
+case "$1" in
+  reboot) exec systemctl reboot ;;
+  governor)
+    [ "$2" = performance ] || [ "$2" = ondemand ] || [ "$2" = schedutil ] || exit 2
+    for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do [ -w "$g" ] && echo "$2" > "$g"; done; exit 0 ;;
+  kiosk)
+    case "$3" in ''|0|90|180|270) ;; *) exit 2 ;; esac
+    printf 'rotation=%s\n' "${3:-0}" > /var/lib/tonezone/kiosk.conf
+    if [ "$2" = on ]; then systemctl enable tonezone-kiosk.service >/dev/null 2>&1; systemctl restart tonezone-kiosk.service
+    elif [ "$2" = off ]; then systemctl disable --now tonezone-kiosk.service >/dev/null 2>&1 || true
+    else exit 2; fi ;;
+  backlight)
+    case "$2" in ''|*[!0-9]*) exit 2 ;; esac
+    for b in /sys/class/backlight/*; do
+      [ -f "$b/max_brightness" ] || continue
+      m=$(cat "$b/max_brightness"); echo $(( m * $2 / 100 )) > "$b/brightness"
+    done ;;
+  *) echo "usage: tonezone-root reboot | governor <name> | kiosk on|off [rotation] | backlight <0..100>" >&2; exit 2 ;;
+esac

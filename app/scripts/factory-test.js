@@ -909,6 +909,198 @@ const S = process.env.SHOTS || '/tmp';
   ok(phOuts.length === 3 && phOuts[1][1] === -1 && phOuts[2][1] === -1, 'the PHONES jack gets an engine output per side: ' + JSON.stringify(phOuts));
   await win.screenshot({ path: path.join(S, 'factory-phones-lr.png') });
 
+  // 24. templates with coded screens: they load, play, and their screen scripts run without errors
+  const NEW_TPL = ['vudrive', 'wavetrem', 'squeeze', 'command', 'patternlab'];
+  ok((await win.evaluate((ids) => ids.every((id) => window.__tzFactory.templates().includes(id)), NEW_TPL)), 'the coded screen templates are in the list');
+  // a big picture of the current design (drawn over the window)
+  const bigShot = async (file, h = 900) => {
+    await win.evaluate(async (h) => {
+      const { thumb } = await import('./js/pages/factory-render.js');
+      const ov = document.createElement('div');
+      ov.id = 'fzBigShot';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#202226;display:flex;align-items:center;justify-content:center';
+      const s = thumb(window.__tzFactory.design(), 'fz-bigshot');
+      s.setAttribute('height', h);
+      s.style.cssText = `height:${h}px;max-width:1580px`;
+      ov.appendChild(s);
+      document.body.appendChild(ov);
+    }, h);
+    await win.waitForTimeout(300);
+    await win.screenshot({ path: path.join(S, file) });
+    await win.evaluate(() => document.querySelector('#fzBigShot')?.remove());
+  };
+  const runScreens = (id) => win.evaluate(async (id) => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const { screenPixels } = await import('./js/screenscript/surface.js');
+    const D = window.__tzFactory.template(id);
+    const out = [];
+    for (const c of D.ctls.filter((x) => x.kind === 'screen' && x.shows === 'custom')) {
+      const { W, H } = screenPixels(c);
+      const { io } = simIO(D);
+      io.cid = c.id;
+      const rt = new ScreenRuntime({ src: c.script, w: W, h: H, host: makeHost(D, io), palette: c.type });
+      let t = performance.now(), steps = 0;
+      const step = () => { rt.frame((t += 40)); steps = Math.max(steps, rt.vm.used + 4000 - rt.vm.R.steps); };
+      for (let i = 0; i < 8; i++) step();
+      // tap through tabs and around the screen, so every page draws
+      for (let k = 0; k < 6 && !rt.error; k++) {
+        rt.pointer('down', ((k + 0.5) * W) / 6, 5); step(); rt.pointer('up', ((k + 0.5) * W) / 6, 5); step();
+        for (const [fx, fy] of [[0.2, 0.4], [0.5, 0.6], [0.85, 0.92], [0.3, 0.85]]) { rt.pointer('down', fx * W, fy * H); step(); rt.pointer('up', fx * W, fy * H); step(); }
+      }
+      out.push({ err: rt.error, steps, frames: rt.frameN });
+    }
+    return out;
+  }, id);
+  for (const id of [...NEW_TPL, 'synth', 'delay']) {
+    const sr = await runScreens(id);
+    ok(sr.length >= 1 && sr.every((x) => !x.err && x.frames > 40 && x.steps < 150000), `${id}: the screen script runs without errors within its budget ` + JSON.stringify(sr));
+  }
+  for (const id of NEW_TPL) {
+    await win.click('#fzTemplates');
+    await win.click(`[data-template="${id}"]`);
+    await win.waitForTimeout(500);
+    const info = await win.evaluate(async () => {
+      const F = await import('./js/pages/factory-circuit.js');
+      const d = window.__tzFactory.design();
+      const ins = new Set(d.circuit.insts.flatMap((i) => i.graph.nodes.filter((n) => n.t === 'analog' || n.t === 'binary').map((n) => i.id + '.' + n.id)));
+      const maps = d.ctls.flatMap((c) => [c.map, ...(c.maps || [])]).filter((m) => m && m.to && m.to !== 'bypass' && !m.to.endsWith('.tap'));
+      const outs = new Set(F.circuitOutputs(d).map((o) => o.key));
+      const sio = d.ctls.filter((c) => c.sio).flatMap((c) => [...c.sio.ins.map((p) => outs.has(p.from.n + '.' + p.from.p)), ...c.sio.outs.flatMap((p) => p.maps.map((m) => ins.has(m.to)))]);
+      let def = null;
+      try { def = F.designToDef(d, { id: 'custom.tplcheck' }); } catch (e) { def = { err: e.message }; }
+      return { maps: maps.length, wired: maps.every((m) => ins.has(m.to)), sio: sio.length, sioOk: sio.every(Boolean), def: !!(def && def.derive), stage: window.__tzScreens.stage() };
+    });
+    ok(info.maps >= 3 && info.wired && info.def, `${id}: every control is wired to a circuit input (${info.maps})`);
+    ok(info.sio >= 1 && info.sioOk, `${id}: the screen's inputs and outputs are wired in the diagram (${info.sio})`);
+    ok(info.stage.length >= 1 && info.stage.every((x) => !x.error), `${id}: the screen runs on the stage`);
+    await win.screenshot({ path: path.join(S, `factory-tpl-${id}.png`) });
+    await bigShot(`factory-tpl-${id}-big.png`);
+    // Test mode: the engine plays it, circuit outputs reach the screen
+    await win.evaluate(() => window.__tzFactory.test(true));
+    await win.waitForTimeout(1800);
+    const tm = await win.evaluate(() => {
+      const st = window.__tz.state.status.blocks.fztest;
+      const d = window.__tzFactory.design();
+      const scr = d.ctls.find((c) => c.kind === 'screen');
+      const p = window.__tzFactory.testInfo().params;
+      return { cv: st && st.cv, outs: (scr.sio.outs || []).map((o, i) => p['u.s.' + scr.id + '.' + i]), stage: window.__tzScreens.stage() };
+    });
+    ok(Array.isArray(tm.cv) && tm.cv.length >= 1 && tm.stage.every((x) => !x.error && x.frames > 5), `${id}: plays in Test mode, circuit outputs ${JSON.stringify(tm.cv)}`);
+    if (tm.outs.length) ok(tm.outs.every((v) => typeof v === 'number'), `${id}: the screen's outputs drive the circuit in Test mode ${JSON.stringify(tm.outs.map((v) => +(+v).toFixed(2)))}`);
+    await win.screenshot({ path: path.join(S, `factory-tpl-${id}-test.png`) });
+    await win.evaluate(() => window.__tzFactory.test(false));
+    await win.waitForTimeout(500);
+  }
+
+  // the Synth Box screen draws the wave its controls make: turning a knob changes the picture
+  const wave = await win.evaluate(async () => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const { screenPixels } = await import('./js/screenscript/surface.js');
+    const D = window.__tzFactory.template('synth');
+    const c = D.ctls.find((x) => x.kind === 'screen');
+    const { W, H } = screenPixels(c);
+    const { io } = simIO(D, { demo: false });
+    io.cid = c.id;
+    const host = makeHost(D, io);
+    const rt = new ScreenRuntime({ src: c.script, w: W, h: H, host, palette: c.type, readBack: true });
+    let t = performance.now();
+    for (let i = 0; i < 6; i++) rt.frame((t += 40));
+    // same time from here on (no scrolling), only the controls change
+    const grab = () => { rt.frame(t); return rt.g.getImageData(2, 14, Math.floor(W * 0.72), H - 36).data; };
+    const diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 60) n++; return n; };
+    const a = grab();
+    const same = diff(a, grab());
+    host.setControl('CUTOFF', 0.05);
+    const b = grab();
+    host.setControl('CUTOFF', 0.5);
+    host.setControl(host.list.find((e) => e.kind === 'switch').name, 2);
+    const cc = grab();
+    host.setControl('SUB', true);
+    const d = grab();
+    return { same, cutoff: diff(a, b), wave: diff(a, cc), sub: diff(cc, d), err: rt.error };
+  });
+  ok(!wave.err && wave.same === 0 && wave.cutoff > 80 && wave.wave > 80 && wave.sub > 80, `the Synth Box wave follows CUTOFF, the WAVE switch and SUB (${wave.same}, ${wave.cutoff}, ${wave.wave}, ${wave.sub} pixels changed)`);
+  // pictures of the synth screen at two settings
+  await win.click('#fzTemplates');
+  await win.click('[data-template="synth"]');
+  await win.waitForTimeout(500);
+  await bigShot('factory-synth-saw.png');
+  await win.evaluate(() => {
+    const d = JSON.parse(JSON.stringify(window.__tzFactory.design()));
+    const k = (l, v) => (d.ctls.find((c) => c.label === l).value = v);
+    k('CUTOFF', 0.15); k('RES', 0.95);
+    d.ctls.find((c) => c.kind === 'toggle').pos = 1;
+    d.ctls.find((c) => c.label === 'SUB').on = true;
+    window.__tzFactory.load(d);
+  });
+  await win.waitForTimeout(500);
+  await bigShot('factory-synth-square.png');
+
+  // the circuit board under a clear enclosure comes from the circuits: a chip for each part, a ribbon to the
+  // screen with 10 or more wires, one wire to every step button, the same board every time
+  for (const id of ['squeeze', 'command', 'patternlab']) {
+    const pcb = await win.evaluate(async (id) => {
+      const { PCB_PARTS } = await import('./js/pages/factory-pcb.js');
+      const d = window.__tzFactory.template(id);
+      d.enc.mat = { m: 'acrylic', f: 'clear', c: '#9fd4ff' };
+      d.enc.pcb = true;
+      window.__tzFactory.load(d);
+      await new Promise((r) => setTimeout(r, 300));
+      const D2 = window.__tzFactory.design();
+      const p = document.querySelector('.fz-stage .fz-pcb');
+      const wires = p.parentNode.querySelector('.fz-wires');
+      const types = [...new Set(D2.circuit.insts.flatMap((i) => i.graph.nodes.map((n) => n.t)).filter((t) => PCB_PARTS[t] && PCB_PARTS[t].chips.length))];
+      const missing = types.filter((t) => !p.querySelector(`[data-part="${t}"] [data-chip]`));
+      const scr = D2.ctls.find((c) => c.kind === 'screen');
+      const steps = D2.ctls.find((c) => c.part === 'steps');
+      const { thumb } = await import('./js/pages/factory-render.js');
+      const a = thumb(D2).querySelector('.fz-pcb').outerHTML, b = thumb(D2).querySelector('.fz-pcb').outerHTML;
+      return {
+        types, missing, chips: p.querySelectorAll('[data-chip]').length, labels: [...p.querySelectorAll('[data-chip]')].map((e) => e.dataset.label),
+        ribbon: wires.querySelectorAll(`.fz-ribbon[data-to="${scr.id}"] path.w`).length, fpc: +(p.querySelector(`.fz-fpc[data-to="${scr.id}"]`)?.dataset.pins || 0),
+        steps: steps ? { n: steps.n, wires: wires.querySelectorAll(`.fz-wb[data-to="${steps.id}"] path.w`).length } : null,
+        same: a === b,
+      };
+    }, id);
+    ok(pcb.types.length >= 2 && !pcb.missing.length, `${id}: the board has chips for every circuit part (${pcb.types.join(', ')}: ${pcb.labels.join(' ')})`);
+    ok(pcb.ribbon >= 10 && pcb.fpc >= 10, `${id}: a wide connector and a ribbon of ${pcb.ribbon} wires to the screen`);
+    if (pcb.steps) ok(pcb.steps.wires === pcb.steps.n, `${id}: a wire to each of the ${pcb.steps.n} step buttons (${pcb.steps.wires})`);
+    ok(pcb.same, `${id}: the same design draws the same board`);
+    await bigShot(`factory-pcb-${id}.png`);
+  }
+  // a DSP for the delay, an op-amp for the drive: the parts follow the circuit
+  const dsp = await win.evaluate(async () => {
+    const { pcbParts } = await import('./js/pages/factory-pcb.js');
+    const pick = (id) => pcbParts(window.__tzFactory.template(id)).clusters.map((c) => c.type + ':' + c.spec.chips.map((x) => x[0] + x[1]).join('+'));
+    return { delay: pick('delay'), drive: pick('drive'), fuzz: pick('fuzz') };
+  });
+  ok(dsp.delay.some((x) => /^delay:soic28/.test(x)) && dsp.drive.some((x) => /^overdrive:dip8/.test(x)) && dsp.fuzz.some((x) => /^fuzz:to923\+to923/.test(x)), 'delays get a DSP, drives an op-amp, fuzzes transistors: ' + [dsp.delay[0], dsp.drive[0], dsp.fuzz[0]].join(' '));
+  // saved as a block, on the board with its board and screen
+  await win.evaluate(() => window.__tzFactory.save(true));
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
+  const labId = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(400);
+  const labBoard = await win.evaluate(async (id) => {
+    const m = await import('./js/state.js');
+    const b = m.addBlock(id, 5200, 900);
+    await new Promise((r) => setTimeout(r, 600));
+    const v = window.__tz.editor.views.get(b.id);
+    const ed = window.__tz.editor;
+    ed.view.z = 1.3;
+    ed.view.x = -b.x * 1.3 + 420;
+    ed.view.y = -b.y * 1.3 + 140;
+    ed.applyView && ed.applyView();
+    return { pcb: !!v.g.querySelector('.fz-pcb'), ribbon: v.g.querySelectorAll('.fz-ribbon path.w').length };
+  }, labId);
+  await win.waitForTimeout(900);
+  ok(labBoard.pcb && labBoard.ribbon >= 10, `the saved pedal shows its board and screen ribbon on the board (${labBoard.ribbon} wires)`);
+  await win.screenshot({ path: path.join(S, 'factory-pcb-board.png') });
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));
   console.log(fails ? `${fails} failed` : 'all passed');

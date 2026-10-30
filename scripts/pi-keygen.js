@@ -15,5 +15,7 @@ const pub = publicKey.export({ type: 'spki', format: 'pem' });
 fs.writeFileSync(path.join(ROOT, 'pi/release-key.pub.pem'), pub);
 const js = path.join(ROOT, 'pi/agent/lib/release-key.js');
 fs.writeFileSync(js, fs.readFileSync(js, 'utf8').replace(/`-----BEGIN PUBLIC KEY-----[\s\S]*?-----END PUBLIC KEY-----\n`/, '`' + pub + '`'));
-console.log(`private key: ${out}\npublic key written to pi/release-key.pub.pem and pi/agent/lib/release-key.js`);
+const inst = path.join(ROOT, 'pi/install.sh');
+fs.writeFileSync(inst, fs.readFileSync(inst, 'utf8').replace(/<<'KEY'\n-----BEGIN PUBLIC KEY-----[\s\S]*?-----END PUBLIC KEY-----\n/, "<<'KEY'\n" + pub));
+console.log(`private key: ${out}\npublic key written to pi/release-key.pub.pem, pi/agent/lib/release-key.js and pi/install.sh`);
 console.log('Pis installed with the old key will refuse bundles signed with the new one (reinstall them).');

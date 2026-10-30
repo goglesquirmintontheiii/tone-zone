@@ -1,0 +1,26 @@
+[Unit]
+Description=Tone Zone pedal (audio engine, presets, footswitches, API)
+After=network-online.target sound.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tonezone
+Group=tonezone
+SupplementaryGroups=audio gpio video input
+Environment=TZ_DATA=/var/lib/tonezone TZ_HOME=/opt/tonezone
+EnvironmentFile=-/etc/default/tonezone
+# a new version that crash loops before it can check itself goes back to the old slot here
+ExecStartPre=/opt/tonezone/boot-check.sh
+ExecStart=/opt/tonezone/node /opt/tonezone/current/agent/tz-agent.js
+Restart=always
+RestartSec=1
+# jackd runs as a child with real-time priority for the audio thread
+LimitRTPRIO=95
+LimitMEMLOCK=infinity
+Nice=-5
+KillMode=mixed
+TimeoutStopSec=6
+
+[Install]
+WantedBy=multi-user.target

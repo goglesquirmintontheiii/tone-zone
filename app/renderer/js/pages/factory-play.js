@@ -5,6 +5,7 @@ import { registerTestDef, unregisterTestDef, TEST_ID, registerSoloDef, unregiste
 import { soloDesign } from './factory-circuit.js';
 import { renderPedal } from './factory-render.js';
 import { clamp } from '../util.js';
+import { encSteps, makePulser } from './circuit-links.js';
 
 export const NODE = 'fztest';
 let T = null;
@@ -61,7 +62,7 @@ export function startTest(d) {
   const def = registerTestDef(d);
   const params = {};
   for (const c of def.controls) if (c.p) params[c.p] = ctlDefault(c);
-  T = { def, key: chainKey(def), block: { id: NODE, type: TEST_ID, params, bypass: false, variant: 'mono' }, sent: {}, graphs: [], views: null };
+  T = { def, key: chainKey(def), block: { id: NODE, type: TEST_ID, params, bypass: false, variant: 'mono' }, sent: {}, graphs: [], views: null, enc: {}, pulses: {} };
   setGraphOverride(graph);
 }
 /** The design changed while testing: new circuit means a new graph, otherwise just the params. */
@@ -136,8 +137,29 @@ function follow(p, depth = 0) {
     if (depth < 4) follow(l.to, depth + 1);
   }
 }
-function setP(p, v) {
+// encoders: turning one pulses its CW or CCW output per detent step and counts the steps
+const pulse = makePulser((p, v) => {
+  if (!T) return;
+  if (v) T.pulses[p] = (T.pulses[p] || 0) + 1;
   T.block.params[p] = v;
+  follow(p);
+  sendParams();
+  updateViews();
+});
+function turned(p, prev, v) {
+  const e = (T.def.encoders || []).find((x) => x.p === p);
+  if (!e) return;
+  const st = T.enc[p] || (T.enc[p] = { last: prev ?? e.def });
+  const n = encSteps(st, v, e.wrap);
+  if (!n) return;
+  T.block.params[e.n] = clamp((T.block.params[e.n] || 0) + n, -255, 255);
+  follow(e.n);
+  pulse(p, e, n);
+}
+function setP(p, v) {
+  const prev = T.block.params[p];
+  T.block.params[p] = v;
+  turned(p, prev, v);
   follow(p);
   sendParams();
   updateViews();
@@ -171,7 +193,8 @@ export function playDown(e, stage, zoom, onChange) {
     if (c.t === 'knob' || c.t === 'slider' || c.t === 'treadle') {
       const range = c.t === 'slider' ? ((c.h || 48) / 2) * zoom() * 1.6 : c.t === 'treadle' ? ((c.h || 120) / 2) * zoom() * 0.7 : 170;
       const d = c.t === 'slider' && c.orient === 'h' ? -dx : dy;
-      setP(c.p, clamp(start - (d / range) * fine, 0, 1));
+      const raw = start - (d / range) * fine;
+      setP(c.p, c.endless ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1)); // an endless encoder goes round
       onChange && onChange();
     } else if (c.t === 'sel') {
       const idx = clamp(Math.round(start - dy / 16), 0, c.options.length - 1);
@@ -203,6 +226,8 @@ export function testLeds(now = performance.now()) {
   if (!T) return [];
   return T.def.controls.filter((c) => c.t === 'led').map((c) => ({ cid: c.cid, on: ledOn(c, now) || false }));
 }
+/** How many times each pulse param (encoder CW / CCW) went to 1 in this test (tests). */
+export const testPulses = () => (T ? { ...T.pulses } : {});
 /** Set any of the test block's params (screen outputs, control jacks). */
 export function playSetParam(p, v) {
   if (!T) return false;

@@ -8,7 +8,7 @@
 // Audio ports are circles, analog diamonds and binary squares (wires: thick, thin, dashed). The panel folds away,
 // resizes from its top edge and pops out into its own window.
 import { el, svg, clamp, toast } from '../util.js';
-import { isRef, refKey, ledChans, ledRef, hasChans, drivable, linkCtx, pruneLinks } from './circuit-links.js';
+import { isRef, refKey, ledChans, ledRef, hasChans, drivable, linkCtx, pruneLinks, isEnc } from './circuit-links.js';
 import { PARTS, hasTap } from './circuit-parts.js';
 import { legendSVG } from './circuit-render.js';
 import {
@@ -33,6 +33,7 @@ const LSset = (v) => {
 };
 const COL = 158, ROWH = 22, BOXW = 196, AREA = 230;
 const CTL_SKIP = new Set(['led', 'screen']);
+const RING_ROW = 8; // LED ring inputs per line
 
 /** Mount the panel at the bottom of the factory's middle column. api: see factory-circuits.js. */
 export function mountDiagram(mid, api) {
@@ -171,16 +172,28 @@ export function mountDiagram(mid, api) {
     const subRow = (key, subs, base, at) =>
       subs.forEach(([k, l, sig], i) => {
         const px = 20 + (i % 6) * 22, py = at + ROWH - 2 + Math.floor(i / 6) * 16 + 6;
-        ports.set(key + ':' + k, { x: px, y: py, dir: 'out', kind: 'c', sig, label: l, small: true, ...base, sw: +k });
+        ports.set(key + ':' + k, { x: px, y: py, dir: 'out', kind: 'c', sig, label: l, small: true, ...base, sw: /^\d+$/.test(k) ? +k : k });
       });
     for (const c of ctls) {
-      const subs = c.kind === 'dip' ? [...Array(c.n || 4)].map((_, i) => [String(i), String(i + 1), 'b']) : c.kind === 'xy' ? [['0', 'X', 'n'], ['1', 'Y', 'n']] : null;
-      const h = subs ? ROWH + Math.ceil(subs.length / 6) * 16 : ROWH;
+      const enc = isEnc(c);
+      // encoders: CW and CCW pulses under the row, next to the position on the right
+      const subs = c.kind === 'dip' ? [...Array(c.n || 4)].map((_, i) => [String(i), String(i + 1), 'b']) : c.kind === 'xy' ? [['0', 'X', 'n'], ['1', 'Y', 'n']] : enc ? [['cw', 'CW', 'b'], ['ccw', 'CCW', 'b']] : null;
+      // an encoder's LED ring takes a Ring input (analog) and one binary input per LED
+      const ringN = enc && c.ring ? clamp(Math.round(c.ringN || 12), 2, 32) : 0;
+      const ringRows = ringN ? 1 + Math.ceil(ringN / RING_ROW) : 0;
+      let h = subs ? ROWH + Math.ceil(subs.length / 6) * 16 : ROWH;
+      const ringAt = y + h - 2;
+      h += ringRows * 16;
       rows.push({ ctl: c, y, h, label: ctlName(c), subs });
-      if (subs) subRow('ctl:' + c.id, subs, { ctl: c }, y);
-      else ports.set('ctl:' + c.id, { x: COL, y: y + h / 2, dir: 'out', kind: 'c', sig: ctlSig(c), ctl: c });
+      if (enc) subs.forEach(([k, l, sig], i) => ports.set('ctl:' + c.id + ':' + k, { x: 20 + i * 48, y: y + ROWH + 6, dir: 'out', kind: 'c', sig, label: l, small: true, labelRight: true, ctl: c, sw: k }));
+      else if (subs) subRow('ctl:' + c.id, subs, { ctl: c }, y);
+      if (!subs || enc) ports.set('ctl:' + c.id, { x: COL, y: y + 11, dir: 'out', kind: 'c', sig: ctlSig(c), ctl: c });
+      if (ringN) {
+        ports.set('ring:' + c.id, { x: 20, y: ringAt + 6, dir: 'in', kind: 'c', sig: 'n', ring: c, label: 'Ring', small: true, labelRight: true });
+        for (let i = 0; i < ringN; i++) ports.set('ring:' + c.id + ':' + i, { x: 20 + (i % RING_ROW) * 17, y: ringAt + 16 + Math.floor(i / RING_ROW) * 16 + 12, dir: 'in', kind: 'c', sig: 'b', ring: c, li: i, label: String(i + 1), small: true });
+      }
       // a control another source can move: its input on the left edge
-      if (drivable(c)) ports.set('cin:' + c.id, { x: 0, y: y + h / 2, dir: 'in', kind: 'c', sig: ctlSig(c), cin: c });
+      if (drivable(c)) ports.set('cin:' + c.id, { x: 0, y: y + 11, dir: 'in', kind: 'c', sig: ctlSig(c), cin: c });
       y += h + 4;
     }
     group('Jacks');
@@ -327,6 +340,11 @@ export function mountDiagram(mid, api) {
       }
     }
     for (const c of ctls) if (isRef(c.from)) cw({ id: 'cin:' + c.id, a: refKey(c.from), b: 'cin:' + c.id, cin: c });
+    for (const c of ctls) {
+      if (!isEnc(c)) continue;
+      if (isRef(c.ringFrom)) cw({ id: 'ring:' + c.id, a: refKey(c.ringFrom), b: 'ring:' + c.id, ring: c });
+      for (const [i, r] of Object.entries(c.ringLeds || {})) isRef(r) && cw({ id: 'ring:' + c.id + ':' + i, a: refKey(r), b: 'ring:' + c.id + ':' + i, ring: c, li: +i });
+    }
     for (const b of sboxes) {
       b.ins.forEach((p, i) => isRef(p.from) && cw({ id: 'si:' + b.c.id + ':' + i, a: refKey(p.from), b: 'si:' + b.c.id + ':' + i, screen: b.c, si: i }));
       b.outs.forEach((p, i) => (p.maps || []).forEach((m, k) => m && m.to && cw({ id: 'sm:' + b.c.id + ':' + i + ':' + k, a: 'so:' + b.c.id + ':' + i, b: inPort(m.to), screen: b.c, so: i, mk: k })));
@@ -504,11 +522,11 @@ export function mountDiagram(mid, api) {
     if (src.inst && dst.inst && src.inst === dst.inst) return 'A circuit cannot feed itself here: wire it inside the circuit editor.';
     if (src.kind === 'a') return '';
     if (dst.tapOnly) return src.ctl && (src.ctl.kind === 'foot' || src.ctl.kind === 'button') && src.sw == null ? '' : 'Tap tempo takes a footswitch or a button.';
-    if (src.cout) return dst.node || dst.led || dst.jout || dst.screen ? '' : dst.cin ? 'A circuit output cannot move a control.' : 'Circuit outputs go into circuit inputs, not their on / off.';
+    if (src.cout) return dst.node || dst.led || dst.jout || dst.screen || dst.ring ? '' : dst.cin ? 'A circuit output cannot move a control.' : 'Circuit outputs go into circuit inputs, not their on / off.';
     if (dst.cin && ((src.ctl && src.ctl.id === dst.cin.id) || (src.ctl && src.ctl.kind === 'foot' && src.sw == null && !footParam(src.ctl)))) return 'That control cannot move this one.';
     if (dst.jout && src.jack && src.jack.id === dst.jout.id) return 'A jack cannot drive itself.';
     if (dst.screen && src.screen && src.screen.id === dst.screen.id) return 'A screen cannot read its own output here: use a variable in its script.';
-    if (dst.to || dst.led || dst.jout || dst.screen || dst.cin) return '';
+    if (dst.to || dst.led || dst.jout || dst.screen || dst.cin || dst.ring) return '';
     return 'That does not connect.';
   }
   const footParam = (c) => c.map && c.map.to && c.map.to !== 'bypass' && !c.map.to.endsWith('.tap');
@@ -591,7 +609,7 @@ export function mountDiagram(mid, api) {
       const a = end(sk), b = end(dk);
       if (C.wires.some((w) => w.a.n === a.n && w.a.p === a.p && w.b.n === b.n && w.b.p === b.p)) return false;
       C.wires.push({ id: uid('w'), a, b });
-    } else if (dst.led || dst.jout || dst.screen || dst.cin) {
+    } else if (dst.led || dst.jout || dst.screen || dst.cin || dst.ring) {
       if (!linkTo(D, src, dst)) return false;
     } else if (src.cout) {
       const b = { n: dst.inst.id, p: dst.node };
@@ -613,6 +631,11 @@ export function mountDiagram(mid, api) {
         delete j.from; // a jack wired into a circuit is an input
         delete j.dir;
         j.maps = [...(j.maps || []), mapTo(D.circuit, to, ch ? { ch } : {})];
+      } else if (src.sw === 'cw' || src.sw === 'ccw') {
+        // an encoder's pulse: 1 for a moment per detent step
+        const c = D.ctls.find((x) => x.id === src.ctl.id);
+        if ((c.smore || []).some((x) => x && x.sw === src.sw && x.to === to)) return false;
+        c.smore = [...(c.smore || []), { ...mapTo(D.circuit, to), sw: src.sw }];
       } else if (src.sw != null) {
         const c = D.ctls.find((x) => x.id === src.ctl.id);
         const n = c.kind === 'dip' ? c.n || 4 : 2;
@@ -685,6 +708,16 @@ export function mountDiagram(mid, api) {
       const p = screenIO(D.ctls.find((x) => x.id === dst.screen.id)).ins[dst.si];
       if (!p || same(p.from)) return false;
       p.from = ref;
+    } else if (dst.ring) {
+      const c = D.ctls.find((x) => x.id === dst.ring.id);
+      if (!c) return false;
+      if (dst.li != null) {
+        if (same((c.ringLeds || {})[dst.li])) return false;
+        c.ringLeds = { ...(c.ringLeds || {}), [dst.li]: ref };
+      } else {
+        if (same(c.ringFrom)) return false;
+        c.ringFrom = ref;
+      }
     } else if (dst.cin) {
       const c = D.ctls.find((x) => x.id === dst.cin.id);
       if (!c || same(c.from)) return false;
@@ -716,6 +749,13 @@ export function mountDiagram(mid, api) {
       c.bind = 'on';
       delete c.src;
     } else if (w.cin) delete D.ctls.find((x) => x.id === w.cin.id).from;
+    else if (w.ring) {
+      const c = D.ctls.find((x) => x.id === w.ring.id);
+      if (w.li != null && c.ringLeds) {
+        delete c.ringLeds[w.li];
+        if (!Object.keys(c.ringLeds).length) delete c.ringLeds;
+      } else if (w.li == null) delete c.ringFrom;
+    }
     else if (w.jdrive) D.jacks.find((x) => x.id === w.jdrive.id).drive = 'none';
     else if (w.cwire) D.circuit.cwires = (D.circuit.cwires || []).filter((x) => x.id !== w.cwire.id);
     else if (w.jout) delete D.jacks.find((x) => x.id === w.jout.id).from;
@@ -839,7 +879,7 @@ export function mountDiagram(mid, api) {
   function signature() {
     const D = api.design();
     if (!D) return '';
-    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.smore, c.n, c.ways, c.bind, c.src, c.chans, c.from, c.look, c.sio, c.color, c.wx, c.wy]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps, j.from, j.dir, j.drive, j.loop, j.loopN]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.t, n.name, n.steps]), hasTap(i.graph)]), D.circuit && D.circuit.wires, D.circuit && D.circuit.cwires, api.selected(), selWire, P.collapsed]);
+    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.smore, c.n, c.ways, c.bind, c.src, c.chans, c.from, c.look, c.part, c.ring, c.ringN, c.ringFrom, c.ringLeds, c.encMode, c.sio, c.color, c.wx, c.wy]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps, j.from, j.dir, j.drive, j.loop, j.loopN]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.t, n.name, n.steps]), hasTap(i.graph)]), D.circuit && D.circuit.wires, D.circuit && D.circuit.cwires, api.selected(), selWire, P.collapsed]);
   }
   function refresh(force) {
     if (raf) return;

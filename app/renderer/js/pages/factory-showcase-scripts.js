@@ -143,9 +143,9 @@ function draw(dt)
   for i = 1, 8 do
     local bx = 2 + (i - 1) * 9
     local d = dip("VOICE", i)
-    fillRoundRect(bx, by, 7, 13, 1, colors.panel)
-    fillRect(bx + 1, d and by + 1 or by + 6, 5, 6, d and colors.accent or colors.dim)
-    text(tostring(i), bx + 2, by + 14, colors.dim, 5)
+    fillRoundRect(bx, by, 7, 11, 1, colors.panel)
+    fillRect(bx + 1, d and by + 1 or by + 5, 5, 5, d and colors.accent or colors.dim)
+    text(tostring(i), bx + 1, by + 12, colors.dim, 5)
   end
   local tx = 78
   for _, b in ipairs({{"SUB", s.sub}, {"DRY", s.dry > 0}, {"HOLD", s.hold}}) do
@@ -420,15 +420,14 @@ function draw()
   local squash = math.clamp(i * (0.3 + sus * 1.2) - 0.1, 0, 1) * blend
   -- meters
   text("IN", 3, 3, colors.dim)
-  meter(18, 3, W - 64, 6, i)
+  meter(22, 3, W - 68, 6, i)
   text("OUT", 3, 12, colors.dim)
-  meter(18, 12, W - 64, 6, o)
+  meter(22, 12, W - 68, 6, o)
   -- squeeze amount as a falling bar, like gain reduction
-  local gx = W - 40
-  text("GR", gx, 3, colors.dim)
-  fillRect(gx + 14, 3, 22, 15, colors.panel)
-  fillRect(gx + 14, 3, 22 * squash, 15, colors.warn)
-  text(string.format("-%.0fdB", squash * 18), gx + 25, 7, colors.fg, nil, "center")
+  local gx = W - 42
+  fillRect(gx, 3, 39, 15, colors.panel)
+  fillRect(gx, 3, 39 * squash, 15, fade(colors.warn, 0.8))
+  text(string.format("GR -%.0f", squash * 18), gx + 20, 7, colors.fg, nil, "center")
   -- the last few seconds, in and out
   local gy, gh = 23, H - 50
   rect(2, gy, W - 4, gh, colors.dim)
@@ -439,7 +438,8 @@ function draw()
   text("ATK " .. math.floor(knob("ATTACK") * 100), W / 2, gy + gh + 3, colors.fg, nil, "center")
   text(blend < 0.99 and "PARALLEL" or "FULL", W - 4, gy + gh + 3, blend < 0.99 and colors.warn or colors.good, nil, "right")
   -- the blend slider drives the circuit through output 1
-  local nb = slider("BLEND", 3, H - 13, W - 40, 11, blend)
+  text("BLEND", 3, H - 11, colors.dim)
+  local nb = slider("", 34, H - 13, W - 72, 11, blend)
   if button("50%", W - 34, H - 13, 31, 11) then nb = 0.5 end
   if nb ~= blend then
     blend = nb
@@ -500,9 +500,14 @@ local function home(dt, i, o)
   local list = blocks()
   local n = #list
   local bw = math.floor((W - 30) / n) - 4
-  local y = 34
+  local y = 26
   flow = flow + dt * (0.6 + i * 3)
-  line(10, y + 12, W - 10, y + 12, colors.dim, 2)
+  -- the signal path under the blocks, with the signal moving along it
+  line(14, y + 30, W - 14, y + 30, colors.dim, 2)
+  for d = 0, 7 do
+    local p = (flow * 0.2 + d / 8) % 1
+    fillCircle(14 + p * (W - 28), y + 30, 1.5 + o * 2, colors.accent)
+  end
   for k, b in ipairs(list) do
     local x = 14 + (k - 1) * (bw + 4)
     local c = b[3] and b[2] or colors.dim
@@ -512,23 +517,21 @@ local function home(dt, i, o)
     text(b[3] and "ON" or "OFF", x + bw / 2, y + 14, c, nil, "center")
     if tapped(x, y, bw, 24) then b[4](not b[3]) end
   end
-  -- the signal moving through the chain
-  for d = 0, 5 do
-    local p = (flow * 0.2 + d / 6) % 1
-    fillCircle(10 + p * (W - 20), y + 12, 1.5 + o * 2, colors.accent)
-  end
-  text("IN", 12, 16, colors.dim)
-  text(math.floor(i * 100) .. "", 26, 16, colors.fg)
-  text("OUT", W - 30, 16, colors.dim, nil, "right")
-  text(math.floor(o * 100) .. "", W - 12, 16, colors.fg, nil, "right")
+  -- the last few seconds of the input and output
+  local gy, gh = y + 36, H - y - 66
+  graph(14, gy, W - 28, gh, history("in", i, 120), fade(colors.fg, 0.35), 0, 0.7, true)
+  graph(14, gy, W - 28, gh, history("out", o, 120), colors.accent, 0, 0.7)
+  text("IN " .. math.floor(i * 100), 14, gy + 1, colors.dim)
+  text("OUT " .. math.floor(o * 100), W - 14, gy + 1, colors.dim, nil, "right")
   -- master level through screen output 1
-  local m = slider("MASTER", 14, H - 26, W - 28, 10, master)
+  local m = slider("", 14, H - 26, W - 28, 10, master)
   if m ~= master then master = m save("master", m) end
   text("MASTER " .. math.floor(master * 100) .. "%", W / 2, H - 13, colors.dim, nil, "center")
 end
 
-local function dials(names, x0, y)
-  local step = math.floor((W - 30 - x0) / #names)
+-- dials in a row from x0, w wide, each one turning the knob of the same name
+local function dials(names, x0, y, w)
+  local step = math.floor(w / #names)
   for k, name in ipairs(names) do
     local v = dial(name, x0 + step * (k - 0.5), y, 11, knob(name))
     if math.abs(v - knob(name)) > 0.001 then setKnob(name, v) end
@@ -541,7 +544,7 @@ local function panel(x, y, w, h)
 end
 
 local function drivePage()
-  dials({"SUSTAIN", "DRIVE", "TONE", "LEVEL"}, 12, 34)
+  dials({"SUSTAIN", "DRIVE", "TONE", "LEVEL"}, 12, 34, W - 24)
   local x, y, w, h = 14, 60, W / 2 - 18, H - 74
   panel(x, y, w, h)
   -- the clipping curve, and a dot riding it
@@ -566,7 +569,7 @@ local function drivePage()
 end
 
 local function modPage()
-  dials({"RATE", "DEPTH"}, 12, 34)
+  dials({"RATE", "DEPTH"}, 12, 34, W / 2 - 16)
   local x, y, w, h = 14, 60, W - 28, H - 74
   panel(x, y, w, h)
   local hz = 0.2 + knob("RATE") * 6
@@ -584,7 +587,7 @@ local function modPage()
 end
 
 local function echoPage()
-  dials({"TIME", "REPEATS", "ECHO"}, 12, 34)
+  dials({"TIME", "REPEATS", "ECHO"}, 12, 34, W - 90)
   local x, y, w, h = 14, 60, W - 28, H - 74
   panel(x, y, w, h)
   local ms = 20 * 100 ^ knob("TIME")
@@ -602,12 +605,12 @@ local function echoPage()
   end
   text(math.floor(ms) .. " MS", x + w - 4, y + 3, colors.fg, nil, "right")
   if beat < 0.1 then fillCircle(x + w - 8, y + 14, 3, colors.bad) end
-  local tape = toggle("TAPE", W - 70, 16, 56, 11, dip("SETUP", 2))
+  local tape = toggle("TAPE", W - 72, 26, 58, 12, dip("SETUP", 2))
   if tape ~= dip("SETUP", 2) then setDip("SETUP", 2, tape) end
 end
 
 local function verbPage()
-  dials({"VERB"}, 12, 34)
+  dials({"VERB"}, 12, 34, W / 2 - 16)
   local x, y, w, h = 14, 60, W - 28, H - 74
   panel(x, y, w, h)
   local mix = knob("VERB")
@@ -735,7 +738,7 @@ local function grid(now)
   local n = length()
   local x0, y0 = 6, 16
   local w = math.floor((W - 12) / 8)
-  local h = H - 44
+  local h = H - 48
   for i = 1, 8 do
     local x = x0 + (i - 1) * w
     local live = i <= n
@@ -762,8 +765,8 @@ local function grid(now)
   -- the filter as it moves (screen input Step)
   local cut = input("Step")
   if cut <= 0 then cut = steps[now] end
-  graph(6, H - 16, W - 12, 12, history("cut", cut, 80), colors.accent, 0, 1)
-  text("LEN " .. n, W - 6, 4, colors.dim, nil, "right")
+  text("LEN " .. n, 6, H - 12, colors.fg)
+  graph(46, H - 16, W - 52, 13, history("cut", cut, 80), colors.accent, 0, 1)
 end
 
 local function sound()

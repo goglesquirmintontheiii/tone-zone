@@ -146,3 +146,4 @@
   .ss-main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   .ss-gmain { grid-template-columns: 1fr; }
 }
+.ss-status .ss-handlererr { margin-left: 12px; color: var(--bad-text); }

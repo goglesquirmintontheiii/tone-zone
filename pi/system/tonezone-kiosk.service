@@ -1,0 +1,25 @@
+[Unit]
+Description=Tone Zone screen (kiosk)
+After=tonezone.service systemd-user-sessions.service
+Wants=tonezone.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=tonezone
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+Nice=5
+ExecStart=/opt/tonezone/kiosk.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

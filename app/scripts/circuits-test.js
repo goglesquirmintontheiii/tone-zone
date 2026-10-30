@@ -33,7 +33,9 @@ const S = process.env.SHOTS || '/tmp';
     await win.waitForTimeout(150);
   };
   const center = async (sel) => {
-    const b = await (await win.$(sel)).boundingBox();
+    const e = await win.$(sel);
+    if (!e) throw new Error('missing ' + sel + '\n' + errs.join('\n'));
+    const b = await e.boundingBox();
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
   };
 
@@ -879,6 +881,120 @@ const S = process.env.SHOTS || '/tmp';
   ok(!B2.all.includes('#ffe600') && B1.all.includes('#ffe600'), 'and the RGB LED mixes red with the knob\'s green (#ffe600)');
   await win.screenshot({ path: path.join(S, 'circuits-links-board.png') });
   await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.removeBlocks([ids.a, ids.v]); }, lids);
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+
+  // 18. rotary encoders: endless, CW / CCW pulses, and an LED ring the diagram can drive
+  const encD = await win.evaluate(() => {
+    const { N, W, pedal, G: g0 } = window.__ct;
+    const G = g0();
+    N(G, 'in', 'in'); N(G, 'out', 'out'); W(G, 'in', 'out', 'out', 'in');
+    N(G, 'P', 'binary', { name: 'Pulse', def: 0 }); N(G, 'Po', 'binout', { name: 'Po' }); W(G, 'P', 'cv', 'Po', '@in');
+    const jacks = [{ id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' }];
+    const ctls = [
+      { id: 'en', kind: 'knob', part: 'encoder', x: 30, y: 45, r: 8, ring: true, ringN: 12, value: 0.5, label: 'EN', labelPos: 'below' },
+      { id: 'en2', kind: 'knob', part: 'encoder', x: 62, y: 45, r: 8, ring: true, ringN: 12, value: 0.25, label: 'EN2', labelPos: 'below' },
+      { id: 'kr', kind: 'knob', x: 30, y: 85, r: 6.5, style: 'boss', value: 0.25, label: 'KR', labelPos: 'below' },
+      { id: 'tb', kind: 'toggle', ways: 2, orient: 'v', x: 62, y: 85, pos: 0, label: 'TB', labelPos: 'below' },
+      { id: 'lc', kind: 'led', x: 45, y: 16, r: 2.5, color: '#ff2a1a', on: true, label: '', labelPos: 'none', bind: 'on' },
+    ];
+    const d = pedal('Encoders', [{ id: 'E', name: 'Pulses', graph: G }], { jacks, ctls, wires: [] });
+    d.enc.w = 90;
+    d.enc.h = 110;
+    return d;
+  });
+  await win.evaluate((d) => window.__tzFactory.load(d), encD);
+  await win.evaluate(() => { const g = window.__tzCircuits.diagram(); g.setHeight(560); g.refresh(true); });
+  await win.waitForTimeout(400);
+  const encPorts = await win.evaluate(() => ['ctl:en', 'ctl:en:cw', 'ctl:en:ccw', 'ring:en', 'ring:en:0', 'ring:en:11'].filter((k) => !document.querySelector(`.fz-wd [data-wp="${k}"]`)));
+  ok(!encPorts.length, 'an encoder shows Position, CW and CCW outputs and Ring and per-LED inputs' + (encPorts.length ? ' (missing ' + encPorts.join(', ') + ')' : ''));
+  await wdDrag('ctl:en:cw', 'k:E:P');
+  await wdDrag('ctl:en:ccw', 'led:lc');
+  await wdDrag('ctl:kr', 'ring:en');
+  await wdDrag('ctl:tb', 'ring:en:11');
+  d = await D();
+  const en = d.ctls.find((c) => c.id === 'en');
+  ok((en.smore || []).some((m) => m.sw === 'cw' && m.to === 'E.P') && d.ctls.find((c) => c.id === 'lc').src.sw === 'ccw', 'CW wired into a circuit, CCW straight to an LED');
+  ok(en.ringFrom && en.ringFrom.ctl === 'kr' && en.ringLeds && en.ringLeds[11] && en.ringLeds[11].ctl === 'tb', 'a knob wired to the ring, a toggle to its last LED');
+  await win.screenshot({ path: path.join(S, 'circuits-encoder-diagram.png') });
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1500);
+  const et = () => win.evaluate(async () => {
+    const m = await import('./js/pages/factory-play.js');
+    const ring = (sel) => [...document.querySelectorAll(`.fz-stage [data-sel="${sel}"] .enc-led`)].map((e) => e.dataset.on === '1');
+    return { pulses: m.testPulses(), vals: m.testValues(), r1: ring('en'), r2: ring('en2') };
+  });
+  let E1 = await et();
+  ok(E1.r2.filter(Boolean).length === 3, 'an encoder ring with nothing wired shows where the encoder is (' + E1.r2.filter(Boolean).length + ' of 12 lit at 0.25)');
+  ok(E1.r1.slice(0, 11).filter(Boolean).length === 3 && !E1.r1[11], 'the wired ring follows the knob instead of its encoder (' + E1.r1.filter(Boolean).length + ' lit)');
+  await win.evaluate(() => window.__tzFactory.testSet('en2', 0.75));
+  await win.evaluate(() => window.__tzFactory.testSet('kr', 0.5));
+  await win.evaluate(() => window.__tzFactory.testSet('tb', 1));
+  await win.waitForTimeout(400);
+  E1 = await et();
+  ok(E1.r2.filter(Boolean).length === 9, 'turning the unwired encoder moves its ring (' + E1.r2.filter(Boolean).length + ' lit)');
+  ok(E1.r1.slice(0, 11).filter(Boolean).length === 6 && E1.r1[11], 'the ring follows its knob and its last LED its toggle (' + E1.r1.map((x) => (x ? 1 : 0)).join('') + ')');
+  // two clicks clockwise: two CW pulses, no CCW
+  await win.evaluate(() => window.__tzFactory.testSet('en', 0.5 + 2 / 24 + 0.002));
+  await win.waitForTimeout(600);
+  E1 = await et();
+  ok(E1.pulses['u.en.cw'] === 2 && !E1.pulses['u.en.ccw'] && E1.vals['u.en.n'] === 2, 'turning the encoder two clicks clockwise pulses CW twice and not CCW: ' + JSON.stringify(E1.pulses));
+  ok(E1.vals['u.en.cw'] === 0, 'the pulse goes back to 0');
+  await win.evaluate(() => window.__tzFactory.testSet('en', 0.5 - 1 / 24 + 0.002));
+  await win.waitForTimeout(800);
+  E1 = await et();
+  ok(E1.pulses['u.en.ccw'] >= 2 && E1.pulses['u.en.cw'] === 2, 'turning it back pulses CCW: ' + JSON.stringify(E1.pulses));
+  // endless: past the top goes on clockwise
+  await win.evaluate(() => window.__tzFactory.testSet('en', 0.9));
+  await win.waitForTimeout(1200);
+  await win.evaluate(() => window.__tzFactory.testSet('en', 0.97));
+  await win.waitForTimeout(500);
+  const cw0 = (await et()).pulses['u.en.cw'], ccw0 = (await et()).pulses['u.en.ccw'];
+  await win.evaluate(() => window.__tzFactory.testSet('en', 0.03));
+  await win.waitForTimeout(500);
+  E1 = await et();
+  ok(E1.pulses['u.en.cw'] >= cw0 + 1 && E1.pulses['u.en.ccw'] === ccw0, `turning past the top keeps going clockwise (CW ${cw0} -> ${E1.pulses['u.en.cw']})`);
+  // the pulse reaches the circuit: its binary output flashes
+  const flash = await win.evaluate(async () => {
+    let seen = 0;
+    const t0 = performance.now();
+    window.__tzFactory.testSet('en', 0.03 + 1 / 24 + 0.002);
+    while (performance.now() - t0 < 400) {
+      const st = window.__tz.state.status.blocks.fztest;
+      if (st && st.cv && st.cv[0] === 1) seen++;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    return seen;
+  });
+  ok(flash > 0, 'a CW pulse reaches the circuit wired to it (' + flash + ' status frames at 1)');
+  await win.screenshot({ path: path.join(S, 'circuits-encoder-test.png') });
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(300);
+  // on the board
+  await win.evaluate(() => window.__tzFactory.save(true));
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
+  const encId = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(400);
+  const eb = await win.evaluate(async (id) => {
+    const st = await import('./js/state.js');
+    const u = await import('./js/util.js');
+    const a = st.addBlock(id, 300, 160);
+    st.syncGraph();
+    window.__encLog = [];
+    u.bus.on('param', (e) => e.id === a.id && /\.c?cw$/.test(e.p) && e.v === 1 && window.__encLog.push(e.p));
+    return a.id;
+  }, encId);
+  await win.waitForTimeout(1500);
+  const ringOn = () => win.evaluate((id) => [...document.querySelectorAll(`[data-node="${id}"] [data-sel="en"] .enc-led`)].map((e) => e.dataset.on === '1'), eb);
+  await win.evaluate(async (id) => { const st = await import('./js/state.js'); st.setParam(id, 'u.en', 0.5 + 3 / 24 + 0.002); st.setParam(id, 'u.kr', 0.75); }, eb);
+  await win.waitForTimeout(800);
+  const log = await win.evaluate(() => window.__encLog.slice());
+  const bring = await ringOn();
+  ok(log.filter((p) => p.endsWith('.cw')).length === 3 && !log.some((p) => p.endsWith('.ccw')), 'on the board three clicks clockwise pulse CW three times: ' + log.join(','));
+  ok(bring.filter(Boolean).length === 9, 'on the board the ring follows the knob wired to it (' + bring.filter(Boolean).length + ' lit at 0.75)');
+  await win.screenshot({ path: path.join(S, 'circuits-encoder-board.png') });
+  await win.evaluate(async (id) => { const st = await import('./js/state.js'); st.removeBlocks([id]); }, eb);
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForTimeout(300);
 

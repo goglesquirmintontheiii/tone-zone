@@ -31,7 +31,8 @@ if [ "$TARGET" = "arm64" ] || [ "$TARGET" = "armhf" ]; then
   $STRIP "$OUT.new" || true
   mv -f "$OUT.new" "$OUT"
   # Pi OS Bookworm ships glibc 2.36: report the newest glibc symbol the binary needs
-  NEED=$(objdump -T "$OUT" 2>/dev/null | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1 || true)
+  OBJDUMP=${STRIP%strip}objdump
+  NEED=$($OBJDUMP -T "$OUT" 2>/dev/null | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1 || true)
   echo "built $OUT (needs ${NEED:-unknown})"
   if [ -n "${TZ_MAX_GLIBC:-}" ] && [ -n "$NEED" ]; then
     if [ "$(printf '%s\n%s\n' "GLIBC_$TZ_MAX_GLIBC" "$NEED" | sort -V | tail -1)" != "GLIBC_$TZ_MAX_GLIBC" ]; then

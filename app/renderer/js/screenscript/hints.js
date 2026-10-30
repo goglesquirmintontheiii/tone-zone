@@ -2,7 +2,7 @@
 // a quick, forgiving scan of the source (no full parse, never throws) and the API types in docs.js.
 // ctx (optional) describes the pedal: { controls: [{name, kind}], findControl(name, kind), ports: {ins, outs}, signals }.
 import { SIGS, API_NAMES, FIELDS, describe, sigText, typeLabel } from './docs.js';
-import { PALETTES, NAMED, SIZES, FONT_NAMES } from './runtime.js';
+import { PALETTES, NAMED, SIZES, FONT_NAMES, EVENTS } from './runtime.js';
 import { ICON_NAMES } from './font.js';
 
 const KW = new Set(['and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then', 'true', 'until', 'while']);
@@ -13,6 +13,15 @@ const ALIGNS = ['left', 'center', 'right', 'middle'];
 const KINDS = ['knob', 'switch', 'dip', 'foot', 'button'];
 const SIGNALS = ['in', 'out', 'inDb', 'outDb', 'env', 'on', 'lfo', 'tempo'];
 const lc = (s) => String(s).toLowerCase();
+// what the name in on(event, name, fn) is, by event
+const TARGET = { change: 'control', switch: 'control.switch', encoder: 'control.knob', footswitch_down: 'control.foot', footswitch_up: 'control.foot', button_down: 'control.button', button_up: 'control.button', dip: 'control.dip', input: 'port.in', timer: 'number' };
+// a parameter whose type depends on another argument (on's name follows its event)
+function realType(p, call) {
+  if (p.type !== 'target') return p.type;
+  const a = call && call.args[0];
+  const L = a && literal(a);
+  return L && L.kind === 'str' ? TARGET[L.v] || 'none' : 'any';
+}
 
 // ------------------------------------------------------------------ lexer
 /** Tokens with offsets: { t: name | kw | num | str | op, v, s, e, open (an unclosed string) }. Comments are skipped. */
@@ -209,6 +218,7 @@ function valuesFor(type, ctx) {
     case 'align': return ALIGNS.map((v) => [v, 'align']);
     case 'size': return Object.keys(SIZES).map((v) => [v, SIZES[v] + ' px']);
     case 'kind': return KINDS.map((v) => [v, 'control kind']);
+    case 'event': return EVENTS.map((v) => [v, TARGET[v] ? 'event, name: ' + TARGET[v].split('.')[0].replace('number', 'ms') : 'event']);
     case 'signal': return [...new Set([...SIGNALS, ...((ctx && ctx.signals) || [])])].map((v) => [v, 'signal']);
     case 'control': {
       const all = (ctx && ctx.controls) || [];
@@ -296,9 +306,11 @@ export function lint(src, ctx) {
       const L = p && literal(a);
       if (!L) return;
       const at = [L.tok.s, L.tok.e];
-      const [base, sub] = p.type.split('.');
+      const type = realType(p, c);
+      if (type === 'none') return warn(...at, `The "${literal(c.args[0]).v}" event takes no name: on("${literal(c.args[0]).v}", function(e) ... end)`);
+      const [base, sub] = type.split('.');
       if (base === 'number' && L.kind === 'str') return warn(...at, `${p.name} should be a number, not text.`);
-      if (['string', 'font', 'theme', 'icon', 'align', 'kind', 'signal'].includes(base) && L.kind === 'num') return warn(...at, `${p.name} should be text, not a number.`);
+      if (['string', 'font', 'theme', 'icon', 'align', 'kind', 'signal', 'event'].includes(base) && L.kind === 'num') return warn(...at, `${p.name} should be text, not a number.`);
       if (L.kind !== 'str') {
         if (base === 'control' && L.kind === 'num' && ctx && ctx.findControl && ctx.controls && !ctx.findControl(L.v, sub)) warn(...at, `This pedal has no ${sub || 'control'} number ${L.v}.`);
         if (base === 'port' && L.kind === 'num' && ctx && ctx.ports) {
@@ -315,6 +327,7 @@ export function lint(src, ctx) {
       else if (base === 'align' && ![...ALIGNS, 'centre'].includes(lc(v))) warn(...at, `align is left, center, right or middle.`);
       else if (base === 'size' && SIZES[v] === undefined && !(v.trim() !== '' && !Number.isNaN(+v))) warn(...at, `size is a number or ${Object.keys(SIZES).join(', ')}.`);
       else if (base === 'kind' && !KINDS.includes(v)) warn(...at, `kind is ${KINDS.join(', ')}.`);
+      else if (base === 'event' && !EVENTS.includes(v)) warn(...at, `There is no "${v}" event.` + (closest(v, EVENTS) ? ` Did you mean "${closest(v, EVENTS)}"?` : ` Events: ${EVENTS.join(', ')}.`));
       else if (base === 'control' && ctx && ctx.findControl && ctx.controls && !ctx.findControl(v, sub)) {
         const names = ctx.controls.filter((x) => !sub || x.kind === sub).map((x) => x.name);
         const alt = closest(v, names.length ? names : ctx.controls.map((x) => x.name));
@@ -350,6 +363,12 @@ export function signatureAt(src, pos) {
   // the argument the caret is in: how many top level commas come before it
   const arg = best.args.filter((a) => a.e < pos && src[a.e] === ',').length;
   const n = Math.max(best.args.length, arg + 1);
+  // text or a number where one overload wants a function: the other overload (on(event, name, fn))
+  const here = best.args[arg] && best.args[arg].toks[0];
+  if (here && (here.t === 'str' || here.t === 'num') && spec.overloads.length > 1) {
+    const alt = spec.overloads.find((o) => paramAt(o, arg) && paramAt(o, arg).type !== 'function' && minArgs(o) > arg);
+    if (alt) return { name: best.name, spec, ov: alt, arg, call: best };
+  }
   const ov = spec.overloads.find((o) => maxArgs(o) >= n && minArgs(o) <= n) || spec.overloads.find((o) => maxArgs(o) > arg) || spec.overloads[0];
   return { name: best.name, spec, ov, arg, call: best };
 }
@@ -402,7 +421,7 @@ export function completions(src, pos, ctx, force) {
     const sig = signatureAt(src, st.s);
     if (!sig) return null;
     const p = paramAt(sig.ov, sig.arg);
-    const vals = p && valuesFor(p.type, ctx);
+    const vals = p && valuesFor(realType(p, sig.call), ctx);
     if (!vals || !vals.length) return null;
     const prefix = src.slice(st.s + 1, pos);
     const items = rank(vals.map(([v, d]) => ({ label: v, kind: 'value', detail: d, insert: v })), prefix, true);

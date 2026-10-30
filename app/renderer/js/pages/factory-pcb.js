@@ -650,7 +650,7 @@ export function drawPcb(g, d, pts, spots) {
     let hy, ty;
     if (sBot < by + 1) { hy = by + 1.6; ty = sBot - 1.5; }
     else if (sTop > by + bh - 1) { hy = by + bh - 1.6; ty = sTop + 1.5; }
-    else { hy = clamp(sBot + 3.5, by + 1.6, by + bh - 1.6); ty = sBot - 1.5; }
+    else { hy = clamp(sBot + 8, by + 1.6, by + bh - 1.6); ty = sBot - 1.5; }
     const tx = clamp(hx, c.x - sw / 2 + rw / 2 + 0.5, c.x + sw / 2 - rw / 2 - 0.5);
     // the connector: a wide body with a latch and a row of gold contacts
     const fc = svg('g', { class: 'fz-fpc', 'data-to': c.id, 'data-pins': n }, pcb);

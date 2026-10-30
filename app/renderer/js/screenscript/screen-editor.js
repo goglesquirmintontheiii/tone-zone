@@ -226,7 +226,7 @@ export function openScreenEditor(o) {
           ed.focus();
         };
       }
-      if (g.guide && (!k || guideText(g.guide).includes(k))) paintGuide(g.guide, rlist);
+      if (g.guide && (!k || guideText(g.guide).includes(k))) paintGuide(g.guide, rlist, g.group);
     }
   };
   const guideText = (blocks) => blocks.map(([, v]) => (Array.isArray(v) ? v.join(' ') : v)).join(' ').toLowerCase();
@@ -237,8 +237,8 @@ export function openScreenEditor(o) {
       else if (part) host.appendChild(document.createTextNode(part));
     });
   };
-  function paintGuide(blocks, into) {
-    const box = el('div', { class: 'ss-refguide', 'data-guide': 'ports' }, into);
+  function paintGuide(blocks, into, name) {
+    const box = el('div', { class: 'ss-refguide', 'data-guide': name }, into);
     for (const [kind, v] of blocks) {
       if (kind === 'h') el('h6', {}, box).textContent = v;
       else if (kind === 'p') inline(el('p', {}, box), v);
@@ -302,8 +302,17 @@ export function openScreenEditor(o) {
       b.textContent = (err.line ? `Line ${err.line}: ` : '') + err.message;
       b.onclick = () => err.line && ed.gotoLine(err.line);
       if (lastGood && lastGood !== ed.value && err.kind === 'syntax') el('span', { class: 'ss-dim' }, status).textContent = '  (the preview shows the last version that worked)';
-    } else status.textContent = 'Running';
-    ed.setErrors(err ? [err] : []);
+    } else {
+      status.textContent = 'Running';
+      // an on() handler failed: the screen keeps running, the handler's line is marked
+      const he = rt && rt.handlerError;
+      if (he) {
+        const b = el('button', { class: 'ss-errlink ss-handlererr', 'data-ss': 'handler-error' }, status);
+        b.textContent = (he.line ? `Line ${he.line}: ` : '') + he.message;
+        b.onclick = () => he.line && ed.gotoLine(he.line);
+      }
+    }
+    ed.setErrors(err ? [err] : rt && rt.handlerError && rt.handlerError.line ? [rt.handlerError] : []);
     paintWarn();
   };
   const build = (src, keepOld) => {
@@ -362,14 +371,15 @@ export function openScreenEditor(o) {
     if (rt) rt.pointer('wheel', ...pos(e), { dy: e.deltaY });
   }, { passive: false });
 
-  let raf = 0, lastT = 0, errShown = null;
+  let raf = 0, lastT = 0, errShown = null, hErrShown = null;
   const loopFn = (now) => {
     raf = requestAnimationFrame(loopFn);
     if (now - lastT < 30) return;
     lastT = now;
     if (rt && !rt.error) rt.frame(now);
-    if (rt && rt.error !== errShown) {
+    if (rt && (rt.error !== errShown || rt.handlerError !== hErrShown)) {
       errShown = rt.error;
+      hErrShown = rt.handlerError;
       showStatus();
     }
     if (simDirty) {

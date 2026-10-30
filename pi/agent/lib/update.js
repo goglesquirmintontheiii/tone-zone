@@ -10,7 +10,8 @@ const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const hw = require('./hw');
 const log = require('./log');
-const PUBKEY = require('./release-key');
+// tests in fake hardware mode sign with a throwaway key
+const PUBKEY = hw.FAKE && process.env.TZ_TEST_PUBKEY ? fs.readFileSync(process.env.TZ_TEST_PUBKEY, 'utf8') : require('./release-key');
 
 const REPO = process.env.TZ_REPO || 'goglesquirmintontheiii/tone-zone';
 const STATE = () => path.join(hw.HOME, 'update.state');
@@ -119,7 +120,7 @@ async function afterStart(healthCheck) {
     return { pending: true, ok: true };
   }
   log.error(`update failed its health check (${err || 'no sound engine'}), going back to slot ${s.previous}`, 'agent');
-  writeState({ failed: me, failedVersion: version(), previous: s.previous });
+  writeState({ failed: me, failedVersion: version() });
   switchTo(path.join(hw.HOME, s.previous));
   return { pending: true, ok: false, rollback: true };
 }

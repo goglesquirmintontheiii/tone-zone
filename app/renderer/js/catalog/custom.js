@@ -2,6 +2,7 @@
 // (pseudo plugin 'custom', kind 'Custom'). Test mode registers the design being edited as a hidden block.
 import { registerPluginDefs, unregisterPlugin, getDef } from './index.js';
 import { designToDef, cvValue } from '../pages/factory-circuit.js';
+import { encSteps, makePulser } from '../pages/circuit-links.js';
 import { state, setParam, blockById, uiParams } from '../state.js';
 import { sendCtrl } from '../control.js';
 import { installCustomForm } from '../gfx/forms-custom.js';
@@ -53,17 +54,44 @@ function pushBlock(b, st, onlyLinks) {
 function pushCtrlOuts(ev) {
   const st = ev && ev.blocks;
   if (!st || !state.preset || !Array.isArray(state.preset.blocks)) return;
-  for (const b of state.preset.blocks) pushBlock(b, st[b.id], false);
+  for (const b of state.preset.blocks) {
+    pushBlock(b, st[b.id], false);
+    encInit(b);
+  }
+}
+// encoders on the board: turning one pulses its CW or CCW output per detent step and counts the steps
+const encState = new Map(); // blockId:param -> {last, acc}
+const pulse = makePulser((key, v) => {
+  const [id, p] = key;
+  if (blockById(id)) setParam(id, p, v, { silent: true });
+});
+function encInit(b) {
+  const d = b.type && b.type.startsWith('custom.') ? getDef(b.type) : null;
+  if (!d || !d.encoders) return;
+  let ui = null;
+  for (const e of d.encoders) if (!encState.has(b.id + ':' + e.p)) encState.set(b.id + ':' + e.p, { last: (ui = ui || uiParams(b))[e.p] ?? e.def });
+}
+function encTurned(b, d, p, v) {
+  const e = d.encoders && d.encoders.find((x) => x.p === p);
+  if (!e) return;
+  const k = b.id + ':' + p;
+  if (!encState.has(k)) encState.set(k, { last: null });
+  const n = encSteps(encState.get(k), v, e.wrap);
+  if (!n) return;
+  setParam(b.id, e.n, Math.max(-255, Math.min(255, (+b.params[e.n] || 0) + n)), { silent: true });
+  // the pulse params are [block, param] pairs so one pulser serves every block
+  pulse(k, { cw: [b.id, e.cw], ccw: [b.id, e.ccw] }, n);
 }
 // a param changed: controls moved by it follow (def.plinks), OUT jacks wired to it send
 let depth = 0;
-function onParam({ id, p }) {
+function onParam({ id, p, v }) {
   if (depth > 4 || !state.preset) return;
   const b = blockById(id);
   const d = b && b.type && b.type.startsWith('custom.') ? getDef(b.type) : null;
   if (!d) return;
   depth++;
   try {
+    if (d.encoders) encTurned(b, d, p, v);
     for (const l of d.plinks || []) {
       if (l.from !== p) continue;
       const v = l.value(uiParams(b), b);

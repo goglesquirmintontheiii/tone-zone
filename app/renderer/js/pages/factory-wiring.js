@@ -46,6 +46,7 @@ export function wiringSection(host, D, c, H) {
   if (c.kind === 'screen') return screenSection(host, D, c, H);
   if (c.kind === 'led') return ledSection(host, D, c, H);
   if (c.kind === 'dip') return dipSection(host, D, c, H);
+  if (c.part === 'encoder') return encoderSection(host, D, c, H);
   const s = H.sec(host, 'Controls');
   s.classList.add('fz-wiring');
   const isSwitch = c.kind === 'toggle' || c.kind === 'sel' || c.kind === 'button' || c.kind === 'foot';
@@ -168,6 +169,15 @@ function dipSection(host, D, c, H) {
   }
 }
 
+// encoders turn endlessly: what their position does, and the CW / CCW pulses (circuit-links.js)
+function encoderSection(host, D, c, H) {
+  const s = H.sec(host, 'Turning');
+  H.selectField(s, 'Value', [['wrap', 'Goes round and round'], ['clamp', 'Stops at the ends'], ['relative', 'Counts steps']], c.encMode || 'wrap', (v) => (c.encMode = v === 'wrap' ? undefined : v), true);
+  el('p', { class: 'fz-note' }, s).textContent = (c.encMode === 'relative'
+    ? 'What it drives gets the number of steps turned (up clockwise, down anticlockwise). '
+    : c.encMode === 'clamp' ? 'It stops at the lowest and highest value. ' : 'Past the top it starts again from the bottom. ')
+    + 'In the wiring diagram it also has CW and CCW outputs that pulse once per click, and its LED ring takes a Ring input and one input per LED (unwired, the ring shows where the knob is).';
+}
 function ledSection(host, D, c, H) {
   const s = H.sec(host, 'Lights when');
   const opts = [['on', 'The pedal is on'], ['always', 'Always'], ['off', 'Never']];

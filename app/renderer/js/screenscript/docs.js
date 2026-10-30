@@ -4,7 +4,7 @@
 export const API = [
   {
     group: 'Running',
-    intro: 'Code at the top runs once when the screen starts. Then draw() runs for every frame (about 20 to 30 a second).',
+    intro: 'Code at the top runs once when the screen starts. Then draw() runs for every frame (about 20 to 30 a second). The functions below are called by name when you define them. For more events, and several handlers for one, see on() under Events.',
     items: [
       ['draw', 'function draw(dt) ... end', 'Called every frame. dt = seconds since the last frame. Draw the whole screen here.'],
       ['update', 'function update(dt) ... end', 'Optional, runs before draw() every frame.'],
@@ -16,6 +16,46 @@ export const API = [
       ['onControl', 'function onControl(name, value) ... end', 'A control on the pedal changed (knob turned, switch flipped).'],
       ['onFoot', 'function onFoot(name, on) ... end', 'A footswitch was pressed.'],
       ['onKey', 'function onKey(key) ... end', 'A key was typed while the screen has focus (click it first).'],
+    ],
+  },
+  {
+    group: 'Events',
+    intro: 'on(event, [name], fn) runs fn when something happens: a footswitch pressed, an encoder turned, a control changed, a screen input changed ... Add handlers once, at the top of the script (not inside draw()). The function gets one table e with the details.',
+    items: [
+      ['on', 'h = on(event, [name], function(e) ... end)', 'Run the function on an event, for one control (or input) by name or number, or for all of them when the name is left out. Returns a handle.'],
+      ['off', 'h:off() or off(h)', 'Stop a handler.'],
+      ['events', 'events()', 'The names of the events.'],
+    ],
+    guide: [
+      ['h', 'The events'],
+      ['list', [
+        '**change** (control): any control changed. e.name, e.kind, e.value, e.old.',
+        '**switch** (switch): a toggle or rotary switch moved. e.value and e.old (positions from 1), e.option (its label).',
+        '**encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (24 per turn), e.value the position. Endless encoders wrap around without a jump in direction.',
+        '**footswitch_down** / **footswitch_up** (footswitch): a footswitch turned on / off. e.name, e.on. The bypass switch counts too.',
+        '**button_down** / **button_up** (push button): the same for latching push buttons.',
+        '**dip** (DIP switch): e.name, e.n (its number in the block), e.on.',
+        '**input** (screen input): a value wired into this screen changed. e.port (number), e.name, e.value, e.old.',
+        '**bypass**: the pedal was turned on or off. e.on is true when it is on.',
+        '**tap**: the tap tempo footswitch was pressed (on the board). e.count counts the taps.',
+        '**preset**: a preset was loaded on the board (the pedal may be the same, its settings may have changed).',
+        '**touch**, **drag**, **release**: the screen was pressed, dragged, let go. e.x, e.y.',
+        '**wheel**: e.d is 1 (up) or -1 (down), e.x, e.y.',
+        '**key**: a key was typed while the screen has focus. e.key.',
+        '**timer**: on("timer", 500, fn) runs every 500 ms. e.count counts the runs.',
+      ]],
+      ['p', 'Names work like everywhere else: a label (any case), "Knob 2", a number (the second knob is on("encoder", 2, fn)) or a footswitch letter. Screen inputs by number or name.'],
+      ['h', 'When they run'],
+      ['list', [
+        'Control, input, bypass and timer events are checked once per frame, before update() and draw(). Each change fires once, even if it was fast.',
+        'The order: controls in panel order (onControl and onFoot first, then on() handlers in the order they were added; change before the more specific event), then screen inputs, bypass and timers. touch, drag, release, wheel and key run right when they happen.',
+        'Each handler has its own work budget. An error in a handler shows in the console with its line and the other handlers and draw() keep running.',
+        'The older functions (onControl, onFoot, onPress, onMove, onRelease, onWheel, onKey) still work, next to on().',
+      ]],
+      ['code', '-- count presses of footswitch A and show how long it was held\nlocal presses, held, downAt = 0, 0, 0\non("footswitch_down", "A", function(e)\n  presses += 1\n  downAt = time()\nend)\non("footswitch_up", "A", function(e)\n  held = time() - downAt\nend)\nfunction draw()\n  clear()\n  text("A: " .. presses, 2, 2)\n  text(string.format("held %.1f s", held), 2, 12, colors.dim)\nend\n'],
+      ['code', '-- an encoder steps through a list of presets\nlocal names = {"CLEAN", "CRUNCH", "LEAD", "AMBIENT"}\nlocal pick = 1\non("encoder", "Select", function(e)\n  pick = (pick - 1 + e.dir * e.steps) % #names + 1\nend)\nfunction draw()\n  clear()\n  text(names[pick], W / 2, H / 2, colors.fg, "big", "middle")\nend\n'],
+      ['code', '-- flash the screen when a control changes, and when a screen input goes high\nlocal flash, msg = 0, ""\non("change", function(e)\n  msg = e.name .. ": " .. tostring(e.old) .. " > " .. tostring(e.value)\n  flash = 0.3\nend)\non("input", "Gate", function(e)\n  if e.value == 1 then flash = 0.3 end\nend)\nfunction draw(dt)\n  clear(flash > 0 and colors.accent or colors.bg)\n  flash = math.max(0, flash - dt)\n  text(msg, 2, 2)\nend\n'],
+      ['code', '-- a handler that runs once, then stops itself\nlocal h\nh = on("touch", function(e)\n  print("first touch at", e.x, e.y)\n  h:off()\nend)\n'],
     ],
   },
   {
@@ -140,7 +180,7 @@ export const API = [
     items: [
       ['input', 'input(n) or input(name)', 'The value wired into this input: analog -255 to 255, binary 0 or 1. 0 when nothing is wired, when the pedal is not playing, or when there is no such input.'],
       ['output', 'output(n, value) or output(name, value)', 'Set an output. Analog takes a number (kept within -255 to 255), binary takes true / false or 0 / 1. Only changes are sent. Returns false when there is no such output.'],
-      ['outputValue', 'outputValue(n) or outputValue(name)', 'What the output is set to now (0 until the script sets it). Saved with the preset.'],
+      ['outputValue', 'outputValue(n) or outputValue(name)', 'What the output is set to now (its default, 0, until the script sets it). Saved with the preset.'],
       ['ports', 'ports()', 'The port names: ports().ins and ports().outs are lists, in order.'],
     ],
     // a longer guide, shown in the Reference panel and in docs/screen-scripts.md
@@ -158,13 +198,14 @@ export const API = [
       ['list', [
         'Analog inputs give the value the circuit output puts out (most parts put out 0 to 1), kept within -255 to 255. Wired straight from a control or a jack they read 0 to 1 (a switch: its position from 0 to 1), from another screen\'s output its value as it is.',
         'Binary inputs give 1 or 0 (values above 0.5 count as 1).',
-        'An input reads 0 when nothing is wired to it, when what it read is gone, when the pedal is not playing (the engine is off), and when an EXP jack it reads has nothing plugged in. Circuit outputs also read 0 on the factory stage outside Test mode, since the circuit only plays in Test mode and on the board. In the code editor preview it reads what you set in the Test tab.',
+        'An input reads 0 when nothing is wired to it, when what it read is gone, when the pedal is not playing (the engine is off), and when an EXP jack it reads has nothing plugged in. A circuit output also reads 0 while the pedal is bypassed (its circuits are not running); a control, jack or screen wired straight to the input keeps its value. Circuit outputs also read 0 on the factory stage outside Test mode, since the circuit only plays in Test mode and on the board. In the code editor preview it reads what you set in the Test tab.',
         'In Lua 0 counts as true, so compare a binary input with 1: if input("Gate") == 1 then ... end',
       ]],
       ['code', '-- input "Env" (analog) reads a circuit\'s Analog output, wired from an Envelope follower (0 to 1)\nfunction draw()\n  clear()\n  local env = input("Env")\n  text("ENV", 2, 2, colors.dim)\n  meter(2, 12, W - 4, 8, env)\n  graph(2, 24, W - 4, H - 26, history("env", env, 60), colors.fg, 0, 1)\nend\n'],
       ['code', '-- input "Gate" (binary) reads a Binary output, for example from a Comparator\nfunction draw()\n  clear()\n  if input("Gate") == 1 then\n    fillCircle(W - 8, 8, 5, colors.good)\n  else\n    circle(W - 8, 8, 5, colors.dim)\n  end\n  text("GATE", 2, 4, colors.fg)\nend\n'],
+      ['code', '-- or react only when the input changes, with on()\nlocal hits = 0\non("input", "Gate", function(e)\n  if e.value == 1 then hits += 1 end\nend)\nfunction draw()\n  clear()\n  text("HITS " .. hits, 2, 2)\nend\n'],
       ['h', 'Writing outputs'],
-      ['p', 'output(n, value) sets an output, and the circuit inputs it drives follow. The value goes in as it is (no 0 to 1 mapping like a knob), kept within the circuit input\'s own range: an Analog input part is 0 to 1 unless you change its Low and High, a Binary input takes 0 or 1. When a knob and a screen output drive the same input, the values are combined (averaged unless the input says otherwise). Until the script sets an output, the inputs it drives keep their default value.'],
+      ['p', 'output(n, value) sets an output, and the circuit inputs it drives follow. The value goes in as it is (no 0 to 1 mapping like a knob), kept within the circuit input\'s own range: an Analog input part is 0 to 1 unless you change its Low and High, a Binary input takes 0 or 1. When a knob and a screen output drive the same input, the values are combined (averaged unless the input says otherwise). Until the script sets an output, it sends its default value (0 unless the design gives the output another one) to the inputs it drives.'],
       ['code', '-- output "Boost" (binary) drives a circuit\'s Binary input\nlocal on = outputValue("Boost") == 1\nfunction draw()\n  clear()\n  on = toggle("BOOST", 2, 2, W - 4, 14, on)\n  output("Boost", on)\nend\n'],
       ['code', '-- output "Rate" (analog) drives an LFO\'s Rate input (set that Analog input\'s Low and High to 0.1 and 10)\nlocal rate = outputValue("Rate")\nif rate == 0 then rate = 1 end\nfunction draw()\n  clear()\n  rate = slider("RATE", 2, 2, W - 4, 12, rate, 0.1, 10)\n  output("Rate", math.round(rate, 2))\n  text(string.format("%.2f Hz", rate), 2, 18)\nend\n'],
       ['p', 'Tips for outputs:'],
@@ -327,6 +368,9 @@ blink(ms?: number) -> bool
 save(key: string, value: any)
 load(key: string, default?: any) -> any
 print(values...: any)
+on(event: event, fn: function) -> table | on(event: event, name: target, fn: function) -> table
+off(handle: table) -> bool
+events() -> table
 tostring(v: any) -> string
 tonumber(v: any) -> number
 type(v: any) -> string
@@ -418,6 +462,9 @@ const PDOC = {
   'ctl.name': 'Any control label.', 'setCtl.name': 'Any control label.', 'valueText.name': 'Any control label.', 'controlInfo.name': 'Any control label.',
   'signal.name': 'in, out, inDb, outDb, env, on, lfo, tempo, or "stage.key".', 'setInput.name': 'A circuit input like "delay.time".',
   'input.port': 'Input number (1 is the first, the default) or its name.', 'output.port': 'Output number or its name.', 'output.value': 'Analog: a number (-255 to 255). Binary: true / false or 0 / 1.', 'outputValue.port': 'Output number or its name.',
+  'on.event': 'change, switch, encoder, footswitch_down, footswitch_up, button_down, button_up, dip, input, bypass, touch, drag, release, wheel, key or timer.',
+  'on.name': 'Which control (or screen input, or the milliseconds for timer). Leave it out to hear them all.', 'on.fn': 'function(e) ... end, e has the details.',
+  'off.handle': 'What on() gave back.',
   'every.ms': 'How often, in milliseconds.', 'blink.ms': 'Milliseconds on, then off (default 500).', 'save.value': 'Numbers, text, true / false or tables.', 'load.default': 'What to give when nothing is kept.',
   'math.round.digits': 'Digits after the point (default 0).', 'string.format.fmt': 'Like "%.1f" or "%d ms".',
 };
@@ -487,7 +534,7 @@ export function describe(name) {
   return MEMBER_DESC[name] || EXTRA_DESC[name] || '';
 }
 /** Parameter type as shown to people. */
-export const typeLabel = (t) => (t.startsWith('control') ? 'control' : t.startsWith('port') ? 'port' : t);
+export const typeLabel = (t) => (t.startsWith('control') ? 'control' : t.startsWith('port') ? 'port' : t === 'target' ? 'name' : t);
 /** "rect(x: number, y: number, [color: color]) -> nil" as plain text. */
 export function sigText(name, ov) {
   const ps = ov.params.map((p) => (p.opt && !p.rest ? `[${p.name}: ${typeLabel(p.type)}]` : `${p.name}${p.rest ? '...' : ''}: ${typeLabel(p.type)}`));
