@@ -414,7 +414,7 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(1500);
   const back = await win.evaluate(() => ({ over: window.__tzFactory.graphOverridden(), testing: window.__tzFactory.testing(), status: Object.keys(window.__tz.state.status.blocks || {}), board: window.__tz.state.preset.blocks.filter((b) => !b.id.startsWith('__')).map((b) => b.id) }));
   ok(!back.over && !back.testing, 'test mode ended, override cleared');
-  ok(!back.status.includes('fztest') && back.board.every((id) => back.status.includes(id)), 'the engine runs the board again');
+  ok(!back.status.includes('fztest') && back.board.every((id) => back.status.includes(id)), 'the engine runs the board again' + ` (missing ${back.board.filter((id) => !back.status.includes(id)).join(' ')})`);
   // leaving the tab also ends a test
   await win.click('#fzTest');
   await win.waitForTimeout(300);
@@ -1140,7 +1140,7 @@ const S = process.env.SHOTS || '/tmp';
     wired: [...document.querySelectorAll('.fz-wd-port.wired[data-wp^="ring:encT"]')].map((e) => e.dataset.wp),
   }));
   ok(encUi.steps && encUi.inputs === 'One input,Each LED*' && encUi.rgb, `the encoder inspector has Steps, the ring's Inputs (${encUi.inputs}) and RGB LEDs`);
-  ok(encUi.ports.length === 12 && encUi.wired.join() === 'ring:encT:0', `Each LED: the wiring diagram has an input per LED (${encUi.ports.length}), LED 1 wired (${encUi.wired.join()})`);
+  ok(encUi.ports.length === 13 && encUi.ports.includes('ring:encT') && encUi.wired.join() === 'ring:encT:0', `Each LED: the wiring diagram has the Ring input and one per LED (${encUi.ports.length}), LED 1 wired (${encUi.wired.join()})`);
   await win.evaluate(() => window.__tzFactory.test(true));
   await win.waitForTimeout(1200);
   const ebx = await (await win.$('.fz-stage [data-ctl="encT"]')).boundingBox();

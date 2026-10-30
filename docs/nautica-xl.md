@@ -74,6 +74,7 @@ preset}, g: {bpm, sync, ref, theme, strip: [2], fsB, dmode, tapLed, gate, volPos
 [8 x {src, lvl, m, mono}], xfo, xeo, xlrLift, encSens} }`
 
 * Presets: 4 banks of 7 (A1..D7); 14 factory presets, the rest start as an empty rig. SAVE stores into `user`.
+* Levels: each preset has an output trim (`trim`, dB, from `NX_TRIM` for the factory presets) added to every output except DRY DI, so the factory presets render at -17 LUFS like the rest of the library (`nautica-test.js` checks it). A freshly built rig stays muted for 40 ms and fades in over 20 ms so sub-blocks start without a click.
 * Scenes: 8 per preset, each a snapshot of every block's on/off and values; edits go into the current scene.
 
 ## Footswitches

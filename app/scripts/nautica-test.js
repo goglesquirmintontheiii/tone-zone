@@ -29,7 +29,9 @@ const { makeDI, measure } = require('./loudness');
     const di = makeDI(path.join(out, 'di-phrase-v2.wav'));
     const n = await win.evaluate(async () => (await import('./js/catalog/nautica.js')).NX_FACTORY.length);
     const res = [];
+    const onlyName = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
     for (let i = 0; i < n; i++) {
+      if (onlyName && (await win.evaluate(async (i) => (await import('./js/catalog/nautica.js')).NX_FACTORY[i].name, i)) !== onlyName) continue;
       const r = await win.evaluate(async ([i, di]) => {
         const st = await import('./js/state.js');
         const N = await import('./js/catalog/nautica.js');
@@ -42,6 +44,7 @@ const { makeDI, measure } = require('./loudness');
       }, [i, di]);
       let m = null;
       try { m = measure(r.wav); } catch {}
+      if (process.env.NX_KEEP) fs.copyFileSync(r.wav, path.join(out, 'preset-' + i + '.wav'));
       fs.rmSync(r.wav, { force: true });
       res.push({ name: r.name, trim: r.trim, lufs: m ? m.lufs : null, tp: m ? m.tp : null });
     }

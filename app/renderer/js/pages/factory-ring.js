@@ -1,6 +1,7 @@
 // Pedal Factory: the inputs of an LED ring encoder in the wiring diagram, and what the ring shows from them.
-// c.ringIn: 'one' (default) the whole ring has one analog input (c.ringFrom: the arc or dot position), or 'each'
-// one input per LED (analog sets that LED's brightness, binary turns it on or off). c.ringRgb: RGB LEDs, so each
+// c.ringIn: 'one' the whole ring has one analog input (c.ringFrom: the arc or dot position), or 'each' (the default,
+// as older rings) one input per LED as well (analog sets that LED's brightness, binary turns it on or off); LEDs with
+// nothing wired follow the position input, or the knob. c.ringRgb: RGB LEDs, so each
 // input becomes three (red, green, blue): per LED, or for the whole ring next to its position input.
 // The refs live in c.ringFrom and c.ringLeds, keyed '3' (LED 4), '3r' / '3g' / '3b' (its colours) and 'r' / 'g' /
 // 'b' (the colour of the whole ring). Unwired LEDs follow the knob. No imports, so circuit-links.js can use it.
@@ -8,7 +9,7 @@
 const CH = ['r', 'g', 'b'];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 export const ringCount = (c) => clamp(Math.round(c.ringN || 12), 2, 32);
-export const ringEach = (c) => c.ringIn === 'each';
+export const ringEach = (c) => c.ringIn !== 'one';
 const hex2 = (n) => Math.round(clamp(n, 0, 255)).toString(16).padStart(2, '0');
 /** A colour from red, green and blue amounts (0..1), or null when all three are dark. */
 export function rgbHex(r, g, b) {
@@ -24,13 +25,13 @@ const PER_ROW = 8, RGB_ROW = 3; // LEDs per line in the diagram
 export function ringPorts(c) {
   const n = ringCount(c), rgb = !!c.ringRgb, each = ringEach(c);
   const out = [];
-  // the position input; in Each LED mode only while an older design still has it wired
-  if (!each || (c.ringFrom && typeof c.ringFrom === 'object')) out.push({ k: null, label: each ? 'Ring (old)' : rgb ? 'Level' : 'Ring', sig: 'n', x: 0, row: 0 });
+  // the position input (the unwired LEDs follow it)
+  out.push({ k: null, label: rgb && !each ? 'Level' : 'Ring', sig: 'n', x: 0, row: 0 });
   if (!each) {
     if (rgb) CH.forEach((ch, i) => out.push({ k: ch, label: ch.toUpperCase(), sig: 'n', x: 56 + i * 26, row: 0, labelRight: true }));
     return { ports: out, rows: 1 };
   }
-  const r0 = out.length ? 1 : 0;
+  const r0 = 1;
   for (let i = 0; i < n; i++) {
     if (rgb) CH.forEach((ch, j) => out.push({ k: i + ch, label: i + 1 + ch.toUpperCase(), sig: 'n', x: (i % RGB_ROW) * 44 + j * 13, row: r0 + Math.floor(i / RGB_ROW) }));
     else out.push({ k: String(i), label: String(i + 1), sig: 'n', x: (i % PER_ROW) * 17, row: r0 + Math.floor(i / PER_ROW) });

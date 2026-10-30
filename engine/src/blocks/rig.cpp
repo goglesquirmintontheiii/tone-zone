@@ -46,6 +46,7 @@ public:
   int pRoute, pALvl, pBLvl, pAPan, pBPan, pGtr, pAux, pAuxTo;
   std::vector<int> pSrc, pLvl, pMono;
   std::vector<float> gOut;
+  int warm = 0, warmEnd = 4800; // a freshly built rig stays muted for a moment: sub-blocks settle without a click
   float gGtr = 1.f, gAux = 1.f, gA = 1.f, gB = 1.f, gAL = 1.f, gAR = 1.f, gBL = 1.f, gBR = 1.f, byp = 1.f;
   using Buf = std::vector<float>;
   Buf work[2], tmp[2], sc[2], aOut[2], bOut[2], dry[2], aux[2], silent;
@@ -145,6 +146,8 @@ public:
     for (Buf* b : {work, tmp, sc, aOut, bOut, dry, aux})
       for (int k = 0; k < 2; ++k) b[k].assign(c.maxBlock, 0.f);
     silent.assign(c.maxBlock, 0.f);
+    warm = 0;
+    warmEnd = int(c.sr * 0.06);
     int ns = 0;
     for (auto& s : subs) ns = std::max(ns, std::max(s.sendL, s.sendR) + 1);
     for (auto& o : outs) ns = std::max(ns, o.send + 1);
@@ -161,6 +164,7 @@ public:
       subs[si].b->onEvent(inner);
     }
   }
+  float warmGain(int t) const { const int t0 = warmEnd * 2 / 3; return t >= warmEnd ? 1.f : t <= t0 ? 0.f : float(t - t0) / float(warmEnd - t0); }
   static float ramp(float a, float b, int i, int n) { return a + (b - a) * float(i) / float(n); }
   float stepMix(Sub& s, int n, float& m0)
   {
@@ -321,27 +325,32 @@ public:
           work[c][i] = work[c][i] * m + dry[c][i] * (1.f - m);
         }
     // logical outputs
+    // warm-up: muted for the first 2/3, then a fade in
+    const float w0 = warmGain(warm), w1 = warmGain(warm + n);
+    warm = std::min(warm + n, warmEnd);
     float gPrev[32];
-    for (int j = 0; j < nOuts && j < 32; ++j) gPrev[j] = gOut[j];
+    for (int j = 0; j < nOuts && j < 32; ++j) gPrev[j] = gOut[j] * w0;
     for (int j = 0; j < nOuts; ++j)
     {
       const float t = int(std::lround(p(pSrc[j]))) == 4 || p(pLvl[j]) <= -59.f ? 0.f : dbToGain(p(pLvl[j]));
       gOut[j] = t;
     }
+    float gNow[32];
+    for (int j = 0; j < nOuts && j < 32; ++j) gNow[j] = gOut[j] * w1;
     for (int c = 0; c < nOut && c < int(outs.size()); ++c)
     {
       const Out& e = outs[c];
       float* o = out[c];
       if (e.send >= 0)
       {
-        if (e.send < int(sendBuf.size()) && byp > 0.f) for (int i = 0; i < n; ++i) o[i] = sendBuf[e.send][i] * byp;
+        if (e.send < int(sendBuf.size()) && byp > 0.f) for (int i = 0; i < n; ++i) o[i] = sendBuf[e.send][i] * byp * ramp(w0, w1, i, n);
         else std::memset(o, 0, bytes);
       }
       else if (e.o >= 0 && e.o < nOuts && e.o < 32)
       {
         const int src = int(std::lround(p(pSrc[e.o])));
         const Buf* b = src == 1 ? aOut : src == 2 ? bOut : src == 3 ? dry : work;
-        const float ga = gPrev[e.o], gb = gOut[e.o];
+        const float ga = gPrev[e.o], gb = gNow[e.o];
         if (e.mono)
         {
           const int m = int(std::lround(p(pMono[e.o])));

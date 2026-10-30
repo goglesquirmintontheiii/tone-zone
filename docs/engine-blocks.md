@@ -628,6 +628,23 @@ Algorithmic reverb with 10 modes: 0 room, 1 hall, 2 plate, 3 spring, 4 shimmer, 
 | `lowdamp` | 0.5 | 0 … 1 |
 | `ensemble` | 0 | 0 … 1 |
 
+## `rig`
+
+Floor multi-FX engine (Nautica XL): sub-blocks in four lanes (pre, path A, path B, post), paths in series, parallel or dual (A from the guitar, B from the aux input), FX loop subs that leave through a send output and come back on a return input, and logical outputs that each pick a source (main, A, B, dry, off) and a level. Status `io`: peak per input and output channel, plus each sub status by prefix.
+
+**opts:** `opts: {subs: [{prefix, algo, opts, params, on, loop: [sendL, sendR]}], pre, a, b, post: [sub indices], ins: {gtr, aux: [l, r], ret: [...]}, outs: [{o, ch} | {o, mono: true} | {send}], nOuts}`. Sub params are `<prefix>.<param>` and `<prefix>.on`; loop subs have `.send`, `.ret` (dB) and `.mix`; outputs have `o<j>.src`, `o<j>.lvl`, `o<j>.mono`.
+
+| param | default | range |
+|---|---|---|
+| `route` | 0 | 0 … 2 |
+| `aLvl` | 1 | 0 … 2 |
+| `bLvl` | 1 | 0 … 2 |
+| `aPan` | 0 | -1 … 1 |
+| `bPan` | 0 | -1 … 1 |
+| `gtr` | 0 | -60 … 12 |
+| `aux` | 0 | -60 … 12 |
+| `auxTo` | 0 | 0 … 4 |
+
 ## `ringmod`
 
 Ring modulator.

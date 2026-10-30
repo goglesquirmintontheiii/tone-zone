@@ -138,13 +138,28 @@ export const NX_FACTORY = [
   preset('SURF SPRING', { A1: slot('amp.silver', 1, { gain: 0.4 }), A2: slot('cab.212twin'), A3: slot('mod.trem', 1, { rate: 0.55, depth: 0.55 }), A4: slot('dly.tape', 1, { mix: 0.18, time: 320 }), A5: slot('rev.spring', 1, { mix: 0.42, decay: 0.55 }) }, { 1: { A3: { on: 0 } } }),
   preset('SYNTH DREAMS', { A1: slot('dyn.vca'), A2: slot('fx.synth', 1, { mode: 6, dry: 0.25 }), A3: slot('mod.chorus', 1, { mix: 0.4 }), A4: slot('dly.pingpong', 1, { mix: 0.3 }), A5: slot('rev.cloud', 1, { mix: 0.4 }) }, { 1: { A2: { v: { mode: 1 } } } }),
   preset('OCTO FUZZ', { A1: slot('pit.octdown'), A2: slot('drv.fluff'), A3: slot('amp.citrus', 1, { gain: 0.35, level: -5 }), A4: slot('cab.412citrus'), A5: slot('mod.flanger', 0), A6: slot('rev.plate', 1, { mix: 0.16 }) }, { 1: { A5: { on: 1 } } }),
-  preset('ACOUSTIC STAGE', { A1: slot('fx.acoustic'), A2: slot('dyn.opto'), A3: slot('eq.para', 1, { lowgain: -2, highgain: 1.5 }), A4: slot('mod.chorus', 0, { mix: 0.3 }), A5: slot('rev.hall', 1, { mix: 0.22 }),
+  preset('ACOUSTIC STAGE', { A1: slot('fx.acoustic', 1, { top: 0.25 }), A2: slot('dyn.opto', 1, { sustain: 0.2 }), A3: slot('eq.para', 1, { lowgain: -2, highgain: 1.5 }), A4: slot('mod.chorus', 0, { mix: 0.3 }), A5: slot('rev.hall', 1, { mix: 0.22 }),
     B1: slot('dyn.vca', 1, { sustain: 0.4 }), B2: slot('eq.para', 1, { lowcut: 90 }), B3: slot('dly.digital', 1, { mix: 0.12 }), B4: slot('rev.plate', 1, { mix: 0.2 }) }, {}, { route: 2, mix: { a: 1, b: 1, ap: 0, bp: 0 } }),
   preset('LOFI TAPE', { A1: slot('fx.lofi', 1, { mix: 0.7 }), A2: slot('amp.solid120'), A3: slot('cab.212jc'), A4: slot('mod.chorus', 1, { depth: 0.7 }), A5: slot('dly.lofi', 1, { mix: 0.28 }), A6: slot('rev.cloud', 1, { mix: 0.3 }) }),
   preset('ROTARY ORGAN', { A1: slot('dyn.vca'), A2: slot('amp.lux', 1, { gain: 0.5, level: -3.5 }), A3: slot('mod.rotary'), A4: slot('cab.112us'), A5: slot('rev.room', 1, { mix: 0.18 }) }, { 1: { A3: { v: { speed: 1 } } } }),
 ];
 // per-preset output trim (dB), measured so every factory preset renders at -17 LUFS (scripts/nautica-test.js checks it)
-export const NX_TRIM = {};
+export const NX_TRIM = {
+  'BLUE HORIZON': 4.17,
+  'BRIT STACK': -0.29,
+  'TIDAL AMBIENT': 10.51,
+  'DUAL AMP WALL': 9.85,
+  'WAH FUNK': 2.99,
+  'SKY LEAD': 3.82,
+  'FX LOOP RIG': -3.81,
+  'METAL GRID': 3.0,
+  'SURF SPRING': 5.24,
+  'SYNTH DREAMS': -3.08,
+  'OCTO FUZZ': 4.29,
+  'ACOUSTIC STAGE': 1.82,
+  'LOFI TAPE': 3.91,
+  'ROTARY ORGAN': 3.75,
+};
 export const NX_INIT = () => preset('EMPTY RIG', { A1: slot('amp.silver', 1, { gain: 0.35 }), A2: slot('cab.212twin') });
 
 // footswitches: 0..13 floor, 14..15 above the treadles, 16..19 EXT FS jacks; pedals: 0..1 treadles, 2..3 EXT EXP jacks

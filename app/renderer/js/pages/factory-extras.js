@@ -34,7 +34,7 @@ export function partInspector(s, c, multi, H, o = {}) {
         check(s, 'Gradient', !!c.ringColor2, (v) => (c.ringColor2 = v ? '#ff3fb4' : null), true);
         if (c.ringColor2) colors(s, 'Ends in', c.ringColor2, LED_COLORS, (v) => (c.ringColor2 = v), 'ring2');
         // what the wiring diagram can drive: the whole ring, or each LED (factory-ring.js)
-        seg(s, 'Inputs', [['one', 'One input'], ['each', 'Each LED']], c.ringIn || 'one', (v) => {
+        seg(s, 'Inputs', [['one', 'One input'], ['each', 'Each LED']], c.ringIn || 'each', (v) => {
           c.ringIn = v;
           pruneRing(c);
         });
@@ -198,7 +198,7 @@ function pruneRing(c) {
 }
 function ringNote(c) {
   const n = ringCount(c);
-  if (ringEach(c)) return c.ringRgb ? `Each of the ${n} LEDs has red, green and blue inputs in the wiring diagram.` : `Each of the ${n} LEDs has its own input in the wiring diagram: analog sets its brightness, on / off lights it.`;
+  if (ringEach(c)) return c.ringRgb ? `Each of the ${n} LEDs has red, green and blue inputs in the wiring diagram.` : `Each of the ${n} LEDs has its own input in the wiring diagram: analog sets its brightness, on / off lights it. LEDs with nothing wired follow the Ring input or the knob.`;
   return c.ringRgb ? 'The ring has a Level input (how far it lights) and red, green and blue inputs for its colour.' : 'The ring has one analog input in the wiring diagram: how far it lights.';
 }
 

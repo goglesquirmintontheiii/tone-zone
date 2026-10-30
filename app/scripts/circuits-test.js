@@ -1112,6 +1112,31 @@ const S = process.env.SHOTS || '/tmp';
     const r6 = await renderSA({}, tl, quiet);
     const y6 = seg(mono(r6.file), 0.3, 1.8);
     ok(Math.abs(zc(y6) - 110) < 3 && rmsOf(y6) > 0.1, `a script drone on the OUT jack plays in the engine (${zc(y6).toFixed(1)} Hz, ${rmsOf(y6).toFixed(3)})`);
+    // on the board: the pedal's screen script starts a drone and reads the OUT jack through the live engine
+    const bd = await win.evaluate(async (design) => {
+      const d = JSON.parse(JSON.stringify(design));
+      d.ctls[0].script = 'audio.gen("drone", {type = "saw", freq = 110, amp = 0.3, to = "out"})\nlv = 0\nfunction draw()\n  clear()\n  lv = audio.level("out")\n  output("Gate", 0)\nend\n';
+      const cu = await import('./js/catalog/custom.js');
+      const id = await cu.saveCustomBlock(d, { asNew: true });
+      const st = await import('./js/state.js');
+      const a = st.addBlock(id, 300, 160);
+      st.connect({ node: '__in', port: 0 }, { node: a.id, port: 0 });
+      st.connect({ node: a.id, port: 0 }, { node: '__out', port: 0 });
+      st.syncGraph();
+      return a.id;
+    }, sa.d);
+    await win.click('#tabs [data-tab="board"]');
+    let live = null;
+    for (let i = 0; i < 20 && !(live && live.scope && live.scope.jout && live.scope.jout.rms > 0.05); i++) {
+      await win.waitForTimeout(500);
+      live = await win.evaluate(async (id) => (await import('./js/state.js')).state.status.blocks[id] || null, bd);
+    }
+    const bk = await win.evaluate(async (id) => { const { _scriptAudio: A } = await import('./js/pages/circuit-audio.js'); const b = A.blocks.get(id); return b ? { voices: [...b.voices.keys()], scope: !!b.scope } : null; }, bd);
+    ok(bk && bk.voices.some((k) => /:drone$/.test(k)) && bk.scope, 'on the board the screen script\'s drone and analysis reach the backend: ' + JSON.stringify(bk));
+    ok(live && live.scope && live.scope.jout && live.scope.jout.rms > 0.05 && Math.abs(live.scope.jout.hz - 110) < 3, `and the live engine plays it: the OUT jack reads ${live && live.scope && live.scope.jout ? live.scope.jout.rms + ' rms, ' + live.scope.jout.hz + ' Hz' : 'nothing'}`);
+    await win.evaluate(async (id) => (await import('./js/state.js')).removeBlocks([id]), bd);
+    await win.click('#tabs [data-tab="factory"]');
+    await win.waitForTimeout(300);
   }
 
   await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
