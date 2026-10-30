@@ -164,9 +164,10 @@ export function materialPicker(parent, o) {
       if (!w[x.id]) continue;
       const row = el('div', { class: 'mtp-amt' }, sec);
       el('span', {}, row).textContent = x.name;
-      const r = el('input', { type: 'range', min: 0.05, max: 1, step: 0.05, 'data-wear-amt': x.id }, row);
+      // from a few faint marks at the left to heavily worn at the right
+      const r = el('input', { type: 'range', min: 0.02, max: 1, step: 0.01, 'data-wear-amt': x.id, title: 'Light to heavy' }, row);
       r.value = w[x.id];
-      const paint = () => r.style.setProperty('--p', ((r.value - 0.05) / 0.95) * 100 + '%');
+      const paint = () => r.style.setProperty('--p', ((r.value - 0.02) / 0.98) * 100 + '%');
       paint();
       r.oninput = () => { paint(); set(x.id, +r.value, true); };
       r.onchange = () => set(x.id, +r.value);

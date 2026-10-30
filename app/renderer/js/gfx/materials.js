@@ -2,6 +2,8 @@
 // A spec is { m, s, f, c }: material, submaterial, finish and colour (hex or a palette id). normalize() always returns
 // a valid one. Textures are small seamless tiles drawn once on a canvas and used as <pattern><image> defs in
 // #globalDefs, with stable ids derived from the spec, so raster.js can copy them into bitmaps and thumbnails.
+// To hide tiling, paint() with a seed shifts the tile per item (variants), some textures add a second alpha layer
+// at another period (layer2), and a low-res overlay stretched over a long period adds slow colour drift (macro).
 import { SVGNS } from '../util.js';
 
 // ------------------------------------------------------------------ palettes
@@ -31,7 +33,25 @@ export const MATERIALS = [
   },
   {
     id: 'wood', name: 'Wood',
-    subs: S([['ebony', 'Ebony', '#3a2f2a', '#0e0b0a', { k: 40, warp: 0.25, streak: 0.7, con: 0.45 }], ['rosewood', 'Rosewood', '#7a4430', '#2e1610', { k: 22, warp: 0.9, streak: 0.6, con: 0.75 }], ['birch', 'Birch', '#ecd9b4', '#c9ab7c', { k: 10, warp: 0.6, streak: 0.25, con: 0.35 }], ['plywood', 'Plywood', '#e6cc9c', '#bd9763', { k: 4, warp: 1.6, streak: 0.2, con: 0.55, ply: true }], ['oak', 'Oak', '#d2aa72', '#8e6436', { k: 16, warp: 1, streak: 0.55, con: 0.7, rays: true }], ['maple', 'Maple', '#f0dcb4', '#d2b483', { k: 12, warp: 0.5, streak: 0.2, con: 0.3 }], ['flamed', 'Flamed maple', '#f2d7a2', '#b88a4e', { k: 12, warp: 0.5, streak: 0.2, con: 0.3, flame: 1 }], ['walnut', 'Walnut', '#7b5a40', '#3b2618', { k: 18, warp: 1, streak: 0.5, con: 0.7 }], ['mahogany', 'Mahogany', '#9a5434', '#5a2a16', { k: 26, warp: 0.4, streak: 0.4, con: 0.45, ribbon: true }], ['koa', 'Figured koa', '#c98a4a', '#6a3c1a', { k: 20, warp: 1.2, streak: 0.4, con: 0.75, flame: 1.4 }], ['zebrawood', 'Zebrawood', '#e8cf9a', '#4a3020', { k: 16, warp: 0.35, streak: 0.3, con: 1.25, sharp: 3 }], ['ash', 'Ash', '#e4cfa4', '#9c7a4c', { k: 9, warp: 1.3, streak: 0.4, con: 0.8 }], ['pine', 'Pine', '#ebc98c', '#b97f3e', { k: 7, warp: 1.5, streak: 0.2, con: 0.8 }], ['bamboo', 'Bamboo', '#e2c47e', '#a88442', { k: 40, warp: 0.1, streak: 0.5, con: 0.25, nodes: true }]]),
+    // grain params: k rings per tile (integer), warp, streak (fibre lines), con (ring contrast), base (overall tone),
+    // pore density/length, cath (cathedral arches), figure (flame, quilt, ribbon, stripe), knots, alt (colour drift)
+    subs: S([
+      ['ebony', 'Ebony', '#4a3c33', '#080606', { mid: '#141010', alt: '#4a3828', k: 30, warp: 0.35, streak: 0.45, con: 0.25, base: 0.12, pore: 0.05, porL: 5, vary: 0.5, streaky: 1, macro: 0.35 }],
+      ['rosewood', 'Rosewood', '#8e5638', '#1e0c0a', { mid: '#53281f', alt: '#4c2140', k: 22, warp: 1, streak: 0.6, con: 0.75, pore: 0.22, porL: 7, cath: 0.4, lines: 0.8, vary: 0.6 }],
+      ['birch', 'Birch', '#f2e3c4', '#d0b083', { k: 9, warp: 0.7, streak: 0.22, con: 0.28, base: 0.7, pore: 0.07, porL: 4, cath: 0.35, vary: 0.35 }],
+      ['plywood', 'Plywood', '#eed6a8', '#bf9762', { k: 5, warp: 1.9, streak: 0.18, con: 0.45, base: 0.66, pore: 0.05, porL: 4, cath: 0.9, knots: 1, ply: true, vary: 0.4 }],
+      ['oak', 'Oak', '#dfba84', '#87602f', { k: 14, warp: 1, streak: 0.45, con: 0.6, pore: 0.7, porL: 12, porH: 2, porK: 1.5, ringPorous: true, rays: true, cath: 0.6, vary: 0.45 }],
+      ['maple', 'Maple', '#f4e4c2', '#d6b885', { k: 10, warp: 0.5, streak: 0.18, con: 0.25, base: 0.68, pore: 0.05, porL: 3, cath: 0.3, vary: 0.3 }],
+      ['flamed', 'Flamed maple', '#f5dca8', '#b0844a', { k: 10, warp: 0.5, streak: 0.18, con: 0.22, base: 0.64, pore: 0.05, porL: 3, cath: 0.2, flame: 1, vary: 0.35 }],
+      ['quilted', 'Quilted maple', '#f4dba6', '#a87a42', { k: 10, warp: 0.6, streak: 0.16, con: 0.2, base: 0.62, pore: 0.04, porL: 3, cath: 0.2, quilt: 1, vary: 0.35 }],
+      ['walnut', 'Walnut', '#8d6648', '#2e1c12', { mid: '#5a3e2c', alt: '#5a4436', k: 16, warp: 1.1, streak: 0.5, con: 0.6, pore: 0.32, porL: 7, cath: 0.6, vary: 0.7 }],
+      ['mahogany', 'Mahogany', '#ad613a', '#552612', { k: 24, warp: 0.4, streak: 0.45, con: 0.35, pore: 0.3, porL: 6, ribbon: 6, vary: 0.4 }],
+      ['koa', 'Figured koa', '#d49450', '#5a3014', { alt: '#9a5a26', k: 18, warp: 1.2, streak: 0.4, con: 0.6, pore: 0.16, porL: 6, cath: 0.4, flame: 1.5, chatoy: true, vary: 0.6 }],
+      ['zebrawood', 'Zebrawood', '#ecd6a4', '#3a2516', { k: 14, warp: 0.35, streak: 0.3, con: 1, pore: 0.2, porL: 6, stripe: true, vary: 0.3 }],
+      ['ash', 'Ash', '#ead6aa', '#9c7a4a', { k: 8, warp: 1.3, streak: 0.4, con: 0.7, pore: 0.55, porL: 9, porH: 2, porK: 1.3, ringPorous: true, cath: 0.7, vary: 0.35 }],
+      ['pine', 'Pine', '#f0d196', '#b4733a', { k: 6, warp: 1.5, streak: 0.2, con: 0.8, sharp: 3, base: 0.66, pore: 0, cath: 0.8, knots: 2, vary: 0.4 }],
+      ['bamboo', 'Bamboo', '#e4c682', '#a58040', { k: 40, warp: 0.1, streak: 0.55, con: 0.18, pore: 0.2, porL: 5, nodes: true, vary: 0.3 }],
+    ]),
     finishes: F([['oil', 'Natural oil'], ['matte', 'Matte'], ['satin', 'Satin'], ['poly', 'Poly gloss'], ['nitro', 'Nitro'], ['stained', 'Stained', { colors: 'stain' }], ['burnt', 'Burnt']]),
     def: { s: 'walnut', f: 'oil' },
   },
@@ -52,7 +72,7 @@ export const MATERIALS = [
   },
   {
     id: 'carbon', name: 'Carbon fibre',
-    finishes: F([['gloss', 'Gloss', { colors: 'carbon' }], ['matte', 'Matte', { colors: 'carbon' }], ['forged', 'Forged', { colors: 'carbon' }]]),
+    finishes: F([['gloss', 'Gloss', { colors: 'carbon' }], ['matte', 'Matte', { colors: 'carbon' }], ['forged', 'Forged', { colors: 'carbon' }], ['flake', 'Flake', { colors: 'carbon' }]]),
     def: { f: 'gloss', c: '#3a3d44' },
   },
   {
@@ -79,7 +99,8 @@ export const MATERIALS = [
   },
   {
     id: 'pearl', name: 'Mother of pearl',
-    subs: S([['white', 'White pearl', '#f4f1ec', '#c9c4bd', { hue: 190, sat: 0.35 }], ['abalone', 'Abalone', '#4fa6a0', '#2b2f5a', { hue: 170, sat: 0.75 }], ['black', 'Black pearl', '#3a3d45', '#14151a', { hue: 260, sat: 0.45 }], ['pink', 'Pink pearl', '#f2d6dc', '#c9a0aa', { hue: 330, sat: 0.4 }], ['gold', 'Gold pearl', '#f2e2b8', '#c9ac6a', { hue: 40, sat: 0.4 }]]),
+    // hue: centre of the colour play, spread: how far it shifts, sat/lum of the sheen, iri: how strong it is
+    subs: S([['white', 'White pearl', '#f6f3ee', '#b9b3ab', { hue: 200, spread: 260, sat: 0.55, lum: 0.78, iri: 0.42 }], ['abalone', 'Abalone', '#5ab0a6', '#141a3a', { hue: 175, spread: 300, sat: 0.85, lum: 0.5, iri: 0.75, depth: 0.55 }], ['black', 'Black pearl', '#4a4d58', '#101116', { hue: 250, spread: 220, sat: 0.6, lum: 0.4, iri: 0.55, depth: 0.3 }], ['pink', 'Pink pearl', '#f4dade', '#c09aa4', { hue: 335, spread: 160, sat: 0.55, lum: 0.78, iri: 0.42 }], ['gold', 'Gold pearl', '#f4e4bc', '#b89a5a', { hue: 42, spread: 140, sat: 0.55, lum: 0.72, iri: 0.42 }]]),
     finishes: F([['polished', 'Polished'], ['satin', 'Satin']]),
     def: { s: 'white', f: 'polished' },
   },
@@ -213,10 +234,8 @@ function multiFill(mc, box) {
 // ------------------------------------------------------------------ wear
 // Stackable wear layers drawn over the material, each with an amount 0..1. Stored as spec.w = { scratch: 0.6, ... }.
 export const WEAR = [
-  { id: 'scratchL', name: 'Lightly scratched' },
   { id: 'scratch', name: 'Scratched' },
   { id: 'rust', name: 'Rusted', only: ['metal'] },
-  { id: 'chipL', name: 'Lightly chipped' },
   { id: 'chip', name: 'Chipped' },
   { id: 'fade', name: 'Faded' },
   { id: 'relic', name: "Relic'd" },
@@ -226,8 +245,18 @@ export const WEAR = [
 export function wearFor(m) {
   return WEAR.filter((x) => !x.only || x.only.includes(m));
 }
+// older specs had separate light scratch and chip layers: they become the main ones at a low amount
+const LEGACY_WEAR = { scratchL: 'scratch', chipL: 'chip' };
 function normWear(w, m) {
   if (!w || typeof w !== 'object') return null;
+  if (Object.keys(LEGACY_WEAR).some((k) => +w[k] > 0)) {
+    w = { ...w };
+    for (const [k, to] of Object.entries(LEGACY_WEAR)) {
+      const v = +w[k];
+      delete w[k];
+      if (v > 0) w[to] = Math.max(+w[to] || 0, 0.04 + Math.min(1, v) * 0.22);
+    }
+  }
   const out = {};
   for (const x of wearFor(m)) {
     const v = +w[x.id];
@@ -392,8 +421,8 @@ function texMetal(s, q) {
     hi = mix(col, [255, 255, 255], 0.06);
     lo = mul(col, 0.9);
   }
+  if (s.f === 'hammered' || s.f === 'hammertone' || s.f === 'patina') return texMetalRich(s, q, sub, lo, hi);
   const W = 256 * q, H = 128 * q;
-  const patCol = s.s === 'copper' || s.s === 'brass' || s.s === 'bronze' ? [[78, 158, 132], [126, 196, 168]] : s.s === 'steel' || s.s === 'iron' ? [[128, 58, 26], [178, 98, 44]] : s.s === 'gold' || s.s === 'chrome' ? [[92, 70, 40], [130, 104, 70]] : [[188, 190, 186], [222, 222, 216]];
   const fn = (u, v) => {
     let t = 0.5;
     switch (s.f) {
@@ -412,17 +441,6 @@ function texMetal(s, q) {
       case 'sandblasted':
         t = 0.5 + (hash(u * W | 0, v * H | 0, 7) - 0.5) * 0.35 + (fbm(u, v, 8, 4, 2, 2) - 0.5) * 0.2;
         break;
-      case 'hammered':
-      case 'hammertone': {
-        const w = worley(u, v, 10, 5, 21, 0.9);
-        const lit = (-w.dx * 0.7 - w.dy * 0.7) * 1.6 + w.d * 0.2;
-        t = 0.5 + lit * 0.55 - smooth(0.0, 0.08, w.edge) * 0 + (hash(u * W | 0, v * H | 0, 1) - 0.5) * 0.06;
-        break;
-      }
-      case 'patina': {
-        t = 0.45 + (fbm(u, v, 4, 2, 4, 9) - 0.5) * 0.4;
-        break;
-      }
       case 'powder':
         t = 0.5 + (fbm(u, v, 32, 16, 2, 4) - 0.5) * 0.25 + (hash(u * W | 0, v * H | 0, 6) - 0.5) * 0.08;
         break;
@@ -431,13 +449,6 @@ function texMetal(s, q) {
         break;
     }
     let c = mix(lo, hi, Math.max(0, Math.min(1, t)));
-    if (s.f === 'patina') {
-      const b = fbm(u + 0.3, v, 6, 3, 5, 31);
-      const m = smooth(0.45, 0.62, b);
-      const pc = mix(patCol[0], patCol[1], fbm(u, v, 12, 6, 2, 8));
-      c = mix(c, pc, m * 0.92);
-      c = mul(c, 1 - smooth(0.6, 0.75, fbm(u, v, 10, 5, 3, 40)) * 0.25);
-    }
     if (s.f === 'flake' && hash(u * W | 0, v * H | 0, 12) > 0.965) c = mix(c, [255, 255, 255], 0.35 + hash(u * W | 0, v * H | 0, 13) * 0.5);
     return c;
   };
@@ -449,65 +460,161 @@ function woodColor(s) {
   const sp = M.subs.find((x) => x.id === s.s) || M.subs[0];
   return { sp, light: rgb(sp.light), dark: rgb(sp.dark) };
 }
+const wrap1 = (x) => x - Math.round(x);
+// Wood: the canvas is 1280 x 256 px drawn over 2560 x 256 units (stretched 2x along the grain, which only lengthens
+// pores and streaks), so even the longest rail shows no repeat. A low-res macro overlay adds colour drift on top.
 function texWood(s, q) {
   const { sp, light, dark } = woodColor(s);
-  const W = 512 * q, H = 256 * q;
+  // previews (swatches) only show a small patch, so they draw just that patch at full detail
+  const pv = q < 1, qq = pv ? 1 : q;
+  const W = pv ? 128 : Math.round(1280 * q), H = pv ? 128 : Math.round(256 * q);
+  const TW = pv ? 256 : 2560, TH = pv ? 128 : 256;
+  const Wf = 1280 * qq;
+  const sd = seedNum(sp.id) % 9973;
+  const mid = sp.mid ? rgb(sp.mid) : mix(dark, light, 0.55);
+  const alt = sp.alt ? rgb(sp.alt) : null;
+  const ramp = (t) => (t < 0.5 ? mix(dark, mid, Math.max(0, t) * 2) : mix(mid, light, Math.min(1, (t - 0.5) * 2)));
   const stainHex = s.f === 'stained' ? colorHex(s) : null;
   const stain = stainHex ? rgb(stainHex) : null;
-  const K = sp.k;
-  const fn = (u, v) => {
-    const n = fbm(u, v, 3, 2, 4, 101);
-    let g = v * K + (n - 0.5) * sp.warp * 4 + Math.sin(u * Math.PI * 2 + n * 3) * sp.warp * 0.4;
-    let ring = Math.abs(Math.sin(Math.PI * g));
-    ring = Math.pow(ring, sp.sharp || 1.6);
-    const streak = fbm(u, v, 2, 128, 2, 77);
-    let t = 1 - ring * sp.con - (streak - 0.5) * sp.streak * 0.9;
-    if (sp.rays) {
-      const r = fbm(u, v, 24, 6, 2, 55);
-      if (r > 0.66) t += (r - 0.66) * 2.2;
-      if (hash(u * W | 0, (v * H / 2) | 0, 9) > 0.985) t -= 0.35;
+  const K = sp.k, base = sp.base ?? 0.6, sharp = sp.sharp || 2.2;
+  const ar = 2560 / 256; // u units -> v units
+  const knots = [];
+  for (let i = 0; i < (sp.knots || 0); i++) knots.push({ u: hash(i, sd, 1), v: 0.15 + hash(i, sd, 2) * 0.7, r: (sp.ply ? 0.025 : 0.045) + hash(i, sd, 3) * 0.03 });
+  const px = 1 / q; // canvas px -> units at q = 1
+  const porL = Math.max(2, Math.round((sp.porL || 5) * qq));
+  const ringAA = Math.min(0.3, (2 * K) / (256 * qq));
+  const porK = sp.porK || 1;
+  const cols = Math.max(1, Math.floor(W / porL));
+  const fn = (u, v, x, y) => {
+    if (pv) (u *= 0.1), (v *= 0.5);
+    // knots: rings bow around them
+    let vv = v, kn = 0, kd = 9;
+    for (const k of knots) {
+      const du = wrap1(u - k.u) * ar, dv = wrap1(v - k.v);
+      const d = Math.hypot(du / 1.7, dv) / k.r;
+      if (d < kd) kd = d;
+      vv += Math.sign(dv) * k.r * 1.3 * Math.exp(-d * d * 0.18);
+      kn = Math.max(kn, 1 - smooth(0.75, 1.05, d));
     }
-    if (sp.ply) t += (fbm(u, v, 2, 1, 3, 12) - 0.5) * 0.35;
-    if (sp.ribbon) t += Math.sin(v * Math.PI * 2 * 6 + n * 2) * 0.12;
+    const wn = fbm(u, vv, 2, 2, 4, sd);
+    const wn2 = fbm(u, vv, 6, 3, 3, sd + 7);
+    // cathedrals: a bump across the grain whose height rises and falls along it, so rings loop into arches
+    const vc = fbm(u, 0.37, 2, 1, 2, sd + 11);
+    const env = smooth(0.3, 0.7, fbm(u, 0.71, 6, 1, 3, sd + 12));
+    const bump = 0.5 + 0.5 * Math.cos(Math.PI * 2 * (vv - vc));
+    let g = K * vv + (sp.cath || 0) * K * 0.3 * env * bump * bump + (wn - 0.5) * sp.warp * 3 + (wn2 - 0.5) * sp.warp * 0.7;
+    g += (fbm(u, vv, 1, Math.max(1, K >> 1), 2, sd + 3) - 0.5) * 0.9; // uneven ring widths
+    const ri = ((Math.floor(g) % K) + K) % K, p = g - Math.floor(g);
+    const rs = 0.55 + 0.9 * hash(ri, sd, 5);
+    let ring;
+    if (sp.stripe) {
+      const wd = 0.28 + 0.3 * hash(ri, sd, 6);
+      ring = smooth(1 - wd - 0.05, 1 - wd + 0.03, p) * (0.75 + 0.25 * rs);
+    } else ring = Math.pow(p, sharp) * rs * (1 - smooth(1 - ringAA, 1, p)); // soft fall so ring edges don't alias
+    let t = base + 0.25 - ring * sp.con * 0.75;
+    // fine fibre lines along the grain
+    const st = fbm(u, v, 3, 160, 2, sd + 21);
+    t += (st - 0.5) * sp.streak * 0.55;
+    // slow tone drift
+    const cv = fbm(u, v, 3, 2, 3, sd + 31);
+    t += (cv - 0.5) * 0.35 * (sp.vary || 0.4);
+    if (sp.lines) {
+      // dark wandering lines (rosewood)
+      const ln = Math.abs(Math.sin(Math.PI * (g * 0.5 + fbm(u, v, 4, 6, 3, sd + 41) * 2)));
+      t -= (1 - smooth(0.0, 0.12, ln)) * sp.lines * 0.45;
+    }
+    if (sp.ribbon) t += Math.sin(Math.PI * 2 * (v * sp.ribbon + (wn - 0.5) * 0.6)) * 0.1;
     if (sp.nodes) {
-      const nd = Math.abs(fract(u * 2) - 0.5);
-      if (nd > 0.47) t -= (nd - 0.47) * 18;
+      const nd = Math.abs(fract(u * 2 + (hash(Math.floor(v * 8), sd, 9) - 0.5) * 0.08) - 0.5);
+      if (nd > 0.493) t -= (nd - 0.493) * 50;
+      if (Math.abs(fract(v * 8) - 0.5) > 0.49) t -= 0.18; // strip seams
     }
-    let c = mix(dark, light, Math.max(0, Math.min(1.1, t)));
+    // pores: short dark dashes, in the early wood for ring porous species
+    if (sp.pore) {
+      const py = sp.porH ? Math.floor(y / sp.porH) : y;
+      const off = Math.floor(hash(py, sd, 11) * porL);
+      const xi = (x + off) % W, cell = Math.floor(xi / porL) % cols;
+      const dens = sp.pore * (sp.ringPorous ? 0.25 + smooth(0.45, 0.0, p) * 1.4 : 1);
+      const h = hash(cell, py, sd + 13);
+      if (h < dens * 0.5) {
+        const pos = (xi % porL) / porL;
+        const len = 0.45 + hash(cell, py, sd + 14) * 0.5;
+        if (pos < len) t -= (s.f === 'poly' ? 0.14 : 0.24) * porK * (0.6 + h) * Math.sin((pos / len) * Math.PI);
+      }
+    }
+    if (sp.rays) {
+      // ray flecks: small satin lenses along the grain
+      const rw = Math.round(36 * qq), rh = Math.max(2, Math.round(5 * qq));
+      const row = Math.floor(y / rh), rc = Math.floor((x + hash(row, sd, 15) * rw) / rw);
+      if (hash(rc, row, sd + 16) > 0.9) {
+        const du = (((x + hash(row, sd, 15) * rw) % rw) / rw - 0.5) * 2, dv = ((y % rh) / rh - 0.5) * 2;
+        const lens = 1 - du * du - dv * dv * 0.6;
+        if (lens > 0) t += lens * 0.16;
+      }
+    }
+    let c = ramp(t);
+    if (alt) c = mix(c, alt, smooth(0.5, 0.8, fbm(u, v, 3, sp.streaky ? 40 : 12, 3, sd + 33)) * (sp.streaky ? 0.75 : 0.35));
     if (sp.flame) {
-      const fl = Math.sin(Math.PI * 2 * (u * 14 + (fbm(u, v, 4, 2, 3, 61) - 0.5) * 1.8 * sp.flame + v * 0.0));
-      c = mul(c, 1 + fl * 0.16 * sp.flame);
+      // curl: bright and dark bands across the grain, strongest in patches
+      const fm = smooth(0.3, 0.7, fbm(u, v, 3, 1, 3, sd + 52));
+      const f = Math.sin(Math.PI * 2 * (u * 100 + v * 3 + (fbm(u, v, 4, 2, 3, sd + 51) - 0.5) * 4 + (fbm(u, v, 40, 3, 2, sd + 53) - 0.5) * 0.25));
+      const fl = Math.sign(f) * Math.pow(Math.abs(f), 0.8) * (0.55 + 0.45 * fbm(u, v, 60, 4, 2, sd + 54));
+      c = mul(c, 1 + fl * 0.12 * sp.flame * (0.15 + 0.85 * fm));
+      if (sp.chatoy) c = mix(c, [255, 214, 150], Math.max(0, fl) * 0.12 * fm);
+    }
+    if (sp.quilt) {
+      // quilt: soft billows, lit from one side
+      const a1 = Math.PI * 2 * (u * 48 + (fbm(u, v, 6, 3, 3, sd + 61) - 0.5) * 2.5);
+      const a2 = Math.PI * 2 * (v * 7 + (fbm(u, v, 6, 3, 3, sd + 62) - 0.5) * 1.6);
+      const lit = Math.cos(a1) * Math.sin(a2) * 0.6 + Math.sin(a1) * Math.cos(a2) * 0.4;
+      c = mul(c, 1 + lit * 0.2 * sp.quilt * (0.4 + 0.6 * smooth(0.3, 0.65, fbm(u, v, 3, 1, 2, sd + 63))));
+    }
+    if (kn > 0) {
+      // knot core: dark with tight rings and a crack at the rim
+      const kr = Math.sin(kd * Math.PI * 6) * 0.5 + 0.5;
+      const kc = mix(mul(dark, 0.55), mul(dark, 0.95), kr);
+      c = mix(c, kc, kn * 0.9);
+      if (kd > 0.9 && kd < 1.0) c = mul(c, 0.7);
     }
     // finishes
     switch (s.f) {
       case 'oil':
-        c = mul(mix(c, [c[0] * 1.06, c[1] * 0.98, c[2] * 0.88], 0.6), 0.9);
+        c = mul(mix(c, [c[0] * 1.06, c[1] * 0.98, c[2] * 0.86], 0.6), 0.9);
         break;
-      case 'matte':
-        c = mix(c, [lumOf(c) * 255, lumOf(c) * 255, lumOf(c) * 255], 0.12);
-        c = mix(c, [235, 230, 220], 0.06);
+      case 'matte': {
+        const l = lumOf(c) * 255;
+        c = mix(mix(c, [l, l, l], 0.08), [232, 226, 214], 0.05);
+        break;
+      }
+      case 'satin':
+        c = mul([c[0] * 1.02, c[1], c[2] * 0.96], 0.97);
         break;
       case 'poly':
-        c = mul([c[0] * 1.04, c[1], c[2] * 0.94], 0.93);
+        // deep wet look: more contrast and saturation
+        c = [255 * Math.pow(c[0] / 255, 1.12) * 1.04, 255 * Math.pow(c[1] / 255, 1.16), 255 * Math.pow(c[2] / 255, 1.24) * 0.95];
         break;
-      case 'nitro':
-        c = mul([c[0] * 1.02, c[1] * 0.92, c[2] * 0.7], 0.92);
+      case 'nitro': {
+        // ambered lacquer with fine checking across the grain
+        c = mul(mix(c, [c[0] * 1.04, c[1] * 0.95, c[2] * 0.7], 0.75), 0.94);
+        const cu = u * 180 + (fbm(u, v, 8, 8, 2, sd + 71) - 0.5) * 1.5;
+        const ci = Math.floor(cu);
+        if (Math.abs(cu - ci - 0.5) * (Wf / 180) < 0.5 && fbm(u, v, 180, 5, 1, sd + 72) > 0.8 && hash(ci, Math.floor(v * 24), sd + 73) < 0.25) c = mul(c, 0.94);
         break;
+      }
       case 'stained': {
         const k = s.c === 'natural' ? 0 : 0.78;
         c = mix(c, [c[0] * stain[0] / 200, c[1] * stain[1] / 200, c[2] * stain[2] / 200], k);
         break;
       }
       case 'burnt': {
-        const ridge = ring;
-        c = mix([22, 16, 13], mul(c, 0.55), Math.max(0, 1 - ridge * 1.2) * 0.55);
-        if (hash(u * W | 0, v * H | 0, 4) > 0.97) c = mix(c, [60, 40, 30], 0.6);
+        c = mix([22, 16, 13], mul(c, 0.55), Math.max(0, 1 - ring * 1.2) * 0.55);
+        if (hash(x, y, 4) > 0.97) c = mix(c, [60, 40, 30], 0.6);
         break;
       }
     }
     return c;
   };
-  return { url: tile(W, H, fn), w: 512, h: 256, base: hexOf(mix(dark, light, 0.6)) };
+  return { url: tile(W, H, fn), w: TW, h: TH, base: hexOf(ramp(base)), macro: pv ? null : 'wood' };
 }
 
 function texPlastic(s, q) {
@@ -555,6 +662,7 @@ function texGlass(s, q, acrylic) {
 }
 
 function texCarbon(s, q) {
+  if (s.f === 'flake') return texCarbonFlake(s, q);
   const tow = rgb(colorHex(s));
   const W = 64 * q, H = 64 * q;
   const N = 8; // cells per tile
@@ -689,23 +797,299 @@ function texGlow(s, q) {
   return { url: tile(W, H, fn), w: 96, h: 96, base: hexOf(base) };
 }
 
+// height map -> per-pixel slope (hx, hy), wrapped so the tile stays seamless
+function slopes(W, H, h) {
+  const sx = new Float32Array(W * H), sy = new Float32Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      sx[i] = (h[y * W + ((x + 1) % W)] - h[y * W + ((x - 1 + W) % W)]) / 2;
+      sy[i] = (h[((y + 1) % H) * W + x] - h[((y - 1 + H) % H) * W + x]) / 2;
+    }
+  return { sx, sy };
+}
+// light from the top left: returns diffuse change from flat (about -1..1) and a specular term
+const LX = -0.5, LY = -0.62, LZ = 0.6;
+function litAt(hx, hy) {
+  const n = 1 / Math.hypot(hx, hy, 1);
+  const nx = -hx * n, ny = -hy * n, nz = n;
+  const ll = Math.hypot(LX, LY, LZ);
+  const d = (nx * LX + ny * LY + nz * LZ) / ll - LZ / ll;
+  const hl = Math.hypot(LX, LY, LZ + ll);
+  const sp = Math.max(0, (nx * LX + ny * LY + nz * (LZ + ll)) / hl);
+  return [d, sp];
+}
+// hammered dimples: a weighted Voronoi of bowls of different sizes (bigger and smaller hammer blows)
+function hammerHeight(W, H, cells, sd, depth, info) {
+  const nx = cells, ny = Math.max(1, Math.round(cells * H / W));
+  const pts = [];
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) pts.push([i + 0.5 + (hash(i, j, sd) - 0.5) * 0.95, j + 0.5 + (hash(i, j, sd + 1) - 0.5) * 0.95, 0.55 + Math.pow(hash(i, j, sd + 2), 1.6) * 1.1]);
+  const h = new Float32Array(W * H);
+  const cw = W / nx;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const fx = (x / W) * nx, fy = (y / H) * ny;
+      const xi = Math.floor(fx), yi = Math.floor(fy);
+      let e = 99, m = 9, own = 0;
+      for (let j = -2; j <= 2; j++)
+        for (let i = -2; i <= 2; i++) {
+          const ci = xi + i, cj = yi + j;
+          const k = (((cj % ny) + ny) % ny) * nx + (((ci % nx) + nx) % nx);
+          const p = pts[k];
+          const d = Math.hypot(fx - (ci - (((ci % nx) + nx) % nx) + p[0]), fy - (cj - (((cj % ny) + ny) % ny) + p[1]));
+          // d^2 / size: every bowl meets its neighbours at about the same steepness, big or small
+          const ei = (d * d) / p[2];
+          if (ei < e) (e = ei), (m = d / p[2]), (own = k);
+        }
+      if (info) (info.m[y * W + x] = m), (info.own[y * W + x] = own);
+      h[y * W + x] = Math.min(e, 3) * cw * depth + (vnoise(fx * 3, fy * 3, nx * 3, ny * 3, sd + 5) - 0.5) * cw * 0.04;
+    }
+  return h;
+}
+const PATINA = {
+  warm: { ox: [86, 52, 32], v1: [96, 180, 154], v2: [38, 112, 98], crust: [176, 220, 200] },
+  iron: { ox: [52, 40, 34], v1: [112, 62, 34], v2: [66, 38, 24], crust: [176, 96, 44] },
+  gold: { ox: [90, 72, 48], v1: [128, 104, 70], v2: [72, 58, 40], crust: [160, 138, 104] },
+  grey: { ox: [110, 112, 112], v1: [204, 206, 200], v2: [146, 150, 148], crust: [236, 236, 230] },
+};
+function patinaOf(sub) {
+  return ['copper', 'brass', 'bronze'].includes(sub) ? PATINA.warm : ['steel', 'iron'].includes(sub) ? PATINA.iron : ['gold', 'chrome'].includes(sub) ? PATINA.gold : PATINA.grey;
+}
+// hammered, hammertone and patina use bigger tiles and a lit height map
+function texMetalRich(s, q, sub, lo, hi) {
+  const sd = seedNum(s.s + s.f) % 9973;
+  if (s.f === 'hammered' || s.f === 'hammertone') {
+    const tone = s.f === 'hammertone';
+    const W = Math.round((tone ? 512 : 768) * q), H = Math.round(384 * q);
+    const hgt = hammerHeight(W, H, tone ? 30 : 22, sd, tone ? 0.18 : 0.3);
+    const { sx, sy } = slopes(W, H, hgt);
+    const fn = (u, v, x, y) => {
+      const i = y * W + x;
+      const [d, sp] = litAt(sx[i], sy[i]);
+      let t = 0.52 + d * (tone ? 1.3 : 1.7) + (fbm(u, v, 4, 4, 3, sd + 9) - 0.5) * 0.14;
+      let c = mix(lo, hi, Math.max(0, Math.min(1, t)));
+      c = mix(c, [255, 255, 255], Math.pow(sp, tone ? 40 : 26) * (tone ? 0.35 : 0.7));
+      if (tone && hash(x, y, 12) > 0.93) c = mix(c, [255, 255, 255], 0.12 + hash(x, y, 13) * 0.18);
+      return c;
+    };
+    // a second, larger set of blows over about a third of the surface, at another period
+    const W2 = Math.round(448 * q), H2 = W2;
+    const info = { m: new Float32Array(W2 * H2), own: new Int32Array(W2 * H2) };
+    const h2 = hammerHeight(W2, H2, tone ? 16 : 12, sd + 50, tone ? 0.18 : 0.3, info);
+    const s2 = slopes(W2, H2, h2);
+    const fn2 = (u, v, x, y) => {
+      const i = y * W2 + x;
+      if (hash(info.own[i], 7, sd) > 0.33) return [0, 0, 0, 0];
+      const [d, sp] = litAt(s2.sx[i], s2.sy[i]);
+      let c = mix(lo, hi, Math.max(0, Math.min(1, 0.52 + d * (tone ? 1.3 : 1.7))));
+      c = mix(c, [255, 255, 255], Math.pow(sp, tone ? 40 : 26) * (tone ? 0.35 : 0.7));
+      return [c[0], c[1], c[2], 255 * (1 - smooth(0.45, 0.75, info.m[i]))];
+    };
+    return { url: tile(W, H, fn), w: tone ? 512 : 768, h: 384, base: hexOf(mix(lo, hi, 0.5)), macro: 'metal', layer2: { url: tile(W2, H2, fn2, true), w: 590, h: 590 } };
+  }
+  const W = Math.round(512 * q), H = W;
+  // patina: darkened metal, layered verdigris blooms that pool in places, tide marks, chalky crust and stray specks
+  const P = patinaOf(s.s);
+  // extra blooms at another period, so clusters never line up
+  const fn2 = (u, v, x, y) => {
+    const sd2 = sd + 500;
+    const wu = u + (fbm(u, v, 3, 3, 3, sd2 + 2) - 0.5) * 0.25, wv = v + (fbm(u, v, 3, 3, 3, sd2 + 3) - 0.5) * 0.25;
+    const th = 0.58 + (fbm(u, v, 2, 2, 3, sd2 + 12) - 0.5) * 0.3;
+    const b1 = fbm(wu, wv, 6, 6, 5, sd2 + 4);
+    const m1 = Math.pow(smooth(th - 0.03, th + 0.1, b1), 1.3);
+    if (m1 <= 0) return [0, 0, 0, 0];
+    const pool = smooth(0.5, 0.68, fbm(wu, wv, 14, 14, 4, sd2 + 5));
+    let c = mix(P.v1, P.v2, Math.min(1, pool + (fbm(u, v, 16, 16, 2, sd2 + 10) - 0.5) * 0.4));
+    c = mix(c, P.crust, smooth(0.6, 0.72, fbm(u, v, 32, 32, 2, sd2 + 6)) * 0.45);
+    c = mul(c, 0.94 + hash(x, y, 11) * 0.1);
+    return [c[0], c[1], c[2], m1 * 235];
+  };
+  const fn = (u, v, x, y) => {
+    let t = 0.45 + (fbm(u, v, 4, 4, 3, sd) - 0.5) * 0.5;
+    let c = mix(lo, hi, Math.max(0, Math.min(1, t)));
+    c = mix(c, P.ox, 0.3 + fbm(u, v, 5, 5, 3, sd + 1) * 0.45);
+    // mottled oxide: darker and lighter clouds and fine grain
+    c = mul(c, 0.7 + fbm(u, v, 12, 12, 3, sd + 13) * 0.6 + (vnoise(u * 48, v * 48, 48, 48, sd + 14) - 0.5) * 0.16);
+    const wu = u + (fbm(u, v, 3, 3, 3, sd + 2) - 0.5) * 0.25, wv = v + (fbm(u, v, 3, 3, 3, sd + 3) - 0.5) * 0.25;
+    // how much patina an area has drifts slowly, so blooms gather and thin out
+    const th = 0.52 + (fbm(u, v, 2, 2, 3, sd + 12) - 0.5) * 0.3;
+    const b1 = fbm(wu, wv, 7, 7, 4, sd + 4);
+    const m1 = Math.pow(smooth(th - 0.04, th + 0.1, b1), 1.3);
+    const tide = smooth(th - 0.07, th - 0.02, b1) * (1 - smooth(th - 0.02, th + 0.03, b1));
+    const b2 = fbm(wu, wv, 14, 14, 4, sd + 5);
+    const pool = smooth(0.5, 0.68, b2) * m1;
+    const crust = smooth(0.58, 0.72, fbm(u, v, 32, 32, 2, sd + 6)) * m1 * (0.6 + hash(x, y, 7) * 0.4);
+    const sp = worley(u, v, 40, 40, sd + 8, 0.9);
+    const spot = hash(sp.id, 1, sd) < 0.06 * (1 - m1) * smooth(0.4, 0.6, fbm(u, v, 3, 3, 2, sd + 15)) * 2 ? (1 - smooth(0.06, 0.16 + hash(sp.id, 2, sd) * 0.12, sp.d + (fbm(u, v, 64, 64, 1, sd + 9) - 0.5) * 0.2)) * (0.4 + hash(sp.id, 3, sd) * 0.5) : 0;
+    c = mul(c, 1 - tide * 0.28);
+    const vc = mix(P.v1, P.v2, Math.min(1, pool + (fbm(u, v, 16, 16, 2, sd + 10) - 0.5) * 0.4));
+    c = mix(c, vc, Math.max(m1 * 0.92, spot));
+    c = mix(c, P.crust, crust * 0.5);
+    c = mul(c, 0.92 + hash(x, y, 11) * 0.1 + (fbm(u, v, 24, 24, 3, sd + 16) - 0.5) * 0.2 * m1);
+    return c;
+  };
+  const W2 = Math.round(400 * q);
+  return { url: tile(W, H, fn), w: 512, h: 512, base: hexOf(mix(mix(lo, hi, 0.45), P.v1, 0.5)), macro: 'patina', layer2: { url: tile(W2, W2, fn2, true), w: 620, h: 620 } };
+}
+
+// forged carbon: chopped tow flakes in every direction, marbled black and grey, with glints under the clear coat
+function texCarbonFlake(s, q) {
+  const tow = rgb(colorHex(s));
+  const N = Math.round(640 * q), k = N / 512; // 640 px over 512 units
+  let r = 0;
+  const rnd = () => hash(r++, 4242, 99);
+  const c = document.createElement('canvas');
+  c.width = N;
+  c.height = N;
+  const x = c.getContext('2d');
+  x.fillStyle = hexOf(mul(tow, 0.16));
+  x.fillRect(0, 0, N, N);
+  const lightTow = mix(tow, [255, 255, 255], 0.1);
+  // flakes in layers: deeper ones darker, so the stack reads as marbled with depth
+  const count = 950;
+  for (let i = 0; i < count; i++) {
+    const depth = i / count;
+    const cx = rnd() * N, cy = rnd() * N, a = rnd() * Math.PI;
+    const len = (18 + Math.pow(rnd(), 1.3) * 75) * k, wid = (7 + rnd() * 22) * k;
+    const g = rnd();
+    const col = mix(mul(tow, 0.12), lightTow, (0.06 + g * 0.7) * (0.7 + depth * 0.3));
+    // chopped tow: straight sides, ends cut at an angle, a little ragged
+    const L = len / 2, Wd = wid / 2, s1 = (rnd() - 0.5) * wid * 1.4, s2 = (rnd() - 0.5) * wid * 1.4;
+    const pts = [[-L + s1, -Wd], [(rnd() - 0.5) * len * 0.3, -Wd - (rnd() - 0.5) * wid * 0.15], [L + s2, -Wd], [L - s2, Wd], [(rnd() - 0.5) * len * 0.3, Wd + (rnd() - 0.5) * wid * 0.15], [-L - s1, Wd]];
+    const n = pts.length;
+    const lines = [];
+    const nl = Math.max(3, Math.round(wid / (1.3 * k)));
+    for (let j = 0; j < nl; j++) lines.push([(j / nl - 0.5) * wid * 1.1, rnd()]);
+    const reach = len * 0.6;
+    const shape = () => {
+      x.beginPath();
+      pts.forEach(([u, v], j) => (j ? x.lineTo(u, v) : x.moveTo(u, v)));
+      x.closePath();
+    };
+    for (const dx of [-N, 0, N])
+      for (const dy of [-N, 0, N]) {
+        const px = cx + dx, py = cy + dy;
+        if (px < -reach || py < -reach || px > N + reach || py > N + reach) continue;
+        x.save();
+        x.translate(px, py);
+        x.rotate(a);
+        x.globalAlpha = 0.7 + rnd() * 0.3;
+        shape();
+        x.fillStyle = hexOf(col);
+        x.fill();
+        x.save();
+        x.clip();
+        x.globalAlpha = 1;
+        // tow fibres along the flake
+        for (const [ly, k2] of lines) {
+          x.strokeStyle = k2 < 0.5 ? `rgba(0,0,0,${0.08 + k2 * 0.16})` : `rgba(255,255,255,${(k2 - 0.5) * 0.12})`;
+          x.lineWidth = (0.5 + k2 * 0.6) * k;
+          x.beginPath();
+          x.moveTo(-len, ly);
+          x.lineTo(len, ly + (k2 - 0.5) * 1.5);
+          x.stroke();
+        }
+        x.restore();
+        x.strokeStyle = 'rgba(0,0,0,0.3)';
+        x.lineWidth = 0.6 * k;
+        shape();
+        x.stroke();
+        x.restore();
+      }
+  }
+  // glints in the clear coat
+  for (let i = 0; i < 700; i++) {
+    const gx = rnd() * N, gy = rnd() * N, k2 = rnd();
+    x.fillStyle = `rgba(255,255,255,${0.15 + k2 * 0.55})`;
+    const sz = (k2 > 0.94 ? 1.5 : 0.8) * k;
+    x.fillRect(gx, gy, sz, sz);
+  }
+  return { url: c.toDataURL('image/jpeg', 0.9), w: 512, h: 512, base: hexOf(mul(tow, 0.4)), macro: 'carbon' };
+}
+
+// mother of pearl: wavy growth bands in layers, colour play that shifts across the piece, a few dark streaks
 function texPearl(s, q) {
   const M = BY_ID.get('pearl');
   const sub = M.subs.find((x) => x.id === s.s) || M.subs[0];
   const a = rgb(sub.light), b = rgb(sub.dark);
-  const W = 256 * q, H = 256 * q;
-  const fn = (u, v) => {
-    const w = worley(u, v, 5, 5, 3, 0.9);
-    const n = fbm(u + w.id * 0.013, v, 4, 4, 4, 33 + (w.id % 7));
-    const t = Math.sin((n * 3 + w.id * 0.37) * Math.PI * 2) * 0.5 + 0.5;
-    const hue = sub.hue + (n - 0.5) * 220 + (w.id % 5) * 18;
-    const iri = hsl2rgb(hue, sub.sat, sub.id === 'black' ? 0.35 : sub.id === 'abalone' ? 0.45 : 0.78);
-    let c = mix(mix(b, a, t), iri, 0.45 + t * 0.25);
-    if (w.edge < 0.05) c = mul(c, 0.82);
-    c = mul(c, 0.9 + Math.pow(t, 4) * 0.25);
+  const W = Math.round(384 * q), H = W;
+  const sd0 = seedNum(sub.id) % 9973;
+  const ab = sub.id === 'abalone';
+  const fn = (u, v, x, y, sd = sd0) => {
+    const wu = u + (fbm(u, v, 3, 3, 4, sd) - 0.5) * 0.3, wv = v + (fbm(u, v, 3, 3, 4, sd + 1) - 0.5) * 0.3;
+    const f1 = fbm(wu, wv, 2, 2, 4, sd + 2);
+    const ph = wv * 5 + wu * 2 + f1 * 4;
+    const band = 0.5 + 0.5 * Math.sin(Math.PI * 2 * ph);
+    const fine = 0.5 + 0.5 * Math.sin(Math.PI * 2 * (ph * 9 + fbm(wu, wv, 6, 6, 2, sd + 3) * 3));
+    // a second set of bands at another angle, seen deeper in the shell
+    const ph2 = wu * 4 - wv * 3 + fbm(wu, wv, 3, 3, 3, sd + 4) * 3;
+    const deep = 0.5 + 0.5 * Math.sin(Math.PI * 2 * ph2);
+    const hue = sub.hue + (f1 - 0.5) * sub.spread + Math.sin(Math.PI * 2 * (u + v)) * 35 + band * 50 + deep * 30;
+    const tone = band * 0.6 + fine * 0.08 + deep * 0.32;
+    let c = mix(b, a, ab ? Math.pow(tone, 1.4) : 0.35 + tone * 0.65);
+    const iri = hsl2rgb(hue, sub.sat, sub.lum + (band - 0.5) * 0.12);
+    c = mix(c, iri, sub.iri * (0.45 + 0.55 * Math.pow(band * 0.6 + deep * 0.4, 1.3)));
+    // depth: darker translucent troughs, bright crests
+    c = mul(c, 1 - (sub.depth || 0.2) * 0.5 + (sub.depth || 0.2) * tone);
+    c = mix(c, [255, 255, 255], Math.pow(Math.max(0, band * fine), 6) * (ab ? 0.25 : 0.4));
+    // natural streaks along the bands
+    const st = Math.abs(Math.sin(Math.PI * (ph * 3 + fbm(u, v, 5, 5, 2, sd + 5) * 2)));
+    if (st < 0.05) c = mul(c, 1 - (1 - st / 0.05) * 0.28 * smooth(0.5, 0.68, fbm(u, v, 2, 2, 3, sd + 6)));
     return c;
   };
-  return { url: tile(W, H, fn), w: 160, h: 160, base: hexOf(mix(a, b, 0.3)) };
+  // a second piece of shell at another period, shown in patches, hides the repeat
+  const fn2 = (u, v, x, y) => {
+    const c = fn(u, v, x, y, sd0 + 500);
+    return [c[0], c[1], c[2], smooth(0.42, 0.62, fbm(u, v, 2, 2, 3, sd0 + 501)) * 255];
+  };
+  const W2 = Math.round(320 * q);
+  return { url: tile(W, H, fn), w: 384, h: 384, base: hexOf(mix(a, b, 0.3)), macro: 'pearl', layer2: { url: tile(W2, W2, fn2, true), w: 530, h: 530 } };
+}
+
+// low-res overlays stretched over a long period, so tiles don't line up into an obvious repeat
+const MACRO = {
+  wood: { W: 128, H: 32, w: 3328, h: 704 },
+  metal: { W: 48, H: 48, w: 1100, h: 1100 },
+  patina: { W: 64, H: 64, w: 1300, h: 1300 },
+  carbon: { W: 48, H: 48, w: 1000, h: 1000 },
+  pearl: { W: 64, H: 64, w: 900, h: 900 },
+};
+function macroTex(kind, s) {
+  const k = MACRO[kind];
+  const sd = seedNum(kind + s.s) % 9973;
+  let fn;
+  if (kind === 'wood') {
+    const { sp, light, dark } = woodColor(s);
+    const d = mul(dark, 0.7), l = mix(light, [255, 236, 200], 0.25), alt = sp.alt ? rgb(sp.alt) : d;
+    fn = (u, v) => {
+      const n = fbm(u, v, 4, 2, 3, sd) - 0.5;
+      const h = fbm(u, v, 3, 3, 2, sd + 1);
+      const c = n < 0 ? mix(d, alt, h) : l;
+      return [c[0], c[1], c[2], Math.min(1, Math.abs(n) * 2.2) * 0.3 * (sp.macro ?? 1) * 255];
+    };
+  } else if (kind === 'pearl') {
+    const sub = BY_ID.get('pearl').subs.find((x) => x.id === s.s) || {};
+    fn = (u, v) => {
+      const n = fbm(u, v, 3, 3, 3, sd);
+      const c = hsl2rgb((sub.hue || 200) + (n - 0.5) * 420, 0.75, 0.6);
+      return [c[0], c[1], c[2], (0.08 + 0.14 * fbm(u, v, 2, 2, 2, sd + 1)) * 255];
+    };
+  } else if (kind === 'patina') {
+    const P = patinaOf(s.s);
+    fn = (u, v) => {
+      const n = fbm(u, v, 3, 3, 4, sd);
+      const c = n > 0.5 ? P.v1 : P.ox;
+      return [c[0], c[1], c[2], Math.min(1, Math.abs(n - 0.5) * 2.5) * 0.3 * 255];
+    };
+  } else {
+    fn = (u, v) => {
+      const n = fbm(u, v, 3, 3, 3, sd) - 0.5;
+      const c = n < 0 ? [0, 0, 0] : [255, 255, 255];
+      return [c[0], c[1], c[2], Math.min(1, Math.abs(n) * 2.4) * (kind === 'carbon' ? 0.14 : 0.12) * 255];
+    };
+  }
+  return { url: tile(k.W, k.H, fn, true), w: k.w, h: k.h };
 }
 
 function texConcrete(s, q) {
@@ -761,12 +1145,15 @@ function mk(tag, attrs, parent) {
 }
 const keyOf = (s) => [s.m, s.s, s.f, String(s.c || '').replace('#', '')].join('-').replace(/[^a-z0-9-]/gi, '');
 const num = (v) => String(Math.round(v * 1000) / 1000).replace('.', 'p').replace('-', 'm');
+const num0 = (v) => Math.round(v * 10) / 10;
 
 // shared sheen gradients (objectBoundingBox): one per sheen kind and shape
 const SHEENS = {
   gloss: [[0, '#fff', 0.34], [0.12, '#fff', 0.12], [0.45, '#fff', 0.02], [0.5, '#000', 0.02], [0.85, '#000', 0.12], [1, '#000', 0.3]],
   satin: [[0, '#fff', 0.2], [0.4, '#fff', 0.03], [0.6, '#000', 0.04], [1, '#000', 0.24]],
   matte: [[0, '#fff', 0.08], [0.5, '#fff', 0], [1, '#000', 0.2]],
+  // nitro lacquer: glossy but softer than poly, with a warm low highlight
+  lacquer: [[0, '#fff', 0.26], [0.1, '#fff', 0.1], [0.42, '#fff', 0.02], [0.55, '#000', 0.03], [0.8, '#fff', 0.05], [0.9, '#000', 0.1], [1, '#000', 0.26]],
   mirror: [[0, '#fff', 0.55], [0.18, '#000', 0.12], [0.36, '#fff', 0.4], [0.58, '#000', 0.22], [0.8, '#fff', 0.25], [1, '#000', 0.3]],
   glass: [[0, '#fff', 0.5], [0.08, '#fff', 0.1], [0.42, '#fff', 0], [0.46, '#fff', 0.22], [0.52, '#fff', 0], [1, '#000', 0.12]],
   metal: [[0, '#fff', 0.24], [0.3, '#fff', 0.04], [0.55, '#000', 0.06], [0.75, '#fff', 0.08], [1, '#000', 0.26]],
@@ -781,8 +1168,8 @@ function sheenId(kind, round) {
   return `url(#${id})`;
 }
 function sheenKind(s) {
-  if (s.m === 'metal') return s.f === 'polished' ? 'mirror' : s.f === 'powder' || s.f === 'sandblasted' || s.f === 'patina' ? 'matte' : s.f === 'flake' ? 'gloss' : 'metal';
-  if (s.m === 'wood') return s.f === 'poly' ? 'gloss' : s.f === 'nitro' || s.f === 'satin' ? 'satin' : 'matte';
+  if (s.m === 'metal') return s.f === 'polished' ? 'mirror' : s.f === 'powder' || s.f === 'sandblasted' || s.f === 'patina' ? 'matte' : s.f === 'flake' || s.f === 'hammertone' ? 'gloss' : 'metal';
+  if (s.m === 'wood') return s.f === 'poly' ? 'gloss' : s.f === 'nitro' ? 'lacquer' : s.f === 'satin' ? 'satin' : 'matte';
   if (s.m === 'plastic') return s.f === 'gloss' || s.f === 'sparkle' ? 'gloss' : s.f === 'soft' ? 'matte' : 'satin';
   if (s.m === 'glass' || s.m === 'acrylic') return s.f === 'mirror' ? 'mirror' : s.f === 'frosted' ? 'satin' : 'glass';
   if (s.m === 'carbon') return s.f === 'matte' ? 'satin' : 'gloss';
@@ -813,16 +1200,19 @@ function spunId() {
 
 /**
  * Fill info for a spec. opts: scale (tile size multiplier, 1 = board pixels), angle (grain rotation in degrees),
- * round (part is round: radial sheen, spun metal), preview (small, quick tile).
- * Returns { fill, sheen, sheenOpacity, overlay, base, hi, lo, edge, ink, glow, translucent, spec }.
+ * round (part is round: radial sheen, spun metal), preview (small, quick tile), variant (1..6: the tile shifted by a
+ * seeded offset, so items in the same material don't line up).
+ * Returns { fill, macro, sheen, sheenOpacity, overlay, base, hi, lo, edge, ink, glow, translucent, spec }.
  */
 export function materialFill(spec, opts = {}) {
   let s = normalize(spec);
   if (s.m === 'stock') return null;
   // under a multicolour layer, coloured finishes go neutral so the colours read true
   if (s.mc && s.m !== 'wood' && paletteFor(s)) s = { ...s, c: '#d8d8d8' };
-  const scale = opts.scale || 1, angle = opts.angle || 0, q = opts.preview ? 0.5 : 1;
-  const id = `mt-${keyOf(s)}-${num(scale)}-${num(angle)}${q < 1 ? '-q' : ''}`;
+  const scale = opts.scale || 1, angle = opts.angle || 0, q = opts.preview ? (s.m === 'wood' ? 0.25 : 0.5) : 1;
+  const variant = opts.variant | 0;
+  const baseId = `mt-${keyOf(s)}-${num(scale)}-${num(angle)}${q < 1 ? '-q' : ''}`;
+  const id = baseId + (variant ? '-v' + variant : '');
   const ck = id + (opts.round ? '-r' : '');
   if (fillCache.has(ck) && document.getElementById(id)) return fillCache.get(ck);
   const tk = keyOf(s) + (q < 1 ? '-q' : '');
@@ -831,17 +1221,54 @@ export function materialFill(spec, opts = {}) {
     tex = TEX[s.m](s, q);
     texCache.set(tk, tex);
   }
+  const rot = angle ? `rotate(${angle})` : '';
+  const shift = (n, w, h) => `${rot} translate(${num0(hash(n, 1, 5) * w)} ${num0(hash(n, 2, 5) * h)})`.trim();
+  // variants are the same tile shifted (the browser decodes the shared image once)
   if (!document.getElementById(id)) {
     const w = tex.w * scale, h = tex.h * scale;
     const p = mk('pattern', { id, width: w, height: h, patternUnits: 'userSpaceOnUse' }, defsHost());
-    if (angle) p.setAttribute('patternTransform', `rotate(${angle})`);
+    const tf = variant ? shift(variant, w, h) : rot;
+    if (tf) p.setAttribute('patternTransform', tf);
     mk('image', { href: tex.url, width: w, height: h, preserveAspectRatio: 'none' }, p);
+  }
+  let layer2 = null;
+  if (tex.layer2) {
+    const lid = id + '-l2';
+    if (!document.getElementById(lid)) {
+      const L = tex.layer2, w = L.w * scale, h = L.h * scale;
+      const p = mk('pattern', { id: lid, width: w, height: h, patternUnits: 'userSpaceOnUse', patternTransform: shift(variant + 23, w, h) }, defsHost());
+      mk('image', { href: L.url, width: w, height: h, preserveAspectRatio: 'none' }, p);
+    }
+    layer2 = `url(#${lid})`;
+  }
+  let macro = null;
+  if (tex.macro && !opts.preview) {
+    const mkey = tex.macro + '-' + (tex.macro === 'wood' || tex.macro === 'pearl' || tex.macro === 'patina' ? s.s : 'x');
+    let mt = texCache.get('macro-' + mkey);
+    if (!mt) texCache.set('macro-' + mkey, (mt = macroTex(tex.macro, s)));
+    const mid = `mtm-${mkey}-${num(scale)}-${num(angle)}`;
+    if (!document.getElementById(mid)) {
+      const p = mk('pattern', { id: mid, width: mt.w * scale, height: mt.h * scale, patternUnits: 'userSpaceOnUse' }, defsHost());
+      if (angle) p.setAttribute('patternTransform', rot);
+      mk('image', { href: mt.url, width: mt.w * scale, height: mt.h * scale, preserveAspectRatio: 'none' }, p);
+    }
+    macro = `url(#${mid})`;
+    if (variant) {
+      const vid = mid + '-v' + variant;
+      if (!document.getElementById(vid)) {
+        const p = mk('pattern', { id: vid, width: mt.w * scale, height: mt.h * scale, patternUnits: 'userSpaceOnUse', patternTransform: shift(variant + 11, mt.w * scale, mt.h * scale) }, defsHost());
+        mk('image', { href: mt.url, width: mt.w * scale, height: mt.h * scale, preserveAspectRatio: 'none' }, p);
+      }
+      macro = `url(#${vid})`;
+    }
   }
   const base = rgb(tex.base);
   const kind = sheenKind(s);
   const out = {
     spec: s,
     fill: `url(#${id})`,
+    layer2,
+    macro,
     sheen: sheenId(kind, opts.round),
     sheenOpacity: kind === 'matte' ? 0.8 : 1,
     overlay: null,
@@ -864,6 +1291,7 @@ export function materialFill(spec, opts = {}) {
  * tag/attrs describe the shape (rect, circle, path...). Returns the <g> and the fill info.
  */
 export function paint(parent, tag, attrs, spec, opts = {}) {
+  if (opts.seed && opts.variant == null) opts = { ...opts, variant: 1 + (seedNum(String(opts.seed)) % 6) };
   const f = materialFill(spec, opts);
   const g = mk('g', {}, parent);
   if (!f) return { g, f };
@@ -873,6 +1301,9 @@ export function paint(parent, tag, attrs, spec, opts = {}) {
     mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: f.glow, 'stroke-width': gw, 'stroke-opacity': 0.22, 'stroke-linejoin': 'round' }), g);
   }
   mk(tag, Object.assign({}, attrs, { fill: f.fill }), g);
+  if (f.layer2) mk(tag, Object.assign({}, attrs, { fill: f.layer2 }), g);
+  if (f.macro) mk(tag, Object.assign({}, attrs, { fill: f.macro }), g);
+  if (f.spec.m === 'wood' && f.spec.s === 'plywood' && tag === 'rect') plyEdge(g, attrs, f.spec);
   if (f.overlay) mk(tag, Object.assign({}, attrs, { fill: f.overlay }), g);
   const ns = normalize(spec);
   if (ns.mc) {
@@ -883,6 +1314,21 @@ export function paint(parent, tag, attrs, spec, opts = {}) {
   if (opts.edge !== false) mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: f.translucent ? 'rgba(255,255,255,0.55)' : f.hi, 'stroke-width': opts.edgeWidth || 0.8, 'stroke-opacity': f.translucent ? 0.8 : 0.45 }), g);
   if (opts.wear !== false && ns.w) wearOverlay(g, tag, attrs, ns, opts);
   return { g, f };
+}
+
+// plywood: the plies show as thin layers just inside the edge
+function plyEdge(g, a, s) {
+  const w = +a.width, h = +a.height;
+  if (!(w > 24 && h > 24)) return;
+  const band = Math.min(9, Math.min(w, h) * 0.12);
+  const { light, dark } = woodColor(s);
+  const n = 7, lw = band / n;
+  const x0 = +(a.x || 0), y0 = +(a.y || 0), rx = +(a.rx || 0);
+  for (let i = 0; i < n; i++) {
+    const k = (i + 0.5) * lw;
+    const c = i % 2 ? mul(dark, 0.78) : mix(light, [255, 245, 220], 0.15);
+    mk('rect', { x: x0 + k, y: y0 + k, width: w - k * 2, height: h - k * 2, rx: Math.max(0, rx - k), fill: 'none', stroke: hexOf(c), 'stroke-width': lw * (i % 2 ? 0.55 : 1), 'stroke-opacity': 0.8, 'pointer-events': 'none' }, g);
+  }
 }
 
 // what shows through chips and worn spots
@@ -932,24 +1378,47 @@ function wearTile(kind, amt, bare, seed) {
   if (wearTiles.has(key)) return wearTiles.get(key);
   let r = 0;
   const rnd = () => hash(r++, seed, 777);
-  const W = 256;
+  const W = WEAR_PX[kind] || 256;
   let url;
-  if (kind === 'scratchL' || kind === 'scratch') {
-    const heavy = kind === 'scratch';
-    const n = Math.round((heavy ? 30 : 14) + amt * (heavy ? 110 : 40));
+  if (kind === 'scratch') {
+    // from a few faint hairlines to a heavily used surface with deep gouges, clustered where hands and feet go
+    const n = Math.round(4 + 520 * Math.pow(amt, 1.7));
+    const hot = [];
+    for (let i = 0; i < 4; i++) hot.push([rnd() * W, rnd() * W, rnd() * Math.PI]);
     const lines = [];
     for (let i = 0; i < n; i++) {
-      const x0 = rnd() * W, y0 = rnd() * W, a = (rnd() - 0.5) * 1.2 + (rnd() < 0.3 ? 1.57 : 0), len = (heavy ? 18 : 8) + rnd() * (heavy ? 70 : 30), bend = (rnd() - 0.5) * 10;
-      lines.push([x0, y0, a, len, bend, rnd()]);
+      const h = hot[Math.floor(rnd() * hot.length)];
+      const clustered = amt > 0.25 && rnd() < 0.55;
+      const x0 = clustered ? h[0] + (rnd() - 0.5) * W * 0.45 : rnd() * W, y0 = clustered ? h[1] + (rnd() - 0.5) * W * 0.45 : rnd() * W;
+      const a = clustered ? h[2] + (rnd() - 0.5) * 0.7 : (rnd() - 0.5) * 1.3 + (rnd() < 0.3 ? 1.57 : 0);
+      const len = 8 + rnd() * (22 + 76 * amt), bend = (rnd() - 0.5) * (4 + 10 * amt);
+      const deep = amt > 0.45 && rnd() < 0.06 + amt * 0.12;
+      lines.push([x0, y0, a, len, bend, rnd(), deep]);
     }
     url = canvasTile(W, (x) => wrapDraw(x, W, () => {
-      for (const [x0, y0, a, len, bend, k] of lines) {
+      for (const [x0, y0, a, len, bend, k, deep] of lines) {
         const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len;
-        x.beginPath();
-        x.moveTo(x0, y0);
-        x.quadraticCurveTo((x0 + x1) / 2 - Math.sin(a) * bend, (y0 + y1) / 2 + Math.cos(a) * bend, x1, y1);
-        x.strokeStyle = k < 0.25 ? 'rgba(0,0,0,0.3)' : `rgba(255,255,255,${(heavy ? 0.22 : 0.14) + k * 0.25})`;
-        x.lineWidth = heavy ? 0.6 + k * 1.1 : 0.4 + k * 0.5;
+        const mx = (x0 + x1) / 2 - Math.sin(a) * bend, my = (y0 + y1) / 2 + Math.cos(a) * bend;
+        const path = (ox, oy) => {
+          x.beginPath();
+          x.moveTo(x0 + ox, y0 + oy);
+          x.quadraticCurveTo(mx + ox, my + oy, x1 + ox, y1 + oy);
+        };
+        if (deep) {
+          // gouge: dark groove with a lit lip
+          path(0, 0);
+          x.strokeStyle = `rgba(0,0,0,${0.35 + k * 0.25})`;
+          x.lineWidth = 1.4 + k * 1.4;
+          x.stroke();
+          path(0.8, 0.8);
+          x.strokeStyle = `rgba(255,255,255,${0.3 + k * 0.25})`;
+          x.lineWidth = 0.7;
+          x.stroke();
+          continue;
+        }
+        path(0, 0);
+        x.strokeStyle = k < 0.22 ? `rgba(0,0,0,${0.16 + amt * 0.22})` : `rgba(255,255,255,${0.3 + amt * 0.1 + k * 0.25})`;
+        x.lineWidth = 0.5 + k * (0.35 + amt * 0.85);
         x.stroke();
       }
     }));
@@ -1002,31 +1471,51 @@ function wearTile(kind, amt, bare, seed) {
   } else {
     // pixel tiles: rust, chips, relic blotches, fade
     const bc = rgb(bare);
-    const fn = (u, v) => {
+    const sd = seed * 131 + 7;
+    const fn = (u, v, px, py) => {
       if (kind === 'rust') {
-        const n = fbm(u, v, 5, 5, 5, seed % 997);
-        const m = smooth(0.62 - amt * 0.22, 0.7 - amt * 0.18, n);
-        if (m <= 0) return [0, 0, 0, 0];
-        const d = fbm(u, v, 24, 24, 2, 5);
-        const c = mix([92, 38, 14], [176, 88, 34], d);
-        return [c[0], c[1], c[2], m * 235 * (0.7 + d * 0.3)];
+        // patchy coverage that grows with the amount, flaky scale, pits and drip streaks below the patches
+        const F = rustField(W, sd), i = py * W + px;
+        const n = F.n[i];
+        const th = 0.66 - amt * 0.34;
+        let m = smooth(th, th + 0.045, n);
+        if (F.spotH[i] < 0.05 + amt * 0.25) m = Math.max(m, 1 - smooth(0.1, 0.2 + amt * 0.15, F.spotD[i]));
+        const streak = F.streak[i] * smooth(th - 0.06, th + 0.02, F.above[i]) * (0.3 + amt * 0.5);
+        if (m <= 0.01 && streak <= 0.02) return [0, 0, 0, 0];
+        const deep = Math.min(1, Math.max(0, (n - 0.4) * 3)); // not tied to the amount, so bands blend
+        const flake = F.flake[i];
+        let c = mix([186, 96, 40], [86, 36, 16], Math.min(1, deep * 0.8 + flake * 0.35));
+        c = mul(c, 0.8 + flake * 0.35 + F.fine[i]);
+        if (F.edge[i] && deep > 0.35) c = mul(c, F.edge[i] > 0 ? 1.18 : 0.78); // lifted flake edges
+        if (deep > 0.4 && F.pit[i]) c = mul(c, 0.35); // pits
+        if (m < streak) return [140, 66, 28, streak * 150];
+        return [c[0], c[1], c[2], m * 255 * (0.82 + deep * 0.18)];
       }
       if (kind === 'fade') {
         const n = fbm(u, v, 3, 3, 3, seed % 991);
         return [238, 234, 224, (0.25 + n * 0.5) * 255];
       }
-      const light = kind === 'chipL';
-      const w = worley(u, v, light ? 22 : 12, light ? 22 : 12, seed % 983, 1);
-      const show = hash(w.id, 4, seed % 977) < (kind === 'relic' ? 0.02 + amt * 0.06 : (light ? 0.02 : 0.03) + amt * (light ? 0.06 : 0.12));
-      const rr = (kind === 'relic' ? 0.4 : 0.22) + hash(w.id, 5, 3) * 0.2 + (fbm(u, v, 32, 32, 2, 9) - 0.5) * 0.3;
-      if (!show || w.d > rr) return [0, 0, 0, 0];
       if (kind === 'relic') {
+        const w = worley(u, v, 12, 12, seed % 983, 1);
+        const show = hash(w.id, 4, seed % 977) < 0.02 + amt * 0.06;
+        const rr = 0.4 + hash(w.id, 5, 3) * 0.2 + (fbm(u, v, 32, 32, 2, 9) - 0.5) * 0.3;
+        if (!show || w.d > rr) return [0, 0, 0, 0];
         // rubbed through: soft edges, no broken rim
-        const c = mul(bc, 0.9 + hash(u * W | 0, v * W | 0, 2) * 0.2);
+        const c = mul(bc, 0.9 + hash(px, py, 2) * 0.2);
         return [c[0], c[1], c[2], 255 * Math.min(1, (rr - w.d) / 0.15) * 0.85];
       }
-      if (w.d > rr - 0.06) return [0, 0, 0, 120]; // dark rim where the finish breaks
-      const c = mul(bc, 0.9 + hash(u * W | 0, v * W | 0, 2) * 0.2);
+      // chips: a couple of tiny nicks at the low end, big flaked areas at the top
+      const edgeN = (fbm(u, v, 40, 40, 2, sd + 9) - 0.5) * 0.35;
+      let inside = -1;
+      const big = worley(u, v, 9, 9, sd + 10, 1);
+      if (hash(big.id, 4, sd) < 0.42 * Math.pow(amt, 1.4)) inside = Math.max(inside, (0.12 + amt * 0.3 + hash(big.id, 5, sd) * 0.22 + edgeN) - big.d);
+      const sm = worley(u, v, 24, 24, sd + 11, 1);
+      if (hash(sm.id, 4, sd) < 0.01 + 0.3 * amt) inside = Math.max(inside, (0.1 + hash(sm.id, 5, sd) * 0.2 + edgeN) - sm.d);
+      if (amt > 0.55) inside = Math.max(inside, (fbm(u, v, 3, 3, 4, sd + 12) + edgeN * 0.3 - (1.18 - amt * 0.5)) * 2);
+      if (inside < 0) return [0, 0, 0, 0];
+      if (inside < 0.035) return [0, 0, 0, 120]; // dark rim where the finish breaks
+      if (inside < 0.06) return [255, 255, 255, 50]; // lit lip of the step
+      const c = mul(bc, 0.88 + hash(px, py, 2) * 0.2);
       return [c[0], c[1], c[2], 255];
     };
     url = tile(W, W, fn, true);
@@ -1034,12 +1523,43 @@ function wearTile(kind, amt, bare, seed) {
   wearTiles.set(key, url);
   return url;
 }
+const WEAR_PX = { rust: 400, chip: 320, scratch: 384 };
+// rust noise per seed, computed once: each amount is then just a threshold over it
+const rustFields = new Map();
+function rustField(W, sd) {
+  const key = W + '|' + sd;
+  if (rustFields.has(key)) return rustFields.get(key);
+  const N = W * W;
+  const F = { n: new Float32Array(N), spotD: new Float32Array(N), spotH: new Float32Array(N), above: new Float32Array(N), streak: new Float32Array(N), flake: new Float32Array(N), fine: new Float32Array(N), edge: new Int8Array(N), pit: new Uint8Array(N) };
+  for (let y = 0; y < W; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x, u = x / W, v = y / W;
+      const wu = u + (fbm(u, v, 3, 3, 3, sd) - 0.5) * 0.3, wv = v + (fbm(u, v, 3, 3, 3, sd + 1) - 0.5) * 0.3;
+      F.n[i] = fbm(wu, wv, 5, 5, 4, sd + 2) * 0.8 + fbm(u, v, 18, 18, 2, sd + 3) * 0.2;
+      const sp = worley(u, v, 34, 34, sd + 4, 0.9);
+      F.spotD[i] = sp.d;
+      F.spotH[i] = hash(sp.id, 2, sd);
+      F.streak[i] = smooth(0.55, 0.8, fbm(u, v, 80, 3, 2, sd + 5));
+      const fl = worley(u, v, 30, 30, sd + 6, 1);
+      F.flake[i] = hash(fl.id, 3, sd);
+      F.fine[i] = (vnoise(u * 64, v * 64, 64, 64, sd + 7) - 0.5) * 0.4 + (hash(x, y, sd + 9) - 0.5) * 0.16; // granular scale
+      F.edge[i] = fl.edge < 0.06 && F.flake[i] < 0.35 ? (fl.dx + fl.dy < 0 ? 1 : -1) : 0;
+      F.pit[i] = hash(x, y, sd + 8) > 0.985 ? 1 : 0;
+    }
+  // drips start below rusty areas: coverage a little way up
+  const dy = Math.round(W * 0.03);
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) F.above[y * W + x] = F.n[((y - dy + W) % W) * W + x];
+  rustFields.set(key, F);
+  return F;
+}
 function wearPattern(kind, amt, bare, variant, scale) {
   const id = `mw-${kind}-${num(amt)}-${bare.replace('#', '')}-${variant}-${num(scale)}`;
   if (!document.getElementById(id)) {
-    const url = wearTile(kind, amt, bare, 1 + (variant % 3));
-    const w = 256 * scale;
-    const p = mk('pattern', { id, width: w, height: w, patternUnits: 'userSpaceOnUse', patternTransform: `translate(${(variant * 37) % 97 * scale} ${(variant * 61) % 89 * scale}) rotate(${variant * 45})` }, defsHost());
+    const url = wearTile(kind, amt, bare, 1 + (variant % (kind === 'rust' ? 2 : 4))); // rust noise is costly: two seeds, shifted
+    const w = (WEAR_PX[kind] || 256) * scale;
+    // rust keeps its drips pointing down; the rest turn too
+    const rot = kind === 'rust' ? 0 : variant * 45;
+    const p = mk('pattern', { id, width: w, height: w, patternUnits: 'userSpaceOnUse', patternTransform: `translate(${(variant * 37) % 97 * scale} ${(variant * 61) % 89 * scale}) rotate(${rot})` }, defsHost());
     mk('image', { href: url, width: w, height: w, preserveAspectRatio: 'none' }, p);
   }
   return `url(#${id})`;
@@ -1053,20 +1573,37 @@ export function wearOverlay(g, tag, attrs, spec, opts = {}) {
   const variant = seedNum(String(opts.seed || '')) % 8;
   const bare = bareOf(spec);
   const q = (v) => Math.round(v * 10) / 10 || 0.1;
+  const qf = (v) => Math.max(0.02, Math.round(v * 50) / 50); // finer steps for scratches and chips
   const layer = (fill, op = 1) => mk(tag, Object.assign({}, attrs, { fill, opacity: op, 'pointer-events': 'none' }), g);
+  const size = Math.min(120, tag === 'circle' ? attrs.r * 2 : tag === 'rect' ? Math.min(attrs.width, attrs.height) : opts.size || 20);
+  let cid = null;
+  const clipped = () => {
+    if (!cid) {
+      cid = 'mwc' + (++clipN) + '-' + seedNum(String(opts.seed || '')).toString(36);
+      const cp = mk('clipPath', { id: cid }, g);
+      mk(tag, Object.assign({}, attrs), cp);
+    }
+    return mk('g', { 'clip-path': `url(#${cid})`, 'pointer-events': 'none' }, g);
+  };
   if (w.fade) {
     layer(wearPattern('fade', 1, '#ffffff', variant, scale * 2), w.fade * 0.55);
   }
   if (w.stain) layer(wearPattern('stain', q(w.stain), '#000000', variant, scale), 0.5 + w.stain * 0.5);
-  if (w.rust) layer(wearPattern('rust', q(w.rust), '#000000', variant, scale), 1);
+  if (w.rust) {
+    // two layers with different tile sizes, so the patches never line up into a repeat
+    layer(wearPattern('rust', q(w.rust), '#000000', variant, scale), 1);
+    layer(wearPattern('rust', q(w.rust * 0.7), '#000000', (variant + 5) % 8, scale * 1.37), 1);
+    // rust starts at the edges: bands along the outline, denser towards the edge
+    const cg = clipped();
+    const ew = size * (0.05 + w.rust * 0.2);
+    [[1, 0.12], [0.62, 0.26], [0.32, 0.42]].forEach(([k, more]) => {
+      mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: wearPattern('rust', q(Math.min(1, w.rust + more)), '#000000', variant, scale), 'stroke-width': ew * 2 * k, 'stroke-linejoin': 'round' }), cg);
+    });
+  }
   if (w.relic) {
     // worn through at the edges, plus a few rubbed spots
-    const size = Math.min(120, tag === 'circle' ? attrs.r * 2 : tag === 'rect' ? Math.min(attrs.width, attrs.height) : opts.size || 20);
     const sw = size * (0.03 + w.relic * 0.11);
-    const id = 'mwc' + (++clipN) + '-' + seedNum(String(opts.seed || '')).toString(36);
-    const cp = mk('clipPath', { id }, g);
-    mk(tag, Object.assign({}, attrs), cp);
-    const cg = mk('g', { 'clip-path': `url(#${id})`, 'pointer-events': 'none' }, g);
+    const cg = clipped();
     const bf = bare.spec ? materialFill(bare.spec, { scale: opts.scale || 1 }).fill : bare.hex;
     const v = seedNum(String(opts.seed || '') + 'r');
     const k = size / 40 + 0.5;
@@ -1079,11 +1616,18 @@ export function wearOverlay(g, tag, attrs, spec, opts = {}) {
     mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw * 0.5 }), cg);
     mk(tag, Object.assign({}, attrs, { fill: wearPattern('relic', q(w.relic), bare.hex, variant, scale) }), cg);
   }
-  if (w.chip) layer(wearPattern('chip', q(w.chip), bare.hex, variant, scale), 1);
-  if (w.chipL) layer(wearPattern('chipL', q(w.chipL), bare.hex, variant, scale), 1);
+  // chips and scratches also get a second layer at another size, so they don't repeat on long shapes
+  if (w.chip) {
+    layer(wearPattern('chip', qf(w.chip * 0.8), bare.hex, variant, scale), 1);
+    layer(wearPattern('chip', qf(w.chip * 0.8), bare.hex, (variant + 3) % 8, scale * 1.41), 1);
+  }
   if (w.dent) layer(wearPattern('dent', q(w.dent), '#000000', variant, scale), 0.6 + w.dent * 0.4);
-  if (w.scratch) layer(wearPattern('scratch', q(w.scratch), '#000000', variant, scale), 0.5 + w.scratch * 0.5);
-  if (w.scratchL) layer(wearPattern('scratchL', q(w.scratchL), '#000000', variant, scale), 0.4 + w.scratchL * 0.6);
+  if (w.scratch) {
+    const two = w.scratch > 0.15;
+    const op = 0.75 + w.scratch * 0.25;
+    layer(wearPattern('scratch', qf(w.scratch * (two ? 0.72 : 1)), '#000000', variant, scale), op);
+    if (two) layer(wearPattern('scratch', qf(w.scratch * 0.72), '#000000', (variant + 5) % 8, scale * 1.37), op);
+  }
 }
 
 /** A small swatch (circle) for pickers: an <svg> element drawn with the material. */
