@@ -116,5 +116,45 @@ vt = {'k': 'vca', 'slots': [{'p': 'gain', 'def': 1, 'lo': 0, 'hi': 1, 'tab': [0,
 y11 = render(patch([AIN, c5, vt, AOUT], [[0, 0, 2, 0, 0], [1, 0, 2, 0, 1], [2, 0, 3, 0, 0]]), sine)
 check(abs(rms(y11[4800:]) / rms(dry[4800:]) - 0.25) < 0.01, 'a slot table picks its entry')
 
+# 10. analog values -255..255 through math parts (raw slots): (200 * -1) + 201 = 1 opens a VCA; 200 * 200 clamps to 255
+R = lambda p, d: {'p': p, 'def': d, 'lo': -255, 'hi': 255, 'raw': True}
+a200 = {'k': 'param', 'pi': 0, 'slots': []}
+mul = {'k': 'mul', 'slots': [R('a', 0), R('b', -1)]}
+addn = {'k': 'add', 'slots': [R('a', 0), R('b', 201)]}
+vg = {'k': 'vca', 'slots': [{'p': 'gain', 'def': 0, 'lo': 0, 'hi': 1}]}
+pa = [{'name': 'c1.a', 'def': 200, 'min': -255, 'max': 255}]
+y12 = render(patch([AIN, a200, mul, addn, vg, AOUT], [[1, 0, 2, 0, 1], [2, 0, 3, 0, 1], [3, 0, 4, 0, 1], [0, 0, 4, 0, 0], [4, 0, 5, 0, 0]], pa), sine)
+check(abs(rms(y12[4800:]) - rms(dry[4800:])) < 0.003, f'200 * -1 + 201 = 1 opens a VCA ({rms(y12[4800:]):.4f})')
+sq = {'k': 'mul', 'slots': [R('a', 0), R('b', 200)]}
+sub = {'k': 'sub', 'slots': [R('a', 0), R('b', 254)]}
+y13 = render(patch([AIN, a200, sq, sub, vg, AOUT], [[1, 0, 2, 0, 1], [2, 0, 3, 0, 1], [3, 0, 4, 0, 1], [0, 0, 4, 0, 0], [4, 0, 5, 0, 0]], pa), sine)
+check(abs(rms(y13[4800:]) - rms(dry[4800:])) < 0.003, '200 * 200 clamps to 255, minus 254 = 1')
+dv = {'k': 'div', 'slots': [R('a', 5), R('b', 0)]}
+vh = {'k': 'vca', 'slots': [{'p': 'gain', 'def': 1, 'lo': 0, 'hi': 1}]}
+y14 = render(patch([AIN, dv, vh, AOUT], [[1, 0, 2, 0, 1], [0, 0, 2, 0, 0], [2, 0, 3, 0, 0]]), sine)
+check(rms(y14[4800:]) < 1e-4, f'dividing by zero gives 0, not a blow up ({rms(y14[4800:]):.5f})')
+neg = {'k': 'param', 'pi': 0, 'slots': []}
+y15 = render(patch([AIN, neg, vh, AOUT], [[1, 0, 2, 0, 1], [0, 0, 2, 0, 0], [2, 0, 3, 0, 0]], [{'name': 'c1.n', 'def': -120.5, 'min': -255, 'max': 255}]), sine)
+check(rms(y15[4800:]) < 1e-4, 'a negative analog value reads as the bottom of a normal slot')
+
+# 11. an input span: 50 of 0..100 is half way
+p50 = {'k': 'param', 'pi': 0, 'slots': []}
+vs = {'k': 'vca', 'slots': [{'p': 'gain', 'def': 1, 'lo': 0, 'hi': 1, 'xlo': 0, 'xhi': 100}]}
+y16 = render(patch([AIN, p50, vs, AOUT], [[1, 0, 2, 0, 1], [0, 0, 2, 0, 0], [2, 0, 3, 0, 0]], [{'name': 'c1.p', 'def': 50, 'min': 0, 'max': 100}]), sine)
+check(abs(rms(y16[4800:]) / rms(dry[4800:]) - 0.5) < 0.01, 'an input span maps 50 of 0..100 to half')
+
+# 12. control delay: a constant 1 reaches the VCA half a second later
+c1 = {'k': 'const', 'slots': [{'p': 'value', 'def': 1}]}
+cd = {'k': 'cdelay', 'slots': [{'p': 'in', 'def': 0, 'lo': -255, 'hi': 255, 'raw': True}, {'p': 'time', 'def': 0.5, 'lo': 0, 'hi': 10, 'raw': True}]}
+y17 = render(patch([AIN, c1, cd, vg, AOUT], [[1, 0, 2, 0, 1], [2, 0, 3, 0, 1], [0, 0, 3, 0, 0], [3, 0, 4, 0, 0]]), sine)
+early, late = rms(y17[2400:21600]), rms(y17[28800:48000])
+check(early < 1e-4 and abs(late - rms(dry[4800:])) < 0.003, f'the delay part passes its input on after 0.5 s ({early:.5f} then {late:.4f})')
+
+# 13. a circuit input fed by another circuit's output (its 'in' slot) instead of its param
+fed = {'k': 'param', 'pi': 0, 'slots': [{'p': 'in', 'def': 0, 'lo': -255, 'hi': 255, 'raw': True}]}
+c0b = {'k': 'const', 'slots': [{'p': 'value', 'def': 0}]}
+y18 = render(patch([AIN, c0b, fed, vh, AOUT], [[1, 0, 2, 0, 1], [2, 0, 3, 0, 1], [0, 0, 3, 0, 0], [3, 0, 4, 0, 0]], [{'name': 'c1.x', 'def': 1, 'min': 0, 'max': 1}]), sine)
+check(rms(y18[4800:]) < 1e-4, 'a wired circuit input follows the wire, not its param')
+
 print(f'{fails} failed' if fails else 'all passed')
 sys.exit(1 if fails else 0)

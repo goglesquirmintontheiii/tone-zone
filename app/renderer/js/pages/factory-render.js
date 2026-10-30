@@ -1,12 +1,12 @@
 // Pedal Factory: draws a design (millimetres). Used by the factory stage, its thumbnails, test mode and the
 // 'custom' board form (gfx/forms-custom.js), so a saved pedal looks the same everywhere.
 import { svg, clamp, luminance } from '../util.js';
-import { drawSlider, drawSelector, drawTreadle, angleFor } from '../gfx/controls.js';
+import { drawSlider, drawSelector, angleFor } from '../gfx/controls.js';
 import { drawJack } from '../gfx/jacks.js';
-import { normalize, materialFill, multiFill, wearOverlay, seeThrough, opacityOf } from '../gfx/materials.js';
+import { normalize, materialFill, paint, multiLayer, wearOverlay, seeThrough, opacityOf } from '../gfx/materials.js';
 import { knobPart, buttonPart, footPart, togglePart, ledPart, treadlePart, bezel, nutPaint, NEW_KNOBS } from './factory-parts.js';
-import { encoderPart, xyPart, stripPart, arcadePart, stepsPart, tbankPart, tbankWidth, leverPart, padPart, ldrPart, meterPart, sliderLook, selLook, ledLook, ledHalf, STEP } from './factory-controls.js';
-import { xySize } from './factory-kinds.js';
+import { encoderPart, xyPart, stripPart, arcadePart, stepsPart, tbankPart, tbankWidth, meterPart, sliderLook, selLook, ledLook, ledHalf, STEP } from './factory-controls.js';
+import { xySize, drawable } from './factory-kinds.js';
 import { renderPatterns } from './factory-patterns.js';
 import { STAGES } from './factory-circuit.js';
 import { drawScriptScreen } from '../screenscript/surface.js';
@@ -46,7 +46,8 @@ export const ART_KINDS = [
   ['burst', 'Burst'], ['bolt', 'Bolt'], ['chevron', 'Chevron'], ['heart', 'Heart'], ['stripe', 'Stripe'], ['stripes', 'Twin stripe'],
   ['wave', 'Wave'], ['dots', 'Dots'],
 ];
-// edge = where a new jack goes. Jack kinds on the board: in/out inst, phones (TRS stereo), xlr, exp = control input.
+// edge = where a new jack goes. Jack kinds on the board: in/out inst, phones (TRS stereo), xlr, exp = control input,
+// fsw = a TRS input for external footswitches (tip and ring each carry an on / off), a control input on the board.
 export const JACKS = {
   in: { name: 'Input', label: 'IN', edge: 'right' },
   out: { name: 'Output', label: 'OUT', edge: 'left' },
@@ -54,6 +55,7 @@ export const JACKS = {
   phones: { name: 'Headphones', label: 'PHONES', edge: 'top' },
   xlr: { name: 'XLR out', label: 'XLR', edge: 'left' },
   exp: { name: 'Expression', label: 'EXP', edge: 'top' },
+  fsw: { name: 'Footswitch', label: 'FSW', edge: 'top' },
   power: { name: 'Power', label: '9V', edge: 'top' },
 };
 export const isJackKind = (k) => !!JACKS[k];
@@ -318,7 +320,7 @@ function drawPowerJack(parent) {
   svg('rect', { x: 2.6, y: -3.4, width: 0.9, height: 6.8, fill: '#2b2d31' }, parent);
   svg('circle', { cx: 3.3, r: 1.2, fill: '#000' }, parent);
 }
-export const boardKind = (k) => (k === 'phones' ? 'phones' : k === 'xlr' ? 'xlr' : k === 'exp' ? 'ctrl' : k === 'stereo' ? 'inst' : 'inst');
+export const boardKind = (k) => (k === 'phones' ? 'phones' : k === 'xlr' ? 'xlr' : k === 'exp' || k === 'fsw' ? 'ctrl' : 'inst');
 // the board's jack graphic at half scale, so the factory and the board show the same jack
 // angle: draw it pointing that way (degrees, see the board's angled jack contract) instead of straight out of side
 export function drawJackGfx(parent, j, side = 'left', angle = null) {
@@ -363,12 +365,17 @@ export function drawScreen(g, c) {
 }
 
 export const DIP_SW = 2.8;
-export const dipWidth = (n) => n * DIP_SW + 2.4;
+export const DIP_LOOKS = [['slide', 'Slide'], ['piano', 'Piano'], ['toggle', 'Toggles']];
+export const dipWidth = (n, look) => (look === 'toggle' ? tbankWidth(n) : n * DIP_SW + 2.4);
 // returns one setter per switch; o.ids gives each switch its own data-ctl (board / test mode)
 export function drawDip(g, c, o = {}) {
   const n = c.n || 4;
-  const sw = DIP_SW, w = dipWidth(n), h = 9;
-  svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.6, fill: c.color || '#c8102e', stroke: '#000', 'stroke-opacity': 0.5, 'stroke-width': 0.3 }, g);
+  const piano = c.look === 'piano';
+  const sw = DIP_SW, w = dipWidth(n), h = piano ? 7.4 : 9;
+  const body = { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.6 };
+  if (c.mat && normalize(c.mat).m !== 'stock') paint(g, 'rect', body, c.mat, { scale: 0.3, seed: c.id, edgeWidth: 0.25, wearScale: 0.35 });
+  else svg('rect', { ...body, fill: c.color || (piano ? '#1f4fbf' : '#c8102e') }, g);
+  svg('rect', { ...body, fill: 'none', stroke: '#000', 'stroke-opacity': 0.5, 'stroke-width': 0.3 }, g);
   svg('text', { x: -w / 2 + 0.8, y: -h / 2 + 1.3, fill: '#fff', 'font-size': 1.5, 'font-family': "'Inter', sans-serif", 'font-weight': 700, 'pointer-events': 'none' }, g, 'ON');
   const sets = [];
   for (let i = 0; i < n; i++) {
@@ -376,26 +383,67 @@ export function drawDip(g, c, o = {}) {
     const sg = svg('g', {}, g);
     if (o.ids) sg.dataset.ctl = o.ids[i];
     svg('rect', { x: x - 1.25, y: -3.2, width: 2.5, height: 6.4, fill: 'transparent' }, sg);
-    svg('rect', { x: x - 0.9, y: -2.6, width: 1.8, height: 5.2, rx: 0.2, fill: '#1a1a1a' }, sg);
-    const knob = svg('rect', { x: x - 0.8, y: 0.1, width: 1.6, height: 2.4, rx: 0.2, fill: '#f4f4f4' }, sg);
-    const set = (on) => knob.setAttribute('y', on ? -2.5 : 0.1);
+    let set;
+    if (piano) {
+      // piano keys: a rocker you press down at one end
+      svg('rect', { x: x - 1.05, y: -2.9, width: 2.1, height: 5.2, rx: 0.3, fill: '#0f1012' }, sg);
+      const top = svg('rect', { x: x - 0.9, y: -2.7, width: 1.8, height: 2.4, rx: 0.25 }, sg);
+      const bot = svg('rect', { x: x - 0.9, y: -0.3, width: 1.8, height: 2.4, rx: 0.25 }, sg);
+      set = (on) => {
+        top.setAttribute('fill', on ? '#9aa0a8' : '#f4f4f4');
+        bot.setAttribute('fill', on ? '#f4f4f4' : '#9aa0a8');
+      };
+    } else {
+      svg('rect', { x: x - 0.9, y: -2.6, width: 1.8, height: 5.2, rx: 0.2, fill: '#1a1a1a' }, sg);
+      const knob = svg('rect', { x: x - 0.8, y: 0.1, width: 1.6, height: 2.4, rx: 0.2, fill: '#f4f4f4' }, sg);
+      set = (on) => knob.setAttribute('y', on ? -2.5 : 0.1);
+    }
     set(c.bits ? c.bits[i] : 0);
     sets.push(set);
-    svg('text', { x, y: 3.8, fill: '#fff', 'font-size': 1.4, 'text-anchor': 'middle', 'font-family': "'Inter', sans-serif", 'font-weight': 700, 'pointer-events': 'none' }, g, String(i + 1));
+    svg('text', { x, y: h / 2 - 0.7, fill: '#fff', 'font-size': 1.4, 'text-anchor': 'middle', 'font-family': "'Inter', sans-serif", 'font-weight': 700, 'pointer-events': 'none' }, g, String(i + 1));
   }
   return sets;
 }
 
-// small screwdriver trim pot
+// small trim pot: a square screwdriver trimmer, a round open one, or a thumbwheel
+export const TRIM_LOOKS = [['square', 'Square'], ['round', 'Round'], ['thumb', 'Thumbwheel']];
 function trimPart(parent, c) {
   const r = c.r || 3;
+  const look = c.look || 'square';
   const g = svg('g', { class: 'ctl trim' }, parent);
   svg('circle', { r: r + 3, fill: 'transparent' }, g);
-  svg('rect', { x: -r - 0.9, y: -r - 0.9, width: r * 2 + 1.8, height: r * 2 + 1.8, rx: 0.6, fill: c.color || '#2b6fd6', stroke: '#000', 'stroke-opacity': 0.5, 'stroke-width': 0.25 }, g);
-  svg('circle', { r, fill: '#e8e6df', stroke: '#000', 'stroke-opacity': 0.4, 'stroke-width': 0.25 }, g);
-  const rot = svg('g', {}, g);
-  svg('rect', { x: -0.35, y: -r * 0.85, width: 0.7, height: r * 1.7, fill: '#2a2a2a' }, rot);
-  svg('rect', { x: -r * 0.85, y: -0.35, width: r * 1.7, height: 0.7, fill: '#2a2a2a', opacity: 0.55 }, rot);
+  const o = { scale: 0.3, seed: c.id, edgeWidth: 0.25, wearScale: 0.35 };
+  const mat = c.mat && normalize(c.mat).m !== 'stock' ? c.mat : null;
+  const body = (tag, attrs, col) => (mat ? paint(g, tag, attrs, mat, o) : svg(tag, { ...attrs, fill: col, stroke: '#000', 'stroke-opacity': 0.5, 'stroke-width': 0.25 }, g));
+  const rot = svg('g', {});
+  if (look === 'thumb') {
+    // a thumbwheel seen from above: a knurled disc edge poking out of a slot
+    svg('rect', { x: -r - 1.4, y: -r * 0.75 - 0.6, width: r * 2 + 2.8, height: r * 1.5 + 1.2, rx: 0.6, fill: '#0d0e10' }, g);
+    body('rect', { x: -r - 0.6, y: -r * 0.75, width: r * 2 + 1.2, height: r * 1.5, rx: 0.5 }, c.color || '#d8dade');
+    g.appendChild(rot);
+    const lines = svg('g', {}, rot);
+    lines.dataset.ribs = '1';
+    rot.dataset.thumb = '1';
+    for (let i = -4; i <= 4; i++) svg('line', { x1: (i * r) / 4.6, x2: (i * r) / 4.6, y1: -r * 0.7, y2: r * 0.7, stroke: '#000', 'stroke-width': 0.3, opacity: 0.4 }, lines);
+    svg('rect', { x: -r - 0.6, y: -r * 0.75, width: r * 2 + 1.2, height: r * 1.5, rx: 0.5, fill: 'url(#g-shadeV)', opacity: 0.6, 'pointer-events': 'none' }, g);
+    const set = (v) => lines.setAttribute('transform', `translate(${((clamp(v, 0, 1) - 0.5) * (r / 2.3)).toFixed(2)},0)`);
+    set(c.value ?? 0.5);
+    return { g, set };
+  }
+  if (look === 'round') {
+    body('circle', { r: r + 0.9 }, c.color || '#f2c230');
+    svg('circle', { r: r * 0.92, fill: '#000', opacity: 0.25 }, g);
+    svg('circle', { r: r * 0.75, fill: '#e8e6df', stroke: '#000', 'stroke-opacity': 0.4, 'stroke-width': 0.25 }, g);
+    g.appendChild(rot);
+    svg('rect', { x: -0.4, y: -r * 0.7, width: 0.8, height: r * 1.4, fill: '#2a2a2a' }, rot);
+    svg('path', { d: `M0,${-r * 0.92} l-0.6,-0.6 h1.2z`, fill: '#2a2a2a' }, rot);
+  } else {
+    body('rect', { x: -r - 0.9, y: -r - 0.9, width: r * 2 + 1.8, height: r * 2 + 1.8, rx: 0.6 }, c.color || '#2b6fd6');
+    svg('circle', { r, fill: '#e8e6df', stroke: '#000', 'stroke-opacity': 0.4, 'stroke-width': 0.25 }, g);
+    g.appendChild(rot);
+    svg('rect', { x: -0.35, y: -r * 0.85, width: 0.7, height: r * 1.7, fill: '#2a2a2a' }, rot);
+    svg('rect', { x: -r * 0.85, y: -0.35, width: r * 1.7, height: 0.7, fill: '#2a2a2a', opacity: 0.55 }, rot);
+  }
   const set = (v) => rot.setAttribute('transform', `rotate(${angleFor(v)})`);
   set(c.value ?? 0.5);
   return { g, set };
@@ -403,6 +451,7 @@ function trimPart(parent, c) {
 
 // rough half-height used to place labels under or over a control
 export function ctlExtent(c) {
+  c = drawable(c);
   const p = partHalf(c);
   if (p) return p[1];
   switch (c.kind) {
@@ -416,17 +465,18 @@ export function ctlExtent(c) {
     case 'foot': return c.style === 'rc' || c.style === 'ts' ? (c.h || 30) / 2 + 1 : (c.r || 7) + 4.5;
     case 'led': return c.r + 2;
     case 'screen': return c.h / 2 + 2.5;
-    case 'dip': return 5.5;
+    case 'dip': return c.look === 'toggle' ? 5.2 : c.look === 'piano' ? 4.7 : 5.5;
     default: return 6;
   }
 }
 // half size of a control (for collision checks and mirror), as [half width, half height]
 export function ctlHalf(c) {
+  c = drawable(c);
   const p = partHalf(c);
   if (p) return p;
   switch (c.kind) {
     case 'screen': return [c.w / 2 + 1.8, c.h / 2 + 1.8];
-    case 'dip': return [dipWidth(c.n || 4) / 2, 4.5];
+    case 'dip': return [dipWidth(c.n || 4, c.look) / 2, c.look === 'toggle' ? 5.2 : 4.5];
     case 'pedal': return [(c.w || 40) / 2, (c.h || 60) / 2];
     case 'slider': return c.orient === 'h' ? [(c.h || 24) / 2 + 4, 4] : [4, (c.h || 24) / 2 + 4];
     case 'button': return c.shape === 'rect' || c.shape === 'pill' ? [(c.w || 12) / 2, (c.h || 6) / 2] : [c.r || 4, c.r || 4];
@@ -442,20 +492,17 @@ export const ctlRadius = (c) => Math.max(...ctlHalf(c));
 function partHalf(c) {
   const r = c.r || 8;
   switch (c.part) {
-    case 'encoder': return [r + (c.ring ? 5 : 2.5), r + (c.ring ? 5 : 2.5)];
-    case 'lever': { const L = c.len || 26; return [L * 0.3, L * 0.5 + 1]; }
-    case 'pad': return [(c.w || 16) / 2 + 1.4, (c.w || 16) / 2 + 1.4];
-    case 'ldr': return [(c.r || 3.5) + 1.5, (c.r || 3.5) + 1.5];
-    case 'meter': return [(c.w || 28) / 2 + 1.5, (c.h || 18) / 2 + 1.5];
+    case 'encoder': return [r + (c.ring ? 5.3 : 2.5), r + (c.ring ? 5.3 : 2.5)];
+    case 'meter': return c.look === 'round' ? [(c.h || 18) / 2 + 1.6, (c.h || 18) / 2 + 1.6] : [(c.w || 28) / 2 + 1.5, (c.h || 18) / 2 + 1.5];
     case 'strip': return c.orient === 'h' ? [(c.h || 40) / 2 + 1, (c.w || 6) / 2 + 1] : [(c.w || 6) / 2 + 1, (c.h || 40) / 2 + 1];
     case 'arcade': return [(c.r || 7) + 2.4, (c.r || 7) + 2.4];
     case 'steps': return [((c.n || 4) * STEP) / 2, 6];
-    case 'tbank': return [tbankWidth(c.n || 4) / 2, 5.2];
   }
   if (c.kind === 'xy') {
     const [w, h] = xySize(c);
     return [w / 2 + 1, h / 2 + 2.4];
   }
+  if (c.kind === 'trim' && c.look === 'thumb') return [(c.r || 3) + 1.4, (c.r || 3) * 0.75 + 0.6];
   if (c.kind === 'knob' && c.dial && c.dial !== 'none') return [c.r + (c.dial === 'plate' ? 6.5 : 5.2), c.r + (c.dial === 'plate' ? 6.5 : 5.2)];
   if (c.kind === 'led' && c.look && c.look !== 'round') return ledHalf(c);
   if (c.kind === 'sel' && c.look === 'lcd') return [Math.max(9, (c.r || 7) + 3), (c.r || 7) + 7];
@@ -467,19 +514,17 @@ const NEW_STYLE = new Set(NEW_KNOBS.map((k) => k[0]));
 const hasMat = (c) => !!c.mat && normalize(c.mat).m !== 'stock';
 // draws one control; returns a view ({set, press}) for board / test use
 export function drawControl(parent, c, th, o = {}) {
+  c = drawable(c); // older parts drawn as what they became (factory-kinds.js)
   let view = null;
   const ids = o.ids || null;
   // each part can have its own material (factory-parts.js); no material keeps the stock look
   const part = c.part;
   if (part === 'encoder') view = encoderPart(parent, c, th);
-  else if (part === 'lever') view = leverPart(parent, c, th);
-  else if (part === 'pad') view = padPart(parent, c, th);
-  else if (part === 'ldr') view = ldrPart(parent, c, th);
   else if (part === 'meter') view = meterPart(parent, c, th);
   else if (part === 'strip') view = stripPart(parent, c, th);
   else if (part === 'arcade') view = arcadePart(parent, c, th);
   else if (part === 'steps') view = stepsPart(parent, c, th);
-  else if (part === 'tbank') view = tbankPart(parent, c, th, { ids });
+  else if (c.kind === 'dip' && c.look === 'toggle') view = tbankPart(parent, c, th, { ids });
   else if (c.kind === 'xy') view = xyPart(parent, c, th, { ids });
   else if (c.kind === 'slider' && ((c.look && c.look !== 'classic') || hasMat(c))) view = sliderLook(parent, c, th);
   else if (c.kind === 'sel' && ((c.look && c.look !== 'classic') || hasMat(c) || NEW_STYLE.has(c.style))) view = selLook(parent, c, th, knobPart);
@@ -703,7 +748,7 @@ export function renderPedal(root, d, o = {}) {
   const cg = svg('g', { 'clip-path': `url(#${pre}clip)`, 'pointer-events': 'none' }, root);
   const full = { x: -2, y: -2, width: W + 4, height: H + 4 };
   if (mf.overlay) svg('rect', { ...full, fill: mf.overlay }, cg);
-  if (spec.mc) svg('rect', { ...full, fill: multiFill(spec.mc), style: 'mix-blend-mode:multiply' }, cg);
+  if (spec.mc) multiLayer(cg, 'rect', full, spec, { scale: 0.44 });
   // tinted acrylic hides a lot: a faint second pass keeps the board readable through it
   if (pcbOn) drawPcb(svg('g', { opacity: 0.4 * Math.min(1, (1 - opacityOf(spec)) * 2) }, cg), d, pts, spots);
   const pats = (E.patterns || []).filter((L) => L.on);

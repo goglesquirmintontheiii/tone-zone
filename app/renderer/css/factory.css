@@ -320,3 +320,13 @@ textarea.fz-text { resize: vertical; font-family: 'Share Tech Mono', monospace; 
 .fz-lib-card .fz-actrow { margin-top: 8px; flex-wrap: wrap; }
 .fz-lib-empty { padding: 30px 18px; color: var(--muted); font-size: 13px; text-align: center; }
 .fz-lib .fz-tpl-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+
+/* palette variants: a dot per variant under the tile (factory-variants.js) */
+.fz-vdots { display: flex; justify-content: center; gap: 2px; margin-top: -1px; min-height: 9px; }
+.fz-vdots i { width: 9px; height: 9px; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.fz-vdots i::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--fg-rgb), 0.22); transition: background 0.12s, transform 0.12s; }
+.fz-vdots i:hover::after { background: rgba(var(--fg-rgb), 0.5); transform: scale(1.2); }
+.fz-vdots i.on::after { background: var(--accent); }
+/* which part of the item the material picker edits (factory-matparts.js) */
+.fz-matparts { width: 100%; margin-bottom: 10px; display: flex; flex-wrap: wrap; }
+.fz-matparts button { flex: 1 1 auto; text-align: center; }

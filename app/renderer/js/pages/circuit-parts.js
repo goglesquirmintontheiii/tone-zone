@@ -1,7 +1,11 @@
 // Circuit parts: everything you can drop into a circuit in the circuit editor. Audio parts run an engine
 // algorithm (see docs/engine-blocks.md) or a small native part of the engine's 'patch' block; control parts
-// make 0..1 signals (envelopes, LFOs, logic, comparators) that can drive any part's values.
+// make control signals (envelopes, LFOs, logic, comparators, math) that can drive any part's values.
 // Every value of a part is also a control input port, so anything can be wired to move anything.
+//
+// Signals: audio, analog (a float from -255 to 255) and binary (0 or 1, on above 0.5). A part value reads an
+// analog signal through its input span (0 to 1 unless the wire says otherwise) and sweeps its own range; the
+// math, delay and output parts take values as they are ('raw' params). Port sig: 'a' audio, 'n' analog, 'b' binary.
 
 // ------------------------------------------------------------------ engine algorithm stages
 // params: [key, label, min, max, default, flags] flags: i = whole numbers, l = log sweep, opts = names
@@ -65,8 +69,11 @@ export const GROUPS = [
   ['drive', 'Drive and clipping'], ['dyn', 'Dynamics'], ['eq', 'Filters and EQ'], ['mod', 'Modulation'], ['time', 'Delay and reverb'],
   ['pitch', 'Pitch and synth'], ['route', 'Mixing and routing'], ['util', 'Utility'], ['ctl', 'Control signals'], ['logic', 'Logic and comparators'], ['io', 'Inputs and outputs'],
 ];
-const A_IN = [['in', 'In']], A_OUT = [['out', 'Out']], C_OUT = [['cv', 'Out']];
+const A_IN = [['in', 'In']], A_OUT = [['out', 'Out']], C_OUT = [['cv', 'Out']], B_OUT = [['cv', 'Out', 'b']];
 const SIG = { sig: 1 }; // drawn as a main input of control parts
+const BSIG = { sig: 1, bin: 1 }; // a binary main input
+export const LIM = 255; // analog values stay within -255..255
+const RAW = (key, label, def, f = {}) => P(key, label, -LIM, LIM, def, { raw: 1, sig: 1, ...f });
 export const PARTS = {};
 for (const [k, st] of Object.entries(STAGES))
   PARTS[k] = { name: st.name, group: st.cat === 'eq' ? 'eq' : st.cat, algo: st.algo, ain: A_IN, aout: A_OUT, cout: [], tap: !!st.tap, params: [...st.params, P('on', 'On', 0, 1, 1, { i: 1, opts: ['Off', 'On'] })] };
@@ -95,25 +102,40 @@ N('scale', { name: 'Scale / curve', group: 'ctl', cout: C_OUT, desc: 'Squeezes a
 N('math', { name: 'Math', group: 'ctl', cout: C_OUT, desc: 'Adds, multiplies or compares two control signals.',
   params: [P('a', 'A', 0, 1, 0, SIG), P('b', 'B', 0, 1, 0, SIG), P('op', 'Operation', 0, 5, 0, { i: 1, opts: ['Add', 'Multiply', 'Lowest', 'Highest', 'Difference', 'Subtract'] })] });
 N('smooth', { name: 'Smoother', group: 'ctl', cout: C_OUT, desc: 'Slows a control signal down (slew).', params: [P('in', 'In', 0, 1, 0, SIG), P('time', 'Time', 1, 2000, 60, { l: 1, unit: 'ms' })] });
-N('sh', { name: 'Sample and hold', group: 'ctl', cout: C_OUT, desc: 'Grabs the input each time Trigger goes high.', params: [P('in', 'In', 0, 1, 0, SIG), P('trig', 'Trigger', 0, 1, 0, SIG)] });
-N('and', { name: 'AND', group: 'logic', cout: C_OUT, desc: 'On when both inputs are on.', params: [P('a', 'A', 0, 1, 0, SIG), P('b', 'B', 0, 1, 0, SIG)] });
-N('or', { name: 'OR', group: 'logic', cout: C_OUT, desc: 'On when either input is on.', params: [P('a', 'A', 0, 1, 0, SIG), P('b', 'B', 0, 1, 0, SIG)] });
-N('xor', { name: 'XOR', group: 'logic', cout: C_OUT, desc: 'On when exactly one input is on.', params: [P('a', 'A', 0, 1, 0, SIG), P('b', 'B', 0, 1, 0, SIG)] });
-N('not', { name: 'NOT', group: 'logic', cout: C_OUT, desc: 'On when the input is off.', params: [P('a', 'In', 0, 1, 0, SIG)] });
-N('toggle', { name: 'Flip-flop', group: 'logic', cout: C_OUT, desc: 'Flips on and off each time Trigger goes high.', params: [P('trig', 'Trigger', 0, 1, 0, SIG), P('reset', 'Reset', 0, 1, 0, SIG)] });
-N('cmp', { name: 'Comparator', group: 'logic', cout: C_OUT, desc: 'On when the input goes over Threshold, off again below it (with hysteresis).',
+N('sh', { name: 'Sample and hold', group: 'ctl', cout: C_OUT, desc: 'Grabs the input each time Trigger goes high.', params: [P('in', 'In', 0, 1, 0, SIG), P('trig', 'Trigger', 0, 1, 0, BSIG)] });
+N('and', { name: 'AND', group: 'logic', cout: B_OUT, desc: 'On when both inputs are on.', params: [P('a', 'A', 0, 1, 0, BSIG), P('b', 'B', 0, 1, 0, BSIG)] });
+N('or', { name: 'OR', group: 'logic', cout: B_OUT, desc: 'On when either input is on.', params: [P('a', 'A', 0, 1, 0, BSIG), P('b', 'B', 0, 1, 0, BSIG)] });
+N('xor', { name: 'XOR', group: 'logic', cout: B_OUT, desc: 'On when exactly one input is on.', params: [P('a', 'A', 0, 1, 0, BSIG), P('b', 'B', 0, 1, 0, BSIG)] });
+N('not', { name: 'NOT', group: 'logic', cout: B_OUT, desc: 'On when the input is off.', params: [P('a', 'In', 0, 1, 0, BSIG)] });
+N('toggle', { name: 'Flip-flop', group: 'logic', cout: B_OUT, desc: 'Flips on and off each time Trigger goes high.', params: [P('trig', 'Trigger', 0, 1, 0, BSIG), P('reset', 'Reset', 0, 1, 0, BSIG)] });
+N('cmp', { name: 'Comparator', group: 'logic', cout: B_OUT, desc: 'On when the input goes over Threshold, off again below it (with hysteresis).',
   params: [P('in', 'In', 0, 1, 0, SIG), P('thr', 'Threshold', 0, 1, 0.5), P('hyst', 'Hysteresis', 0, 0.5, 0.05)] });
-N('window', { name: 'Window comparator', group: 'logic', cout: C_OUT, desc: 'On while the input is between Low and High.', params: [P('in', 'In', 0, 1, 0, SIG), P('lo', 'Low', 0, 1, 0.25), P('hi', 'High', 0, 1, 0.75)] });
+N('window', { name: 'Window comparator', group: 'logic', cout: B_OUT, desc: 'On while the input is between Low and High.', params: [P('in', 'In', 0, 1, 0, SIG), P('lo', 'Low', 0, 1, 0.25), P('hi', 'High', 0, 1, 0.75)] });
+// math on analog values (-255 to 255), as they are
+N('add', { name: 'Add', group: 'logic', cout: C_OUT, desc: 'A plus B. Analog values from -255 to 255.', params: [RAW('a', 'A', 0), RAW('b', 'B', 0)] });
+N('sub', { name: 'Subtract', group: 'logic', cout: C_OUT, desc: 'A minus B.', params: [RAW('a', 'A', 0), RAW('b', 'B', 0)] });
+N('mul', { name: 'Multiply', group: 'logic', cout: C_OUT, desc: 'A times B (kept within -255 to 255).', params: [RAW('a', 'A', 0), RAW('b', 'B', 1)] });
+N('div', { name: 'Divide', group: 'logic', cout: C_OUT, desc: 'A divided by B. Dividing by zero gives 0.', params: [RAW('a', 'A', 0), RAW('b', 'B', 1)] });
+N('cdelay', { name: 'Delay', group: 'logic', cout: C_OUT, desc: 'Puts out whatever came in, Time seconds later (up to 10 s). Works for analog and binary signals.',
+  params: [RAW('in', 'In', 0), P('time', 'Time', 0, 10, 0.5, { raw: 1, unit: 's' })] });
 // circuit inputs and outputs (what the pedal's jacks and controls wire to)
 PARTS.in = { name: 'Audio in', group: 'io', io: 'in', ain: [], aout: A_OUT, cout: [], params: [], desc: 'Where the pedal sends audio into this circuit.' };
 PARTS.out = { name: 'Audio out', group: 'io', io: 'out', ain: A_IN, aout: [], cout: [], params: [], desc: 'What this circuit sends back out.' };
-PARTS.knob = { name: 'Control input', group: 'io', io: 'ctl', ain: [], aout: [], cout: C_OUT, params: [], desc: 'A value the pedal can turn: wire a knob, switch or expression jack to it in the wiring diagram.' };
+PARTS.analog = { name: 'Analog input', group: 'io', io: 'ctl', ain: [], aout: [], cout: C_OUT, params: [], desc: 'A value the pedal can set (from -255 to 255): wire a knob, expression jack, screen or another circuit to it in the wiring diagram.' };
+PARTS.binary = { name: 'Binary input', group: 'io', io: 'ctl', ain: [], aout: [], cout: B_OUT, params: [], desc: 'An on / off input: wire a footswitch, switch, footswitch jack, screen or another circuit to it in the wiring diagram.' };
+PARTS.anaout = { name: 'Analog output', group: 'io', io: 'cout', ain: [], aout: [], cout: [], params: [RAW('in', 'In', 0)], desc: 'A value this circuit puts out: wire it to an LED, an EXP jack, a screen or another circuit in the wiring diagram.' };
+PARTS.binout = { name: 'Binary output', group: 'io', io: 'cout', ain: [], aout: [], cout: [], params: [P('in', 'In', 0, 1, 0, { raw: 1, sig: 1, bin: 1 })], desc: 'An on / off output: wire it to an LED, a footswitch jack, a screen or another circuit in the wiring diagram.' };
+// older circuits had a single 'knob' kind of input (migrateGraph turns it into analog or binary)
+PARTS.knob = { ...PARTS.analog, group: 'old', name: 'Control input' };
 PARTS.note = { name: 'Note', group: 'io', io: 'note', ain: [], aout: [], cout: [], params: [], desc: 'A comment on the canvas.' };
 // palette blurbs for the engine parts
 const BLURB = { overdrive: 'Soft clipping with a mid hump.', distortion: 'Hard clipping and a filter.', fuzz: 'Big, squared off sustain.', amp: 'Tube style drive with a 3 band stack.', boost: 'Clean gain.', comp: 'Evens out your playing.', gate: 'Cuts noise between notes.', swell: 'Fades each note in.',
   eq: 'Bass, mid and treble.', wah: 'Swept band pass.', delay: 'Echoes with tap tempo.', reverb: 'Rooms, halls, springs and more.', octave: 'Octave down and up.', synth: 'Guitar synth voices.' };
 for (const [k, b] of Object.entries(BLURB)) if (PARTS[k]) PARTS[k].desc = b;
 
+/** Signal kind of a part value: 'b' binary or 'n' analog. */
+export const paramSig = (p) => (p.bin || (p.i && p.min === 0 && p.max === 1) ? 'b' : 'n');
+export const isRaw = (p) => !!(p && p.raw);
 export const isAudioPart = (t) => !!PARTS[t] && !PARTS[t].io && (PARTS[t].ain.length || PARTS[t].aout.length);
 export const partParam = (t, key) => (PARTS[t]?.params || []).find((p) => p.key === key);
 
@@ -121,23 +143,62 @@ export const partParam = (t, key) => (PARTS[t]?.params || []).find((p) => p.key 
 export const nid = (p = 'n') => p + Math.random().toString(36).slice(2, 8);
 export const clone = (o) => JSON.parse(JSON.stringify(o));
 export function newNode(type, x = 0, y = 0, o = {}) {
+  if (type === 'knob') type = o.steps === 2 ? 'binary' : 'analog'; // the old control input
   const pt = PARTS[type];
   const n = { id: nid(), t: type, x: Math.round(x), y: Math.round(y), p: {} };
   if (STAGES[type]?.opts?.clip) n.voice = STAGES[type].opts.clip;
   if (STAGES[type]?.opts?.type) n.voice = STAGES[type].opts.type;
   if (pt && pt.io === 'in') n.name = 'IN';
   if (pt && pt.io === 'out') n.name = 'OUT';
-  if (pt && pt.io === 'ctl') Object.assign(n, { name: 'Knob', def: 0.5, steps: 0 });
+  if (type === 'analog') Object.assign(n, { name: 'Analog', def: 0.5, min: 0, max: 1, steps: 0 });
+  if (type === 'binary') Object.assign(n, { name: 'Switch', def: 0, opts: ['Off', 'On'] });
+  if (type === 'anaout') Object.assign(n, { name: 'Value out', min: 0, max: 1 });
+  if (type === 'binout') Object.assign(n, { name: 'Gate out' });
   if (pt && pt.io === 'note') Object.assign(n, { text: 'Note', w: 160, h: 60 });
-  return Object.assign(n, o);
+  Object.assign(n, o);
+  if (type === 'binary') delete n.steps;
+  return n;
+}
+/** Old 'knob' control inputs become analog (or binary for 2 way switches). Returns true when it changed G. */
+export function migrateGraph(G) {
+  let changed = false;
+  for (const n of (G && G.nodes) || []) {
+    if (n.t !== 'knob') continue;
+    changed = true;
+    if (n.steps === 2) {
+      n.t = 'binary';
+      n.def = n.def ? 1 : 0;
+      if (!n.opts || n.opts.length < 2) n.opts = ['Off', 'On'];
+      delete n.steps;
+    } else {
+      n.t = 'analog';
+      if (!(n.steps >= 2)) Object.assign(n, { min: n.min ?? 0, max: n.max ?? 1 });
+    }
+  }
+  return changed;
+}
+/** Signal kind of a node's port: 'a' audio, 'n' analog, 'b' binary (null when there is no such port). */
+export function portSig(n, key, out) {
+  const pt = n && PARTS[n.t];
+  if (!pt) return null;
+  if (out) {
+    if (pt.aout.some((x) => x[0] === key)) return 'a';
+    const c = pt.cout.find((x) => x[0] === key);
+    return c ? c[2] || 'n' : null;
+  }
+  if (key.startsWith('@')) {
+    const p = pt.params.find((q) => q.key === key.slice(1));
+    return p ? paramSig(p) : null;
+  }
+  return pt.ain.some((x) => x[0] === key) ? 'a' : null;
 }
 export const val = (n, p) => (n.p && n.p[p.key] != null ? n.p[p.key] : p.def);
 // a port is {n: node id, p: key}; parameter inputs use '@' + param key
 export function portsOf(n) {
   const pt = PARTS[n.t] || { ain: [], aout: [], cout: [], params: [] };
   return {
-    ins: [...pt.ain.map(([k, l]) => ({ k, l, kind: 'a' })), ...pt.params.map((p) => ({ k: '@' + p.key, l: p.label, kind: 'c', param: p }))],
-    outs: [...pt.aout.map(([k, l]) => ({ k, l, kind: 'a' })), ...pt.cout.map(([k, l]) => ({ k, l, kind: 'c' }))],
+    ins: [...pt.ain.map(([k, l]) => ({ k, l, kind: 'a', sig: 'a' })), ...pt.params.map((p) => ({ k: '@' + p.key, l: p.label, kind: 'c', sig: paramSig(p), param: p }))],
+    outs: [...pt.aout.map(([k, l]) => ({ k, l, kind: 'a', sig: 'a' })), ...pt.cout.map(([k, l, sg]) => ({ k, l, kind: 'c', sig: sg || 'n' }))],
   };
 }
 export function portKind(n, key, out) {
@@ -210,7 +271,7 @@ export function validate(G) {
     if (!radj.has(w.b.n)) radj.set(w.b.n, []);
     radj.get(w.b.n).push(w.a.n);
   }
-  const stack = outs.map((o) => o.id);
+  const stack = [...outs, ...ioNodes(G, 'cout')].map((o) => o.id);
   while (stack.length) {
     const id = stack.pop();
     if (reach.has(id)) continue;
@@ -218,13 +279,16 @@ export function validate(G) {
     for (const s of radj.get(id) || []) stack.push(s);
   }
   for (const n of G.nodes) if (!PARTS[n.t]?.io && PARTS[n.t] && !reach.has(n.id)) out.push({ level: 'warn', msg: `${PARTS[n.t].name} does not reach an output.`, node: n.id });
-  const names = new Map();
-  for (const k of ioNodes(G, 'ctl')) {
-    const nm = (k.name || '').trim().toLowerCase();
-    if (!nm) out.push({ level: 'warn', msg: 'A control input has no name.', node: k.id });
-    else if (names.has(nm)) out.push({ level: 'warn', msg: `Two control inputs are called "${k.name}".`, node: k.id });
-    names.set(nm, 1);
+  for (const [io, what] of [['ctl', 'inputs'], ['cout', 'outputs']]) {
+    const names = new Map();
+    for (const k of ioNodes(G, io)) {
+      const nm = (k.name || '').trim().toLowerCase();
+      if (!nm) out.push({ level: 'warn', msg: `A control ${what.slice(0, -1)} has no name.`, node: k.id });
+      else if (names.has(nm)) out.push({ level: 'warn', msg: `Two control ${what} are called "${k.name}".`, node: k.id });
+      names.set(nm, 1);
+    }
   }
+  for (const o of ioNodes(G, 'cout')) if (!G.wires.some((w) => w.b.n === o.id)) out.push({ level: 'warn', msg: `"${o.name || 'Output'}" has nothing wired to it.`, node: o.id });
   return out;
 }
 

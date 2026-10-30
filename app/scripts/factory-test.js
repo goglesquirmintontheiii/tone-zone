@@ -72,8 +72,9 @@ const S = process.env.SHOTS || '/tmp';
   ok(d0.name === 'Classic Drive' && d0.ctls.length === 5, 'template loaded');
   ok(d0.ctls.filter((c) => c.kind === 'knob').every((c) => c.map && c.map.to.startsWith(d0.circuit.insts[0].id + '.')), 'template knobs are wired to the circuit');
 
-  // 1. add a knob from the parts panel
+  // 1. add a knob from the parts panel (every tile back on its first variant: the pick is remembered)
   await win.click('.fz-tabs [data-t="parts"]');
+  await win.evaluate(() => document.querySelectorAll('.fz-vdots [data-var="0"]').forEach((d) => d.click()));
   await win.click('.fz-tile[data-part="knob"]');
   await win.waitForTimeout(300);
   const d1 = await D();
@@ -94,11 +95,12 @@ const S = process.env.SHOTS || '/tmp';
   ok(k2.x > knob.x + 3 && k2.y > knob.y + 3, `knob dragged (${knob.x},${knob.y}) -> (${k2.x},${k2.y})`);
   ok(Math.abs(k2.x / 2.5 - Math.round(k2.x / 2.5)) < 1e-6, 'drag snapped to the grid');
 
-  // 3. change the enclosure colour from the inspector
+  // 3. change the enclosure colour in its material panel (the only colour picker: no quick colour row above it)
   await win.keyboard.press('Escape');
-  await win.waitForSelector('.fz-swatches[data-key="enc"]');
+  await win.waitForSelector('[data-mtp="fz-enc"] .mtp-pick');
+  ok(!(await win.$('.fz-swatches[data-key="enc"]')), 'no quick colour row above the enclosure material');
   const before = (await D()).enc.mat.c;
-  await win.click('.fz-swatches[data-key="enc"] [data-swatch="#c9302c"]');
+  await win.evaluate(() => { const i = document.querySelector('[data-mtp="fz-enc"] .mtp-pick'); i.value = '#c9302c'; i.dispatchEvent(new Event('change')); });
   await win.waitForTimeout(200);
   ok((await D()).enc.mat.c === '#c9302c', 'enclosure colour changed');
   const fill = await win.evaluate(() => document.querySelector('.fz-stage [data-body]').getAttribute('fill'));
@@ -279,14 +281,23 @@ const S = process.env.SHOTS || '/tmp';
   await nIn.fill('12');
   await nIn.press('Enter');
   await win.waitForTimeout(200);
-  for (let i = 0; i < 12; i++) {
-    // values nothing drives yet: picking one adds a circuit input for it
-    const opts = await win.$$eval(`.fz-dipmap[data-dip="${i}"] .fz-dip-sel option`, (o) => o.map((x) => x.value).filter((v) => v && !v.endsWith('.on') && !v.endsWith('.tap')));
-    const dipMaps = (await D()).ctls.find((c) => c.kind === 'dip').maps;
-    const usedT = new Set((await D()).ctls.flatMap((c) => [c.map, ...(c.more || []), ...(c.maps || [])]).map((m) => m && m.to));
-    await win.selectOption(`.fz-dipmap[data-dip="${i}"] .fz-dip-sel`, opts.find((v) => v.includes('.+')) || opts.find((v) => !usedT.has(v)) || opts.find((v) => !(dipMaps || []).some((m) => m && m.to === v)));
-    await win.waitForTimeout(60);
-  }
+  ok(!(await win.$('.fz-insp .fz-wiring')) && !(await win.$('.fz-insp .fz-dipmap')), 'no Drives section in the control inspector');
+  // wire each switch the way the wiring diagram does: values nothing drives yet add a circuit input
+  await win.evaluate(async () => {
+    const m = await import('./js/pages/factory-circuit.js');
+    const d = window.__tzFactory.design();
+    const dip = d.ctls.find((c) => c.kind === 'dip');
+    dip.maps = [];
+    for (let i = 0; i < 12; i++) {
+      const used = new Set(d.ctls.flatMap((c) => [c.map, ...(c.more || []), ...(c.maps || [])]).map((x) => x && x.to));
+      const opts = m.targetsFor(d.circuit, 'dip').map((t) => t[0]).filter((v) => v && v !== 'bypass' && !v.endsWith('.on') && !v.endsWith('.tap'));
+      const v = opts.find((x) => x.includes('.+')) || opts.find((x) => !used.has(x));
+      const info = m.targetInfo(d.circuit, v);
+      dip.maps[i] = m.mapTo(d.circuit, v, { min: info.def ?? info.min, max: info.def === info.max ? info.min : info.max, taper: 'lin' });
+    }
+    window.__tzFactory.load(JSON.parse(JSON.stringify(d)));
+  });
+  await win.waitForTimeout(200);
   const dd = await D();
   const dip = dd.ctls.find((c) => c.kind === 'dip');
   ok(dip.n === 12 && dip.bits.length === 12, 'DIP switch has 12 switches');
@@ -429,8 +440,8 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(300);
   const footId = (await D()).ctls.find((c) => c.kind === 'foot').id;
   await win.evaluate((id) => window.__tzFactory.select(id), footId);
-  await win.waitForSelector('.fz-mat-nutMat .mtp-head');
-  await win.click('.fz-mat-nutMat .mtp-head');
+  await win.click('.fz-matparts [data-matpart="nutMat"]');
+  await win.waitForSelector('.fz-mat-nutMat .mtp-mats');
   await win.click('.fz-mat-nutMat .mtp-mats [data-v="metal"]');
   await win.waitForTimeout(150);
   await win.click('.fz-mat-nutMat .mtp-subs [data-v="brass"]');
@@ -453,7 +464,10 @@ const S = process.env.SHOTS || '/tmp';
 
   // 18. an encoder with an LED ring, and two new controls (XY pad, step buttons)
   await win.click('.fz-tabs [data-t="parts"]');
-  await win.click('.fz-tile[data-part="encring"]');
+  await win.click('.fz-tile[data-part="encoder"] .fz-vdots [data-var="3"]');
+  await win.waitForTimeout(100);
+  ok(await win.evaluate(() => { const t = document.querySelector('.fz-tile[data-part="encoder"]'); return t.dataset.variant === '3' && /LED ring encoder/.test(t.textContent); }), 'the encoder tile switched to its LED ring variant');
+  await win.click('.fz-tile[data-part="encoder"]');
   await win.waitForTimeout(200);
   const enc = (await D()).ctls.filter((c) => c.part === 'encoder').pop();
   ok(enc && enc.kind === 'knob' && enc.ring, 'LED ring encoder added');
@@ -473,7 +487,7 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(200);
   const xy = (await D()).ctls.find((c) => c.kind === 'xy');
   ok(xy && Array.isArray(xy.maps) && xy.maps.length === 2, 'XY pad added with one mapping per axis');
-  ok(await win.evaluate(() => document.querySelectorAll('.fz-insp [data-axis]').length === 2), 'XY pad inspector wires both axes');
+  ok(!(await win.$('.fz-insp [data-axis]')) && !(await win.$('.fz-insp .fz-wiring')), 'XY pad inspector has no Drives section (wired in the diagram)');
   await win.click('.fz-tile[data-part="steps"]');
   await win.waitForTimeout(200);
   const st = (await D()).ctls.find((c) => c.part === 'steps');

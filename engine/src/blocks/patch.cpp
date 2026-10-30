@@ -1,11 +1,13 @@
 // Patch block: a Pedal Factory circuit. Sub-blocks (any engine algorithm, made with createBlock like 'chain')
 // and small native parts (filters, VCAs, mixers, envelope followers, LFOs, logic, comparators...) wired as a
-// graph. Audio runs in chunks of up to 64 samples in topological order; control wires carry 0..1 values that
-// are evaluated once per chunk and scaled into the receiving slot's range. Audio loops are only allowed
-// through 'fb' parts (a delay of at least one chunk); control loops read the previous chunk's value.
+// graph. Audio runs in chunks of up to 64 samples in topological order; control wires carry values (floats in
+// -255..255) that are evaluated once per chunk. A normal slot reads its input span (xlo..xhi, default 0..1) as
+// 0..1 and scales that into its own range lo..hi; a raw slot takes the value as it is (clamped to lo..hi).
+// Audio loops are only allowed through 'fb' parts (a delay of at least one chunk); control loops read the
+// previous chunk's value. 'cout' parts are circuit outputs: their values are reported in the status as cv[idx].
 //
 // opts: { params: [{name, def, min, max}],            exposed params (the pedal's circuit inputs)
-//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int, tab}]}],
+//         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int, tab, raw, xlo, xhi}]}],
 //         edges:  [[fromNode, fromPort, toNode, toPort, isControl]],
 //         outs:   [[aoutIdx, ch]] per engine output (ch 0 = L, 1 = R, -1 = mono sum), mix, mixDef }
 #include "common.h"
@@ -15,12 +17,14 @@ namespace tz
 namespace
 {
 constexpr int kChunk = 64;
+constexpr float kLim = 255.f;     // control values stay within -255..255
+constexpr float kMaxDelay = 10.f; // seconds a control delay can hold
 
 enum Kind
 {
   K_ALGO, K_SUM, K_AIN, K_AOUT, K_VCA, K_FILTER, K_SHAPER, K_MIXER, K_XFADE, K_SWITCH, K_POL, K_FB, K_BYPASS,
   K_PARAM, K_CONST, K_LFO, K_ENV, K_SEQ, K_SCALE, K_MATH, K_SMOOTH, K_SH, K_AND, K_OR, K_XOR, K_NOT, K_TOGGLE,
-  K_CMP, K_WINDOW, K_UNKNOWN
+  K_CMP, K_WINDOW, K_ADD, K_SUB, K_MUL, K_DIV, K_CDELAY, K_COUT, K_UNKNOWN
 };
 struct KindInfo
 {
@@ -44,7 +48,7 @@ const std::vector<KindInfo>& kinds()
     {"pol", K_POL, 1, 1, 0, {"on"}},
     {"fb", K_FB, 1, 1, 0, {"amount", "time", "tone"}},
     {"bypass", K_BYPASS, 2, 1, 0, {"on"}},
-    {"param", K_PARAM, 0, 0, 1, {}},
+    {"param", K_PARAM, 0, 0, 1, {"in"}},
     {"const", K_CONST, 0, 0, 1, {"value"}},
     {"lfo", K_LFO, 0, 0, 1, {"rate", "shape", "lo", "hi", "sync"}},
     {"env", K_ENV, 1, 0, 1, {"sens", "attack", "release"}},
@@ -60,6 +64,12 @@ const std::vector<KindInfo>& kinds()
     {"toggle", K_TOGGLE, 0, 0, 1, {"trig", "reset"}},
     {"cmp", K_CMP, 0, 0, 1, {"in", "thr", "hyst"}},
     {"window", K_WINDOW, 0, 0, 1, {"in", "lo", "hi"}},
+    {"add", K_ADD, 0, 0, 1, {"a", "b"}},
+    {"sub", K_SUB, 0, 0, 1, {"a", "b"}},
+    {"mul", K_MUL, 0, 0, 1, {"a", "b"}},
+    {"div", K_DIV, 0, 0, 1, {"a", "b"}},
+    {"cdelay", K_CDELAY, 0, 0, 1, {"in", "time"}},
+    {"cout", K_COUT, 0, 0, 1, {"in"}},
   };
   return v;
 }
@@ -68,7 +78,8 @@ struct Slot
 {
   std::string name;
   float def = 0, lo = 0, hi = 1;
-  bool log = false, isInt = false;
+  bool log = false, isInt = false, raw = false;
+  float xlo = 0, xhi = 1;   // input span read as 0..1 (normal slots)
   std::vector<float> tab; // optional lookup: 0..1 picks an entry
   int sub = -1;          // algo nodes: sub-block param index (-1 = the 'on' switch)
   std::vector<std::pair<int, int>> src; // (node, control out port)
@@ -94,6 +105,8 @@ struct Node
   int step = 0, prevTrig = 0;
   uint32_t rng = 0x9e3779b9u;
   bool latch = false, first = true;
+  std::vector<float> hist; // cdelay: one value per chunk
+  int hpos = 0;
   SVF svf[2];
   OnePole lp[2];
   EnvFollower env;
@@ -164,6 +177,9 @@ public:
         s.hi = sj.value("hi", 1.f);
         s.log = sj.value("log", false) && s.lo > 0 && s.hi > 0;
         s.isInt = sj.value("int", false);
+        s.raw = sj.value("raw", false);
+        s.xlo = sj.value("xlo", 0.f);
+        s.xhi = sj.value("xhi", 1.f);
         for (auto& tv : sj.value("tab", json::array()))
           if (tv.is_number()) s.tab.push_back(tv.get<float>());
         s.v = s.def;
@@ -288,6 +304,11 @@ public:
       }
       if (n.kind == K_FB)
         for (int c2 = 0; c2 < C; ++c2) n.dl[c2].allocate(int(sr * 2.1) + kChunk * 4);
+      if (n.kind == K_CDELAY)
+      {
+        n.hist.assign(size_t(kMaxDelay * sr / kChunk) + 4, 0.f);
+        n.hpos = 0;
+      }
       // per input: read the single source directly, sum several into the node's own buffer
       for (int a = 0; a < n.ain; ++a) n.inBuf[a] = n.inSrc[a].empty() ? -1 : n.inSrc[a].size() == 1 ? n.inSrc[a][0] : -2;
     }
@@ -316,7 +337,9 @@ public:
     if (s.src.empty()) return s.v = s.def;
     float x = 0.f;
     for (auto& [f, p] : s.src) x += nodes[f].cv[p];
-    x = clampf(x, 0.f, 1.f);
+    if (s.raw) return s.v = clampf(x, std::min(s.lo, s.hi), std::max(s.lo, s.hi));
+    const float span = s.xhi - s.xlo;
+    x = clampf(std::fabs(span) < 1e-9f ? (x >= s.xhi ? 1.f : 0.f) : (x - s.xlo) / span, 0.f, 1.f);
     if (!s.tab.empty()) return s.v = s.tab[std::min(s.tab.size() - 1, size_t(x * float(s.tab.size() - 1) + 0.5f))];
     float v = s.log ? s.lo * std::pow(s.hi / s.lo, x) : s.lo + (s.hi - s.lo) * x;
     if (s.isInt) v = std::round(v);
@@ -550,14 +573,38 @@ public:
       }
       case K_PARAM:
       {
-        n.cv[0] = 0.f;
-        if (n.pi >= 0 && n.pi < int(defs.size()))
-        {
-          const auto& d = defs[n.pi];
-          n.cv[0] = clampf((p(n.pi) - d.min) / std::max(1e-6f, d.max - d.min), 0.f, 1.f);
-        }
+        // a circuit input: its param, or what another circuit's output wired to it says
+        const int si = n.nat.empty() ? -1 : n.nat[0];
+        if (si >= 0 && !n.slots[si].src.empty()) n.cv[0] = clampf(n.slots[si].v, -kLim, kLim);
+        else n.cv[0] = n.pi >= 0 && n.pi < int(defs.size()) ? clampf(p(n.pi), -kLim, kLim) : 0.f;
         break;
       }
+      case K_ADD: n.cv[0] = clampf(natIn(n, 0, 0.f) + natIn(n, 1, 0.f), -kLim, kLim); break;
+      case K_SUB: n.cv[0] = clampf(natIn(n, 0, 0.f) - natIn(n, 1, 0.f), -kLim, kLim); break;
+      case K_MUL: n.cv[0] = clampf(natIn(n, 0, 0.f) * natIn(n, 1, 1.f), -kLim, kLim); break;
+      case K_DIV:
+      {
+        const float b = natIn(n, 1, 1.f);
+        n.cv[0] = std::fabs(b) < 1e-9f ? 0.f : clampf(natIn(n, 0, 0.f) / b, -kLim, kLim); // divide by zero gives 0
+        break;
+      }
+      case K_CDELAY:
+      {
+        // what came in `time` seconds ago (one value per chunk)
+        const float x = natIn(n, 0, 0.f);
+        const int N = int(n.hist.size());
+        if (!N)
+        {
+          n.cv[0] = x;
+          break;
+        }
+        n.hist[n.hpos] = x;
+        const int d = std::min(N - 1, int(clampf(natIn(n, 1, 0.5f), 0.f, kMaxDelay) * float(sr) / float(kChunk) + 0.5f));
+        n.cv[0] = n.hist[(n.hpos - d + N) % N];
+        n.hpos = (n.hpos + 1) % N;
+        break;
+      }
+      case K_COUT: n.cv[0] = clampf(natIn(n, 0, 0.f), -kLim, kLim); break;
       case K_CONST: n.cv[0] = clampf(natIn(n, 0, 0.f), 0.f, 1.f); break;
       case K_LFO:
       {
@@ -733,6 +780,18 @@ public:
   }
   void status(json& j) override
   {
+    // circuit outputs, by output index
+    int nc = 0;
+    for (auto& nd : nodes)
+      if (nd.kind == K_COUT) nc = std::max(nc, nd.idx + 1);
+    if (nc)
+    {
+      json cv = json::array();
+      for (int k = 0; k < nc; ++k) cv.push_back(0.f);
+      for (auto& nd : nodes)
+        if (nd.kind == K_COUT && nd.idx >= 0) cv[nd.idx] = std::round(nd.cv[0] * 1000.f) / 1000.f;
+      j["cv"] = cv;
+    }
     for (size_t i = 0; i < nodes.size(); ++i)
       if (nodes[i].b)
       {
@@ -752,6 +811,7 @@ public:
         nd.lp[c].reset();
         nd.dl[c].clear();
       }
+      std::fill(nd.hist.begin(), nd.hist.end(), 0.f);
     }
   }
 };

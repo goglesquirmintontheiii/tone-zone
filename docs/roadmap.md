@@ -48,9 +48,11 @@ The engine talks to JACK / PipeWire today (`engine/src/jack_dl.cpp` loads libjac
 
 ## Raspberry Pi
 
-The Pi tab is a placeholder. The plan: export a preset as a headless engine config, flash it to a Pi with an audio
-HAT or USB interface, and use the Pi as a pedal that boots straight into that preset. Footswitches on GPIO, presets
-switched over MIDI.
+The full plan is in [raspberry-pi.md](raspberry-pi.md): the same engine built for aarch64 on a Pi 4 or Pi 5,
+installed over SSH with one command, found on the network as `tonezone.local` (Wi-Fi, Ethernet or one cable straight
+from the computer), many presets in banks switched with GPIO footswitches, signed updates with rollback, full NAM
+support, and an optional very light screen UI. The Pi tab already shows the finished UI with demo data; it does not
+talk to a real Pi yet. Next: phase 1 (ARM build, denormal fix, measured block costs on real boards).
 
 ## Pedal Factory
 

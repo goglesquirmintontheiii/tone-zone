@@ -1,7 +1,7 @@
 // Pedal Factory: controls drawn in a material (gfx/materials.js). A part with no material (or 'stock') keeps the
 // stock look from gfx/controls.js. Units are millimetres.
 import { svg, clamp } from '../util.js';
-import { drawKnob, drawToggle, drawButton, drawFoot, drawLed, drawTreadle, angleFor, hex, label } from '../gfx/controls.js';
+import { drawKnob, drawToggle, drawButton, drawFoot, drawLed, angleFor, hex, label } from '../gfx/controls.js';
 import { paint, materialFill, normalize } from '../gfx/materials.js';
 
 export const PART_SCALE = 0.3; // material tile size for small parts
@@ -46,12 +46,13 @@ function dialPart(g, c, th, sweep) {
 export function knobPart(parent, c, th) {
   const sweep = c.sweep || undefined;
   const style0 = { nine: 'mxr', rat: 'fender' }[c.style] || c.style || 'boss';
-  const stock = isStock(c.mat) && isStock(c.dialMat) && !NEW_SET.has(style0);
+  const stock = isStock(c.mat) && isStock(c.dialMat) && isStock(c.skirtMat) && !NEW_SET.has(style0);
   const dialG = c.dial && c.dial !== 'none' ? svg('g', { class: 'fz-dial' }, parent) : null;
   if (dialG) dialPart(dialG, c, th, sweep);
   if (stock) return drawKnob(parent, { x: 0, y: 0, cid: c.id, r: c.r, style: c.style, sweep, ticks: c.ticks ? 11 : false, scale: !!c.ticks, label: null }, { ...th, knobTicks: false });
   const r = c.r, spec = isStock(c.mat) ? STYLE_SPEC[style0] || STYLE_SPEC.boss : c.mat;
-  const skirt = isStock(c.dialMat) ? spec : c.dialMat;
+  // the skirt has its own material (older designs: the dial's, see factory-kinds.js)
+  const skirt = isStock(c.skirtMat) ? spec : c.skirtMat;
   const g = svg('g', { class: 'ctl knob' }, parent);
   svg('circle', { r: r + 6, fill: 'transparent' }, g);
   if (c.ticks)
@@ -258,21 +259,52 @@ export function footPart(parent, c, th) {
 }
 
 // ------------------------------------------------------------------ foot pedals (treadles)
+export const PEDAL_GRIPS = [['pad', 'Rubber pad'], ['ridges', 'Ribbed'], ['plate', 'Toe plate'], ['none', 'Smooth']];
 export function treadlePart(parent, c) {
   const w = c.w || 40, h = c.h || 60;
   const logo = c.logo || '', logoSize = Math.min(9, h / 7), logoColor = c.logoColor || '#d9d9d9';
-  if (isStock(c.mat)) return drawTreadle(parent, { x: 0, y: 0, cid: c.id, w, h, color: c.color || '#1b1c1f', logo, logoSize, logoColor });
+  const grip = c.grip === false ? 'none' : c.grip || 'pad';
   const g = svg('g', { class: 'ctl treadle' }, parent);
   svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, fill: 'transparent' }, g);
   const tread = svg('g', {}, g);
-  svg('rect', { x: -w / 2 - 2, y: -h / 2 + 4, width: w + 4, height: h, rx: 10, fill: '#000', opacity: 0.55 }, tread);
-  paint(tread, 'rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 10 }, c.mat, opt(c, { scale: 0.44, glowWidth: 3 }));
-  svg('rect', { x: -w / 2 + 7, y: -h / 2 + 10, width: w - 14, height: h - 20, rx: 6, fill: 'url(#p-pad)', opacity: c.grip === false ? 0 : 0.9 }, tread);
-  if (logo) label(tread, 0, -h * 0.05, logo, { size: logoSize, fill: logoColor, font: "'Dancing Script', cursive", weight: 700, ls: 0.5, transform: `rotate(-90 0 ${-h * 0.05})` });
-  const sheen = svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 10, fill: 'url(#g-shadeV)', opacity: 0.9 }, tread);
+  const rx = Math.min(10, w / 3);
+  svg('rect', { x: -w / 2 - 2, y: -h / 2 + 4, width: w + 4, height: h, rx, fill: '#000', opacity: 0.55 }, tread);
+  // the pedal itself: its own material, or the stock colour
+  const main = !isStock(c.mat);
+  if (main) paint(tread, 'rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx }, c.mat, opt(c, { scale: 0.44, glowWidth: 3 }));
+  else svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx, fill: c.color || '#1b1c1f', stroke: '#000', 'stroke-width': 0.8 }, tread);
+  // the grip on top, with a material of its own
+  const gm = isStock(c.gripMat) ? null : c.gripMat;
+  const go = opt(c, { scale: 0.44, seed: c.id + 'g' });
+  if (grip === 'pad' || grip === 'ridges') {
+    const ix = Math.min(7, w * 0.17), iy = Math.min(10, h * 0.16);
+    const box = { x: -w / 2 + ix, y: -h / 2 + iy, width: w - ix * 2, height: h - iy * 2, rx: Math.min(6, w * 0.15) };
+    if (gm) paint(tread, 'rect', box, gm, go);
+    if (grip === 'pad') svg('rect', { ...box, fill: 'url(#p-pad)', opacity: gm ? 0.35 : main ? 0.55 : 0.9 }, tread);
+    else {
+      if (!gm) svg('rect', { ...box, fill: '#1e1f23', opacity: main ? 0.45 : 0.85 }, tread);
+      // ribs across the pedal
+      let d = '';
+      for (let y = box.y + 3; y < box.y + box.height - 2; y += 3.2) d += `M${(box.x + 2).toFixed(2)},${y.toFixed(2)}H${(box.x + box.width - 2).toFixed(2)}`;
+      svg('path', { d, stroke: '#000', 'stroke-width': 1.3, opacity: 0.45, 'stroke-linecap': 'round' }, tread);
+      svg('path', { d, stroke: '#fff', 'stroke-width': 0.35, opacity: 0.12, transform: 'translate(0,-0.7)', 'stroke-linecap': 'round' }, tread);
+    }
+  } else if (grip === 'plate') {
+    // a smooth pedal with a ribbed metal plate at the toe
+    const ix = Math.min(5, w * 0.12);
+    const box = { x: -w / 2 + ix, y: -h / 2 + ix, width: w - ix * 2, height: Math.min(h * 0.3, 40), rx: 3 };
+    svg('rect', { ...box, y: box.y + 0.8, fill: '#000', opacity: 0.35 }, tread);
+    paint(tread, 'rect', box, gm || CHROME, go);
+    let d = '';
+    for (let x = box.x + 3; x < box.x + box.width - 2; x += 2.6) d += `M${x.toFixed(2)},${(box.y + 2).toFixed(2)}V${(box.y + box.height - 2).toFixed(2)}`;
+    svg('path', { d, stroke: '#000', 'stroke-width': 0.6, opacity: 0.3 }, tread);
+  }
+  if (logo) label(tread, 0, -h * 0.05 + (grip === 'plate' ? h * 0.15 : 0), logo, { size: logoSize, fill: logoColor, font: "'Dancing Script', cursive", weight: 700, ls: 0.5, transform: `rotate(-90 0 ${-h * 0.05 + (grip === 'plate' ? h * 0.15 : 0)})` });
+  const sheen = svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx, fill: 'url(#g-shadeV)', opacity: 0.9 }, tread);
   return {
     g,
     set(v01) {
+      // toe down = 1: the toe end catches more light and the visible length shrinks slightly (perspective)
       tread.setAttribute('transform', `scale(1,${(0.94 + 0.06 * (1 - v01)).toFixed(4)})`);
       sheen.setAttribute('opacity', 0.5 + 0.5 * v01);
     },

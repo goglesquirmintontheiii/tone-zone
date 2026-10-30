@@ -1,12 +1,12 @@
 // Pedal Factory: graphics for the extra controls (encoder, XY pad and joystick, touch strip, arcade button, step
-// buttons, toggle bank, whammy lever, pressure pad, light sensor, needle meter) and the extra looks of sliders,
+// buttons, toggle bank, needle meter) and the extra looks of sliders,
 // rotary switches and LEDs. Every function returns a view like the stock controls ({ g, set }) so the factory,
 // test mode and the board can drive it. Units are millimetres.
 import { svg, clamp, shade, hexToRgb, rgbToHex } from '../util.js';
 import { hex, label, angleFor } from '../gfx/controls.js';
 import { haloFill, setA } from '../gfx/fx.js';
 import { paint, materialFill, normalize } from '../gfx/materials.js';
-import { xySize } from './factory-kinds.js';
+import { xySize, isStick } from './factory-kinds.js';
 
 const isStock = (m) => !m || normalize(m).m === 'stock';
 const specOr = (m, def) => (isStock(m) ? def : m);
@@ -48,25 +48,64 @@ function lamp(g, x, y, r, color, shape = 'circle', cls) {
   };
 }
 
+// a ring (outer circle minus inner), for evenodd fills
+function annulus(r0, r1) {
+  const c = (r) => `M${-r},0a${r},${r} 0 1,0 ${r * 2},0a${r},${r} 0 1,0 ${-r * 2},0Z`;
+  return c(r1) + c(r0);
+}
+// one curved LED segment: an arc of a ring between angles a0 and a1 (degrees, 0 = up, clockwise) with softened corners
+export function arcPath(a0, a1, ri, ro) {
+  const [x0, y0] = polar(a0, ro), [x1, y1] = polar(a1, ro), [x2, y2] = polar(a1, ri), [x3, y3] = polar(a0, ri);
+  const big = a1 - a0 > 180 ? 1 : 0;
+  const f = (v) => v.toFixed(3);
+  return `M${f(x0)},${f(y0)}A${ro},${ro} 0 ${big} 1 ${f(x1)},${f(y1)}L${f(x2)},${f(y2)}A${ri},${ri} 0 ${big} 0 ${f(x3)},${f(y3)}Z`;
+}
+function arcLamp(g, a0, a1, ri, ro, color, cls) {
+  const d = arcPath(a0, a1, ri, ro);
+  const rm = (ri + ro) / 2, th = ro - ri;
+  const mid = arcPath(a0, a1, rm - 0.001, rm + 0.001);
+  // glow: a soft wide band of the same colour behind the lens
+  const glow = svg('path', { d: mid, fill: 'none', stroke: color, 'stroke-width': th * 2.4, 'stroke-linejoin': 'round', 'stroke-opacity': 0, 'pointer-events': 'none', style: 'filter:blur(0.9px)' }, g);
+  const off = offCol(color);
+  const lens = svg('path', { d, fill: off, stroke: off, 'stroke-width': 0.35, 'stroke-linejoin': 'round', class: cls }, g);
+  lens.dataset.on = '0';
+  // a brighter core along the middle when lit, like the light pipe in the reference
+  const core = svg('path', { d: arcPath(a0 + 0.6, a1 - 0.6, rm - th * 0.18, rm + th * 0.18), fill: mixHex(color, '#ffffff', 0.55), opacity: 0, 'pointer-events': 'none' }, g);
+  let cur;
+  return (on) => {
+    const col = on === true ? color : on || null;
+    if (col === cur) return;
+    cur = col;
+    setA(lens, 'fill', col || off);
+    setA(lens, 'stroke', col || off);
+    lens.dataset.on = col ? '1' : '0';
+    if (col) setA(glow, 'stroke', col);
+    setA(glow, 'stroke-opacity', col ? 0.45 : 0);
+    setA(core, 'opacity', col ? 0.55 : 0);
+  };
+}
+
 // ------------------------------------------------------------------ rotary encoder (endless, optional LED ring)
 export const ENC_CAPS = [['knurl', 'Knurled'], ['rubber', 'Rubber'], ['alu', 'Aluminium']];
 export function encoderPart(parent, c) {
   const r = c.r || 8;
   const g = svg('g', { class: 'ctl knob encoder' }, parent);
   svg('circle', { r: r + (c.ring ? 6 : 4), fill: 'transparent' }, g);
-  // LED ring all the way round: arc fills from the top (or from the centre detent), dot shows one LED
+  // LED ring all the way round: curved segments with small gaps, the arc fills from the top (or from the centre
+  // detent), dot shows one LED
   const leds = [];
   if (c.ring) {
-    const n = clamp(c.ringN || 16, 8, 32), rr = r + 3.4;
-    const lr = Math.min(1.05, ((Math.PI * 2 * rr) / n) * 0.3);
-    svg('circle', { r: rr, fill: 'none', stroke: '#07080a', 'stroke-width': lr * 2 + 1.1, opacity: 0.85 }, g);
-    const c1 = c.ringColor || '#3fa8ff', c2 = c.ringColor2 || null;
+    const n = clamp(Math.round(c.ringN || 12), 2, 32);
+    const ri = r + 1.3, ro = r + 4.3, rm = (ri + ro) / 2;
+    const gap = Math.min((1.1 / rm) * (180 / Math.PI), 120 / n); // about 1.1 mm between segments
+    svg('path', { d: annulus(r + 0.6, ro + 0.9), fill: '#07080a', 'fill-rule': 'evenodd', opacity: 0.92 }, g);
+    const c1 = c.ringColor || '#38f07a', c2 = c.ringColor2 || null;
     for (let i = 0; i < n; i++) {
-      const a = (360 * i) / n;
+      // segment i is centred on the angle i * 360 / n, so the first one sits at the top
+      const a = (360 * i) / n, half = 180 / n - gap / 2;
       const t = c.detent ? Math.min(i, n - i) / (n / 2) : i / Math.max(1, n - 1);
       const col = c2 ? mixHex(c1, c2, t) : c1;
-      const [x, y] = polar(a, rr);
-      leds.push({ set: lamp(g, x, y, lr, col, 'circle', 'enc-led'), col });
+      leds.push({ set: arcLamp(g, a - half, a + half, ri, ro, col, 'enc-led'), col });
     }
   }
   svg('circle', { r: r + 2.4, cy: 2.2, fill: 'url(#g-knobShadow)', opacity: 0.8 }, g);
@@ -117,7 +156,7 @@ export function encoderPart(parent, c) {
 // ------------------------------------------------------------------ XY pad and joystick: two views (x, y)
 export function xyPart(parent, c, th, o = {}) {
   const [w, h] = xySize(c);
-  const stick = c.look === 'stick';
+  const stick = isStick(c), thumb = c.look === 'thumb', glow = c.look === 'glow';
   const g = svg('g', { class: 'ctl xy' }, parent);
   const yG = svg('g', {}, g), xG = svg('g', {}, g);
   if (o.ids) {
@@ -135,11 +174,22 @@ export function xyPart(parent, c, th, o = {}) {
     svg('circle', { r: R - 0.6, fill: '#131416' }, yG);
     for (let i = 1; i < 4; i++) svg('circle', { r: (R - 0.6) * (i / 4), fill: 'none', stroke: '#000', 'stroke-width': 0.5, opacity: 0.5 }, yG);
     svg('rect', { x: -R * 0.55, y: -R * 0.55, width: R * 1.1, height: R * 1.1, fill: 'none', stroke: '#fff', 'stroke-width': 0.25, opacity: 0.12 }, yG);
-    const shaft = svg('line', { x1: 0, y1: 0, x2: 0, y2: 0, stroke: '#9aa0a8', 'stroke-width': 1.4, 'stroke-linecap': 'round' }, yG);
+    const shaft = svg('line', { x1: 0, y1: 0, x2: 0, y2: 0, stroke: '#9aa0a8', 'stroke-width': thumb ? 0 : 1.4, 'stroke-linecap': 'round' }, yG);
     const top = svg('g', {}, yG);
-    svg('circle', { r: R * 0.48, cy: 0.8, fill: '#000', opacity: 0.35 }, top);
-    paint(top, 'circle', { r: R * 0.44 }, specOr(c.mat, { m: 'plastic', f: 'gloss', c: '#d0312d' }), opt(c, { round: true }));
-    svg('ellipse', { cx: -R * 0.13, cy: -R * 0.16, rx: R * 0.2, ry: R * 0.12, fill: '#fff', opacity: 0.35 }, top);
+    if (thumb) {
+      // a game pad thumbstick: a wide rubber cap with a dished, ringed top
+      svg('circle', { r: R * 0.72, cy: 1, fill: '#000', opacity: 0.4 }, top);
+      const sp = specOr(c.mat, { m: 'rubber', f: 'grip', c: '#2a2c31' });
+      paint(top, 'circle', { r: R * 0.68 }, sp, opt(c, { round: true }));
+      svg('circle', { r: R * 0.66, fill: 'none', stroke: '#000', 'stroke-width': R * 0.05, 'stroke-dasharray': '0.5 0.5', opacity: 0.5 }, top);
+      svg('circle', { r: R * 0.5, fill: '#000', opacity: 0.28 }, top);
+      svg('circle', { r: R * 0.46, cy: R * 0.04, fill: '#fff', opacity: 0.05 }, top);
+      svg('circle', { r: R * 0.3, fill: 'none', stroke: '#000', 'stroke-width': 0.25, opacity: 0.35 }, top);
+    } else {
+      svg('circle', { r: R * 0.48, cy: 0.8, fill: '#000', opacity: 0.35 }, top);
+      paint(top, 'circle', { r: R * 0.44 }, specOr(c.mat, { m: 'plastic', f: 'gloss', c: '#d0312d' }), opt(c, { round: true }));
+      svg('ellipse', { cx: -R * 0.13, cy: -R * 0.16, rx: R * 0.2, ry: R * 0.12, fill: '#fff', opacity: 0.35 }, top);
+    }
     upd = () => {
       const dx = (vx - 0.5) * R * 0.9, dy = (0.5 - vy) * R * 0.9;
       shaft.setAttribute('x2', dx.toFixed(2));
@@ -151,13 +201,21 @@ export function xyPart(parent, c, th, o = {}) {
     if (isStock(c.mat)) svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 2, fill: '#121418', stroke: '#2b2f36', 'stroke-width': 0.4 }, yG);
     else paint(yG, 'rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 2 }, c.mat, opt(c));
     let grid = '';
-    for (let i = 1; i < 4; i++) grid += `M${-w / 2 + (w * i) / 4},${-h / 2 + 0.8}V${h / 2 - 0.8}M${-w / 2 + 0.8},${-h / 2 + (h * i) / 4}H${w / 2 - 0.8}`;
-    svg('path', { d: grid, stroke: accent, 'stroke-width': 0.2, opacity: 0.3 }, yG);
-    const cross = svg('path', { d: '', stroke: accent, 'stroke-width': 0.3, opacity: 0.55 }, yG);
+    if (glow) {
+      // a frosted pad with a lit edge and a soft glow under the finger, no grid
+      svg('rect', { x: -w / 2 + 0.5, y: -h / 2 + 0.5, width: w - 1, height: h - 1, rx: 1.6, fill: 'none', stroke: accent, 'stroke-width': 0.5, opacity: 0.8 }, yG);
+      svg('rect', { x: -w / 2 + 0.5, y: -h / 2 + 0.5, width: w - 1, height: h - 1, rx: 1.6, fill: 'none', stroke: accent, 'stroke-width': 2, opacity: 0.18 }, yG);
+    } else {
+      for (let i = 1; i < 4; i++) grid += `M${-w / 2 + (w * i) / 4},${-h / 2 + 0.8}V${h / 2 - 0.8}M${-w / 2 + 0.8},${-h / 2 + (h * i) / 4}H${w / 2 - 0.8}`;
+      svg('path', { d: grid, stroke: accent, 'stroke-width': 0.2, opacity: 0.3 }, yG);
+    }
+    const cross = svg('path', { d: '', stroke: accent, 'stroke-width': 0.3, opacity: glow ? 0 : 0.55 }, yG);
     const puck = svg('g', {}, yG);
-    svg('circle', { r: 4.5, fill: haloFill(accent), 'pointer-events': 'none' }, puck);
-    svg('circle', { r: 1.8, fill: accent }, puck);
-    svg('circle', { r: 0.8, fill: '#fff', opacity: 0.8 }, puck);
+    svg('circle', { r: glow ? Math.min(w, h) * 0.32 : 4.5, fill: haloFill(accent), 'pointer-events': 'none' }, puck);
+    if (!glow) {
+      svg('circle', { r: 1.8, fill: accent }, puck);
+      svg('circle', { r: 0.8, fill: '#fff', opacity: 0.8 }, puck);
+    } else svg('circle', { r: 1.2, fill: '#fff', opacity: 0.55 }, puck);
     svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 2, fill: 'url(#g-glass)', 'pointer-events': 'none', opacity: 0.6 }, yG);
     upd = () => {
       const x = -w / 2 + 1.5 + (w - 3) * vx, y = h / 2 - 1.5 - (h - 3) * vy;
@@ -183,7 +241,7 @@ export function xyPart(parent, c, th, o = {}) {
 }
 
 // ------------------------------------------------------------------ touch strip / ribbon (kind slider)
-export const STRIP_LOOKS = [['touch', 'Touch strip'], ['ribbon', 'Ribbon']];
+export const STRIP_LOOKS = [['touch', 'Touch strip'], ['ribbon', 'Ribbon'], ['leds', 'LED dots']];
 export function stripPart(parent, c) {
   const h = c.h || 40, w = c.w || 6;
   const outer = svg('g', { class: 'ctl slider strip' }, parent);
@@ -191,8 +249,16 @@ export function stripPart(parent, c) {
   const accent = c.color || '#3fa8ff';
   svg('rect', { x: -w / 2 - 2, y: -h / 2 - 2, width: w + 4, height: h + 4, fill: 'transparent' }, g);
   svg('rect', { x: -w / 2 - 0.8, y: -h / 2 - 0.8, width: w + 1.6, height: h + 1.6, rx: w / 2 + 0.8, fill: '#000', opacity: 0.45 }, g);
-  let fillR = null, bar, dot;
-  if (c.look === 'ribbon') {
+  let fillR = null, bar, dot, dots = null;
+  if (c.look === 'leds') {
+    // a dark glass strip with a column of LEDs that fill up to the touch point
+    paint(g, 'rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 1.2 }, specOr(c.mat, BLACK), opt(c));
+    const n = Math.max(4, Math.floor((h - 2) / 2.6));
+    const lr = Math.min(0.75, w * 0.14);
+    dots = [];
+    for (let i = 0; i < n; i++) dots.push(lamp(g, 0, h / 2 - 1.4 - ((h - 2.8) * i) / (n - 1), lr, accent));
+    svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 1.2, fill: 'url(#g-glass)', opacity: 0.5, 'pointer-events': 'none' }, g);
+  } else if (c.look === 'ribbon') {
     paint(g, 'rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 1 }, specOr(c.mat, BLACK), opt(c));
     svg('rect', { x: -0.9, y: -h / 2 + 1.5, width: 1.8, height: h - 3, rx: 0.9, fill: 'url(#g-chrome)' }, g);
     for (const yy of [-h / 2 + 1, h / 2 - 1]) svg('rect', { x: -w / 2 + 0.6, y: yy - 0.6, width: w - 1.2, height: 1.2, rx: 0.4, fill: '#3a3d42' }, g);
@@ -211,6 +277,7 @@ export function stripPart(parent, c) {
     set(v) {
       v = clamp(v, 0, 1);
       const y = h / 2 - 1.5 - (h - 3) * v;
+      if (dots) dots.forEach((set, i) => set(i <= Math.round(v * (dots.length - 1)) && v > 0.005 ? true : null));
       if (dot) dot.setAttribute('transform', `translate(0,${y.toFixed(2)})`);
       if (bar) {
         bar.setAttribute('y', (y - 1.3).toFixed(2));
@@ -222,20 +289,43 @@ export function stripPart(parent, c) {
 }
 
 // ------------------------------------------------------------------ arcade button (kind button)
+export const ARCADE_SHAPES = [['round', 'Round'], ['square', 'Square'], ['dome', 'Big dome']];
 export function arcadePart(parent, c) {
   const r = c.r || 7;
+  const shape = c.shape || 'round';
   const g = svg('g', { class: 'ctl button arcade' }, parent);
   svg('circle', { r: r + 4, fill: 'transparent' }, g);
-  svg('circle', { r: r + 2.4, cy: 1.4, fill: '#000', opacity: 0.45 }, g);
-  paint(g, 'circle', { r: r + 1.9 }, isStock(c.ringMat) ? { m: 'plastic', f: 'gloss', c: c.ringColor || '#1c1d21' } : c.ringMat, opt(c, { round: true }));
-  svg('circle', { r: r + 0.4, fill: '#000', opacity: 0.55 }, g);
-  const cap = svg('g', {}, g);
   const col = /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#d0312d';
-  paint(cap, 'circle', { r }, specOr(c.mat, { m: 'plastic', f: 'gloss', c: col }), opt(c, { round: true }));
-  svg('circle', { r: r * 0.86, fill: 'none', stroke: '#fff', 'stroke-width': r * 0.08, opacity: 0.18 }, cap);
-  const lit = svg('circle', { r: r * 0.96, fill: c.ledColor || col, 'fill-opacity': 0 }, cap);
-  const halo = svg('circle', { r: r * 2.2, fill: haloFill(c.ledColor || col), 'fill-opacity': 0, 'pointer-events': 'none' }, g);
-  svg('ellipse', { cx: -r * 0.25, cy: -r * 0.35, rx: r * 0.5, ry: r * 0.3, fill: '#fff', opacity: 0.32, 'pointer-events': 'none' }, cap);
+  const capSpec = specOr(c.mat, { m: 'plastic', f: 'gloss', c: col });
+  const ringSpec = isStock(c.ringMat) ? { m: 'plastic', f: 'gloss', c: c.ringColor || '#1c1d21' } : c.ringMat;
+  const cap = svg('g', {}, g);
+  let lit, halo;
+  if (shape === 'square') {
+    const R = r + 1.9;
+    svg('rect', { x: -R - 0.4, y: -R + 1, width: R * 2 + 0.8, height: R * 2 + 0.8, rx: 2, fill: '#000', opacity: 0.45 }, g);
+    paint(g, 'rect', { x: -R, y: -R, width: R * 2, height: R * 2, rx: 1.8 }, ringSpec, opt(c));
+    svg('rect', { x: -r - 0.4, y: -r - 0.4, width: r * 2 + 0.8, height: r * 2 + 0.8, rx: 1.2, fill: '#000', opacity: 0.55 }, g);
+    g.appendChild(cap);
+    paint(cap, 'rect', { x: -r, y: -r, width: r * 2, height: r * 2, rx: 1.1 }, capSpec, opt(c));
+    svg('rect', { x: -r * 0.8, y: -r * 0.8, width: r * 1.6, height: r * 1.6, rx: 0.8, fill: 'none', stroke: '#000', 'stroke-width': r * 0.06, opacity: 0.2 }, cap);
+    lit = svg('rect', { x: -r * 0.96, y: -r * 0.96, width: r * 1.92, height: r * 1.92, rx: 1, fill: c.ledColor || col, 'fill-opacity': 0 }, cap);
+    svg('rect', { x: -r * 0.85, y: -r * 0.85, width: r * 1.1, height: r * 0.45, rx: 0.6, fill: '#fff', opacity: 0.22, 'pointer-events': 'none' }, cap);
+  } else {
+    const dome = shape === 'dome';
+    svg('circle', { r: r + 2.4, cy: 1.4, fill: '#000', opacity: 0.45 }, g);
+    paint(g, 'circle', { r: r + (dome ? 1.4 : 1.9) }, ringSpec, opt(c, { round: true }));
+    svg('circle', { r: r + 0.4, fill: '#000', opacity: 0.55 }, g);
+    g.appendChild(cap);
+    paint(cap, 'circle', { r }, capSpec, opt(c, { round: true }));
+    if (dome) {
+      // a big domed cap: rings of shade towards the edge and a large highlight
+      for (const [k, op] of [[0.98, 0.25], [0.88, 0.12]]) svg('circle', { r: r * k, fill: 'none', stroke: '#000', 'stroke-width': r * 0.1, opacity: op }, cap);
+      svg('circle', { r: r * 0.55, cx: -r * 0.12, cy: -r * 0.15, fill: '#fff', opacity: 0.12 }, cap);
+    } else svg('circle', { r: r * 0.86, fill: 'none', stroke: '#fff', 'stroke-width': r * 0.08, opacity: 0.18 }, cap);
+    lit = svg('circle', { r: r * 0.96, fill: c.ledColor || col, 'fill-opacity': 0 }, cap);
+    svg('ellipse', { cx: -r * 0.25, cy: -r * 0.35, rx: r * (dome ? 0.62 : 0.5), ry: r * (dome ? 0.38 : 0.3), fill: '#fff', opacity: dome ? 0.4 : 0.32, 'pointer-events': 'none' }, cap);
+  }
+  halo = svg('circle', { r: r * 2.2, fill: haloFill(c.ledColor || col), 'fill-opacity': 0, 'pointer-events': 'none' }, g);
   return {
     g,
     set(on) {
@@ -251,22 +341,46 @@ export function arcadePart(parent, c) {
 
 // ------------------------------------------------------------------ step buttons: a row, one lit (kind sel)
 export const STEP = 8;
+export const STEP_LOOKS = [['rubber', 'Rubber'], ['lit', 'Lit pads'], ['round', 'Round']];
 export function stepsPart(parent, c, th) {
   const n = c.n || 4;
+  const look = c.look || 'rubber';
   const g = svg('g', { class: 'ctl steps' }, parent);
   const W = n * STEP;
   svg('rect', { x: -W / 2 - 1, y: -6.5, width: W + 2, height: 13, fill: 'transparent' }, g);
-  const spec = specOr(c.mat, RUBBER);
   const col = c.ledColor || '#3ddc84';
+  const spec = specOr(c.mat, look === 'lit' ? { m: 'acrylic', f: 'frosted', c: '#c9ced6' } : look === 'round' ? BLACK : RUBBER);
   const items = [];
   const opts = c.opts || [];
   for (let i = 0; i < n; i++) {
     const x = -W / 2 + STEP * (i + 0.5);
     const b = svg('g', { transform: `translate(${x},1)` }, g);
-    svg('rect', { x: -2.9, y: -2.6, width: 5.8, height: 5.8, rx: 1, fill: '#000', opacity: 0.5 }, b);
-    paint(b, 'rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9 }, spec, opt(c, { seed: c.id + i }));
-    const shade2 = svg('rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9, fill: '#000', 'fill-opacity': 0 }, b);
-    const set = lamp(g, x, -4.6, 0.85, col, 'circle', 'step-led');
+    let set, shade2;
+    if (look === 'lit') {
+      // the pad itself lights up
+      svg('rect', { x: -3.2, y: -3.1, width: 6.4, height: 6.4, rx: 1, fill: '#000', opacity: 0.55 }, b);
+      paint(b, 'rect', { x: -2.9, y: -3.3, width: 5.8, height: 5.8, rx: 0.9 }, spec, opt(c, { seed: c.id + i }));
+      const glowR = svg('rect', { x: -2.9, y: -3.3, width: 5.8, height: 5.8, rx: 0.9, fill: col, 'fill-opacity': 0, class: 'step-led' }, b);
+      glowR.dataset.on = '0';
+      const halo = svg('circle', { cy: -0.4, r: 6, fill: haloFill(col), 'fill-opacity': 0, 'pointer-events': 'none' }, b);
+      shade2 = svg('rect', { x: -2.9, y: -3.3, width: 5.8, height: 5.8, rx: 0.9, fill: '#000', 'fill-opacity': 0 }, b);
+      set = (on) => {
+        setA(glowR, 'fill-opacity', on ? 0.75 : 0);
+        glowR.dataset.on = on ? '1' : '0';
+        setA(halo, 'fill-opacity', on ? 0.6 : 0);
+      };
+    } else if (look === 'round') {
+      svg('circle', { r: 3.1, cy: 0.3, fill: '#000', opacity: 0.5 }, b);
+      svg('circle', { r: 2.9, fill: 'url(#g-chrome)' }, b);
+      paint(b, 'circle', { r: 2.2 }, spec, opt(c, { seed: c.id + i, round: true }));
+      shade2 = svg('circle', { r: 2.2, fill: '#000', 'fill-opacity': 0 }, b);
+      set = lamp(g, x, -4.6, 0.75, col, 'circle', 'step-led');
+    } else {
+      svg('rect', { x: -2.9, y: -2.6, width: 5.8, height: 5.8, rx: 1, fill: '#000', opacity: 0.5 }, b);
+      paint(b, 'rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9 }, spec, opt(c, { seed: c.id + i }));
+      shade2 = svg('rect', { x: -2.7, y: -2.9, width: 5.4, height: 5.4, rx: 0.9, fill: '#000', 'fill-opacity': 0 }, b);
+      set = lamp(g, x, -4.6, 0.85, col, 'circle', 'step-led');
+    }
     if (c.marks !== false && opts[i]) label(g, x, 5.6, opts[i], { size: 2.1, fill: th.text, weight: 700, ls: 0 });
     items.push({ set, shade2 });
   }
@@ -278,7 +392,7 @@ export function stepsPart(parent, c, th) {
       cur = idx;
       items.forEach((it, i) => {
         it.set(i === idx ? col : null);
-        setA(it.shade2, 'fill-opacity', i === idx ? 0.25 : 0);
+        setA(it.shade2, 'fill-opacity', i === idx ? (look === 'lit' ? 0 : 0.25) : 0);
       });
     },
   };
@@ -313,88 +427,62 @@ export function tbankPart(parent, c, th, o = {}) {
   return { g, sets };
 }
 
-// ------------------------------------------------------------------ whammy lever (kind knob, spring loaded look)
-export function leverPart(parent, c) {
-  const len = c.len || 26;
-  const py = len * 0.35;
-  const g = svg('g', { class: 'ctl knob lever' }, parent);
-  svg('rect', { x: -len * 0.45, y: -len * 0.65, width: len * 0.9, height: len + 2, fill: 'transparent' }, g);
-  svg('circle', { cy: py, r: 5, fill: 'url(#g-knobShadow)', opacity: 0.8 }, g);
-  svg('polygon', { points: hex(3.6), transform: `translate(0,${py})`, fill: 'url(#g-nut)', stroke: '#2a2d31', 'stroke-width': 0.3 }, g);
-  const arm = svg('g', {}, g);
-  const spec = specOr(c.mat, CHROME);
-  const d = `M-0.9,${py} L-0.9,${py - len * 0.55} Q-0.9,${py - len * 0.72} 2.6,${py - len * 0.86} L3.6,${py - len * 0.92} L4.4,${py - len * 0.82} L1.1,${py - len * 0.68} L0.9,${py} Z`;
-  svg('path', { d, fill: '#000', opacity: 0.3, transform: 'translate(1,1)' }, arm);
-  paint(arm, 'path', { d }, spec, opt(c, { size: 4 }));
-  paint(arm, 'circle', { cx: 4.2, cy: py - len * 0.9, r: 2.1 }, specOr(c.tipMat, { m: 'plastic', f: 'gloss', c: '#f1f0ec' }), opt(c, { round: true }));
-  paint(g, 'circle', { cy: py, r: 2 }, CHROME, opt(c, { round: true }));
-  return { g, set: (v) => arm.setAttribute('transform', `rotate(${(-32 + 64 * clamp(v, 0, 1)).toFixed(1)} 0 ${py})`) };
-}
-
-// ------------------------------------------------------------------ pressure pad (kind knob)
-export function padPart(parent, c) {
-  const w = c.w || 16;
-  const g = svg('g', { class: 'ctl knob pad' }, parent);
-  svg('rect', { x: -w / 2 - 1.4, y: -w / 2 - 1.4, width: w + 2.8, height: w + 2.8, rx: 3.4, fill: '#000', opacity: 0.5 }, g);
-  const accent = c.color || '#ff7a2f';
-  const glow = svg('rect', { x: -w / 2 - 1, y: -w / 2 - 1, width: w + 2, height: w + 2, rx: 3.2, fill: accent, opacity: 0 }, g);
-  const face = svg('g', {}, g);
-  paint(face, 'rect', { x: -w / 2, y: -w / 2, width: w, height: w, rx: 2.6 }, specOr(c.mat, RUBBER), opt(c));
-  for (let i = 1; i < 4; i++) svg('circle', { r: (w / 2) * (i / 4), fill: 'none', stroke: '#000', 'stroke-width': 0.35, opacity: 0.25 }, face);
-  const tint = svg('rect', { x: -w / 2, y: -w / 2, width: w, height: w, rx: 2.6, fill: accent, opacity: 0, style: 'mix-blend-mode:screen' }, face);
-  return {
-    g,
-    set(v) {
-      v = clamp(v, 0, 1);
-      setA(glow, 'opacity', (v * 0.55).toFixed(2));
-      setA(tint, 'opacity', (v * 0.45).toFixed(2));
-      face.setAttribute('transform', `scale(${(1 - v * 0.04).toFixed(3)})`);
-    },
-  };
-}
-
-// ------------------------------------------------------------------ light sensor (kind knob)
-export function ldrPart(parent, c) {
-  const r = c.r || 3.5;
-  const g = svg('g', { class: 'ctl knob ldr' }, parent);
-  const light = svg('circle', { r: r * 3.4, fill: haloFill('#fff2b0'), 'fill-opacity': 0, 'pointer-events': 'none' }, g);
-  svg('circle', { r: r + 4, fill: 'transparent' }, g);
-  paint(g, 'circle', { r: r + 1.3 }, specOr(c.mat, CHROME), opt(c, { round: true }));
-  svg('circle', { r, fill: '#e2cfa4' }, g);
-  let d = `M${-r * 0.7},${-r * 0.55}`;
-  for (let i = 0; i < 5; i++) d += `H${r * 0.7}V${-r * 0.55 + (i + 0.5) * r * 0.22}H${-r * 0.7}V${-r * 0.55 + (i + 1) * r * 0.22}`;
-  svg('path', { d, fill: 'none', stroke: '#b5412a', 'stroke-width': r * 0.08 }, g);
-  svg('circle', { r: r * 0.95, fill: 'url(#g-ledLens)' }, g);
-  return { g, set: (v) => setA(light, 'fill-opacity', (clamp(v, 0, 1) * 0.9).toFixed(2)) };
-}
-
 // ------------------------------------------------------------------ needle meter (kind knob)
+export const METER_LOOKS = [['vu', 'VU'], ['dark', 'Dark'], ['round', 'Round gauge']];
 export function meterPart(parent, c, th) {
-  const w = c.w || 28, h = c.h || 18;
+  const look = c.look || 'vu';
+  const round = look === 'round', dark = look === 'dark';
+  const w = round ? c.h || 18 : c.w || 28, h = c.h || 18;
   const g = svg('g', { class: 'ctl knob meter' }, parent);
-  paint(g, 'rect', { x: -w / 2 - 1.5, y: -h / 2 - 1.5, width: w + 3, height: h + 3, rx: 1.6 }, specOr(c.mat, BLACK), opt(c));
-  const face = c.face || '#efe6cc';
-  svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: face }, g);
-  if (c.lit) svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: haloFill('#ffb020', 0.8), opacity: 0.7 }, g);
-  const ink = '#2a2420';
-  const py = h / 2 - 1.5, R = h * 0.82;
-  const arc = (a0, a1, rr) => {
-    const [x0, y0] = polar(a0, rr), [x1, y1] = polar(a1, rr);
-    return `M${(x0).toFixed(2)},${(py + y0).toFixed(2)}A${rr},${rr} 0 0 1 ${x1.toFixed(2)},${(py + y1).toFixed(2)}`;
-  };
-  svg('path', { d: arc(-48, 28, R * 0.86), fill: 'none', stroke: ink, 'stroke-width': 0.35 }, g);
-  svg('path', { d: arc(28, 48, R * 0.86), fill: 'none', stroke: '#c9302c', 'stroke-width': 1.1 }, g);
-  for (let i = 0; i <= 10; i++) {
-    const a = -48 + 9.6 * i;
-    const [x0, y0] = polar(a, R * 0.86), [x1, y1] = polar(a, R * (i % 5 === 0 ? 0.74 : 0.79));
-    svg('line', { x1: x0, y1: py + y0, x2: x1, y2: py + y1, stroke: i > 7 ? '#c9302c' : ink, 'stroke-width': 0.3 }, g);
+  const face = c.face || (dark ? '#15171b' : '#efe6cc');
+  const ink = luma(face) > 0.45 ? '#2a2420' : '#e9e4d8';
+  const red = '#d9362f';
+  let py, R, a0 = -48, a1 = 48;
+  if (round) {
+    // a round panel gauge: chrome ring, needle from the middle, 240 degree scale
+    const rr = h / 2;
+    paint(g, 'circle', { r: rr + 1.6 }, specOr(c.mat, CHROME), opt(c, { round: true }));
+    svg('circle', { r: rr, fill: face }, g);
+    if (c.lit) svg('circle', { r: rr, fill: haloFill('#ffb020', 0.8), opacity: 0.6 }, g);
+    py = 0;
+    R = rr * 1.02;
+    a0 = -120;
+    a1 = 120;
+  } else {
+    paint(g, 'rect', { x: -w / 2 - 1.5, y: -h / 2 - 1.5, width: w + 3, height: h + 3, rx: 1.6 }, specOr(c.mat, BLACK), opt(c));
+    svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: face }, g);
+    if (c.lit || dark) svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: haloFill(dark ? '#7fd8ff' : '#ffb020', 0.8), opacity: dark ? 0.35 : 0.7 }, g);
+    py = h / 2 - 1.5;
+    R = h * 0.82;
   }
-  label(g, 0, py - R * 0.36, c.text || 'VU', { size: Math.min(3.2, h * 0.17), fill: ink, weight: 700, ls: 0.2 });
-  const needle = svg('line', { x1: 0, y1: py, x2: 0, y2: py - R * 0.92, stroke: '#111', 'stroke-width': 0.35, 'stroke-linecap': 'round' }, g);
+  const span = a1 - a0, warn = a0 + span * 0.79;
+  const arc = (b0, b1, rr) => {
+    const [x0, y0] = polar(b0, rr), [x1, y1] = polar(b1, rr);
+    return `M${x0.toFixed(2)},${(py + y0).toFixed(2)}A${rr},${rr} 0 ${b1 - b0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)},${(py + y1).toFixed(2)}`;
+  };
+  const rs = R * (round ? 0.8 : 0.86);
+  svg('path', { d: arc(a0, warn, rs), fill: 'none', stroke: ink, 'stroke-width': 0.35 }, g);
+  svg('path', { d: arc(warn, a1, rs), fill: 'none', stroke: red, 'stroke-width': 1.1 }, g);
+  for (let i = 0; i <= 10; i++) {
+    const a = a0 + (span * i) / 10;
+    const [x0, y0] = polar(a, rs), [x1, y1] = polar(a, rs - R * (i % 5 === 0 ? 0.12 : 0.07));
+    svg('line', { x1: x0, y1: py + y0, x2: x1, y2: py + y1, stroke: i > 7 ? red : ink, 'stroke-width': 0.3 }, g);
+  }
+  label(g, 0, round ? R * 0.42 : py - R * 0.36, c.text ?? 'VU', { size: Math.min(3.2, h * 0.17), fill: ink, weight: 700, ls: 0.2 });
+  const needle = svg('line', { x1: 0, y1: py, x2: 0, y2: py - R * (round ? 0.86 : 0.92), stroke: dark ? '#ff5a3a' : round ? red : '#111', 'stroke-width': 0.35, 'stroke-linecap': 'round' }, g);
   svg('circle', { cy: py, r: 1.2, fill: '#1a1a1a' }, g);
-  svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: 'url(#g-glass)', 'pointer-events': 'none' }, g);
-  return { g, set: (v) => needle.setAttribute('transform', `rotate(${(-48 + 96 * clamp(v, 0, 1)).toFixed(1)} 0 ${py})`) };
+  if (round) svg('circle', { r: h / 2, fill: 'url(#g-glass)', 'pointer-events': 'none' }, g);
+  else svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.8, fill: 'url(#g-glass)', 'pointer-events': 'none' }, g);
+  return { g, set: (v) => needle.setAttribute('transform', `rotate(${(a0 + span * clamp(v, 0, 1)).toFixed(1)} 0 ${py})`) };
 }
+const luma = (hx) => {
+  try {
+    const [r, g2, b] = hexToRgb(hx);
+    return (0.299 * r + 0.587 * g2 + 0.114 * b) / 255;
+  } catch (_) {
+    return 0.8;
+  }
+};
 
 // ------------------------------------------------------------------ slider looks
 export const SLIDER_LOOKS = [['classic', 'Classic'], ['fader', 'Fader cap'], ['mini', 'Mini fader'], ['led', 'LED slider'], ['long', 'Long throw'], ['scale', 'With scale']];

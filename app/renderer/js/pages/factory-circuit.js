@@ -5,14 +5,24 @@
 // Design model (v3):
 //   D.circuit = { v: 3, insts: [{ id, ref, ver, name, graph, x, y, on }], wires: [{ id, a: {n, p}, b: {n, p} }],
 //                 combine: { target: 'avg' (default) | 'sum' | 'max' | 'min' }, mix, mixDef, stages }
-//   wire ends: n = 'jack:<jack id>' or an instance id, p = the circuit's Audio in / Audio out node id.
+//   wire ends: n = 'jack:<jack id>' or an instance id, p = the circuit's Audio in / Audio out node id. A wire into
+//   a PHONES jack may say p = 'L' or 'R' to feed one side only.
 //   control targets: '<inst>.<control input node>', '<inst>.on', '<inst>.tap', 'bypass', 'mix'.
 //   c.map is a control's first target, c.more its others; DIP switches and XY pads keep c.maps[i]; expression
-//   jacks j.maps. `stages` is a short summary of the engine parts ([{type}]) for the circuit board drawing.
-// Older designs (v2: a list of stages) are migrated on load (circuit-migrate.js).
+//   and footswitch jacks j.maps (footswitch maps say ch 't' tip or 'r' ring). `stages` is a short summary of the
+//   engine parts ([{type}]) for the circuit board drawing.
+//   Circuit outputs (Analog / Binary output parts) are '<inst>.<node>' too, and drive:
+//     C.cwires: [{id, a: {n: inst, p: output node}, b: {n: inst, p: input node}}]   another circuit's input
+//     led.bind = 'cv:<inst>.<node>'                                                  an LED
+//     j.from = {n: inst, p: node}                                                    an EXP / footswitch jack (out)
+//     screen.sio.ins[i].from = {n, p}                                                a screen input
+//   and a screen's outputs drive circuit inputs: screen.sio.outs[i].maps = [{to, raw: true}].
+//   Analog values are floats from -255 to 255, binary 0 or 1.
+// Older designs (v2: a list of stages) are migrated on load (circuit-migrate.js), old 'knob' inputs become
+// analog or binary inputs (migrateGraph).
 import { clamp } from '../util.js';
 import { xyControls } from './factory-kinds.js';
-import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, ioNodes, nid, clone, val, portKind, graphCat, graphCost, graphNames, hasTap } from './circuit-parts.js';
+import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, LIM, ioNodes, nid, clone, val, portKind, graphCat, graphCost, graphNames, hasTap, migrateGraph, newNode } from './circuit-parts.js';
 import {
   CIRCUITS, circuitById, makeCircuit, newStage, stageParam, v2TargetsFor, v2TargetInfo, v2MapTo, v2AutoMap, autoMapWith, stagesToGraph,
 } from './circuit-migrate.js';
@@ -28,6 +38,28 @@ export const instOf = (C, id) => (C && C.insts ? C.insts.find((i) => i.id === id
 export const instInputs = (inst) => ioNodes(inst.graph, 'ctl');
 export const instAudioIns = (inst) => ioNodes(inst.graph, 'in');
 export const instAudioOuts = (inst) => ioNodes(inst.graph, 'out');
+export const instOutputs = (inst) => ioNodes(inst.graph, 'cout');
+/** Signal of a circuit input or output node: 'b' binary, 'n' analog. */
+export const nodeSig = (n) => (n && (n.t === 'binary' || n.t === 'binout' || (n.t === 'knob' && n.steps === 2)) ? 'b' : 'n');
+/** Every circuit output of the pedal, in engine order (status cv[idx]). */
+export function circuitOutputs(D) {
+  const out = [];
+  for (const inst of (D.circuit && D.circuit.insts) || [])
+    for (const n of instOutputs(inst)) out.push({ key: inst.id + '.' + n.id, inst, n, sig: nodeSig(n), idx: out.length, name: (inst.name || 'Circuit') + ': ' + (n.name || 'Out'), min: n.min ?? 0, max: n.max ?? 1 });
+  return out;
+}
+export const outKey = (e) => (e && e.n ? e.n + '.' + e.p : '');
+/** EXP and footswitch jacks. A jack driven by a circuit output (j.from) is an output, else an input. */
+export const ctlJacks = (D) => D.jacks.filter((j) => j.kind === 'exp' || j.kind === 'fsw');
+export const jackIsOut = (j) => !!(j && ((j.from && j.from.n) || j.dir === 'out'));
+/** A screen's inputs and outputs (up to 16 each). */
+export const SCREEN_PORTS = 16;
+export const screenIO = (c) => {
+  if (!c.sio) c.sio = { ins: [], outs: [] };
+  if (!Array.isArray(c.sio.ins)) c.sio.ins = [];
+  if (!Array.isArray(c.sio.outs)) c.sio.outs = [];
+  return c.sio;
+};
 const titleCase = (s) => String(s || '').toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 /** Keep the parts summary (C.stages) up to date after changing circuits. */
 export function syncStages(C) {
@@ -37,11 +69,14 @@ export function syncStages(C) {
 }
 
 function knobInfo(k) {
+  const name = k.name || 'Input';
+  if (nodeSig(k) === 'b') return { min: 0, max: 1, i: 1, def: k.def ? 1 : 0, opts: k.opts && k.opts.length >= 2 ? k.opts.slice(0, 2) : ['Off', 'On'], label: name, key: name.toLowerCase(), bin: true };
   const steps = k.steps >= 2 ? k.steps : 0;
-  const name = k.name || 'Knob';
   if (steps) return { min: 0, max: steps - 1, i: 1, def: k.def ?? 0, opts: k.opts && k.opts.length ? k.opts.slice(0, steps) : undefined, label: name, key: name.toLowerCase() };
-  return { min: 0, max: 1, def: k.def ?? 0.5, label: name, key: name.toLowerCase() };
+  const lo = clamp(k.min ?? 0, -LIM, LIM), hi = clamp(k.max ?? 1, -LIM, LIM);
+  return { min: lo, max: hi, def: k.def ?? (lo + hi) / 2, label: name, key: name.toLowerCase() };
 }
+export const inputInfo = knobInfo;
 
 // ------------------------------------------------------------------ targets (v2 and v3)
 /** Everything a control can drive: [value, label, info]. */
@@ -55,7 +90,7 @@ export function targetsFor(C, ctlKind) {
     const nm = inst.name || 'Circuit';
     out.push([inst.id + '.on', `${nm}: on / off`, { min: 0, max: 1, i: 1, label: 'On', key: 'on' }]);
     if (sw && hasTap(inst.graph)) out.push([inst.id + '.tap', `${nm}: tap tempo`, { tap: true, label: 'Tap' }]);
-    for (const k of instInputs(inst)) out.push([inst.id + '.' + k.id, `${nm}: ${k.name || 'Knob'}`, knobInfo(k)]);
+    for (const k of instInputs(inst)) out.push([inst.id + '.' + k.id, `${nm}: ${k.name || 'Input'}`, knobInfo(k)]);
   }
   // values inside the circuits that no control input reaches yet: picking one adds an input for it
   for (const inst of C.insts)
@@ -89,7 +124,9 @@ function exposeExtra(C, to) {
   const names = new Set(instInputs(inst).map((k) => (k.name || '').toLowerCase()));
   let name = p.label;
   for (let i = 2; names.has(name.toLowerCase()); i++) name = p.label + ' ' + i;
-  const k = { id: nid(), t: 'knob', x: 40, y: (ys.length ? Math.max(...ys) : 100) + 64, p: {}, name, def: info.def, steps: info.i ? info.max + 1 : 0 };
+  const steps = info.i ? info.max + 1 : 0;
+  const k = newNode(steps === 2 ? 'binary' : 'analog', 40, (ys.length ? Math.max(...ys) : 100) + 64, { name, def: info.def });
+  if (steps > 2) k.steps = steps;
   if (p.opts) k.opts = p.opts.slice();
   inst.graph.nodes.push(k);
   const w = { id: nid('w'), a: { n: k.id, p: 'cv' }, b: { n: n.id, p: '@' + p.key } };
@@ -168,7 +205,9 @@ export function migrateCircuit(d) {
     const C = d.circuit;
     if (!Array.isArray(C.insts)) C.insts = [];
     if (!Array.isArray(C.wires)) C.wires = [];
+    if (!Array.isArray(C.cwires)) C.cwires = [];
     for (const i of C.insts) if (!i.graph || !Array.isArray(i.graph.nodes)) i.graph = { nodes: [], wires: [] };
+    for (const i of C.insts) migrateGraph(i.graph);
     if (!C.stages) syncStages(C);
     return false;
   }
@@ -226,7 +265,7 @@ function v2ToV3(d) {
     for (const m of [c.map, ...(c.maps || [])]) if (m && m.to && m.to.endsWith('.tap')) m.to = inst.id + '.tap';
     if (c.kind === 'led' && c.bind && c.bind.startsWith('tap:')) c.bind = 'tap:' + inst.id;
   }
-  d.circuit = { v: 3, insts: [inst], wires: [], mix: !!C2.mix, mixDef: C2.mixDef ?? 1, combine: {} };
+  d.circuit = { v: 3, insts: [inst], wires: [], cwires: [], mix: !!C2.mix, mixDef: C2.mixDef ?? 1, combine: {} };
   seriesWires(d);
   syncStages(d.circuit);
 }
@@ -363,6 +402,19 @@ export function pruneTargets(D) {
   }
   for (const j of D.jacks) if (j.maps) j.maps = j.maps.filter((m) => m && m.to && ok(m));
   if (C.combine) for (const k of Object.keys(C.combine)) if (!targetInfo(C, k)) delete C.combine[k];
+  // control wiring of circuit outputs: ends that are gone are dropped
+  const outs = new Set(circuitOutputs(D).map((o) => o.key));
+  const outOk = (e) => !!e && outs.has(outKey(e));
+  const inOk = (e) => !!e && !!instOf(C, e.n) && instInputs(instOf(C, e.n)).some((k) => k.id === e.p);
+  C.cwires = (C.cwires || []).filter((w) => outOk(w.a) && inOk(w.b) && w.a.n !== w.b.n);
+  for (const c of D.ctls) {
+    if (c.kind === 'led' && c.bind && c.bind.startsWith('cv:') && !outs.has(c.bind.slice(3))) c.bind = 'on';
+    if (c.sio) {
+      for (const p of c.sio.ins || []) if (p.from && !outOk(p.from)) p.from = null;
+      for (const p of c.sio.outs || []) if (p.maps) p.maps = p.maps.filter((m) => m && m.to && ok(m));
+    }
+  }
+  for (const j of D.jacks) if (j.from && !outOk(j.from)) delete j.from;
 }
 /** Add a mapping from control c to target `to` (its main one if it has none). */
 export function addMapping(D, c, to, o = {}) {
@@ -383,9 +435,19 @@ export function removeMapping(c, i) {
 
 // ------------------------------------------------------------------ compiling to the engine
 const portIdx = (list, key) => Math.max(0, list.findIndex((x) => x[0] === key));
-function slotFor(p, v, w) {
+// the span a control input reads as 0..1 when it drives a part value: its own range
+function ownSpan(n) {
+  if (!n || PARTS[n.t]?.io !== 'ctl') return null;
+  const info = knobInfo(n);
+  return { xlo: info.min, xhi: info.max };
+}
+function slotFor(p, v, w, src) {
+  if (p.raw) return { p: p.key, def: v, lo: p.min, hi: p.max, raw: true };
   const s = { p: p.key, def: v, lo: p.min, hi: p.max, log: !!p.l, int: !!p.i };
   if (w) {
+    const sp = ownSpan(src);
+    const xlo = w.xlo ?? (sp ? sp.xlo : 0), xhi = w.xhi ?? (sp ? sp.xhi : 1);
+    if (xlo !== 0 || xhi !== 1) Object.assign(s, { xlo, xhi });
     if (w.lo != null) s.lo = w.lo;
     if (w.hi != null) s.hi = w.hi;
     if (w.log != null) s.log = !!w.log;
@@ -401,8 +463,17 @@ export function compilePatch(D) {
   const addParam = (name, def, min, max) => E.params.push({ name, def, min, max }) - 1;
   const add = (n) => E.nodes.push(n) - 1;
   const ain = J.ins.map((_, i) => add({ k: 'ain', idx: i }));
+  const ew = effectiveWires(D);
+  const outJack = (w) => J.outs.indexOf(resolveJack(J, w.b.n.slice(5), 'out'));
+  // a PHONES jack wired L and R on their own gets an engine output per side
+  const split = J.outs.map((j, i) => j.kind === 'phones' && ew.some((w) => w.b.n.startsWith('jack:') && outJack(w) === i && (w.b.p === 'L' || w.b.p === 'R')));
   const aout = J.outs.map((_, i) => add({ k: 'aout', idx: i }));
+  const aoutR = J.outs.map((_, i) => (split[i] ? add({ k: 'aout', idx: J.outs.length + i }) : aout[i]));
   const maps = new Map();
+  const outsList = circuitOutputs(D);
+  const outIdx = new Map(outsList.map((o) => [o.key, o.idx]));
+  const fedIns = new Set((C.cwires || []).map((w) => outKey(w.b)));
+  const coutNode = new Map(); // '<inst>.<node>' -> engine node
   C.insts.forEach((inst, gi) => {
     const G = inst.graph;
     const by = new Map(G.nodes.map((n) => [n.id, n]));
@@ -421,7 +492,16 @@ export function compilePatch(D) {
       else if (pt.io === 'out') idx.set(n.id, add({ k: 'bypass', slots: [{ p: 'on', def: 1, lo: 0, hi: 1 }] }));
       else if (pt.io === 'ctl') {
         const info = knobInfo(n);
-        idx.set(n.id, add({ k: 'param', pi: addParam(inst.id + '.' + n.id, clamp(n.def ?? info.def, info.min, info.max), info.min, info.max) }));
+        const lo = Math.min(info.min, info.max), hi = Math.max(info.min, info.max);
+        const pn = { k: 'param', pi: addParam(inst.id + '.' + n.id, clamp(n.def ?? info.def, lo, hi), lo, hi) };
+        // fed by another circuit's output: the wire wins over the param
+        if (fedIns.has(inst.id + '.' + n.id)) pn.slots = [{ p: 'in', def: 0, lo: -LIM, hi: LIM, raw: true }];
+        idx.set(n.id, add(pn));
+      } else if (pt.io === 'cout') {
+        const ni = add({ k: 'cout', idx: outIdx.get(inst.id + '.' + n.id) ?? 0, slots: [{ p: 'in', def: 0, lo: -LIM, hi: LIM, raw: true }] });
+        idx.set(n.id, ni);
+        slotsOf.set(n.id, new Map([['in', 0]]));
+        coutNode.set(inst.id + '.' + n.id, ni);
       } else {
         const slots = [], sm = new Map(), fixed = {};
         const wp = wired.get(n.id) || new Map();
@@ -429,7 +509,7 @@ export function compilePatch(D) {
           const v = val(n, p), w = wp.get(p.key);
           if (pt.native || w || p.key === 'on') {
             sm.set(p.key, slots.length);
-            slots.push(slotFor(p, v, w));
+            slots.push(slotFor(p, v, w, w && by.get(w.a.n)));
           } else fixed[p.key] = v;
         }
         let en;
@@ -466,15 +546,29 @@ export function compilePatch(D) {
     }
     maps.set(inst.id, idx);
   });
-  for (const w of effectiveWires(D)) {
+  for (const w of ew) {
     const a = w.a.n.startsWith('jack:') ? ain[J.ins.indexOf(resolveJack(J, w.a.n.slice(5), 'in'))] : maps.get(w.a.n)?.get(w.a.p);
-    const b = w.b.n.startsWith('jack:') ? aout[J.outs.indexOf(resolveJack(J, w.b.n.slice(5), 'out'))] : maps.get(w.b.n)?.get(w.b.p);
-    if (a != null && b != null) E.edges.push([a, 0, b, 0, 0]);
+    if (a == null) continue;
+    if (w.b.n.startsWith('jack:')) {
+      const i = outJack(w);
+      if (i < 0) continue;
+      if (w.b.p !== 'R') E.edges.push([a, 0, aout[i], 0, 0]);
+      if (split[i] && w.b.p !== 'L') E.edges.push([a, 0, aoutR[i], 0, 0]);
+    } else {
+      const b = maps.get(w.b.n)?.get(w.b.p);
+      if (b != null) E.edges.push([a, 0, b, 0, 0]);
+    }
   }
-  // engine outputs: a stereo pair is OUT = left, STEREO = right; phones carry both; anything else a mono sum
+  // circuit outputs into other circuits' inputs
+  for (const w of C.cwires || []) {
+    const a = coutNode.get(outKey(w.a)), b = maps.get(w.b.n)?.get(w.b.p);
+    if (a != null && b != null && fedIns.has(outKey(w.b))) E.edges.push([a, 0, b, 0, 1]);
+  }
+  // engine outputs: a stereo pair is OUT = left, STEREO = right; phones carry both (or a mono mix per side when
+  // they are wired on their own); anything else a mono sum
   const hasPair = J.outs.some((j) => j.kind === 'stereo') && J.outs.some((j) => j.kind === 'out');
   J.outs.forEach((j, i) => {
-    if (j.kind === 'phones') E.outs.push([i, 0], [i, 1]);
+    if (j.kind === 'phones') E.outs.push(split[i] ? [i, -1] : [i, 0], split[i] ? [J.outs.length + i, -1] : [i, 1]);
     else E.outs.push([i, hasPair && j.kind === 'out' ? 0 : hasPair && j.kind === 'stereo' ? 1 : -1]);
   });
   if (C.mix) Object.assign(E, { mix: true, mixDef: C.mixDef ?? 1 });
@@ -507,9 +601,11 @@ function tapTime(inst) {
 /** Build a catalog block definition from a factory design. */
 export function designToDef(design, o = {}) {
   const D = clone(design);
-  if (!isV3(D.circuit)) migrateCircuit(D);
+  migrateCircuit(D);
   const C = D.circuit;
   const opts = compilePatch(D);
+  const couts = circuitOutputs(D);
+  const coutOf = new Map(couts.map((x) => [x.key, x]));
   // every exposed value is sent, so a changed default reaches a running engine
   const fixed = {};
   for (const p of opts.params) fixed[p.name] = p.def;
@@ -603,6 +699,12 @@ export function designToDef(design, o = {}) {
         const knob = src && knobLike[src.kind];
         Object.assign(l, { bind: 'fn', ledFn: (ui, b) => !b.bypass && ((ui[k3] ?? 0) / (knob ? 1 : Math.max(1, n - 1))) > (knob ? 0.05 : 0.5) });
       } else if (bind.startsWith('tap:')) l.bind = 'tap:_tap.' + bind.slice(4);
+      else if (bind.startsWith('cv:')) {
+        // a circuit output: binary lights it, analog sets its brightness (from the engine status cv[idx])
+        const co = coutOf.get(bind.slice(3));
+        if (co) Object.assign(l, { bind: 'fn', cv: co.idx, ledFn: cvLed(co, c.color) });
+        else Object.assign(l, { bind: 'fn', ledFn: () => null });
+      }
       controls.push(l);
     }
   }
@@ -617,8 +719,22 @@ export function designToDef(design, o = {}) {
     if (c.part === 'encoder') x.endless = true;
   }
   // expression jacks: move a control (j.drive) or drive circuit inputs directly (j.maps)
-  const ctrlIns = [];
-  for (const j of D.jacks.filter((x) => x.kind === 'exp')) {
+  const ctrlIns = [], ctrlOuts = [];
+  for (const j of ctlJacks(D)) {
+    if (jackIsOut(j)) {
+      // driven by a circuit output: an expression or footswitch OUT on the board
+      const co = j.from && coutOf.get(outKey(j.from));
+      if (co) ctrlOuts.push({ label: j.label || (j.kind === 'fsw' ? 'FS OUT' : 'EXP OUT'), source: 'cv', cv: co.idx, sig: j.kind === 'fsw' ? 'b' : co.sig, lo: co.sig === 'b' ? 0 : co.min, hi: co.sig === 'b' ? 1 : co.max, _jack: j.id });
+      continue;
+    }
+    if (j.kind === 'fsw') {
+      // a footswitch plugged in: tip (the cable's switch) and ring, each 0 or 1
+      const key = 'u.f.' + j.id;
+      ctrlIns.push({ label: j.label || 'FS', param: key, min: 0, max: 1, _jack: j.id });
+      addMaps(key, 0, undefined, (j.maps || []).filter((m) => m && (m.ch || 't') === 't'), true);
+      addMaps(key + '.r', 0, undefined, (j.maps || []).filter((m) => m && m.ch === 'r'), true);
+      continue;
+    }
     if (j.maps && j.maps.length) {
       const key = 'u.x.' + j.id;
       ctrlIns.push({ label: j.label || 'EXP', param: key, min: 0, max: 1, _jack: j.id });
@@ -627,6 +743,21 @@ export function designToDef(design, o = {}) {
     }
     const tgt = D.ctls.find((c) => c.id === j.drive) || D.ctls.find((c) => c.kind === 'pedal') || D.ctls.find((c) => c.kind === 'knob');
     if (tgt && knobLike[tgt.kind]) ctrlIns.push({ label: j.label || 'EXP', param: 'u.' + tgt.id, min: 0, max: 1, _jack: j.id });
+  }
+  // screens: their outputs drive circuit inputs (values set by the script, as they are), their inputs read outputs
+  const screenIO = {};
+  for (const c of D.ctls) {
+    if (c.kind !== 'screen' || !c.sio) continue;
+    const sio = screenIO[c.id] = { ins: [], outs: [] };
+    (c.sio.ins || []).slice(0, SCREEN_PORTS).forEach((p, i) => {
+      const co = p.from && coutOf.get(outKey(p.from));
+      sio.ins.push({ name: p.name || 'In ' + (i + 1), sig: p.sig === 'b' ? 'b' : 'n', cv: co ? co.idx : null });
+    });
+    (c.sio.outs || []).slice(0, SCREEN_PORTS).forEach((p, i) => {
+      const key = 'u.s.' + c.id + '.' + i;
+      sio.outs.push({ name: p.name || 'Out ' + (i + 1), sig: p.sig === 'b' ? 'b' : 'n', p: key, def: p.def ?? 0 });
+      addMaps(key, 0, undefined, (p.maps || []).map((m) => m && { ...m, raw: true }), true);
+    });
   }
   const taps = C.insts.filter((i) => hasTap(i.graph)).map((i) => ({ id: i.id, ...tapTime(i) }));
   const combine = C.combine || {};
@@ -638,7 +769,7 @@ export function designToDef(design, o = {}) {
         if (x.opt) continue; // nothing plugged into the expression jack
         v = x.def;
       }
-      const r = x.n && Array.isArray(x.m.values) && x.m.values.length ? x.m.values[clamp(Math.round(v), 0, x.m.values.length - 1)] : mapValue(x.m, x.info, x.n ? v / Math.max(1, x.n - 1) : v);
+      const r = x.m.raw ? clamp(+v || 0, -LIM, LIM) : x.n && Array.isArray(x.m.values) && x.m.values.length ? x.m.values[clamp(Math.round(v), 0, x.m.values.length - 1)] : mapValue(x.m, x.info, x.n ? v / Math.max(1, x.n - 1) : v);
       if (!got.has(x.to)) got.set(x.to, []);
       got.get(x.to).push(r);
     }
@@ -647,7 +778,7 @@ export function designToDef(design, o = {}) {
       const info = targetInfo(C, to) || { min: 0, max: 1 };
       const how = combine[to] || 'avg';
       let v = how === 'max' ? Math.max(...vs) : how === 'min' ? Math.min(...vs) : vs.reduce((a, b) => a + b, 0) / (how === 'avg' ? vs.length : 1);
-      v = clamp(v, info.min ?? 0, info.max ?? 1);
+      v = clamp(v, Math.min(info.min ?? 0, info.max ?? 1), Math.max(info.min ?? 0, info.max ?? 1));
       if (info.i) v = Math.round(v);
       out[to] = v;
     }
@@ -688,10 +819,35 @@ export function designToDef(design, o = {}) {
     tags: ['custom', 'factory', ...names.map((n) => n.toLowerCase())],
   };
   if (tapSub != null) def.tapSub = tapSub;
-  if (ctrlIns.length) def.ctrl = { ins: ctrlIns };
+  if (ctrlIns.length || ctrlOuts.length) def.ctrl = { ins: ctrlIns, outs: ctrlOuts };
+  if (couts.length) def.couts = couts.map((x) => ({ key: x.key, name: x.name, sig: x.sig, idx: x.idx, min: x.min, max: x.max }));
+  if (Object.keys(screenIO).length) def.screenIO = screenIO;
   if (o.hidden) def.hidden = true;
   return def;
 }
+
+// an LED driven by circuit output co: ledFn(ui, block, status) -> true | colour | null
+const hex2 = (n) => Math.round(clamp(n, 0, 255)).toString(16).padStart(2, '0');
+function dimmed(col, k) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(col || '');
+  const c = m ? m[1] : 'ff2a1a';
+  const off = 0.22;
+  const f = off + (1 - off) * k;
+  return '#' + [0, 2, 4].map((i) => hex2(parseInt(c.slice(i, i + 2), 16) * f)).join('');
+}
+export function cvLed(co, color) {
+  return (ui, b, st) => {
+    if (b && b.bypass) return null;
+    const v = st && Array.isArray(st.cv) ? st.cv[co.idx] : undefined;
+    if (typeof v !== 'number') return null;
+    if (co.sig === 'b') return v > 0.5 ? true : null;
+    const k = clamp((v - co.min) / ((co.max - co.min) || 1), 0, 1);
+    if (k < 0.02) return null;
+    return k > 0.98 ? true : dimmed(color, k);
+  };
+}
+/** Value of circuit output idx from a block's status (undefined when the engine has not said). */
+export const cvValue = (st, idx) => (st && Array.isArray(st.cv) && typeof st.cv[idx] === 'number' ? st.cv[idx] : undefined);
 
 /** A pedal design that plays one circuit alone (Test circuit in the editor): its inputs stay at their defaults. */
 export function soloDesign(graph, name) {
@@ -699,8 +855,9 @@ export function soloDesign(graph, name) {
   const d = {
     name: name || 'Circuit', enc: { w: 60, h: 100, mat: {} }, labels: {}, ctls: [], art: [], title: {}, sub: {},
     jacks: [{ id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' }, { id: 'jst', kind: 'stereo', edge: 'left', t: 0.6, label: 'OUT R' }],
-    circuit: { v: 3, insts: [inst], wires: [], combine: {} },
+    circuit: { v: 3, insts: [inst], wires: [], cwires: [], combine: {} },
   };
+  migrateGraph(inst.graph);
   seriesWires(d);
   syncStages(d.circuit);
   return d;

@@ -2,7 +2,6 @@
 // The design is kept in memory (and in localStorage when it works). Units are millimetres.
 import { el, svg, clamp, toast } from '../util.js';
 import { installDefs } from '../gfx/defs.js';
-import { normalize, paletteFor, colorMode } from '../gfx/materials.js';
 import { materialPicker } from '../ui/material-picker.js';
 import { BUTTON_SHAPES, TOGGLE_TIPS } from './factory-parts.js';
 import { patternInspector, pruneImages } from './factory-patterns.js';
@@ -15,7 +14,10 @@ import { initCircuitUI, refreshCircuitUI, circuitKeysBusy } from './factory-circ
 import { startTest, stopTest, updateTest, testing, renderPlay, playDown, updateViews, engineRunning, testValues, testInfo, playSet } from './factory-play.js';
 import { saveCustomBlock, customBlocks, deleteCustomBlock } from '../catalog/custom.js';
 import { state, graphOverridden } from '../state.js';
-import { EXTRA_PARTS, EXTRA_LAYER_ICONS, EXTRA_PART_NAMES, NEW_KNOBS, partName, partKey, partInspector, extraSections, xyWiring, jackAngleSection, dotsSection, dotsOn } from './factory-extras.js';
+import { PARTS as VARIANT_PARTS, EXTRA_LAYER_ICONS, NEW_KNOBS, partName, partInspector, extraSections, jackAngleSection, dotsSection, dotsOn } from './factory-extras.js';
+import { materialSection } from './factory-matparts.js';
+import { controlTile } from './factory-variants.js';
+import { migrateCtl } from './factory-kinds.js';
 import { openLibrary } from './factory-library.js';
 import { jackOnOutline } from './factory-render.js';
 import { screenInspector, liveStage } from '../screenscript/factory-ui.js';
@@ -442,6 +444,7 @@ function migrateDesign(d) {
   if (!d.title) d.title = txt({ id: 'title' });
   if (!d.sub) d.sub = txt({ id: 'sub', size: 4.2, weight: 500, ls: 0.3, hidden: true });
   for (const k of ['art', 'ctls', 'jacks']) if (!Array.isArray(d[k])) d[k] = [];
+  for (const c of d.ctls) migrateCtl(c); // removed parts, toggle bank, knob skirts (factory-kinds.js)
   for (const c of d.ctls) if (c.kind === 'dip') c.n = clamp(c.n || 4, 2, 12);
   if (migrateCircuit(d)) autoMap(d);
   return d;
@@ -459,13 +462,6 @@ function loadDesign(d, keepHistory) {
   fit();
   refreshAll();
 }
-// a spec with a new colour: keeps the material when its finish takes a colour, else powder coat
-function withColour(spec, c) {
-  const s = normalize(spec);
-  if (paletteFor(s)) return normalize({ ...s, c, mc: null });
-  return normalize({ m: 'metal', s: 'aluminium', f: 'powder', c, w: s.w });
-}
-
 // ------------------------------------------------------------------ mirror mode
 const MIR = () => prefs.mirror;
 const vAxis = () => MIR().axis !== 'h';
@@ -580,21 +576,8 @@ function nextMap(kind, selfId) {
   else if (kind === 'button') t = targetsFor(C, 'button').find((x) => x[0].endsWith('.on') && !used.has(x[0]));
   return t ? mapTo(C, t[0]) : { to: '' };
 }
-const PARTS = {
-  knob: { name: 'Knob', make: () => knob(0, 0, '') },
-  trim: { name: 'Trim pot', make: () => ({ id: uid('m'), kind: 'trim', r: 3, value: 0.5, color: '#2b6fd6', label: '', labelPos: 'none' }) },
-  slider: { name: 'Slider', make: () => ({ id: uid('v'), kind: 'slider', h: 24, w: 5, orient: 'v', value: 0.5, label: '', labelPos: 'below' }) },
-  sel: { name: 'Rotary switch', make: () => ({ id: uid('r'), kind: 'sel', n: 4, r: 7, style: 'boss', opts: ['1', '2', '3', '4'], pos: 0, label: '', labelPos: 'below' }) },
-  toggle2: { name: '2 way toggle', make: () => toggle(0, 0, 2, ['ON', 'OFF']) },
-  toggle3: { name: '3 way toggle', make: () => toggle(0, 0, 3, ['A', 'B', 'C'], { pos: 1 }) },
-  button: { name: 'Push button', make: () => ({ id: uid('b'), kind: 'button', r: 4, shape: 'round', color: '#2a2c31', led: false, ledColor: '#3fa8ff', on: false, label: '', labelPos: 'below' }) },
-  foot: { name: 'Footswitch', make: () => stomp(0, 0) },
-  pedal: { name: 'Foot pedal', make: () => ({ id: uid('p'), kind: 'pedal', w: clamp(Math.round(D.enc.w * 0.6), 20, 90), h: clamp(Math.round(D.enc.h * 0.45), 30, 140), value: 0.5, color: '#1b1c1f', logo: '', label: '', labelPos: 'none' }) },
-  led: { name: 'LED', make: () => led(0, 0, '#ff2a1a') },
-  screen: { name: 'Screen', make: () => ({ id: uid('s'), kind: 'screen', w: 30, h: 14, type: 'oled', text: 'HELLO', label: '', labelPos: 'none' }) },
-  dip: { name: 'DIP switch', make: () => ({ id: uid('d'), kind: 'dip', n: 4, bits: [1, 0, 0, 1], maps: [], color: '#c8102e', label: '', labelPos: 'none' }) },
-};
-Object.assign(PARTS, EXTRA_PARTS); // factory-extras.js
+// the palette: every control type with its variants (factory-variants.js)
+const PARTS = VARIANT_PARTS;
 
 function freeSpot(c, d = D, o = {}) {
   const W = d.enc.w, H = d.enc.h;
@@ -641,7 +624,7 @@ function addPart(kind, payload, at) {
     if (payload === 'exp') item.drive = '';
     D.jacks.push(item);
   } else {
-    item = PARTS[payload].make();
+    item = PARTS[payload].make(D);
     const p = at ? { x: snap(at.x), y: snap(at.y) } : freeSpot(item, D, { half: mir && vAxis(), halfY: mir && !vAxis() });
     item.x = p.x;
     item.y = p.y;
@@ -1436,13 +1419,8 @@ function inspEnclosure(host) {
 
   const s3 = sec(host, 'Material');
   if (!E.mat) E.mat = encSpec(E);
-  let picker = null;
-  // quick colour: sets the finish colour. Hidden when the finish takes no colour (it would change the material).
-  if (colorMode(E.mat) === 'free') colors(s3, 'Colour', (paletteFor(E.mat) && /^#/.test(E.mat.c || '') ? E.mat.c : '') || '', BODY_SWATCHES, (v) => {
-    E.mat = withColour(E.mat, v);
-    if (picker) picker.set(E.mat);
-  }, 'enc');
-  picker = materialPicker(s3, { key: 'fz-enc', value: E.mat, wear: true, onChange: (spec, live) => { E.mat = spec; changed(live); if (!live) renderInspector(); } });
+  // the colour is picked in the material panel (no quick colour row above it)
+  materialPicker(s3, { key: 'fz-enc', value: E.mat, wear: true, onChange: (spec, live) => { E.mat = spec; changed(live); if (!live) renderInspector(); } });
 
   const s5 = sec(host, 'Inside');
   if (isClear(E)) {
@@ -1513,35 +1491,14 @@ function inspJack(host, j, multi) {
   textField(s, 'Label', j.label, (v) => (j.label = v));
   seg(s, 'Edge', [['top', 'Top'], ['left', 'Left'], ['right', 'Right'], ['bottom', 'Bottom']], j.edge, (v) => (j.edge = v), false);
   if (!multi) slider(s, 'Along', j.t, 0.04, 0.96, 0.01, (v) => (j.t = v));
-  el('p', { class: 'fz-note' }, s).textContent = { phones: 'A stereo headphone out (TRS) on the board.', xlr: 'A balanced XLR out on the board.', exp: 'A control input: an expression pedal plugged in here turns one of your controls.', power: 'Just for looks: the board does not need power.' }[j.kind] || 'Drag a jack around the pedal to move it to another edge.';
+  el('p', { class: 'fz-note' }, s).textContent = { phones: 'A stereo headphone out (TRS) on the board.', xlr: 'A balanced XLR out on the board.', exp: 'A control input: an expression pedal plugged in here turns one of your controls.', fsw: 'A footswitch input (TRS): plug one or two external footswitches in on the board. Tip and ring each send an on / off. Wire it in the wiring diagram.', power: 'Just for looks: the board does not need power.' }[j.kind] || 'Drag a jack around the pedal to move it to another edge.';
   if (j.kind === 'exp' && !multi) expSection(host, D, j, H());
   if (j.kind !== 'power') jackAngleSection(host, D, j, multi, H());
-  if (j.kind !== 'power') partMaterial(host, j, 'Nut');
+  if (j.kind !== 'power') partMaterial(host, j);
 }
-const PART_NAMES = { knob: 'knobs', toggle: 'toggles', button: 'buttons', foot: 'footswitches', led: 'LED bezels', screen: 'screen bezels', jack: 'jack nuts', ...EXTRA_PART_NAMES };
-// material picker for one part, plus "apply to all" shortcuts
-function partMaterial(host, c, title) {
-  const kind = JACKS[c.kind] ? 'jack' : partKey(c);
-  const s = sec(host, title ? title + ' material' : { led: 'Bezel material', screen: 'Bezel material' }[kind] || 'Material');
-  s.classList.add('fz-partmat');
-  materialPicker(s, {
-    key: 'fz-part', value: c.mat || { m: 'stock' }, allowStock: true, wear: true,
-    onChange: (spec, live) => {
-      c.mat = spec.m === 'stock' ? null : spec;
-      changed(live);
-      if (!live && kind === 'button') renderInspector();
-    },
-  });
-  const all = (pred) => {
-    const m = c.mat ? clone(c.mat) : null;
-    for (const o of [...D.ctls, ...D.jacks]) if (pred(o)) o.mat = m ? clone(m) : null;
-    changed(false);
-  };
-  const isJack = (o) => !!JACKS[o.kind] && o.kind !== 'power';
-  const ar = el('div', { class: 'fz-actrow' }, s);
-  el('button', { class: 'btn small', 'data-apply': 'kind', onclick: () => all((o) => (kind === 'jack' ? isJack(o) : partKey(o) === kind)) }, ar, 'Apply to all ' + PART_NAMES[kind]);
-  el('button', { class: 'btn small', 'data-apply': 'all', onclick: () => all((o) => PART_NAMES[partKey(o)] || isJack(o)) }, ar, 'Apply to every part');
-  if (kind === 'knob') el('button', { class: 'btn small', onclick: () => { for (const o of D.ctls) if (o.kind === 'knob' && !o.part) { o.style = c.style; o.mat = c.mat ? clone(c.mat) : null; } changed(false); } }, ar, 'Copy cap and material to all knobs');
+// one Material section with a part switcher (factory-matparts.js)
+function partMaterial(host, c) {
+  materialSection(host, D, c, H());
 }
 function inspControl(host, c, multi) {
   const s = sec(host, itemName({ kind: 'ctl', item: { kind: c.kind, ways: c.ways, part: c.part, look: c.look, label: '' } }));
@@ -1554,7 +1511,6 @@ function inspControl(host, c, multi) {
     check(s, 'Scale ticks', c.ticks, (v) => (c.ticks = v));
   } else if (c.kind === 'trim') {
     seg(s, 'Size', [[2.5, 'S'], [3, 'M'], [4, 'L']], c.r, (v) => (c.r = +v), false);
-    colors(s, 'Body', c.color, ['#2b6fd6', '#1d1f24', '#f2f0ea', '#c9302c'], (v) => (c.color = v), 'trim');
     slider(s, 'Pointer', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
   } else if (c.kind === 'slider') {
     seg(s, 'Direction', [['v', 'Up / down'], ['h', 'Sideways']], c.orient || 'v', (v) => (c.orient = v), false);
@@ -1592,7 +1548,6 @@ function inspControl(host, c, multi) {
       slider(s, 'Width', c.w || 12, 5, 30, 0.5, (v) => (c.w = v));
       slider(s, 'Height', c.h || 6, 3, 14, 0.5, (v) => (c.h = v));
     } else slider(s, 'Size', c.r, 2.5, 7, 0.5, (v) => (c.r = v));
-    if (!c.mat) colors(s, 'Cap', c.color, ['#2a2c31', '#d8dade', '#c9302c', '#2b7bd6', '#3a9a5b', '#f2c230'], (v) => (c.color = v), 'cap');
     check(s, 'LED ring', c.led, (v) => (c.led = v), true);
     if (c.led) {
       colors(s, 'LED', c.ledColor, LED_COLORS, (v) => (c.ledColor = v), 'led');
@@ -1608,7 +1563,6 @@ function inspControl(host, c, multi) {
   } else if (c.kind === 'pedal') {
     slider(s, 'Width', c.w || 40, 16, 200, 1, (v) => (c.w = v));
     slider(s, 'Length', c.h || 60, 20, 200, 1, (v) => (c.h = v));
-    colors(s, 'Colour', c.color || '#1b1c1f', ['#1b1c1f', '#3a3d42', '#8d99a8', '#c9302c', '#2b7bd6', '#f2f0ea'], (v) => (c.color = v), 'pedal');
     textField(s, 'Logo', c.logo, (v) => (c.logo = v));
     slider(s, 'Rocked', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
     el('p', { class: 'fz-note' }, s).textContent = 'A treadle you rock with your foot, like a wah or volume pedal. Drag it up and down in test mode.';
@@ -1643,13 +1597,11 @@ function inspControl(host, c, multi) {
         };
       }
     }
-    colors(s, 'Body', c.color, ['#c8102e', '#1f4fbf', '#1d1f24', '#3a9a5b'], (v) => (c.color = v), 'dip');
   }
   extraSections(host, D, c, multi, H());
-  if (c.kind === 'xy') xyWiring(host, D, c, H());
-  else wiringSection(host, D, c, H());
-  if (PART_NAMES[partKey(c)] && c.kind !== 'screen') partMaterial(host, c);
-  else if (c.kind === 'screen') partMaterial(host, c);
+  // what a control drives is wired in the wiring diagram; LEDs keep their "Lights when" section
+  if (c.kind === 'led') wiringSection(host, D, c, H());
+  partMaterial(host, c);
   const s2 = sec(host, 'Label');
   textField(s2, 'Text', c.label, (v) => (c.label = v.toUpperCase()));
   seg(s2, 'Show', [['above', 'Above'], ['below', 'Below'], ['none', 'Hidden']], c.labelPos, (v) => (c.labelPos = v), false);
@@ -1796,21 +1748,6 @@ function tile(parent, name, kind, payload, draw) {
   t.addEventListener('pointerdown', (e) => startPaletteDrag(e, t, kind, payload));
   return t;
 }
-const TILE_SAMPLES = {
-  ...Object.fromEntries(Object.entries(EXTRA_PARTS).map(([k, p]) => [k, p.sample])),
-  knob: [{ kind: 'knob', r: 9, style: 'boss', value: 0.6 }, 1],
-  trim: [{ kind: 'trim', r: 6, value: 0.3, color: '#2b6fd6' }, 1],
-  slider: [{ kind: 'slider', h: 18, w: 6, value: 0.65 }, 1],
-  sel: [{ kind: 'sel', n: 5, r: 7, style: 'mxr', opts: ['', '', '', '', ''], pos: 1, marks: true }, 1],
-  toggle2: [{ kind: 'toggle', ways: 2, opts: ['', ''], pos: 0, orient: 'v' }, 1.15],
-  toggle3: [{ kind: 'toggle', ways: 3, opts: ['', '', ''], pos: 0, orient: 'v' }, 1.15],
-  button: [{ kind: 'button', r: 6, shape: 'round', color: '#2a2c31' }, 1],
-  foot: [{ kind: 'foot', r: 7.5, style: 'stomp' }, 1],
-  pedal: [{ kind: 'pedal', w: 15, h: 24, value: 0.5, color: '#1b1c1f' }, 1],
-  led: [{ kind: 'led', r: 4, color: '#ff2a1a', on: true }, 1],
-  screen: [{ kind: 'screen', w: 22, h: 12, type: 'oled', text: '120\nBPM' }, 1],
-  dip: [{ kind: 'dip', n: 4, bits: [1, 0, 1, 0], color: '#c8102e' }, 1.6],
-};
 function renderParts() {
   const host = ui.parts;
   if (!host) return;
@@ -1822,11 +1759,8 @@ function renderParts() {
     el('button', { class: 'btn small', onclick: () => { D[id].hidden = false; if (!D[id].text) D[id].text = id === 'title' ? 'NAME' : 'subtitle'; if (!D[id].x) { D[id].x = D.enc.w / 2; D[id].y = D.enc.h * (id === 'title' ? 0.5 : 0.58); } select(id); changed(false); renderInspector(); } }, tr, id === 'title' ? 'Edit name' : 'Edit subtitle');
   const s1 = sec(host, 'Controls');
   const g1 = el('div', { class: 'fz-tiles' }, s1);
-  for (const [k, p] of Object.entries(PARTS))
-    tile(g1, p.name, 'ctl', k, (s) => {
-      const [c, sc] = TILE_SAMPLES[k];
-      drawControl(svg('g', { transform: `scale(${sc})`, 'pointer-events': 'none' }, s), { id: 'tile-' + k, x: 0, y: 0, label: '', labelPos: 'none', ...c }, th);
-    });
+  // each tile has a dot per variant: a dot switches the tile, the tile adds that variant (factory-variants.js)
+  for (const k of Object.keys(PARTS)) controlTile(g1, k, th, (e, t) => startPaletteDrag(e, t, 'ctl', k));
   const s2 = sec(host, 'Jacks');
   const g2 = el('div', { class: 'fz-tiles' }, s2);
   for (const [k, j] of Object.entries(JACKS))

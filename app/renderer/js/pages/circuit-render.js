@@ -24,7 +24,7 @@ export function layout(G, o = {}) {
     const full = showsAll(n, o.expandAll || (o.expand && o.expand.has(n.id)));
     const ins = all.ins.filter((p) => p.kind === 'a' || full || wiredIn.has(n.id + ' ' + p.k));
     const hidden = all.ins.length - ins.length;
-    const w = pt && pt.io ? (pt.io === 'ctl' ? 128 : 104) : NODE_W;
+    const w = pt && pt.io ? (pt.io === 'ctl' || pt.io === 'cout' ? 128 : 104) : NODE_W;
     const rows = Math.max(1, ins.length + (hidden ? 1 : 0), all.outs.length);
     const h = HEAD + rows * ROW + 6;
     const box = { x: n.x, y: n.y, w, h, hidden, ins: [], outs: [] };
@@ -51,6 +51,8 @@ export function fmtParam(p, v) {
   if (p.opts && p.i) return p.opts[Math.round(v) - (p.min || 0)] ?? String(Math.round(v));
   if (p.i) return String(Math.round(v));
   if (p.unit === 'ms') return v >= 1000 ? (v / 1000).toFixed(2) + ' s' : Math.round(v) + ' ms';
+  if (p.unit === 's') return v.toFixed(2) + ' s';
+  if (p.raw) return Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.round(v * 100) / 100);
   if (p.unit === 'Hz') return v >= 1000 ? (v / 1000).toFixed(1) + ' k' : v >= 10 ? Math.round(v) + ' Hz' : v.toFixed(2) + ' Hz';
   if (p.unit === 'dB' || (p.min < 0 && p.max > 0)) return (v > 0 ? '+' : '') + v.toFixed(1);
   if (p.max > 20) return String(Math.round(v));
@@ -66,13 +68,13 @@ export function themeColors(elm) {
   return {
     bg: v('--bg1', '#0f1218'), grid: v('--grid-line', 'rgba(255,255,255,0.04)'), node: v('--bg3', '#1b202b'), node2: v('--bg4', '#232937'),
     text: v('--text', '#e9ecf3'), text2: v('--text2', '#b8bfcd'), muted: v('--muted', '#7d8597'), line: v('--line2', 'rgba(255,255,255,0.11)'),
-    audio: v('--accent', '#ff7a2f'), ctl: v('--teal', '#37d6c2'), sel: v('--accent', '#ff7a2f'), err: v('--bad', '#ff4d5e'), warn: v('--warn', '#ffc24b'),
+    audio: v('--accent', '#ff7a2f'), ctl: v('--teal', '#37d6c2'), bin: v('--warn', '#ffc24b'), sel: v('--accent', '#ff7a2f'), err: v('--bad', '#ff4d5e'), warn: v('--warn', '#ffc24b'),
     note: 'rgba(255, 214, 102, 0.16)', noteText: v('--text', '#e9ecf3'), groups,
   };
 }
 const FIXED = {
   bg: '#141821', grid: 'rgba(255,255,255,0.035)', node: '#222836', node2: '#2a3242', text: '#e9ecf3', text2: '#b8bfcd', muted: '#7d8597', line: 'rgba(255,255,255,0.14)',
-  audio: '#ff8a45', ctl: '#45d8c6', sel: '#ff8a45', err: '#ff4d5e', warn: '#ffc24b', note: 'rgba(255, 214, 102, 0.2)', noteText: '#f4ead0', groups: GROUP_FIX,
+  audio: '#ff8a45', ctl: '#45d8c6', bin: '#ffc24b', sel: '#ff8a45', err: '#ff4d5e', warn: '#ffc24b', note: 'rgba(255, 214, 102, 0.2)', noteText: '#f4ead0', groups: GROUP_FIX,
 };
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -90,6 +92,14 @@ const portKindOf = (G, L, end, out) => {
   if (p) return p.kind;
   return end.p.startsWith('@') ? 'c' : 'a';
 };
+// a wire looks like what it carries: the signal of its source port
+const wireSig = (G, L, w) => {
+  const b = L.get(w.a.n);
+  const p = b && b.outs.find((x) => x.k === w.a.p);
+  return p ? p.sig || (p.kind === 'a' ? 'a' : 'n') : portKindOf(G, L, w.b, false) === 'a' ? 'a' : 'n';
+};
+/** Wire looks per signal: colour key, width, dash. Audio thick solid, analog thin solid, binary dashed. */
+export const WIRE_STYLE = { a: { col: 'audio', w: 2.6, dash: [] }, n: { col: 'ctl', w: 1.6, dash: [] }, b: { col: 'bin', w: 1.6, dash: [5, 4] } };
 
 /**
  * Draw graph G. o: { L (layout), view: {x, y, z}, w, h, sel: Set, selWires: Set, hover, issues: Map(node -> level),
@@ -140,16 +150,17 @@ export function drawGraph(ctx, G, o) {
     const a = portPos(L, w.a, true), b = portPos(L, w.b, false);
     if (!a || !b) continue;
     if (Math.max(a.x, b.x) < x0 - 60 || Math.min(a.x, b.x) > x1 + 60 || Math.max(a.y, b.y) < y0 - 60 || Math.min(a.y, b.y) > y1 + 60) continue;
-    const kind = portKindOf(G, L, w.b, false);
+    const sig = wireSig(G, L, w);
+    const ws = WIRE_STYLE[sig] || WIRE_STYLE.n;
     const selW = o.selWires && o.selWires.has(w.id);
     const hot = o.hover && (o.hover.wire === w.id || o.hover.node === w.a.n || o.hover.node === w.b.n);
     const bad = o.badWires && o.badWires.has(w.id);
     ctx.beginPath();
     wirePath(ctx, a, b);
-    ctx.strokeStyle = bad ? C.err : kind === 'a' ? C.audio : C.ctl;
-    ctx.globalAlpha = selW || hot ? 1 : kind === 'a' ? 0.85 : 0.7;
-    ctx.lineWidth = (kind === 'a' ? 2.6 : 1.6) + (selW ? 1.6 : hot ? 0.8 : 0);
-    ctx.setLineDash(kind === 'a' ? [] : [5, 4]);
+    ctx.strokeStyle = bad ? C.err : C[ws.col] || C.ctl;
+    ctx.globalAlpha = selW || hot ? 1 : sig === 'a' ? 0.85 : 0.75;
+    ctx.lineWidth = ws.w + (selW ? 1.6 : hot ? 0.8 : 0);
+    ctx.setLineDash(ws.dash);
     ctx.stroke();
     if (selW) {
       ctx.globalAlpha = 0.25;
@@ -190,19 +201,19 @@ export function drawGraph(ctx, G, o) {
       // small pictures: just the part name, readable at any scale
       ctx.fillStyle = C.text;
       ctx.font = `600 ${(10 / z).toFixed(1)}px Inter, system-ui, sans-serif`;
-      const nm = pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out' ? n.name || pt.name : n.label || pt.name;
+      const nm = pt.io && pt.io !== 'note' ? n.name || pt.name : n.label || pt.name;
       ctx.fillText(clip(ctx, nm, b.w - 6 / z), b.x + 5 / z, b.y + HEAD / 2 + 0.5);
     }
     if (detail) {
       ctx.fillStyle = off ? C.muted : C.text;
       ctx.font = '600 11.5px Inter, system-ui, sans-serif';
-      const title = pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out' ? n.name || pt.name : n.label || pt.name;
+      const title = pt.io && pt.io !== 'note' ? n.name || pt.name : n.label || pt.name;
       ctx.fillText(clip(ctx, title + (off ? ' (off)' : ''), b.w - 22), b.x + 9, b.y + HEAD / 2 + 0.5);
-      if (pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out') {
+      if (pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out' || pt.io === 'cout') {
         ctx.fillStyle = C.muted;
         ctx.font = '10px Inter, system-ui, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(pt.io === 'ctl' ? (n.steps >= 2 ? n.steps + ' way' : 'knob') : pt.io === 'in' ? 'in' : 'out', b.x + b.w - 8, b.y + HEAD / 2 + 0.5);
+        ctx.fillText(ioTag(n, pt), b.x + b.w - 8, b.y + HEAD / 2 + 0.5);
         ctx.textAlign = 'left';
       } else if (STAGES[n.t]) {
         // fold toggle
@@ -215,7 +226,7 @@ export function drawGraph(ctx, G, o) {
     }
     // ports
     for (const p of b.ins) {
-      dot(ctx, p.x, p.y, p.kind, C, o.dragKind && o.dragKind !== p.kind);
+      dot(ctx, p.x, p.y, p.sig || p.kind, C, o.dragKind && o.dragKind !== p.kind);
       if (!detail) continue;
       ctx.fillStyle = C.text2;
       ctx.font = '10.5px Inter, system-ui, sans-serif';
@@ -234,7 +245,7 @@ export function drawGraph(ctx, G, o) {
       ctx.fillText(`+ ${b.hidden} values`, b.x + 8, b.y + HEAD + b.ins.length * ROW + ROW / 2 + 2);
     }
     for (const p of b.outs) {
-      dot(ctx, p.x, p.y, p.kind, C, o.dragKind && o.dragKind !== p.kind);
+      dot(ctx, p.x, p.y, p.sig || p.kind, C, o.dragKind && o.dragKind !== p.kind);
       if (!detail) continue;
       ctx.fillStyle = C.text2;
       ctx.font = '10.5px Inter, system-ui, sans-serif';
@@ -245,17 +256,24 @@ export function drawGraph(ctx, G, o) {
     if (pt.io === 'ctl' && detail) {
       ctx.fillStyle = C.muted;
       ctx.font = '10px Inter, system-ui, sans-serif';
-      const d = n.steps >= 2 ? (n.opts && n.opts[n.def | 0]) || 'pos ' + ((n.def | 0) + 1) : (n.def ?? 0.5).toFixed(2);
-      ctx.fillText('default ' + d, b.x + 9, b.y + HEAD + ROW / 2 + 2);
+      ctx.fillText(ctlSummary(n), b.x + 9, b.y + HEAD + ROW / 2 + 2);
+    }
+    if (pt.io === 'cout' && detail && n.t === 'anaout') {
+      ctx.fillStyle = C.muted;
+      ctx.font = '10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${+(n.min ?? 0).toFixed(2)} to ${+(n.max ?? 1).toFixed(2)}`, b.x + b.w - 8, b.y + HEAD + ROW / 2 + 2);
+      ctx.textAlign = 'left';
     }
   }
   // a wire being dragged
   if (o.drag) {
     ctx.beginPath();
     wirePath(ctx, o.drag.a, o.drag.b);
-    ctx.strokeStyle = o.drag.kind === 'c' ? C.ctl : C.audio;
+    const ds = WIRE_STYLE[o.drag.sig || (o.drag.kind === 'c' ? 'n' : 'a')] || WIRE_STYLE.n;
+    ctx.strokeStyle = C[ds.col] || C.ctl;
     ctx.lineWidth = 2.2;
-    ctx.setLineDash(o.drag.kind === 'c' ? [5, 4] : []);
+    ctx.setLineDash(ds.dash);
     ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -271,11 +289,13 @@ export function drawGraph(ctx, G, o) {
   }
   ctx.restore();
 }
+// port shapes: audio circle, analog diamond, binary square
 function dot(ctx, x, y, kind, C, dim) {
   ctx.globalAlpha = dim ? 0.25 : 1;
-  ctx.fillStyle = kind === 'a' ? C.audio : C.ctl;
+  ctx.fillStyle = kind === 'a' ? C.audio : kind === 'b' ? C.bin : C.ctl;
   ctx.beginPath();
   if (kind === 'a') ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+  else if (kind === 'b') ctx.rect(x - 3.2, y - 3.2, 6.4, 6.4);
   else {
     ctx.moveTo(x, y - 3.6);
     ctx.lineTo(x + 3.6, y);
@@ -285,6 +305,31 @@ function dot(ctx, x, y, kind, C, dim) {
   }
   ctx.fill();
   ctx.globalAlpha = 1;
+}
+// the small tag in the header of input and output parts
+function ioTag(n, pt) {
+  if (pt.io === 'in') return 'in';
+  if (pt.io === 'out') return 'out';
+  if (pt.io === 'cout') return n.t === 'binout' ? 'binary out' : 'analog out';
+  if (n.t === 'binary') return 'binary';
+  return n.steps >= 2 ? n.steps + ' steps' : 'analog';
+}
+// the default (and range) line of a control input
+function ctlSummary(n) {
+  if (n.t === 'binary') return 'default ' + ((n.opts && n.opts[n.def ? 1 : 0]) || (n.def ? 'on' : 'off'));
+  if (n.steps >= 2) return 'default ' + ((n.opts && n.opts[n.def | 0]) || 'pos ' + ((n.def | 0) + 1));
+  const f = (v) => String(+(+v).toFixed(2));
+  return `default ${f(n.def ?? 0.5)}  (${f(n.min ?? 0)} to ${f(n.max ?? 1)})`;
+}
+/** A small key for the signal kinds (audio, analog, binary), as an SVG string for the editor and the diagram. */
+export function legendSVG() {
+  const item = (x, label, sig) => {
+    const st = WIRE_STYLE[sig];
+    const col = sig === 'a' ? 'var(--accent)' : sig === 'b' ? 'var(--warn)' : 'var(--teal)';
+    const shape = sig === 'a' ? `<circle cx="${x + 26}" cy="8" r="3.6" fill="${col}"/>` : sig === 'b' ? `<rect x="${x + 23}" y="5" width="6" height="6" fill="${col}"/>` : `<path d="M${x + 26} 4.6l3.4 3.4-3.4 3.4-3.4-3.4z" fill="${col}"/>`;
+    return `<g><path d="M${x} 8h20" stroke="${col}" stroke-width="${st.w}" stroke-dasharray="${st.dash.join(' ')}" fill="none"/>${shape}<text x="${x + 34}" y="11.5">${label}</text></g>`;
+  };
+  return `<svg class="sig-legend-svg" width="210" height="16" viewBox="0 0 210 16">${item(2, 'Audio', 'a')}${item(72, 'Analog', 'n')}${item(144, 'Binary', 'b')}</svg>`;
 }
 const clipCache = new Map();
 function clip(ctx, s, w) {

@@ -2,8 +2,8 @@
 // drag from port to port to wire them, select, move, copy, undo, and listen to the circuit on its own.
 // Drawn on a canvas (circuit-render.js), so big circuits stay smooth.
 import { el, clamp, toast } from '../util.js';
-import { PARTS, GROUPS, STAGES, CLIPS, COMP_TYPES, newNode, nid, clone, portsOf, canWire, validate, graphCat, graphCost, val, emptyGraph } from './circuit-parts.js';
-import { layout, portPos, drawGraph, themeColors, bounds, fmtParam, HEAD, showsAll } from './circuit-render.js';
+import { PARTS, GROUPS, STAGES, CLIPS, COMP_TYPES, LIM, newNode, nid, clone, portsOf, canWire, validate, graphCat, graphCost, val, emptyGraph, migrateGraph, isRaw } from './circuit-parts.js';
+import { layout, portPos, drawGraph, themeColors, bounds, fmtParam, HEAD, showsAll, legendSVG } from './circuit-render.js';
 import { EDITOR_TEMPLATES } from './circuit-templates.js';
 import { allCats } from './circuit-library.js';
 
@@ -31,6 +31,7 @@ class Editor {
     if (!this.rec.graph) this.rec.graph = emptyGraph();
     this.G = this.rec.graph;
     if (!this.G.wires) this.G.wires = [];
+    migrateGraph(this.G);
     this.sel = new Set();
     this.selW = new Set();
     this.view = { x: 40, y: 40, z: 1 };
@@ -92,6 +93,7 @@ class Editor {
     this.ctx = this.cv.getContext('2d');
     this.status = el('div', { class: 'cz-status' }, cw);
     el('div', { class: 'cz-hint' }, cw).textContent = 'Drag from a port to wire · drag empty space to select · right drag or Space to pan · scroll to zoom';
+    el('div', { class: 'sig-legend cz-legend', title: 'What the wires carry', 'data-cz': 'legend' }, cw, legendSVG());
     this.zoomV = el('div', { class: 'cz-zoom' }, cw);
     this.insp = el('aside', { class: 'cz-insp' }, body);
     this.updateTestBtn();
@@ -212,8 +214,8 @@ class Editor {
     for (const n of this.G.nodes) {
       const b = L.get(n.id);
       if (!b || p.x < b.x - pr || p.x > b.x + b.w + pr || p.y < b.y - pr || p.y > b.y + b.h + pr) continue;
-      for (const q of b.ins) if (Math.abs(q.x - p.x) < pr && Math.abs(q.y - p.y) < pr * 0.75) best = { type: 'port', node: n.id, port: q.k, out: false, kind: q.kind };
-      for (const q of b.outs) if (Math.abs(q.x - p.x) < pr && Math.abs(q.y - p.y) < pr * 0.75) best = { type: 'port', node: n.id, port: q.k, out: true, kind: q.kind };
+      for (const q of b.ins) if (Math.abs(q.x - p.x) < pr && Math.abs(q.y - p.y) < pr * 0.75) best = { type: 'port', node: n.id, port: q.k, out: false, kind: q.kind, sig: q.sig };
+      for (const q of b.outs) if (Math.abs(q.x - p.x) < pr && Math.abs(q.y - p.y) < pr * 0.75) best = { type: 'port', node: n.id, port: q.k, out: true, kind: q.kind, sig: q.sig };
     }
     if (best) return best;
     for (let i = this.G.nodes.length - 1; i >= 0; i--) {
@@ -299,7 +301,7 @@ class Editor {
     const c = at || { x: (this.W / 2 - this.view.x) / this.view.z - 70, y: (this.H / 2 - this.view.y) / this.view.z - 30 };
     const s = (v) => (this.snap ? Math.round(v / GRID) * GRID : Math.round(v));
     const n = newNode(type, s(c.x), s(c.y));
-    if (pt.io === 'ctl') n.name = this.freeName('Knob');
+    if (pt.io === 'ctl' || pt.io === 'cout') n.name = this.freeName(n.name || 'Value');
     if (pt.io === 'in' && this.G.nodes.some((x) => PARTS[x.t]?.io === 'in')) n.name = 'IN ' + (this.G.nodes.filter((x) => PARTS[x.t]?.io === 'in').length + 1);
     if (pt.io === 'out' && this.G.nodes.some((x) => PARTS[x.t]?.io === 'out')) n.name = 'OUT ' + (this.G.nodes.filter((x) => PARTS[x.t]?.io === 'out').length + 1);
     this.G.nodes.push(n);
@@ -340,7 +342,7 @@ class Editor {
     const nodes = clone(clipboard.nodes).map((n) => {
       const id = nid();
       map.set(n.id, id);
-      if (PARTS[n.t]?.io === 'ctl') n.name = this.freeName(n.name || 'Knob');
+      if (PARTS[n.t]?.io === 'ctl' || PARTS[n.t]?.io === 'cout') n.name = this.freeName(n.name || 'Value');
       return Object.assign(n, { id, x: n.x + dx, y: n.y + dy });
     });
     const wires = clone(clipboard.wires).map((w) => ({ ...w, id: nid('w'), a: { ...w.a, n: map.get(w.a.n) }, b: { ...w.b, n: map.get(w.b.n) } }));
@@ -496,13 +498,16 @@ class Editor {
     this.L = null;
     const from = () => portPos(this.lay(), fixed, fixedOut);
     const p0 = this.toWorld(e);
-    this.wireDrag = { kind: h.kind, a: from(), b: p0 };
-    if (!fixedOut) this.wireDrag = { kind: h.kind, a: p0, b: from() };
+    // the drag looks like the signal it carries (the output end's)
+    const fp = from();
+    const sig = (fixedOut && fp && fp.sig) || h.sig;
+    this.wireDrag = { kind: h.kind, sig, a: fp, b: p0 };
+    if (!fixedOut) this.wireDrag = { kind: h.kind, sig, a: p0, b: fp };
     this.draw();
     this.capture(e, (ev) => {
       const p = this.toWorld(ev);
       const f = from();
-      this.wireDrag = fixedOut ? { kind: h.kind, a: f, b: p } : { kind: h.kind, a: p, b: f };
+      this.wireDrag = fixedOut ? { kind: h.kind, sig, a: f, b: p } : { kind: h.kind, sig, a: p, b: f };
       this.draw();
     }, (ev) => {
       const p = this.toWorld(ev);
@@ -511,7 +516,7 @@ class Editor {
       let made = null;
       if (t && t.type === 'port' && t.out !== fixedOut && t.kind === h.kind) {
         const a = fixedOut ? fixed : { n: t.node, p: t.port }, b = fixedOut ? { n: t.node, p: t.port } : fixed;
-        const keep = lifted && lifted.b.n === b.n && lifted.b.p === b.p ? { lo: lifted.lo, hi: lifted.hi, log: lifted.log, tab: lifted.tab } : {};
+        const keep = lifted && lifted.b.n === b.n && lifted.b.p === b.p ? { lo: lifted.lo, hi: lifted.hi, log: lifted.log, tab: lifted.tab, xlo: lifted.xlo, xhi: lifted.xhi } : {};
         for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
         made = this.addWire(a, b, keep);
       }
@@ -806,6 +811,17 @@ class Editor {
     };
     return r;
   }
+  number(s, label, v, min, max, set, cz) {
+    const f = this.row(s, label);
+    const n = el('input', { type: 'number', min, max, step: 'any', class: 'fz-num fz-num-wide' }, f);
+    if (cz) n.dataset.cz = cz;
+    n.value = Math.round(v * 1000) / 1000;
+    n.onchange = () => {
+      set(clamp(+n.value || 0, min, max));
+      this.commit();
+    };
+    return n;
+  }
   select(s, label, opts, cur, set) {
     const f = this.row(s, label);
     const sel = el('select', {}, f);
@@ -855,9 +871,12 @@ class Editor {
     const s2 = this.sec(h, 'This circuit');
     const ins = this.G.nodes.filter((n) => PARTS[n.t]?.io === 'ctl');
     el('p', { class: 'fz-note fz-note-top' }, s2).textContent = `${this.G.nodes.length} parts, ${this.G.wires.length} wires, about ${Math.round(graphCost(this.G) * 10) / 10} CPU units.`;
-    el('p', { class: 'fz-note' }, s2).textContent = ins.length ? 'Pedal controls can turn: ' + ins.map((n) => n.name).join(', ') + '.' : 'Add a Control input so a knob on the pedal can turn something in here.';
+    el('p', { class: 'fz-note' }, s2).textContent = ins.length ? 'Pedal controls can turn: ' + ins.map((n) => n.name).join(', ') + '.' : 'Add an Analog or Binary input so a knob or switch on the pedal can turn something in here.';
+    const outs = this.G.nodes.filter((n) => PARTS[n.t]?.io === 'cout');
+    if (outs.length) el('p', { class: 'fz-note' }, s2).textContent = 'It puts out: ' + outs.map((n) => n.name).join(', ') + ' (wire them to LEDs, jacks, screens or other circuits in the wiring diagram).';
     const s3 = this.sec(h, 'How to');
-    el('p', { class: 'fz-note fz-note-top' }, s3).innerHTML = 'Orange round ports carry <b>audio</b>, teal diamonds carry <b>control</b> signals (0 to 1). Every value of a part is a control input: drag a wire from an envelope, LFO or Control input onto it. Audio can only loop through a <b>Feedback loop</b> part.';
+    el('p', { class: 'fz-note fz-note-top' }, s3).innerHTML = 'Orange round ports carry <b>audio</b>. Teal diamonds carry <b>analog</b> values (from -255 to 255), amber squares carry <b>binary</b> on / off signals. Every value of a part is an input: drag a wire from an envelope, LFO or input onto it. A part value sweeps its range as the signal goes from 0 to 1 (set another span on the wire); the math and Delay parts take values as they are. Audio can only loop through a <b>Feedback loop</b> part.';
+    el('div', { class: 'sig-legend' }, s3, legendSVG());
   }
   inspMulti(h, ns, ws) {
     const head = el('div', { class: 'fz-insp-head' }, h);
@@ -877,7 +896,7 @@ class Editor {
     const pt = PARTS[n.t] || { name: n.t, params: [] };
     const head = el('div', { class: 'fz-insp-head' }, h);
     const t = el('div', { class: 'fz-insp-title' }, head);
-    el('h3', {}, t).textContent = pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out' ? n.name || pt.name : n.label || pt.name;
+    el('h3', {}, t).textContent = pt.io && pt.io !== 'note' ? n.name || pt.name : n.label || pt.name;
     el('p', {}, t).textContent = pt.desc || GROUPS.find((g) => g[0] === pt.group)?.[1] || '';
     const acts = el('div', { class: 'fz-acts' }, head);
     el('button', { class: 'icon-btn', title: 'Duplicate (Ctrl+D)', onclick: () => this.copy() && this.paste(24, 24) }, acts, '<i class="ic ic-copy"></i>');
@@ -895,19 +914,48 @@ class Editor {
       el('p', { class: 'fz-note' }, s).textContent = pt.io === 'in' ? 'In the wiring diagram, wire a jack or another circuit to this input.' : 'In the wiring diagram, wire this to an output jack or into another circuit.';
       return;
     }
-    if (pt.io === 'ctl') {
-      const s = this.sec(h, 'Control input');
+    if (pt.io === 'ctl' && n.t === 'binary') {
+      const s = this.sec(h, 'Binary input');
       this.text(s, 'Name', n.name, (v) => (n.name = v), { live: true, max: 24, cz: 'knobname' });
-      this.select(s, 'Type', [['0', 'Knob (0 to 1)'], ['2', 'Switch, 2 positions'], ['3', 'Switch, 3 positions'], ['4', 'Selector, 4'], ['6', 'Selector, 6'], ['8', 'Selector, 8']], String(n.steps >= 2 ? n.steps : 0), (v) => {
+      this.text(s, 'Off and on', (n.opts || ['Off', 'On']).slice(0, 2).join(', '), (v) => (n.opts = v.split(',').map((x) => x.trim()).slice(0, 2)), { placeholder: 'Off, On' });
+      this.select(s, 'Default', [['0', (n.opts && n.opts[0]) || 'Off'], ['1', (n.opts && n.opts[1]) || 'On']], String(n.def ? 1 : 0), (v) => (n.def = +v));
+      el('p', { class: 'fz-note' }, s).textContent = 'An on / off input (0 or 1). On the pedal, wire a footswitch, switch, button, footswitch jack, screen or another circuit to it. With nothing wired it stays at the default.';
+      return;
+    }
+    if (pt.io === 'ctl') {
+      const s = this.sec(h, 'Analog input');
+      this.text(s, 'Name', n.name, (v) => (n.name = v), { live: true, max: 24, cz: 'knobname' });
+      this.select(s, 'Type', [['0', 'Smooth value'], ['3', 'Steps, 3 positions'], ['4', 'Steps, 4'], ['6', 'Steps, 6'], ['8', 'Steps, 8']], String(n.steps >= 2 ? n.steps : 0), (v) => {
         n.steps = +v;
-        n.def = n.steps ? clamp(Math.round(n.def || 0), 0, n.steps - 1) : clamp(n.def ?? 0.5, 0, 1);
+        if (n.steps) n.def = clamp(Math.round(n.def || 0), 0, n.steps - 1);
+        else {
+          n.min = n.min ?? 0;
+          n.max = n.max ?? 1;
+          n.def = clamp(n.def ?? 0.5, Math.min(n.min, n.max), Math.max(n.min, n.max));
+        }
         this.paintInsp();
       });
       if (n.steps >= 2) {
-        this.text(s, 'Positions', (n.opts || []).slice(0, n.steps).join(', '), (v) => (n.opts = v.split(',').map((x) => x.trim())), { placeholder: 'Off, On' });
+        this.text(s, 'Positions', (n.opts || []).slice(0, n.steps).join(', '), (v) => (n.opts = v.split(',').map((x) => x.trim())), { placeholder: 'Low, Mid, High' });
         this.select(s, 'Default', [...Array(n.steps)].map((_, i) => [String(i), (n.opts && n.opts[i]) || 'Position ' + (i + 1)]), String(n.def | 0), (v) => (n.def = +v));
-      } else this.slider(s, 'Default', n.def ?? 0.5, 0, 1, 0.01, (v) => (n.def = v));
-      el('p', { class: 'fz-note' }, s).textContent = 'What a pedal knob or switch wired to this input turns. Wire its output to the values it should move. With nothing wired on the pedal it stays at the default.';
+      } else {
+        const lo = n.min ?? 0, hi = n.max ?? 1;
+        this.number(s, 'Lowest', lo, -LIM, LIM, (v) => (n.min = v), 'ctlmin');
+        this.number(s, 'Highest', hi, -LIM, LIM, (v) => (n.max = v), 'ctlmax');
+        this.slider(s, 'Default', clamp(n.def ?? 0.5, Math.min(lo, hi), Math.max(lo, hi)), Math.min(lo, hi), Math.max(lo, hi), Math.abs(hi - lo) / 200 || 0.01, (v) => (n.def = v));
+      }
+      el('p', { class: 'fz-note' }, s).textContent = 'A value from -255 to 255. A knob or pedal on the pedal sweeps it from Lowest to Highest. Part values it is wired to sweep their range as it goes from Lowest to Highest; the math parts get the value as it is.';
+      return;
+    }
+    if (pt.io === 'cout') {
+      const s = this.sec(h, n.t === 'binout' ? 'Binary output' : 'Analog output');
+      this.text(s, 'Name', n.name, (v) => (n.name = v), { live: true, max: 24, cz: 'outname' });
+      if (n.t === 'anaout') {
+        this.number(s, 'Lowest', n.min ?? 0, -LIM, LIM, (v) => (n.min = v), 'outmin');
+        this.number(s, 'Highest', n.max ?? 1, -LIM, LIM, (v) => (n.max = v), 'outmax');
+        el('p', { class: 'fz-note' }, s).textContent = 'Wire a value into it. An LED wired to it is dark at Lowest and full at Highest; an EXP jack goes heel to toe over the same span.';
+      } else el('p', { class: 'fz-note' }, s).textContent = 'Wire an on / off signal into it (on above 0.5). An LED wired to it lights when it is on; a footswitch jack presses.';
+      el('p', { class: 'fz-note' }, s).textContent += ' Wire it up in the wiring diagram under the pedal.';
       return;
     }
     const s = this.sec(h, 'Part');
@@ -953,13 +1001,22 @@ class Editor {
     const t = el('div', { class: 'fz-insp-title' }, head);
     const nm = (n) => (n ? n.name || n.label || PARTS[n.t]?.name : '?');
     const param = nb && w.b.p.startsWith('@') ? PARTS[nb.t].params.find((p) => p.key === w.b.p.slice(1)) : null;
-    el('h3', {}, t).textContent = param ? 'Control wire' : 'Audio wire';
+    const srcOut = na && portsOf(na).outs.find((q) => q.k === w.a.p);
+    el('h3', {}, t).textContent = !param ? 'Audio wire' : srcOut && srcOut.sig === 'b' ? 'Binary wire' : 'Analog wire';
     el('p', {}, t).textContent = `${nm(na)} to ${nm(nb)}${param ? ': ' + param.label : ''}`;
     const acts = el('div', { class: 'fz-acts' }, head);
     el('button', { class: 'icon-btn', title: 'Delete (Del)', 'data-cz': 'delwire', onclick: () => this.removeSel() }, acts, '<i class="ic ic-trash"></i>');
     if (!param) return;
+    if (isRaw(param)) {
+      el('p', { class: 'fz-note fz-note-top' }, this.sec(h, 'Value')).textContent = `${param.label} gets the value as it is (from ${fmtParam(param, param.min)} to ${fmtParam(param, param.max)}).`;
+      return;
+    }
     const s = this.sec(h, 'Range');
-    el('p', { class: 'fz-note fz-note-top' }, s).textContent = `As the signal goes from 0 to 1, ${param.label} goes from:`;
+    // the span of the signal that sweeps the value: an input's own range, else 0 to 1
+    const ownLo = na && PARTS[na.t]?.io === 'ctl' ? (na.t === 'binary' ? 0 : na.steps >= 2 ? 0 : na.min ?? 0) : 0;
+    const ownHi = na && PARTS[na.t]?.io === 'ctl' ? (na.t === 'binary' ? 1 : na.steps >= 2 ? na.steps - 1 : na.max ?? 1) : 1;
+    const xlo = w.xlo ?? ownLo, xhi = w.xhi ?? ownHi;
+    el('p', { class: 'fz-note fz-note-top' }, s).textContent = `As the signal goes from ${+xlo.toFixed(3)} to ${+xhi.toFixed(3)}, ${param.label} goes from:`;
     if (w.tab) {
       el('p', { class: 'fz-note' }, s).textContent = 'Steps through: ' + w.tab.map((v) => fmtParam(param, v)).join(', ');
       el('div', { class: 'fz-actrow' }, s).appendChild(el('button', { class: 'btn small', onclick: () => { delete w.tab; this.commit(); } }, null, 'Use a range instead'));
@@ -987,5 +1044,10 @@ class Editor {
       }
     }
     el('div', { class: 'fz-actrow' }, s).appendChild(el('button', { class: 'btn small', onclick: () => { delete w.lo; delete w.hi; delete w.log; this.commit(); } }, null, 'Full range'));
+    const s2 = this.sec(h, 'Signal span');
+    this.number(s2, 'Signal from', xlo, -LIM, LIM, (v) => (w.xlo = v), 'xlo');
+    this.number(s2, 'Signal to', xhi, -LIM, LIM, (v) => (w.xhi = v), 'xhi');
+    el('p', { class: 'fz-note' }, s2).textContent = 'Signals below or above the span hold the value at its ends.';
+    if (w.xlo != null || w.xhi != null) el('div', { class: 'fz-actrow' }, s2).appendChild(el('button', { class: 'btn small', onclick: () => { delete w.xlo; delete w.xhi; this.commit(); } }, null, 'Default span'));
   }
 }
