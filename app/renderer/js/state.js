@@ -131,9 +131,16 @@ export function buildGraph(preset = state.preset) {
   }
   return { nodes, cables };
 }
+// a page (Pedal Factory test mode) can play its own graph instead of the board until it clears the override
+let graphOverride = null;
+export const graphOverridden = () => !!graphOverride;
+export function setGraphOverride(fn) {
+  graphOverride = fn || null;
+  syncGraph();
+}
 export function syncGraph() {
   state.graphSentAt = Date.now();
-  window.tz.engine.send({ cmd: 'setGraph', graph: buildGraph() });
+  window.tz.engine.send({ cmd: 'setGraph', graph: graphOverride ? graphOverride() : buildGraph() });
 }
 const syncGraphSoon = debounce(syncGraph, 30);
 

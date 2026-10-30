@@ -87,11 +87,19 @@ export function buttonPart(parent, c, th) {
     svg('circle', { r: r + 1.4, fill: 'url(#g-chrome)' }, g);
     paint(g, 'circle', { r }, spec, { ...o, round: true });
   }
+  let halo = null, lens = null;
   if (c.led) {
-    svg('circle', { cy: ledDy, r: 4, fill: c.ledColor || '#4aa8ff', opacity: c.on ? 0.3 : 0 }, g);
-    svg('circle', { cy: ledDy, r: 2, fill: c.on ? c.ledColor || '#4aa8ff' : '#151a22' }, g);
+    halo = svg('circle', { cy: ledDy, r: 4, fill: c.ledColor || '#4aa8ff', opacity: c.on ? 0.3 : 0 }, g);
+    lens = svg('circle', { cy: ledDy, r: 2, fill: c.on ? c.ledColor || '#4aa8ff' : '#151a22' }, g);
   }
-  return { g, set() {} };
+  return {
+    g,
+    set(on) {
+      if (!lens) return;
+      halo.setAttribute('opacity', on ? 0.3 : 0);
+      lens.setAttribute('fill', on ? c.ledColor || '#4aa8ff' : '#151a22');
+    },
+  };
 }
 
 // ------------------------------------------------------------------ footswitches
@@ -174,7 +182,7 @@ export function togglePart(parent, c, th) {
 // ------------------------------------------------------------------ LEDs, screens, jacks
 export function ledPart(parent, c) {
   const f = isStock(c.mat) ? null : materialFill(c.mat, opt(c, { round: true }));
-  return drawLed(parent, { x: 0, y: 0, r: c.r || 2.5, color: c.color, bezel: f ? f.fill : undefined }).set(c.on ? true : null);
+  return drawLed(parent, { x: 0, y: 0, r: c.r || 2.5, color: c.color, bezel: f ? f.fill : undefined });
 }
 export function bezel(parent, c, w, h) {
   if (isStock(c.mat)) {

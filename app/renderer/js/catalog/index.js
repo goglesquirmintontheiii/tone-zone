@@ -90,7 +90,7 @@ export function jackChannels(d, key) {
   return STEREO_KINDS.has(jackKindOf(d, key)) ? 2 : 1;
 }
 
-export const KINDS = ['Pedal', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility', 'Pedalboard'];
+export const KINDS = ['Pedal', 'Custom', 'Amp', 'Preamp', 'Cab', 'Multi-FX', 'Utility', 'Pedalboard'];
 export function kindOf(d) {
   if (d.kind) return d.kind;
   if (d.cat === 'Amp' || d.cat === 'Bass Amp') return 'Amp';

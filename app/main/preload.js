@@ -55,6 +55,11 @@ contextBridge.exposeInMainWorld('tz', {
     clear: () => ipcRenderer.invoke('capture:clear'),
     onEvent: (fn) => ipcRenderer.on('capture:event', (_e, ev) => fn(ev)),
   },
+  custom: {
+    list: () => ipcRenderer.invoke('custom:list'),
+    save: (rec) => ipcRenderer.invoke('custom:save', rec),
+    remove: (id) => ipcRenderer.invoke('custom:delete', id),
+  },
   sys: {
     usbDevices: () => ipcRenderer.invoke('sys:usbDevices'),
   },

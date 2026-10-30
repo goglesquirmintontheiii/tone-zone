@@ -4,6 +4,7 @@ import { Editor } from './editor.js';
 import { initBrowser, isFavorite, toggleFavorite } from './browser.js';
 import { makeDockable } from './panels.js';
 import { loadPlugins } from './plugins.js';
+import { loadCustomBlocks } from './catalog/custom.js';
 import './screens-eq.js';
 import './screens-tz5.js';
 import { initInspector } from './inspector.js';
@@ -27,6 +28,7 @@ async function boot() {
   // thumbnail cache key: app version when packaged, session start in dev (art changes often)
   window.__tzAppVersion = info.packaged ? info.version : 'dev-' + Date.now();
   await loadPlugins();
+  await loadCustomBlocks();
   state.cableColor = state.settings.cableColor || CABLE_COLORS[0];
   editor = new Editor();
   editor.onTick = flushMeters;
