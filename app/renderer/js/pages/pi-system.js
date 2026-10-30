@@ -1,6 +1,6 @@
 // Pi tab: Audio, Updates and Logs sections.
-import { el, toast } from '../util.js';
-import { MODELS, audioDevicesFor, audioDevice, latencyFor, savePi, piLog, piLogs } from './pi-data.js';
+import { el, toast, bus } from '../util.js';
+import { MODELS, audioDevicesFor, audioDevice, audioNote, latencyFor, isPi3, savePi, piLog, piLogs, setLogs, act } from './pi-data.js';
 import { card, field, seg, select, toggle, meter, demoNote, fakeProgress, copyBox } from './pi-ui.js';
 
 // ------------------------------------------------------------------ Audio
@@ -24,18 +24,22 @@ export function renderAudio(main, ctx) {
     const fc = io.lastChild.lastChild;
     select(fc, list.map((d) => [d.id, d.name]), a[key], (v) => { a[key] = v; savePi(); piLog(`Audio ${dir}: ${audioDevice(v).name}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-' + dir });
     const d = audioDevice(a[key]);
-    el('div', { class: 'pi-devq ' + d.kind }, io).textContent = d.q;
+    el('div', { class: 'pi-devq ' + d.kind, 'data-q': d.id }, io).textContent = audioNote(d, model);
   };
   devRow('Input (guitar)', 'in', ins, 'input');
   devRow('Output (amp, headphones, PA)', 'out', outs, 'output');
   const notes = el('ul', { class: 'pi-list small' }, io);
   el('li', {}, notes).textContent = 'The Pi has no audio input of its own. Use a HAT, a USB interface or a USB audio adapter.';
-  el('li', {}, notes).textContent = MODELS[model].jack ? 'The Pi 4 has a 3.5 mm output (no input). It hisses a little: good for practice, not for gigs.' : 'The Pi 5 has no 3.5 mm jack. Use a HAT, a USB device or HDMI for output.';
+  el('li', {}, notes).textContent = !MODELS[model].jack ? 'The Pi 5 has no 3.5 mm jack. Use a HAT, a USB device or HDMI for output.'
+    : isPi3(model) ? `The ${MODELS[model].short} has a 3.5 mm output (no input). It is noisier than the Pi 4 jack: fine for headphones and practice, not for gigs.`
+      : 'The Pi 4 has a 3.5 mm output (no input). It hisses a little: good for practice, not for gigs.';
+  if (isPi3(model)) el('li', {}, notes).textContent = 'On a Pi 3, USB and Ethernet share one connection. USB audio works well at buffer 128 or 256; avoid big file copies while you play.';
+  if (MODELS[model].jack && a.output === 'jack35') el('li', {}, notes).textContent = 'The jack uses the hardware PWM channels, so dimmable LEDs switch to software PWM.';
 
   const st = card(left, 'Engine', null);
   field(st, 'Sample rate');
   seg(st.lastChild.lastChild, [[44100, '44.1 kHz'], [48000, '48 kHz'], [96000, '96 kHz']], a.rate, (v) => { a.rate = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'rate' });
-  field(st, 'Buffer', 'Smaller = less latency but more CPU. 128 is safe, 64 for Pi 5 with a HAT.');
+  field(st, 'Buffer', isPi3(model) ? 'Smaller = less latency but more CPU. On a Pi 3, 128 with a HAT, 256 with USB.' : 'Smaller = less latency but more CPU. 128 is safe, 64 for Pi 5 with a HAT.');
   seg(st.lastChild.lastChild, [[32, '32'], [64, '64'], [128, '128'], [256, '256']], a.buffer, (v) => { a.buffer = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'buffer' });
   field(st, 'Periods');
   seg(st.lastChild.lastChild, [[2, '2'], [3, '3 (USB)']], a.periods, (v) => { a.periods = +v; savePi(); ctx.rerender(); });
@@ -63,13 +67,26 @@ export function renderAudio(main, ctx) {
   const lv = card(right, 'Levels', null);
   const mi = meter(lv, 42, 'ok', 'Input');
   const mo = meter(lv, 55, 'ok', 'Output');
+  let asking = false;
   const tick = setInterval(() => {
     if (!mi.isConnected) return clearInterval(tick);
+    const p = dev && dev.online && !asking && act('levels', { id: dev.id });
+    if (p) {
+      asking = true;
+      p.then((l) => { mi.firstChild.style.width = (l.in || 0) + '%'; mo.firstChild.style.width = (l.out || 0) + '%'; }, () => {}).finally(() => (asking = false));
+      return;
+    }
+    if (ctx.live) return;
     mi.firstChild.style.width = 20 + Math.random() * 40 + '%';
     mo.firstChild.style.width = 30 + Math.random() * 40 + '%';
   }, 200);
   const tt = el('button', { class: 'btn small' }, lv, 'Play test tone');
-  tt.onclick = () => { piLog('Test tone 440 Hz, -18 dBFS on output', 'info', 'engine'); toast('Test tone on the Pi output (demo)'); };
+  tt.onclick = () => {
+    piLog('Test tone 440 Hz, -18 dBFS on output', 'info', 'engine');
+    const p = dev && act('testTone', { id: dev.id });
+    if (p) p.then(() => toast('Test tone on the Pi output'), () => {});
+    else toast('Test tone on the Pi output (demo)');
+  };
   demoNote(main, 'Levels and latency are estimates until a Pi is connected.');
 }
 
@@ -80,6 +97,7 @@ const CHANGES = ['Faster preset switching with preloading', 'Pi 5: NAM A2 Full a
 export function renderUpdates(main, ctx) {
   const { store, dev } = ctx;
   const u = store.updates;
+  const latest = ctx.live ? dev?.latest || dev?.version || '?' : u.channel === 'stable' ? LATEST : LATEST + '-beta.2';
   const top = el('div', { class: 'pi-sechead' }, main);
   el('div', {}, top, '<h2>Updates</h2><p>Signed updates with automatic rollback. Your presets and settings are kept.</p>');
   if (!dev) return el('div', { class: 'pi-empty' }, main).textContent = 'Add a Pi first.';
@@ -89,7 +107,7 @@ export function renderUpdates(main, ctx) {
   const c = card(left, dev.name, `${MODELS[dev.model].name}, Tone Zone ${dev.version}`);
   const ver = el('div', { class: 'pi-verrow' }, c);
   el('div', {}, ver, `<span>Installed</span><b data-ver>${dev.version}</b>`);
-  el('div', {}, ver, `<span>Latest (${u.channel})</span><b>${u.channel === 'stable' ? LATEST : LATEST + '-beta.2'}</b>`);
+  el('div', {}, ver, `<span>Latest (${u.channel})</span><b data-latest>${latest}</b>`);
   el('div', {}, ver, `<span>Previous</span><b>${dev.prevVersion || '0.7.2'}</b>`);
   field(c, 'Channel');
   seg(c.lastChild.lastChild, [['stable', 'Stable'], ['beta', 'Beta'], ['nightly', 'Nightly']], u.channel, (v) => { u.channel = v; savePi(); ctx.rerender(); });
@@ -100,21 +118,47 @@ export function renderUpdates(main, ctx) {
   el('div', {}, r, '<b>Install automatically</b><small>Only when the Pi has had no guitar signal for 10 minutes. Never during a show.</small>');
   toggle(r, u.auto, (v) => { u.auto = v; savePi(); });
 
-  const act = el('div', { class: 'pi-row' }, c);
-  const chk = el('button', { class: 'btn', 'data-act': 'check-update' }, act, 'Check for updates');
-  const inst = el('button', { class: 'btn btn-accent', 'data-act': 'install-update' }, act, `Install ${LATEST}`);
-  const rb = el('button', { class: 'btn btn-ghost', 'data-act': 'rollback' }, act, 'Roll back');
+  const row = el('div', { class: 'pi-row' }, c);
+  const chk = el('button', { class: 'btn', 'data-act': 'check-update' }, row, 'Check for updates');
+  const inst = el('button', { class: 'btn btn-accent', 'data-act': 'install-update' }, row, `Install ${ctx.live ? latest : LATEST}`);
+  const rb = el('button', { class: 'btn btn-ghost', 'data-act': 'rollback' }, row, 'Roll back');
   const prog = el('div', { class: 'pi-progress hidden', 'data-progress': 'update' }, c, '<div class="pi-pbar"><i></i></div><span></span>');
-  const upToDate = dev.version === LATEST;
+  const upToDate = ctx.live ? !dev.latest || dev.latest === dev.version : dev.version === LATEST;
   inst.disabled = upToDate;
   if (upToDate) inst.textContent = 'Up to date';
   chk.onclick = () => {
     chk.textContent = 'Checking...';
+    const p = act('checkUpdate', { id: dev.id, channel: u.channel });
+    if (p) {
+      p.then((r) => {
+        dev.latest = r.latest;
+        dev.notes = r.notes || [];
+        toast(r.latest === dev.version ? 'Already up to date' : `Tone Zone ${r.latest} is available`);
+        ctx.rerender();
+      }, () => (chk.textContent = 'Check for updates'));
+      return;
+    }
     setTimeout(() => { chk.textContent = 'Check for updates'; toast(upToDate ? 'Already up to date' : `Tone Zone ${LATEST} is available`); piLog(`Update check (${u.channel}): ${upToDate ? 'up to date' : LATEST + ' available'}`); }, 700);
   };
   inst.onclick = async () => {
     inst.disabled = chk.disabled = rb.disabled = true;
     prog.classList.remove('hidden');
+    if (ctx.live) {
+      const bar = prog.querySelector('i'), label = prog.querySelector('span');
+      const off = bus.on('pi:progress', (ev) => {
+        if (ev.id !== dev.id || ev.job !== 'update') return;
+        bar.style.width = (ev.pct || 0) + '%';
+        if (ev.text) label.textContent = ev.text;
+      });
+      label.textContent = 'Starting...';
+      try {
+        await act('update', { id: dev.id, channel: u.channel, via: u.via });
+        piLog(`Updated to ${dev.latest}`);
+        toast(`${dev.name} is updated`);
+      } catch { /* shown by act */ }
+      off();
+      return setTimeout(() => ctx.rerender(), 600);
+    }
     const src = u.via === 'push' ? 'Sending from this computer' : u.via === 'usb' ? 'Reading from USB stick' : 'Downloading';
     await fakeProgress(prog.querySelector('i'), prog.querySelector('span'), [
       `${src}: 38 MB...`, 'Checking the signature...', 'Writing to the spare slot (B)...', 'Switching to the new version...', 'Restarting audio (about 2 s of silence)...', 'Health check: engine, preset, footswitches...', `Done. Now on ${LATEST}`,
@@ -126,7 +170,11 @@ export function renderUpdates(main, ctx) {
     toast(`${dev.name} is now on ${LATEST} (demo)`);
     setTimeout(() => ctx.rerender(), 600);
   };
-  rb.onclick = () => {
+  rb.onclick = async () => {
+    if (ctx.live) {
+      try { await act('rollback', { id: dev.id }); toast('Rolled back'); } catch { /* shown by act */ }
+      return ctx.rerender();
+    }
     const back = dev.prevVersion || '0.7.2';
     dev.prevVersion = dev.version;
     dev.version = back;
@@ -136,9 +184,12 @@ export function renderUpdates(main, ctx) {
     ctx.rerender();
   };
 
-  const n = card(right, `What is new in ${LATEST}`, null);
-  const ul = el('ul', { class: 'pi-list' }, n);
-  for (const t of CHANGES) el('li', {}, ul).textContent = t;
+  const notes = ctx.live ? dev.notes || [] : CHANGES;
+  if (notes.length) {
+    const n = card(right, `What is new in ${ctx.live ? latest : LATEST}`, null);
+    const ul = el('ul', { class: 'pi-list' }, n);
+    for (const t of notes) el('li', {}, ul).textContent = t;
+  }
   const how = card(right, 'How updates stay safe', null);
   const ul2 = el('ul', { class: 'pi-list small' }, how);
   for (const t of ['Every update is signed. The Pi refuses anything that is not from Tone Zone.', 'The new version goes into a spare slot. If it does not start properly within a minute, the Pi goes back to the old one by itself.', 'Roll back keeps the previous version one click away.', 'Updating from the command line: sudo tonezone update'])
@@ -170,11 +221,17 @@ export function renderLogs(main, ctx) {
   };
   draw();
   main.addEventListener('pi-log', draw);
+  const lp = dev && act('logs', { id: dev.id });
+  if (lp) lp.then((list) => Array.isArray(list) && setLogs(list), () => {});
   cp.onclick = () => {
     try { navigator.clipboard.writeText(piLogs().map((l) => `${new Date(l.t).toISOString()} ${l.src} ${l.lvl} ${l.msg}`).join('\n')); } catch { /* ignore */ }
     toast('Logs copied');
   };
-  sb.onclick = () => toast('A support bundle (logs, settings, no presets) will download from the Pi (demo)');
+  sb.onclick = () => {
+    const p = dev && act('supportBundle', { id: dev.id });
+    if (p) p.then((r) => toast('Support bundle saved' + (r && r.path ? ': ' + r.path : '')), () => {});
+    else toast('A support bundle (logs, settings, no presets) will download from the Pi (demo)');
+  };
   const ssh = card(main, 'Same logs over SSH', null);
   copyBox(ssh, 'journalctl -u tonezone-engine -u tz-agent -f');
 }

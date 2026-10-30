@@ -5,11 +5,12 @@ import { drawSlider, drawSelector, angleFor } from '../gfx/controls.js';
 import { drawJack } from '../gfx/jacks.js';
 import { normalize, materialFill, paint, multiLayer, wearOverlay, seeThrough, opacityOf } from '../gfx/materials.js';
 import { knobPart, buttonPart, footPart, togglePart, ledPart, treadlePart, bezel, nutPaint, NEW_KNOBS } from './factory-parts.js';
+import { ledPreview } from './circuit-links.js';
 import { encoderPart, xyPart, stripPart, arcadePart, stepsPart, tbankPart, tbankWidth, meterPart, sliderLook, selLook, ledLook, ledHalf, STEP } from './factory-controls.js';
 import { xySize, drawable } from './factory-kinds.js';
 import { renderPatterns } from './factory-patterns.js';
-import { STAGES } from './factory-circuit.js';
 import { drawScriptScreen } from '../screenscript/surface.js';
+import { drawPcb } from './factory-pcb.js';
 
 export const r1 = (v) => Math.round(v * 10) / 10;
 const lum = (c) => {
@@ -569,7 +570,7 @@ export function drawControl(parent, c, th, o = {}) {
     if (c.kind === 'knob' || c.kind === 'trim' || c.kind === 'slider' || c.kind === 'pedal') view.set(c.value ?? 0.5);
     else if (c.kind === 'toggle' || c.kind === 'sel') view.set(clamp(c.pos || 0, 0, (c.kind === 'toggle' ? c.ways : c.n || 4) - 1));
     else if (c.kind === 'button') view.set(!!c.on);
-    else if (c.kind === 'led') view.set(c.on ? true : null);
+    else if (c.kind === 'led') view.set(c.on ? ledPreview(c) || true : null); // RGB / bicolour: the mix of its wired colours
   }
   if (c.label && c.labelPos !== 'none') {
     const e = ctlExtent(c) + (c.kind === 'button' && c.led && c.labelPos === 'above' ? 5 : 0);
@@ -587,117 +588,8 @@ export function drawText(parent, t) {
   }, parent, t.text || ' ');
 }
 
-// ------------------------------------------------------------------ circuit board (seen through clear enclosures)
-function rng(seed) {
-  let s = 2166136261;
-  for (const ch of String(seed)) s = Math.imul(s ^ ch.charCodeAt(0), 16777619);
-  return () => {
-    s = Math.imul(s ^ (s >>> 15), 2246822507);
-    s = Math.imul(s ^ (s >>> 13), 3266489909);
-    return ((s ^= s >>> 16) >>> 0) / 4294967296;
-  };
-}
-const WIRE = ['#d63a2f', '#2b2b2b', '#f2c230', '#2f7bd6', '#3a9a5b', '#f4f1e8', '#e56b1f'];
-// the board, its parts and the wires to every control and jack
-export function drawPcb(g, d, pts, spots) {
-  const W = d.enc.w, H = d.enc.h;
-  const rnd = rng((d.blockId || d.name || 'pcb') + W + 'x' + H);
-  const bw = clamp(W * 0.66, 24, 150), bh = clamp(H * 0.36, 22, 80);
-  const bx = (W - bw) / 2, by = H * 0.38 - bh / 2;
-  const pcb = svg('g', { class: 'fz-pcb', 'pointer-events': 'none' }, g);
-  const col = d.enc.pcbColor || '#1f6b3a';
-  svg('rect', { x: bx + 0.8, y: by + 1.2, width: bw, height: bh, rx: 1.5, fill: '#000', opacity: 0.35 }, pcb);
-  svg('rect', { x: bx, y: by, width: bw, height: bh, rx: 1.5, fill: col, stroke: '#0d2e18', 'stroke-width': 0.4 }, pcb);
-  // copper traces
-  let tr = '';
-  for (let i = 0; i < 18; i++) {
-    const x0 = bx + 2 + rnd() * (bw - 4), y0 = by + 2 + rnd() * (bh - 4);
-    const x1 = bx + 2 + rnd() * (bw - 4), y1 = by + 2 + rnd() * (bh - 4);
-    tr += `M${r1(x0)},${r1(y0)}H${r1((x0 + x1) / 2)}L${r1((x0 + x1) / 2 + (y1 - y0) * 0.2)},${r1(y1)}H${r1(x1)}`;
-  }
-  svg('path', { d: tr, fill: 'none', stroke: '#c9a14a', 'stroke-width': 0.45, opacity: 0.55, 'stroke-linecap': 'round' }, pcb);
-  svg('rect', { x: bx + 1.2, y: by + 1.2, width: bw - 2.4, height: bh - 2.4, rx: 1, fill: 'none', stroke: '#e8e6df', 'stroke-width': 0.2, opacity: 0.35, 'stroke-dasharray': '1 0.8' }, pcb);
-  // parts: one cluster per stage of the circuit
-  const stages = (d.circuit && d.circuit.stages) || [];
-  const cells = Math.max(1, stages.length);
-  const cw = (bw - 4) / cells;
-  const resistor = (x, y, rot) => {
-    const r = svg('g', { transform: `translate(${r1(x)},${r1(y)}) rotate(${rot})` }, pcb);
-    svg('line', { x1: -3, x2: 3, y1: 0, y2: 0, stroke: '#b9bec6', 'stroke-width': 0.3 }, r);
-    svg('rect', { x: -1.7, y: -0.65, width: 3.4, height: 1.3, rx: 0.6, fill: '#d8c79a' }, r);
-    const bands = [['#8a4b1e', '#111', '#c9302c'], ['#c9302c', '#e56b1f', '#111'], ['#2b7bd6', '#5a3fb0', '#8a4b1e']][Math.floor(rnd() * 3)];
-    bands.forEach((b, i) => svg('rect', { x: -1.1 + i * 0.7, y: -0.65, width: 0.35, height: 1.3, fill: b }, r));
-  };
-  const ecap = (x, y, r = 1.6) => {
-    svg('circle', { cx: x, cy: y, r, fill: '#2a4fa8', stroke: '#13275a', 'stroke-width': 0.25 }, pcb);
-    svg('path', { d: `M${r1(x - r * 0.7)},${r1(y - r * 0.2)}h${r1(r * 1.4)}`, stroke: '#cfd8ea', 'stroke-width': 0.35 }, pcb);
-    svg('circle', { cx: x - r * 0.3, cy: y - r * 0.35, r: r * 0.35, fill: '#fff', opacity: 0.2 }, pcb);
-  };
-  const film = (x, y, c) => svg('rect', { x: x - 1.6, y: y - 1, width: 3.2, height: 2, rx: 0.4, fill: c, stroke: '#000', 'stroke-opacity': 0.3, 'stroke-width': 0.2 }, pcb);
-  const chip = (x, y, pins = 4) => {
-    const w = pins * 1.27 + 0.8;
-    for (let i = 0; i < pins; i++) {
-      svg('rect', { x: x - w / 2 + 0.6 + i * 1.27, y: y - 2.6, width: 0.5, height: 0.8, fill: '#c9ced5' }, pcb);
-      svg('rect', { x: x - w / 2 + 0.6 + i * 1.27, y: y + 1.8, width: 0.5, height: 0.8, fill: '#c9ced5' }, pcb);
-    }
-    svg('rect', { x: x - w / 2, y: y - 1.9, width: w, height: 3.8, rx: 0.3, fill: '#16171a' }, pcb);
-    svg('circle', { cx: x - w / 2 + 0.7, cy: y - 1.2, r: 0.3, fill: '#3a3c40' }, pcb);
-  };
-  const transistor = (x, y) => {
-    svg('path', { d: `M${r1(x - 1.1)},${r1(y + 0.5)}A1.2 1.2 0 0 1 ${r1(x + 1.1)},${r1(y + 0.5)}Z`, fill: '#1a1a1a' }, pcb);
-    svg('rect', { x: x - 1.1, y: y + 0.4, width: 2.2, height: 0.5, fill: '#333' }, pcb);
-  };
-  const diode = (x, y) => {
-    svg('rect', { x: x - 1.2, y: y - 0.45, width: 2.4, height: 0.9, rx: 0.4, fill: '#c9302c', opacity: 0.85 }, pcb);
-    svg('rect', { x: x + 0.6, y: y - 0.45, width: 0.4, height: 0.9, fill: '#111' }, pcb);
-  };
-  for (let i = 0; i < cells; i++) {
-    const cx = bx + 2 + cw * (i + 0.5), st = stages[i] ? STAGES[stages[i].type] : null;
-    const cat = st ? st.cat : 'util';
-    const top = by + bh * 0.3, bot = by + bh * 0.72;
-    if (cat === 'drive' && stages[i].type === 'fuzz') {
-      transistor(cx - cw * 0.2, top);
-      transistor(cx + cw * 0.2, top);
-    } else if (cat !== 'util') chip(cx, top, cat === 'time' || cat === 'pitch' ? 8 : 4);
-    else film(cx, top, '#f2c230');
-    if (cat === 'drive') diode(cx, top + 3.4);
-    resistor(cx - cw * 0.25, bot, 90);
-    resistor(cx + cw * 0.05, bot, 90);
-    ecap(cx + cw * 0.3, bot - 0.5, cat === 'time' ? 2 : 1.5);
-    film(cx - cw * 0.05, by + bh * 0.52, ['#d6487e', '#f2c230', '#e56b1f'][i % 3]);
-  }
-  if (!stages.length) chip(bx + bw / 2, by + bh / 2, 4);
-  // trim pot and a voltage regulator
-  svg('rect', { x: bx + bw - 4.5, y: by + 1.5, width: 3, height: 3, rx: 0.4, fill: '#2b6fd6' }, pcb);
-  svg('circle', { cx: bx + bw - 3, cy: by + 3, r: 1, fill: '#e8e6df' }, pcb);
-  // wires: a header on the board edge closest to each part, then a soft curve up to it
-  const wires = svg('g', { class: 'fz-wires', 'pointer-events': 'none' }, g);
-  const ends = [];
-  for (const c of d.ctls) {
-    if (c.hidden || c.kind === 'screen') continue;
-    const n = c.kind === 'foot' ? 6 : c.kind === 'dip' ? Math.min(6, c.n || 4) : c.kind === 'led' ? 2 : c.kind === 'toggle' ? 3 : 3;
-    ends.push({ x: c.x, y: c.y, n, ribbon: c.kind === 'foot' || c.kind === 'dip' || c.kind === 'screen' });
-  }
-  for (const s of spots) ends.push({ x: s.ex, y: s.ey, n: s.j.kind === 'power' ? 2 : s.j.kind === 'xlr' ? 3 : 2, jack: true });
-  ends.forEach((e, k) => {
-    const inside = e.x > bx && e.x < bx + bw && e.y > by && e.y < by + bh;
-    const hx = clamp(e.x, bx + 2, bx + bw - 2);
-    const hy = inside ? e.y : e.y < by ? by + 0.6 : e.y > by + bh ? by + bh - 0.6 : clamp(e.y, by + 0.6, by + bh - 0.6);
-    const gap = e.ribbon ? 0.55 : 0.75;
-    for (let i = 0; i < e.n; i++) {
-      const o = (i - (e.n - 1) / 2) * gap;
-      const x0 = hx + o, y0 = hy;
-      const x1 = e.x + o * 0.8, y1 = e.y + (e.jack ? 0 : 0);
-      const my = (y0 + y1) / 2 + (rnd() - 0.5) * 6;
-      const colr = e.ribbon ? (i === 0 ? '#c9302c' : '#9aa0a8') : WIRE[(k * 3 + i) % WIRE.length];
-      svg('path', { d: `M${r1(x0)},${r1(y0)}C${r1(x0 + (rnd() - 0.5) * 6)},${r1(my)} ${r1(x1 + (rnd() - 0.5) * 6)},${r1(my)} ${r1(x1)},${r1(y1)}`, fill: 'none', stroke: '#000', 'stroke-width': e.ribbon ? 0.7 : 0.75, opacity: 0.35, transform: 'translate(0.4,0.6)' }, wires);
-      svg('path', { d: `M${r1(x0)},${r1(y0)}C${r1(x0 + (rnd() - 0.5) * 6)},${r1(my)} ${r1(x1 + (rnd() - 0.5) * 6)},${r1(my)} ${r1(x1)},${r1(y1)}`, fill: 'none', stroke: colr, 'stroke-width': e.ribbon ? 0.55 : 0.5, 'stroke-linecap': 'round' }, wires);
-    }
-    // header pins and the solder lug under the part
-    svg('rect', { x: hx - (e.n * gap) / 2 - 0.3, y: hy - 0.6, width: e.n * gap + 0.6, height: 1.2, rx: 0.3, fill: '#e8e6df', opacity: 0.85 }, pcb);
-    svg('circle', { cx: e.x, cy: e.y, r: e.jack ? 1.1 : 1.4, fill: '#8a8f97', opacity: 0.6 }, wires);
-  });
-}
+// the circuit board seen through clear enclosures is built from the design's circuits (factory-pcb.js)
+export { drawPcb };
 
 // ------------------------------------------------------------------ the whole pedal
 let rid = 0;

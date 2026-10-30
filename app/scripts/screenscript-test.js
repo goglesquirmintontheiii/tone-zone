@@ -1,7 +1,8 @@
 // Screen scripts: the language (maths, loops, functions, tables, strings, errors with line numbers, the step
 // budget), drawing to a canvas, widgets, the factory inspector, code editor and generator, a script that turns
 // a knob and flips DIP switches on a saved pedal on the board (saved, undoable, sent to the engine), test mode
-// input, and the board bitmap showing the screen.
+// input, the board bitmap showing the screen, and the editor's type hints (completion, signature help, hovers,
+// checks) with the screen ports docs.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -92,6 +93,15 @@ async function unit() {
   for (let i = 0; i < 200; i++) vmS.call('draw', [], 1e6, 100);
   const per = (Date.now() - t0) / 200;
   ok(per < 3, `2000 loop passes take ${per.toFixed(2)} ms`);
+
+  // the docs: docs/screen-scripts.md has the reference from docs.js, with the screen ports guide
+  const { apiMarkdown, SIGS, API } = await import(pathToFileURL(path.join(JS, 'docs.js')).href);
+  const md = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'screen-scripts.md'), 'utf8');
+  ok(md.includes(apiMarkdown()), 'docs/screen-scripts.md has the current reference from docs.js');
+  ok(['## Screen ports', '### Adding inputs and outputs', '### Reading inputs', '### Writing outputs', '### A screen wired both ways', '### Hints while you type'].every((h) => md.includes(h + '\n')), 'the docs have the screen ports and hints sections');
+  ok(!/[\u2013\u2014]/.test(md + JSON.stringify(API)), 'no em or en dashes in the docs');
+  const noSig = API.flatMap((g) => g.items.map(([n]) => n)).filter((n) => !SIGS.has(n) && !['W', 'screen', 'colors', 'mouse', 'math', 'string', 'table', 'pairs', 'tostring', 'pcall', 'ctl', 'pedalOn', 'clip', 'push', 'translate'].includes(n));
+  ok(noSig.length === 0, 'every API function has types for the hints: ' + noSig.join(', '));
 }
 
 (async () => {
@@ -272,6 +282,147 @@ end
   await win.click('[data-ss="done"]');
   await win.waitForTimeout(300);
   ok(/setKnob\("CUTOFF", 0.9\)/.test((await D()).ctls.find((c) => c.id === scr.id).script), 'the code is kept in the design');
+
+  // ---- type hints: completion, signature help, hovers, checks, and the screen ports reference
+  const keepScript = (await D()).ctls.find((c) => c.id === scr.id).script;
+  await win.evaluate((id) => {
+    const d = window.__tzFactory.design();
+    const c = d.ctls.find((x) => x.id === id);
+    c.sio = { ins: [{ id: 'pe', name: 'Env', sig: 'n' }, { id: 'pg', name: 'Gate', sig: 'b' }], outs: [{ id: 'ps', name: 'Sens', sig: 'n' }, { id: 'ph', name: 'Hold', sig: 'b' }] };
+    window.__tzFactory.load(d);
+  }, scr.id);
+  await win.waitForTimeout(300);
+  await win.click('[data-ss="edit"]');
+  await win.waitForSelector('.ss-win .ss-ta');
+  await win.waitForTimeout(300);
+  const edBox = async () => (await (await win.$('.ss-win')).boundingBox());
+  const shotEd = async (name) => win.screenshot({ path: path.join(S, name), clip: await edBox() });
+  const acLabels = () => win.$$eval('.ss-ac.open .ss-ac-item', (r) => r.map((x) => x.dataset.label));
+  await win.click('.ss-ta');
+  await win.keyboard.press('Control+A');
+  await win.keyboard.press('Delete');
+  await win.keyboard.type('local level = 0\nfunction draw()\n');
+  await win.keyboard.type('clear()\n');
+  await win.keyboard.type('setK');
+  await win.waitForTimeout(100);
+  let labels = await acLabels();
+  ok(labels[0] === 'setKnob', 'typing setK offers setKnob: ' + labels.slice(0, 3).join(', '));
+  ok(/name: control, value: number/.test(await win.$eval('.ss-ac.open .ss-ac-item.on span', (e) => e.textContent)), 'the completion shows the parameter types');
+  await shotEd('screens-hint-complete.png');
+  await win.keyboard.press('Enter');
+  ok(/setKnob\($/.test(await win.$eval('.ss-ta', (t) => t.value)), 'Enter inserts setKnob(');
+  await win.keyboard.type('"');
+  await win.waitForTimeout(100);
+  labels = await acLabels();
+  const knobNames = await win.evaluate(async () => {
+    const { controlList } = await import('./js/screenscript/host.js');
+    return controlList(window.__tzFactory.design()).filter((e) => e.kind === 'knob').map((e) => e.name);
+  });
+  ok(labels.length === knobNames.length && knobNames.every((n) => labels.includes(n)), 'inside setKnob(" the pedal\'s knob names are offered: ' + labels.join(', '));
+  await shotEd('screens-hint-controls.png');
+  await win.keyboard.press('Escape');
+  ok(!!(await win.$('.ss-win')), 'Esc closes the list, not the editor');
+  await win.keyboard.type('CUTOFF", 0.5)\n');
+  // signature help
+  await win.keyboard.type('rect(');
+  await win.waitForTimeout(80);
+  let sig = await win.evaluate(() => ({ open: !!document.querySelector('.ss-sig.open'), text: document.querySelector('.ss-sig').textContent, on: (document.querySelector('.ss-sig-p.on') || {}).textContent }));
+  ok(sig.open && /rect\(x: number, y: number, w: number, h: number, \[color: color\], \[width: number\]\)/.test(sig.text) && sig.on === 'x: number' && /Pixels from the left/.test(sig.text), 'signature help for rect( shows the types and x first: ' + sig.text.slice(0, 120));
+  await win.keyboard.type('2, 2, ');
+  await win.waitForTimeout(80);
+  sig = await win.evaluate(() => (document.querySelector('.ss-sig-p.on') || {}).textContent);
+  ok(sig === 'w: number', 'the current parameter follows the commas (' + sig + ')');
+  await shotEd('screens-hint-signature.png');
+  await win.keyboard.type('20)\n');
+  ok(!(await win.$('.ss-sig.open')), 'signature help closes after the call');
+  // port names from this screen
+  await win.keyboard.type('level = input("');
+  await win.waitForTimeout(100);
+  labels = await acLabels();
+  ok(labels.join(',') === 'Env,Gate', 'input(" offers this screen\'s inputs: ' + labels.join(', '));
+  await win.keyboard.press('Enter');
+  await win.keyboard.type('")\noutput("');
+  await win.waitForTimeout(100);
+  labels = await acLabels();
+  ok(labels.join(',') === 'Sens,Hold', 'output(" offers its outputs: ' + labels.join(', '));
+  await win.keyboard.press('Escape');
+  await win.keyboard.type('Sens", level * 2)\nrect(1, 2)\nknob("Cutof")\noutput("Nope", 1)\nfilRect(0, 0, 4, 4)\ntext("hi", "two", 3)\nend\n');
+  await win.waitForTimeout(700);
+  ed = await win.evaluate(() => window.__tzScreens.editor().peek());
+  const wmsg = ed.warnings.map((w) => w.message).join(' | ');
+  ok(ed.warnings.some((w) => /rect needs at least 4 arguments \(x, y, w, h\), this call has 2/.test(w.message)), 'a wrong argument count is underlined: ' + wmsg);
+  ok(/no knob called "Cutof".*CUTOFF/.test(wmsg) && /no output called "Nope"/.test(wmsg), 'unknown control and port names are flagged');
+  ok(/filRect is not a Tone Zone function.*fillRect/.test(wmsg) && /y should be a number, not text/.test(wmsg), 'unknown functions and text for a number are flagged');
+  ok(!ed.error && ed.frames > 0, 'the checks do not stop the script');
+  ok((await win.$$('.ss-marks .ss-warn')).length === ed.warnings.length && (await win.$$('.ss-gutter-in div.warn')).length >= 4, 'warnings are underlined and marked in the gutter');
+  ok(/5 hints/.test(await win.$eval('.ss-status', (s) => s.textContent)), 'the status counts the hints');
+  // hover a warning, then an API name
+  const hoverAt = async (word, nth = 0) => {
+    const xy = await win.evaluate(({ word, nth }) => {
+      const e = window.__tzScreens.editor().editor;
+      let i = -1;
+      for (let k = 0; k <= nth; k++) i = e.value.indexOf(word, i + 1);
+      return e.coordsAt(i + 1);
+    }, { word, nth });
+    await win.mouse.move(xy.x, xy.y);
+    await win.waitForTimeout(500);
+    return win.evaluate(() => (document.querySelector('.ss-tip.open') || {}).textContent || '');
+  };
+  let tip = await hoverAt('rect(1, 2)');
+  ok(/rect needs at least 4/.test(tip), 'hovering the underline explains it');
+  await shotEd('screens-hint-warnings.png');
+  tip = await hoverAt('input("');
+  ok(/input\(\[port: port\]\) -> number/.test(tip) && /The value wired into this input/.test(tip) && /port: Input number/.test(tip), 'hovering input shows its signature and description: ' + tip.slice(0, 100));
+  await shotEd('screens-hint-hover.png');
+  tip = await hoverAt('level', 1);
+  ok(/level \(a variable\)/.test(tip) && /line 1/.test(tip), 'hovering a script variable says where it is defined');
+  await win.mouse.move(5, 5);
+  // the Test tab: simulated inputs, outputs shown
+  ok((await win.$$('.ss-pane-test [data-sin]')).length === 2 && (await win.$$('.ss-pane-test [data-sout]')).length === 2, 'the Test tab has the screen inputs and outputs');
+  await win.$eval('.ss-pane-test input[data-sin="0"]', (i) => { i.value = 0.35; i.dispatchEvent(new Event('input')); });
+  await win.waitForTimeout(250);
+  ok((await win.$eval('.ss-pane-test [data-sout="0"]', (e) => e.textContent)) === '0.7', 'a simulated input reaches the script and its output shows (' + (await win.$eval('.ss-pane-test [data-sout="0"]', (e) => e.textContent)) + ')');
+  // the reference has the screen ports guide
+  await win.click('.ss-tabs [data-tab="ref"]');
+  await win.waitForTimeout(100);
+  const guide = await win.evaluate(() => {
+    const g = document.querySelector('.ss-refguide');
+    if (!g) return null;
+    g.scrollIntoView({ block: 'start' });
+    return { heads: [...g.querySelectorAll('h6')].map((h) => h.textContent), code: g.querySelectorAll('.ss-refcode').length };
+  });
+  ok(guide && ['Adding inputs and outputs', 'Reading inputs', 'Writing outputs', 'A screen wired both ways'].every((h) => guide.heads.includes(h)) && guide.code >= 5, 'the Reference has the screen ports guide: ' + JSON.stringify(guide));
+  await win.evaluate(() => { const h = [...document.querySelectorAll('.ss-ref h5')].find((x) => x.textContent === 'Screen ports'); if (h) h.scrollIntoView({ block: 'start' }); });
+  await win.waitForTimeout(100);
+  await shotEd('screens-hint-reference.png');
+  await win.evaluate(() => { const h = [...document.querySelectorAll('.ss-refguide h6')].find((x) => x.textContent === 'Writing outputs'); if (h) h.scrollIntoView({ block: 'start' }); });
+  await win.waitForTimeout(100);
+  await shotEd('screens-hint-reference2.png');
+  await win.click('.ss-tabs [data-tab="test"]');
+  // every example in the guide runs
+  const exErr = await win.evaluate(async (id) => {
+    const { API } = await import('./js/screenscript/docs.js');
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const d = window.__tzFactory.design();
+    const out = [];
+    for (const g of API) for (const [k, v] of g.guide || []) {
+      if (k !== 'code') continue;
+      const { io } = simIO(d, { demo: false });
+      io.cid = id;
+      const rt = new ScreenRuntime({ src: v, w: 120, h: 48, host: makeHost(d, io) });
+      const t = performance.now();
+      for (let i = 0; i < 4; i++) rt.frame(t + i * 40);
+      if (rt.error) out.push(v.split('\n')[0] + ': ' + rt.error.message);
+    }
+    return out;
+  }, scr.id);
+  ok(exErr.length === 0, 'every screen ports example runs: ' + exErr.join('; '));
+  await win.evaluate(({ id, src }) => {
+    window.__tzScreens.editor().editor.value = src;
+  }, { id: scr.id, src: keepScript });
+  await win.click('[data-ss="done"]');
+  await win.waitForTimeout(300);
 
   // generator
   await win.click('[data-ss="gen"]');

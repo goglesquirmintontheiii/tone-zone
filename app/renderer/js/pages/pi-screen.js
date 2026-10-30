@@ -45,7 +45,7 @@ export function mountScreen(host, opts) {
     el('span', { class: 'pis-sp' }, t);
     const m = el('span', { class: 'pis-meters' }, t, '<i data-m="in"><b></b></i><i data-m="out"><b></b></i>');
     m.title = 'In / out level';
-    el('span', { class: 'pis-cpu', 'data-cpu': '' }, t).textContent = 'CPU ' + Math.round(ui.cpu) + '%';
+    el('span', { class: 'pis-cpu', 'data-cpu': '' }, t).textContent = 'DSP ' + Math.round(ui.cpu) + '%';
   }
   function navBar() {
     const n = el('div', { class: 'pis-nav' }, root);
@@ -168,7 +168,7 @@ export function mountScreen(host, opts) {
     const b = el('div', { class: 'pis-oled' }, root);
     el('div', { class: 'o1' }, b).textContent = (opts.slot < 0 ? '--' : ((opts.bankIndex ?? 0) + 1) + String.fromCharCode(65 + (opts.slot ?? 0))) + ' ' + (ui.preset ? ui.preset.name : '').toUpperCase().slice(0, 12);
     el('div', { class: 'o2' }, b).textContent = (opts.bankName || '').slice(0, 16);
-    el('div', { class: 'o3', 'data-cpu': '' }, b).textContent = 'CPU ' + Math.round(ui.cpu) + '%  ' + chain.filter((x) => x.on).length + '/' + chain.length + ' ON';
+    el('div', { class: 'o3', 'data-cpu': '' }, b).textContent = 'DSP ' + Math.round(ui.cpu) + '%  ' + chain.filter((x) => x.on).length + '/' + chain.length + ' ON';
   }
 
   function draw() {
@@ -187,7 +187,7 @@ export function mountScreen(host, opts) {
     root.querySelectorAll('.pis-meters i b').forEach((b, i) => (b.style.width = Math.round(lv[i] * 100) + '%'));
     ui.cpu = clamp(ui.cpu + (Math.random() - 0.5) * 2, (opts.cpu || 30) - 4, (opts.cpu || 30) + 4);
     const c = root.querySelector('[data-cpu]');
-    if (c && size !== 'xs') c.textContent = 'CPU ' + Math.round(ui.cpu) + '%';
+    if (c && size !== 'xs') c.textContent = 'DSP ' + Math.round(ui.cpu) + '%';
     if (ui.view === 'tuner') {
       ui.tuneT += 0.12;
       const cents = Math.sin(ui.tuneT) * 18 * Math.exp(-((ui.tuneT % 12) / 6));

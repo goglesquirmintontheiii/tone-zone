@@ -126,8 +126,19 @@ export function updateViews(now = performance.now()) {
     }
   }
 }
+// controls wired to follow a source (def.plinks, circuit-links.js) move with it
+function follow(p, depth = 0) {
+  for (const l of T.def.plinks || []) {
+    if (l.from !== p) continue;
+    const v = l.value(T.block.params, T.block);
+    if (v === undefined || T.block.params[l.to] === v) continue;
+    T.block.params[l.to] = v;
+    if (depth < 4) follow(l.to, depth + 1);
+  }
+}
 function setP(p, v) {
   T.block.params[p] = v;
+  follow(p);
   sendParams();
   updateViews();
 }

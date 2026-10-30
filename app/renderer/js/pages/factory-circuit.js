@@ -17,6 +17,9 @@
 //     j.from = {n: inst, p: node}                                                    an EXP / footswitch jack (out)
 //     screen.sio.ins[i].from = {n, p}                                                a screen input
 //   and a screen's outputs drive circuit inputs: screen.sio.outs[i].maps = [{to, raw: true}].
+//   Direct links (no circuit in between: a control or jack straight to an LED, an OUT jack, a screen or another
+//   control) are in circuit-links.js. DIP switches and XY axes driving more than one input keep the extra ones in
+//   c.smore = [{sw, ...mapping}].
 //   Analog values are floats from -255 to 255, binary 0 or 1.
 // Older designs (v2: a list of stages) are migrated on load (circuit-migrate.js), old 'knob' inputs become
 // analog or binary inputs (migrateGraph).
@@ -26,6 +29,7 @@ import { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, PARTS, LIM, ioNodes, nid, clone,
 import {
   CIRCUITS, circuitById, makeCircuit, newStage, stageParam, v2TargetsFor, v2TargetInfo, v2MapTo, v2AutoMap, autoMapWith, stagesToGraph,
 } from './circuit-migrate.js';
+import { isRef, hasChans, linkCtx, linkLedFn, pruneLinks, refParam, readRef, driveValue, drivable, jackLinked } from './circuit-links.js';
 
 export { STAGES, STAGE_CATS, CLIPS, COMP_TYPES, CIRCUITS, circuitById, makeCircuit, newStage, stageParam, nid };
 export const uid = (p) => p + Math.random().toString(36).slice(2, 7);
@@ -51,7 +55,7 @@ export function circuitOutputs(D) {
 export const outKey = (e) => (e && e.n ? e.n + '.' + e.p : '');
 /** EXP and footswitch jacks. A jack driven by a circuit output (j.from) is an output, else an input. */
 export const ctlJacks = (D) => D.jacks.filter((j) => j.kind === 'exp' || j.kind === 'fsw');
-export const jackIsOut = (j) => !!(j && ((j.from && j.from.n) || j.dir === 'out'));
+export const jackIsOut = (j) => !!(j && (isRef(j.from) || j.dir === 'out'));
 /** A screen's inputs and outputs (up to 16 each). */
 export const SCREEN_PORTS = 16;
 /** Effects loop jacks: an output jack can be a SEND, an input jack a RETURN; j.loopN pairs them (1, 2...). */
@@ -181,6 +185,7 @@ export function driversOf(D, to) {
   for (const c of D.ctls) {
     mappingsOf(c).forEach((m) => m.to === to && out.push({ c, m }));
     (c.maps || []).forEach((m, i) => m && m.to === to && out.push({ c, m, sw: i }));
+    (c.smore || []).forEach((m) => m && m.to === to && out.push({ c, m, sw: m.sw }));
   }
   for (const j of D.jacks) (j.maps || []).forEach((m) => m && m.to === to && out.push({ j, m }));
   return out;
@@ -404,6 +409,7 @@ export function pruneTargets(D) {
     if (c.map && !ok(c.map)) c.map = { to: '' };
     if (c.more) c.more = c.more.filter((m) => m && m.to && ok(m));
     if (c.maps) c.maps = c.maps.map((m) => (ok(m) ? m : null));
+    if (c.smore) c.smore = c.smore.filter((m) => m && m.to && ok(m));
     if (c.kind === 'led' && c.bind && c.bind.startsWith('tap:') && !instOf(C, c.bind.slice(4))) c.bind = 'on';
   }
   for (const j of D.jacks) if (j.maps) j.maps = j.maps.filter((m) => m && m.to && ok(m));
@@ -416,11 +422,12 @@ export function pruneTargets(D) {
   for (const c of D.ctls) {
     if (c.kind === 'led' && c.bind && c.bind.startsWith('cv:') && !outs.has(c.bind.slice(3))) c.bind = 'on';
     if (c.sio) {
-      for (const p of c.sio.ins || []) if (p.from && !outOk(p.from)) p.from = null;
+      for (const p of c.sio.ins || []) if (p.from && (p.from.n || !isRef(p.from)) && !outOk(p.from)) p.from = null;
       for (const p of c.sio.outs || []) if (p.maps) p.maps = p.maps.filter((m) => m && m.to && ok(m));
     }
   }
-  for (const j of D.jacks) if (j.from && !outOk(j.from)) delete j.from;
+  for (const j of D.jacks) if (j.from && (j.from.n || !isRef(j.from)) && !outOk(j.from)) delete j.from;
+  pruneLinks(D, linkCtx(D, circuitOutputs(D)));
 }
 /** Add a mapping from control c to target `to` (its main one if it has none). */
 export function addMapping(D, c, to, o = {}) {
@@ -734,6 +741,7 @@ export function designToDef(design, o = {}) {
   const split = splitPatch(D, opts);
   const couts = circuitOutputs(D);
   const coutOf = new Map(couts.map((x) => [x.key, x]));
+  const X = linkCtx(D, couts);
   // every exposed value is sent, so a changed default reaches a running engine
   const fixed = {};
   for (const p of opts.params) fixed[p.name] = p.def;
@@ -807,18 +815,20 @@ export function designToDef(design, o = {}) {
       for (let i = 0; i < n; i++) {
         const k2 = key + '.' + i;
         controls.push({ cid: c.id + '.' + i, t: 'toggle', p: k2, options: ['OFF', 'ON'], def: c.bits?.[i] ? 1 : 0, virtual: true, label: (c.label || 'DIP') + ' ' + (i + 1) });
-        addMaps(k2, 2, c.bits?.[i] ? 1 : 0, [(c.maps || [])[i]]);
+        addMaps(k2, 2, c.bits?.[i] ? 1 : 0, [(c.maps || [])[i], ...(c.smore || []).filter((m) => m && m.sw === i)]);
       }
     } else if (c.kind === 'xy') {
       // XY pad / joystick (factory-kinds.js): one slider per axis, wired by c.maps[0] and c.maps[1]
-      for (const x of xyControls(c, S)) {
+      xyControls(c, S).forEach((x, i) => {
         controls.push(Object.assign(x.ctl, { display: disp([x.map]) }));
-        addMaps(x.ctl.p, 0, x.ctl.def, [x.map]);
-      }
+        addMaps(x.ctl.p, 0, x.ctl.def, [x.map, ...(c.smore || []).filter((m) => m && m.sw === i)]);
+      });
     } else if (c.kind === 'led') {
       const bind = c.bind || 'on';
       const l = { cid: c.id, t: 'led', color: c.color, label: '' };
-      if (bind === 'on') l.bind = 'on';
+      // wired straight to a control, jack or screen, or by colour channels (circuit-links.js)
+      if (bind === 'src' || hasChans(c)) Object.assign(l, { bind: 'fn', ledFn: linkLedFn(X, c) });
+      else if (bind === 'on') l.bind = 'on';
       else if (bind === 'always') Object.assign(l, { bind: 'fn', ledFn: () => true });
       else if (bind === 'off') Object.assign(l, { bind: 'fn', ledFn: () => null });
       else if (bind.startsWith('ctl:')) {
@@ -852,8 +862,12 @@ export function designToDef(design, o = {}) {
   for (const j of ctlJacks(D)) {
     if (jackIsOut(j)) {
       // driven by a circuit output: an expression or footswitch OUT on the board
-      const co = j.from && coutOf.get(outKey(j.from));
-      if (co) ctrlOuts.push({ label: j.label || (j.kind === 'fsw' ? 'FS OUT' : 'EXP OUT'), source: 'cv', cv: co.idx, sig: j.kind === 'fsw' ? 'b' : co.sig, lo: co.sig === 'b' ? 0 : co.min, hi: co.sig === 'b' ? 1 : co.max, _jack: j.id });
+      const co = j.from && j.from.n && coutOf.get(outKey(j.from));
+      if (j.from && !j.from.n && isRef(j.from)) {
+        // straight from a control, another jack or a screen: read from the block's params (catalog/custom.js)
+        const r = j.from, fsw = j.kind === 'fsw';
+        ctrlOuts.push({ label: j.label || (fsw ? 'FS OUT' : 'EXP OUT'), source: 'link', key: refParam(X, r), sig: fsw ? 'b' : 'n', lo: 0, hi: 1, read: (ui, st, b) => readRef(X, r, ui, st, b), _jack: j.id });
+      } else if (co) ctrlOuts.push({ label: j.label || (j.kind === 'fsw' ? 'FS OUT' : 'EXP OUT'), source: 'cv', cv: co.idx, sig: j.kind === 'fsw' ? 'b' : co.sig, lo: co.sig === 'b' ? 0 : co.min, hi: co.sig === 'b' ? 1 : co.max, _jack: j.id });
       continue;
     }
     if (j.kind === 'fsw') {
@@ -864,12 +878,13 @@ export function designToDef(design, o = {}) {
       addMaps(key + '.r', 0, undefined, (j.maps || []).filter((m) => m && m.ch === 'r'), true);
       continue;
     }
-    if (j.maps && j.maps.length) {
+    if ((j.maps && j.maps.length) || jackLinked(D, j.id)) {
       const key = 'u.x.' + j.id;
       ctrlIns.push({ label: j.label || 'EXP', param: key, min: 0, max: 1, _jack: j.id });
-      addMaps(key, 0, undefined, j.maps, true);
+      addMaps(key, 0, undefined, j.maps || [], true);
       continue;
     }
+    if (j.drive === 'none') continue;
     const tgt = D.ctls.find((c) => c.id === j.drive) || D.ctls.find((c) => c.kind === 'pedal') || D.ctls.find((c) => c.kind === 'knob');
     if (tgt && knobLike[tgt.kind]) ctrlIns.push({ label: j.label || 'EXP', param: 'u.' + tgt.id, min: 0, max: 1, _jack: j.id });
   }
@@ -888,9 +903,36 @@ export function designToDef(design, o = {}) {
       addMaps(key, 0, undefined, (p.maps || []).map((m) => m && { ...m, raw: true }), true);
     });
   }
+  // controls moved by a source (c.from): the board and Test mode set their params (plinks), derive follows too
+  const plinks = [];
+  for (const c of D.ctls) {
+    if (!isRef(c.from) || !drivable(c) || c.hidden) continue;
+    const r = c.from, from = refParam(X, r);
+    if (!from || from === 'u.' + c.id) continue;
+    plinks.push({ from, to: 'u.' + c.id, value: (ui, b) => {
+      const v = readRef(X, r, ui, null, b);
+      return v ? driveValue(c, v.t) : undefined;
+    } });
+  }
+  // an EXP jack moving a control it was set to (j.drive) once it also has links of its own
+  for (const j of ctlJacks(D)) {
+    if (jackIsOut(j) || j.kind !== 'exp' || !j.drive || j.drive === 'none' || (j.maps && j.maps.length) || !jackLinked(D, j.id)) continue;
+    const c = D.ctls.find((x) => x.id === j.drive);
+    if (c && drivable(c)) plinks.push({ from: 'u.x.' + j.id, to: 'u.' + c.id, value: (ui) => (ui['u.x.' + j.id] == null ? undefined : driveValue(c, +ui['u.x.' + j.id] || 0)) });
+  }
+  const linked = (ui) => {
+    if (!plinks.length) return ui;
+    const u = { ...ui };
+    for (let pass = 0; pass < 3; pass++) for (const l of plinks) {
+      const v = l.value(u);
+      if (v !== undefined) u[l.to] = v;
+    }
+    return u;
+  };
   const taps = C.insts.filter((i) => hasTap(i.graph)).map((i) => ({ id: i.id, ...tapTime(i) }));
   const combine = C.combine || {};
-  const derive = (ui) => {
+  const derive = (ui0) => {
+    const ui = linked(ui0);
     const got = new Map();
     for (const x of maps) {
       let v = ui[x.key];
@@ -952,6 +994,7 @@ export function designToDef(design, o = {}) {
   if (split) def.loopSplit = split;
   if (couts.length) def.couts = couts.map((x) => ({ key: x.key, name: x.name, sig: x.sig, idx: x.idx, min: x.min, max: x.max }));
   if (Object.keys(screenIO).length) def.screenIO = screenIO;
+  if (plinks.length) def.plinks = plinks;
   if (o.hidden) def.hidden = true;
   return def;
 }
@@ -975,6 +1018,11 @@ export function cvLed(co, color) {
     if (k < 0.02) return null;
     return k > 0.98 ? true : dimmed(color, k);
   };
+}
+/** A direct link's source as a screen input reads it (raw), or undefined (screenscript/host.js). */
+export function readLink(D, r, ui, st, b) {
+  const v = readRef(linkCtx(D, circuitOutputs(D)), r, ui, st, b);
+  return v ? v.raw : undefined;
 }
 /** Value of circuit output idx from a block's status (undefined when the engine has not said). */
 export const cvValue = (st, idx) => (st && Array.isArray(st.cv) && typeof st.cv[idx] === 'number' ? st.cv[idx] : undefined);

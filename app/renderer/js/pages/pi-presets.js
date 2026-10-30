@@ -1,7 +1,7 @@
 // Pi tab: presets on the device (banks, push, switching) and the Pi compatibility check.
-import { el, esc, toast } from '../util.js';
+import { el, esc, toast, bus } from '../util.js';
 import { state } from '../state.js';
-import { MODELS, PI_BUDGET, checkPreset, savePi, piLog, piStore } from './pi-data.js';
+import { MODELS, budgetOf, checkPreset, savePi, piLog, piStore, act, isPi3 } from './pi-data.js';
 import { card, meter, toggle, select, demoNote, fakeProgress } from './pi-ui.js';
 
 let presetList = null;
@@ -18,7 +18,8 @@ export async function loadPresetFile(file) {
   return window.tz.presets.load(file).catch(() => null);
 }
 const slotName = (i) => String.fromCharCode(65 + i);
-const kindOf = (pct) => (pct > PI_BUDGET ? 'bad' : pct > PI_BUDGET * 0.8 ? 'heavy' : 'ok');
+// boards shown in the check: the Pi 3 column follows the selected Pi (3B or 3B+)
+const compatModels = (dev) => [dev && dev.model === 'pi3b' ? 'pi3b' : 'pi3bp', 'pi4', 'pi5'];
 
 export function renderPresetsSection(main, ctx) {
   const dev = ctx.dev;
@@ -42,18 +43,37 @@ export function renderPresetsSection(main, ctx) {
     let bi = dev.banks.findIndex((b) => b.presets.some((x) => !x));
     if (bi < 0) { dev.banks.push({ name: 'Bank ' + (dev.banks.length + 1), presets: [null, null, null, null] }); bi = dev.banks.length - 1; }
     const si = dev.banks[bi].presets.findIndex((x) => !x);
-    const chk = checkPreset(p);
+    const chk = checkPreset(p, budgetOf(dev));
+    const est = Math.round(chk.est[dev.model]);
     const nams = chk.rows.filter((r) => r.notes.some((n) => n.startsWith('NAM'))).length;
     prog.classList.remove('hidden');
     push.disabled = true;
-    await fakeProgress(prog.querySelector('i'), prog.querySelector('span'), [
-      `Sending "${p.name}"...`, nams ? `Copying ${nams} NAM model${nams > 1 ? 's' : ''}...` : 'Copying IRs and settings...', 'Building it on the Pi...', `Measured on the Pi: ${Math.round(chk[dev.model])}% DSP`, 'Done',
-    ], 420);
+    const bar = prog.querySelector('i'), label = prog.querySelector('span');
+    let measured = est;
+    const live = act('push', { id: dev.id, preset: p, file: state.file || '__current', name: p.name, bank: bi, slot: si });
+    if (live) {
+      const off = bus.on('pi:progress', (ev) => {
+        if (ev.id !== dev.id || ev.job !== 'push') return;
+        bar.style.width = (ev.pct || 0) + '%';
+        if (ev.text) label.textContent = ev.text;
+      });
+      label.textContent = `Sending "${p.name}"...`;
+      try { const r = await live; if (r && typeof r.dsp === 'number') measured = Math.round(r.dsp); } catch { off(); push.disabled = false; prog.classList.add('hidden'); return; }
+      off();
+      bar.style.width = '100%';
+      label.textContent = `Done. Measured on the Pi: ${measured}% DSP`;
+    } else {
+      await fakeProgress(bar, label, [
+        `Sending "${p.name}"...`, nams ? `Copying ${nams} NAM model${nams > 1 ? 's' : ''}...` : 'Copying IRs and settings...', 'Building it on the Pi...', `Measured on the Pi: ${est}% DSP`, 'Done',
+      ], 420);
+    }
     push.disabled = false;
-    dev.banks[bi].presets[si] = { file: state.file || '__current', name: p.name };
-    savePi();
-    piLog(`Received preset "${p.name}" into bank ${bi + 1} ${slotName(si)} (${Math.round(chk[dev.model])}% DSP)`);
-    toast(`"${p.name}" is now ${bi + 1}${slotName(si)} on ${dev.name} (demo)`);
+    dev.banks[bi].presets[si] = { file: state.file || '__current', name: p.name, dsp: measured };
+    // the Pi already stored it: do not send the banks again
+    if (!live) savePi();
+    piLog(`Received preset "${p.name}" into bank ${bi + 1} ${slotName(si)} (${measured}% DSP)`);
+    toast(`"${p.name}" is now ${bi + 1}${slotName(si)} on ${dev.name}${live ? '' : ' (demo)'}`);
+    if (measured > budgetOf(dev)) toast(`It uses ${measured}% DSP, over this Pi's ${budgetOf(dev)}% budget. The Pi plays a lighter version.`, 'warn', 6000);
     setTimeout(() => ctx.rerender(), 500);
   };
 
@@ -122,7 +142,7 @@ export function renderPresetsSection(main, ctx) {
 
 // ------------------------------------------------------------- compatibility check
 function renderCompat(parent, dev) {
-  const c = card(parent, 'Will it run on a Pi?', 'Checks each block and estimates the DSP load on Pi 4 and Pi 5.', 'pi-compat');
+  const c = card(parent, 'Will it run on a Pi?', 'Checks each block and estimates the DSP load on Pi 3, Pi 4 and Pi 5.', 'pi-compat');
   const row = el('div', { class: 'pi-row' }, c);
   const pick = select(row, [['__current', `Current board: ${state.preset ? state.preset.name : 'none'}`]], '__current', () => {}, { class: 'pi-compat-pick' });
   listPresets().then((list) => { for (const q of list) { const o = el('option', { value: q.file }, pick); o.textContent = q.name; } });
@@ -138,18 +158,19 @@ function renderCompat(parent, dev) {
   all.onclick = async () => {
     out.innerHTML = '';
     const t = el('table', { class: 'pi-table', 'data-checkall': '' }, out);
-    t.innerHTML = '<thead><tr><th>Slot</th><th>Preset</th><th>Pi 4</th><th>Pi 5</th></tr></thead>';
+    const ms = compatModels(dev);
+    t.innerHTML = `<thead><tr><th>Slot</th><th>Preset</th>${ms.map((m) => `<th>${MODELS[m].short}</th>`).join('')}</tr></thead>`;
     const tb = el('tbody', {}, t);
     for (const [bi, bk] of dev.banks.entries()) {
       for (const [si, p] of bk.presets.entries()) {
         if (!p) continue;
         const pr = await loadPresetFile(p.file);
         if (!pr) continue;
-        const r = checkPreset(pr);
+        const r = checkPreset(pr, budgetOf(dev));
         const tr = el('tr', {}, tb);
         el('td', { class: 'num' }, tr).textContent = bi + 1 + slotName(si);
         el('td', {}, tr).textContent = p.name;
-        for (const m of ['pi4', 'pi5']) el('td', { class: 'num' }, tr, `<span class="pi-chip ${kindOf(r[m])}">${Math.round(r[m])}%</span>`);
+        for (const m of ms) el('td', { class: 'num' }, tr, `<span class="pi-chip ${r.verdict[m]}">${Math.round(r.est[m])}%</span>`);
       }
     }
     if (!tb.children.length) el('div', { class: 'pi-empty' }, out).textContent = 'No presets on this Pi yet.';
@@ -159,35 +180,40 @@ function renderCompat(parent, dev) {
 }
 
 function showResult(out, p, dev) {
-  const r = checkPreset(p);
+  const budget = budgetOf(dev);
+  const r = checkPreset(p, budget);
+  const ms = compatModels(dev);
   out.innerHTML = '';
-  out.dataset.result = r.v4 + ',' + r.v5;
+  out.dataset.result = ms.map((m) => r.verdict[m]).join(',');
   const sum = el('div', { class: 'pi-compat-sum' }, out);
-  for (const m of ['pi4', 'pi5']) {
-    const v = r[m];
-    const k = kindOf(v);
+  for (const m of ms) {
+    const v = r.est[m];
+    const k = r.verdict[m];
     const b = el('div', { class: 'pi-compat-model' + (dev && dev.model === m ? ' mine' : ''), 'data-model': m }, sum);
     el('div', { class: 'pi-cm-head' }, b, `<b>${MODELS[m].short}</b><span class="pi-chip ${k}">${k === 'ok' ? 'Fits' : k === 'heavy' ? 'Tight' : 'Too heavy'}</span>`);
-    meter(b, (v / 100) * 100, k, `${Math.round(v)}% of ${PI_BUDGET}% budget`);
+    meter(b, v, k, `${Math.round(v)}% of ${budget}%`);
   }
+  el('p', { class: 'pi-muted pi-compat-budget' }, out).textContent = `Budget ${budget}% is the DSP budget of ${dev ? dev.name : 'the Pi'} (change it in Devices).`;
   const t = el('table', { class: 'pi-table' }, out);
-  t.innerHTML = '<thead><tr><th>Block</th><th>Type</th><th>Pi 4</th><th>Pi 5</th><th></th></tr></thead>';
+  t.innerHTML = `<thead><tr><th>Block</th><th>Type</th>${ms.map((m) => `<th>${MODELS[m].short}</th>`).join('')}<th></th></tr></thead>`;
   const tb = el('tbody', {}, t);
   for (const x of r.rows) {
     const tr = el('tr', { class: x.status }, tb);
     el('td', {}, tr).textContent = x.name;
     el('td', { class: 'pi-muted' }, tr).textContent = x.cat;
-    el('td', { class: 'num' }, tr).textContent = x.status === 'bad' ? '-' : x.pi4.toFixed(1) + '%';
-    el('td', { class: 'num' }, tr).textContent = x.status === 'bad' ? '-' : x.pi5.toFixed(1) + '%';
+    for (const m of ms) el('td', { class: 'num' }, tr).textContent = x.status === 'bad' ? '-' : x.est[m].toFixed(1) + '%';
     const st = el('td', {}, tr);
     el('span', { class: 'pi-chip ' + x.status }, st).textContent = x.status === 'ok' ? 'OK' : x.status === 'heavy' ? 'Heavy' : 'Skipped';
     if (x.notes.length) {
       const nr = el('tr', { class: 'pi-note-row' }, tb);
-      el('td', { colspan: 5 }, nr).textContent = x.notes.join(' ');
+      el('td', { colspan: ms.length + 3 }, nr).textContent = x.notes.join(' ');
     }
   }
   if (!r.rows.length) el('div', { class: 'pi-empty' }, out).textContent = 'This preset has no blocks.';
   const adv = [];
+  const p3 = ms[0];
+  if (r.verdict[p3] !== 'ok') adv.push(`On ${MODELS[p3].short}: keep it to amp + cab + a few pedals, use a NAM Feather or Nano model, and a buffer of 128 or 256.`);
+  if (r.ramNote && (!dev || isPi3(dev.model) || dev.ram <= 1)) adv.push(r.ramNote);
   if (r.v4 !== 'ok') adv.push('On Pi 4: use a NAM Lite or Feather model, or drop a pedal. The Pi lowers quality first (oversampling, IR length, A2 Lite), and refuses to load it rather than glitch.');
   if (r.v5 === 'bad') adv.push('Too heavy even for Pi 5. Split it into two presets or use lighter blocks.');
   if (adv.length) {

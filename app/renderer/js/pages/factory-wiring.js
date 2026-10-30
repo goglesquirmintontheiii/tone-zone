@@ -3,6 +3,7 @@
 // the highest, lowest or average). DIP switches wire each switch on its own, LEDs pick what they show,
 // expression jacks move a control or drive circuit inputs. The model lives in factory-circuit.js.
 import { el } from '../util.js';
+import { isRef, hasChans, ledChans } from './circuit-links.js';
 import { CIRCUITS, TAPER_NAMES, COMBINES, targetsFor, targetInfo, mapTo, targetLabel, mapValue, mappingsOf, driversOf, addMapping, removeMapping, instOf, isV3, circuitOutputs, outKey, screenIO, SCREEN_PORTS, jackIsOut, uid } from './factory-circuit.js';
 import { hasTap } from './circuit-parts.js';
 import { renderCircuitTab, useCircuit } from './factory-circuits.js';
@@ -175,7 +176,16 @@ function ledSection(host, D, c, H) {
   if (isV3(C)) for (const i of C.insts) if (hasTap(i.graph)) opts.push(['tap:' + i.id, i.name + ' tempo (blinks)']);
   // circuit outputs: binary lights it, analog sets how bright
   if (isV3(C)) for (const o of circuitOutputs(D)) opts.push(['cv:' + o.key, o.name + (o.sig === 'b' ? ' is on' : ' (brightness)')]);
-  H.selectField(s, 'Shows', opts, c.bind || 'on', (v) => (c.bind = v));
+  if (c.bind === 'src') opts.push(['src', 'What it is wired to in the diagram']);
+  if (hasChans(c)) {
+    el('p', { class: 'fz-note fz-note-top' }, s).textContent = 'Each colour is wired on its own in the wiring diagram: the LED shows the mix. Take the colour wires off to use this again.';
+    return;
+  }
+  H.selectField(s, 'Shows', opts, c.bind || 'on', (v) => {
+    c.bind = v;
+    if (v !== 'src') delete c.src;
+  });
+  if (ledChans(c)) el('p', { class: 'fz-note' }, s).textContent = 'Or wire each colour on its own in the wiring diagram (analog sets how bright, binary on or off).';
   if ((c.bind || '').startsWith('cv:')) el('p', { class: 'fz-note' }, s).textContent = 'Lit by a circuit output, in Test mode and on the board. Wire outputs to LEDs in the wiring diagram too.';
 }
 
@@ -200,7 +210,9 @@ function screenSection(host, D, c, H) {
     };
     H.selectField(box, 'Signal', SIGS, p.sig === 'b' ? 'b' : 'n', (v) => (p.sig = v));
     if (dir === 'in') {
-      H.selectField(box, 'Reads', [['', 'Nothing'], ...outs.map((o) => [o.key, o.name])], outKey(p.from), (v) => {
+      const linked = isRef(p.from) && !p.from.n;
+      H.selectField(box, 'Reads', [['', 'Nothing'], ...(linked ? [['@link', 'What it is wired to in the diagram']] : []), ...outs.map((o) => [o.key, o.name])], linked ? '@link' : outKey(p.from), (v) => {
+        if (v === '@link') return;
         const o = outs.find((x2) => x2.key === v);
         p.from = o ? { n: o.inst.id, p: o.n.id } : null;
       });
@@ -243,7 +255,7 @@ export function expSection(host, D, j, H) {
   const s = H.sec(host, fsw ? 'Footswitch jack' : 'Expression');
   // a jack driven by a circuit output is an output: it moves what is plugged in on the board
   const outs = isV3(C) ? circuitOutputs(D) : [];
-  H.selectField(s, 'Direction', [['in', fsw ? 'In: a footswitch plugs in here' : 'In: an expression pedal plugs in here'], ['out', 'Out: a circuit output drives it']], jackIsOut(j) ? 'out' : 'in', (v) => {
+  H.selectField(s, 'Direction', [['in', fsw ? 'In: a footswitch plugs in here' : 'In: an expression pedal plugs in here'], ['out', 'Out: what is wired to it drives it']], jackIsOut(j) ? 'out' : 'in', (v) => {
     if (v === 'out') {
       const o = outs.find((x) => (fsw ? x.sig === 'b' : x.sig === 'n')) || outs[0];
       j.from = o ? { n: o.inst.id, p: o.n.id } : { n: '', p: '' };
@@ -256,7 +268,9 @@ export function expSection(host, D, j, H) {
     }
   }, true);
   if (jackIsOut(j)) {
-    H.selectField(s, 'Sends', [['', 'Nothing'], ...outs.map((o) => [o.key, o.name])], outKey(j.from), (v) => {
+    const linked = isRef(j.from) && !j.from.n;
+    H.selectField(s, 'Sends', [['', 'Nothing'], ...(linked ? [['@link', 'What it is wired to in the diagram']] : []), ...outs.map((o) => [o.key, o.name])], linked ? '@link' : outKey(j.from), (v) => {
+      if (v === '@link') return;
       const o = outs.find((x) => x.key === v);
       j.from = o ? { n: o.inst.id, p: o.n.id } : { n: '', p: '' };
       j.dir = 'out';
@@ -267,7 +281,7 @@ export function expSection(host, D, j, H) {
   const maps = j.maps || [];
   if (fsw) el('p', { class: 'fz-note fz-note-top' }, s).textContent = maps.length ? 'Tip and ring of a footswitch plugged in here drive:' : 'Wire the tip or ring to circuit inputs in the wiring diagram, or pick one here.';
   else if (!maps.length) {
-    const opts = [['', 'First treadle or knob']];
+    const opts = [['', 'First treadle or knob'], ['none', 'Nothing']];
     for (const c of D.ctls) if (KNOBLIKE.has(c.kind)) opts.push([c.id, H.name(c)]);
     H.selectField(s, 'Moves', opts, j.drive || '', (v) => (j.drive = v || undefined));
     el('p', { class: 'fz-note' }, s).textContent = 'Plug an expression pedal in on the board and it turns this control. Or wire the jack straight to circuit inputs:';

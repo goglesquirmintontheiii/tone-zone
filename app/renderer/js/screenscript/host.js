@@ -14,7 +14,7 @@
 // New circuit signals plug in with addSignalSource() / addInputSink() below, without touching this file.
 // io.cid is the id of the screen the host runs (for its inputs and outputs).
 import { clamp } from '../util.js';
-import { circuitOutputs, outKey } from '../pages/factory-circuit.js';
+import { circuitOutputs, outKey, readLink } from '../pages/factory-circuit.js';
 
 const sources = [];
 const sinks = [];
@@ -294,8 +294,12 @@ export function makeHost(design, io) {
       const p = list[i];
       if (!p) return 0;
       const st = io.blockStatus && io.blockStatus();
-      let v;
-      if (p.from && st && Array.isArray(st.cv)) {
+      // the code editor's Test tab sets inputs by hand
+      let v = io.screenIn ? io.screenIn(i) : undefined;
+      if (typeof v === 'number') return p.sig === 'b' ? (v > 0.5 ? 1 : 0) : clamp(v, -255, 255);
+      // wired straight from a control, jack or screen (pages/circuit-links.js)
+      if (p.from && !p.from.n) v = readLink(design, p.from, new Proxy({}, { get: (_, k) => io.get(k) }), st, { bypass: !!(io.bypassed && io.bypassed()) });
+      else if (p.from && st && Array.isArray(st.cv)) {
         const o = outIndex().get(outKey(p.from));
         if (o !== undefined) v = st.cv[o];
       }
@@ -383,6 +387,7 @@ export function simIO(design, o = {}) {
     outLevel: 0.3,
     store: null,
     onSet: null,
+    ports: new Map(), // screen input index -> value
   };
   let def = null;
   const io = {
@@ -421,6 +426,7 @@ export function simIO(design, o = {}) {
     },
     storeGet: () => sim.store,
     storeSet: (s) => (sim.store = s),
+    screenIn: (i) => sim.ports.get(i), // simulated screen inputs (0 based)
     log: o.log,
   };
   if (o.def) def = o.def;

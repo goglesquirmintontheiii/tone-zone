@@ -107,6 +107,18 @@ private:
   json lastGraph;
   std::map<std::string, std::vector<std::string>> followers; // id -> nodes that also take its params / events ("also")
 
+  // presets built ahead of time (the Pi agent preloads next / previous for instant switching)
+  struct CachedGraph
+  {
+    json graph;
+    std::map<std::string, std::shared_ptr<Block>> blocks;
+    std::map<std::string, std::vector<std::string>> followers;
+    std::shared_ptr<CompiledGraph> g;
+  };
+  std::map<std::string, CachedGraph> graphCache;
+  std::string currentKey;
+  static std::map<std::string, std::vector<std::string>> followersOf(const json& g);
+
   Settings settings;
   std::atomic<float> inGain{1.f}, outGain{1.f};
   std::atomic<float> inTrim[8] = {1, 1, 1, 1, 1, 1, 1, 1}, outTrim[8] = {1, 1, 1, 1, 1, 1, 1, 1};

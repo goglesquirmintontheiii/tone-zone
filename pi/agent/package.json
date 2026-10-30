@@ -1,0 +1,10 @@
+{
+  "name": "tz-agent",
+  "version": "0.9.0",
+  "description": "Tone Zone Raspberry Pi agent: runs the engine, presets, GPIO, screen UI, updates",
+  "main": "tz-agent.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": { "node": ">=18" },
+  "dependencies": {}
+}

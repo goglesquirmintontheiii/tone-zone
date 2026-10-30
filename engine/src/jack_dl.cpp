@@ -1,5 +1,6 @@
 #include "jack_dl.h"
 #include <dlfcn.h>
+#include <cstdlib>
 #include <vector>
 
 JackApi& jackApi()
@@ -13,13 +14,19 @@ bool JackApi::load(std::string& err)
   if (loaded)
     return true;
   // Prefer PipeWire's JACK implementation, then whatever the system provides.
-  const std::vector<std::string> candidates = {
+  // TZ_JACK_LIB picks one explicitly (the Pi agent uses it for plain JACK2, tests for the fake JACK)
+  std::vector<std::string> candidates;
+  if (const char* forced = getenv("TZ_JACK_LIB"); forced && *forced) candidates.push_back(forced);
+  for (const char* c : {
     "/usr/lib64/pipewire-0.3/jack/libjack.so.0",
     "/usr/lib/pipewire-0.3/jack/libjack.so.0",
     "/usr/lib/x86_64-linux-gnu/pipewire-0.3/jack/libjack.so.0",
+    "/usr/lib/aarch64-linux-gnu/pipewire-0.3/jack/libjack.so.0",
+    "/usr/lib/arm-linux-gnueabihf/pipewire-0.3/jack/libjack.so.0",
     "libjack.so.0",
     "libjack.so",
-  };
+  })
+    candidates.push_back(c);
   void* h = nullptr;
   for (auto& c : candidates)
   {

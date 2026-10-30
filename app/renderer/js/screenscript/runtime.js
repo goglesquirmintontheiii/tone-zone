@@ -20,7 +20,7 @@ export const PALETTES = {
   pico: { bg: '#1d2b53', fg: '#fff1e8', dim: '#5f574f', accent: '#ff004d', warn: '#ffa300', good: '#00e436', bad: '#ff004d', panel: '#7e2553' },
 };
 export const SCREEN_PALETTE = { oled: 'oled', lcd: 'lcd', amber: 'amber', tft: 'tft' };
-const NAMED = {
+export const NAMED = {
   black: '#000000', white: '#ffffff', red: '#ff3b30', green: '#3ddc84', blue: '#2b7bd6', cyan: '#37d6c2', yellow: '#ffd21f', orange: '#ff7a2f',
   amber: '#ffb020', pink: '#ff3d6e', purple: '#b45cff', magenta: '#ff2bd6', gray: '#8d99a8', grey: '#8d99a8', dark: '#1a1d24', silver: '#c9ccd1',
   lime: '#a6ff3d', teal: '#1f8a8a', navy: '#0d1730', brown: '#8a5a2b', none: 'rgba(0,0,0,0)', transparent: 'rgba(0,0,0,0)',
@@ -32,7 +32,7 @@ const FONTS = {
   bold: "700 {s}px Oswald, sans-serif",
 };
 export const FONT_NAMES = ['pixel', 'mono', 'sans', 'condensed', 'bold', 'digits'];
-const SIZES = { tiny: 5, small: 7, normal: 10, medium: 10, big: 16, large: 16, huge: 28 };
+export const SIZES = { tiny: 5, small: 7, normal: 10, medium: 10, big: 16, large: 16, huge: 28 };
 const FRAME_STEPS = 150000, FRAME_MS = 10, SETUP_STEPS = 1500000, SETUP_MS = 80, EVENT_STEPS = 60000, EVENT_MS = 8;
 const hex2 = (n) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0');
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

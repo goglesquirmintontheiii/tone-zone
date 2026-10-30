@@ -1,5 +1,6 @@
 // Small form helpers shared by the Pi tab sections.
 import { el } from '../util.js';
+import { loadLevel, loadColor, tempLevel, tempColor, isLive } from './pi-data.js';
 
 export function card(parent, title, sub, cls = '') {
   const c = el('div', { class: 'pi-card ' + cls }, parent);
@@ -62,7 +63,44 @@ export function meter(parent, pct, kind = 'ok', label = '') {
   if (label) el('span', {}, m).textContent = label;
   return m;
 }
+// a load bar (DSP or CPU) whose colour follows the value; budget draws a marker
+export function loadMeter(parent, pct, opts = {}) {
+  const m = el('div', { class: 'pi-meter pi-load' }, parent);
+  el('i', {}, m);
+  if (opts.budget) {
+    const k = el('em', { class: 'pi-budget-mark', title: 'DSP budget' }, m);
+    k.style.left = opts.budget + '%';
+  }
+  if (opts.label) el('span', {}, m).textContent = opts.label;
+  paintLoad(m, pct, opts.budget);
+  return m;
+}
+export function paintLoad(m, pct, budget) {
+  const v = Math.min(100, Math.max(0, pct || 0));
+  m.firstChild.style.width = v + '%';
+  m.style.setProperty('--lc', loadColor(v));
+  m.classList.remove('load-ok', 'load-warn', 'load-hot');
+  m.classList.add(loadLevel(v));
+  m.dataset.load = Math.round(v);
+  const mark = m.querySelector('.pi-budget-mark');
+  if (mark && budget) {
+    mark.style.left = budget + '%';
+    m.classList.toggle('over', v > budget);
+  }
+}
+// temperature text coloured like the load bars, flashing above 80 C
+export function paintTemp(n, c) {
+  n.textContent = c ? c.toFixed(0) + ' C' : '-';
+  n.classList.add('pi-temp');
+  n.classList.remove('temp-ok', 'temp-warn', 'temp-hot', 'temp-crit');
+  if (!c) return;
+  n.classList.add(tempLevel(c));
+  n.style.setProperty('--tc', tempColor(c));
+  n.dataset.temp = Math.round(c);
+}
+// only shown in demo mode
 export function demoNote(parent, text) {
+  if (isLive()) return el('div');
   const n = el('div', { class: 'pi-demo-note' }, parent, '<b>Demo</b><span></span>');
   n.lastChild.textContent = text;
   return n;

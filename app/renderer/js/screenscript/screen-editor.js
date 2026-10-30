@@ -1,9 +1,9 @@
 // The screen code panel: a code editor with a live preview of the screen next to it, simulated controls and
 // signals to try it with, examples and the API reference.
 import { el } from '../util.js';
-import { CodeEditor } from './code-editor.js';
+import { CodeEditor, highlight } from './code-editor.js';
 import { ScreenRuntime } from './runtime.js';
-import { makeHost, simIO, controlList } from './host.js';
+import { makeHost, simIO, controlList, findControl } from './host.js';
 import { screenPixels, paletteOf } from './surface.js';
 import { API } from './docs.js';
 import { TEMPLATES, SNIPPETS } from './templates.js';
@@ -49,8 +49,22 @@ export function openScreenEditor(o) {
 
   const main = el('div', { class: 'ss-main' }, win);
   const left = el('div', { class: 'ss-left' }, main);
-  const ed = new CodeEditor(left, { value: c0.script || '', onChange: () => schedule() });
+  // what the type hints know about this pedal: its controls, this screen's ports and the signals
+  let hintCtx = null, uiReady = false;
+  const hints = () => hintCtx;
+  const ed = new CodeEditor(left, { value: c0.script || '', onChange: () => schedule(), hints, onWarnings: () => uiReady && paintWarn() });
   const status = el('div', { class: 'ss-status' }, left);
+  // the light checks: a link to the first one (they never stop the script)
+  function paintWarn() {
+    const old = status.querySelector('.ss-warnlink');
+    if (old) old.remove();
+    const ws = ed.warnings || [];
+    if (!ws.length) return;
+    const b = el('button', { class: 'ss-errlink ss-warnlink', 'data-ss': 'warnings', title: ws[0].message }, status);
+    b.textContent = ws.length === 1 ? `1 hint on line ${ws[0].line}` : `${ws.length} hints, the first on line ${ws[0].line}`;
+    b.onclick = () => ed.gotoLine(ws[0].line);
+  }
+  uiReady = true;
   const cons = el('div', { class: 'ss-console' }, left);
   const side = el('div', { class: 'ss-side' }, main);
 
@@ -88,6 +102,14 @@ export function openScreenEditor(o) {
   const { io, sim } = simIO(D, { paramsFor, log: null });
   io.cid = o.id; // the screen's own inputs and outputs
   const host = makeHost(D, io);
+  let sigNames = [];
+  try {
+    sigNames = host.signals();
+  } catch (_) {
+    sigNames = [];
+  }
+  hintCtx = { controls: list.map((e) => ({ name: e.name, kind: e.kind })), findControl: (n, kind) => !!findControl(list, n, kind), ports: host.screenPorts(), signals: sigNames };
+  ed.runLint();
   const simRows = [];
   const tp = panes.test;
   el('h5', {}, tp).textContent = 'Pedal';
@@ -144,9 +166,42 @@ export function openScreenEditor(o) {
     }
   }
   if (!list.length) el('p', { class: 'fz-note' }, tp).textContent = 'This pedal has no controls yet.';
+  // this screen's own inputs (set by hand here) and outputs (what the script sets)
+  const sp = hintCtx.ports;
+  const outRows = [];
+  if (sp.ins.length || sp.outs.length) el('h5', {}, tp).textContent = 'Screen inputs and outputs';
+  sp.ins.forEach((p, i) => {
+    const r = rowEl(`In ${i + 1}: ${p.name}`);
+    if (p.sig === 'b') {
+      const cb = el('input', { type: 'checkbox', 'data-sin': i }, r);
+      cb.onchange = () => sim.ports.set(i, cb.checked ? 1 : 0);
+      sim.ports.set(i, 0);
+    } else {
+      const w = el('div', { class: 'ss-simport' }, r);
+      const rg = el('input', { type: 'range', min: 0, max: 1, step: 0.01, 'data-sin': i }, w);
+      const out = el('span', { class: 'ss-simval' }, w);
+      rg.value = 0;
+      out.textContent = '0.00';
+      rg.oninput = () => {
+        sim.ports.set(i, +rg.value);
+        out.textContent = (+rg.value).toFixed(2);
+      };
+      sim.ports.set(i, 0);
+    }
+  });
+  sp.outs.forEach((p, i) => {
+    const r = rowEl(`Out ${i + 1}: ${p.name}`);
+    const v = el('span', { class: 'ss-simval', 'data-sout': i }, r);
+    outRows.push(() => {
+      const x = host.screenOutputValue(i + 1);
+      v.textContent = p.sig === 'b' ? (x > 0.5 ? 'on (1)' : 'off (0)') : (Math.round(x * 1000) / 1000).toString();
+    });
+  });
+  if (sp.ins.length || sp.outs.length) el('p', { class: 'fz-note' }, tp).textContent = 'Inputs here stand in for what is wired to them. In Test mode and on the board they read the circuit.';
   let simDirty = true;
   sim.onSet = () => (simDirty = true);
   const paintSim = () => simRows.forEach((f) => f());
+  const paintOuts = () => outRows.forEach((f) => f());
 
   // ---- reference
   const rp = panes.ref;
@@ -160,6 +215,7 @@ export function openScreenEditor(o) {
       if (!items.length) continue;
       el('h5', {}, rlist).textContent = g.group;
       if (g.intro && !k) el('p', { class: 'ss-intro' }, rlist).textContent = g.intro;
+      if (g.guide && !k) el('p', { class: 'ss-intro' }, rlist).textContent = 'The guide for these is below the list.';
       for (const [, s, d] of items) {
         const it = el('div', { class: 'ss-refitem', title: 'Click to insert' }, rlist);
         el('code', {}, it).textContent = s;
@@ -170,8 +226,35 @@ export function openScreenEditor(o) {
           ed.focus();
         };
       }
+      if (g.guide && (!k || guideText(g.guide).includes(k))) paintGuide(g.guide, rlist);
     }
   };
+  const guideText = (blocks) => blocks.map(([, v]) => (Array.isArray(v) ? v.join(' ') : v)).join(' ').toLowerCase();
+  const inline = (host, text) => {
+    // **bold** only, the rest as plain text
+    text.split(/(\*\*[^*]+\*\*)/).forEach((part) => {
+      if (/^\*\*.+\*\*$/.test(part)) el('b', {}, host).textContent = part.slice(2, -2);
+      else if (part) host.appendChild(document.createTextNode(part));
+    });
+  };
+  function paintGuide(blocks, into) {
+    const box = el('div', { class: 'ss-refguide', 'data-guide': 'ports' }, into);
+    for (const [kind, v] of blocks) {
+      if (kind === 'h') el('h6', {}, box).textContent = v;
+      else if (kind === 'p') inline(el('p', {}, box), v);
+      else if (kind === 'list') {
+        const ul = el('ul', {}, box);
+        for (const x of v) inline(el('li', {}, ul), x);
+      } else if (kind === 'code') {
+        const pre = el('pre', { class: 'ss-refcode', title: 'Click to insert' }, box);
+        pre.innerHTML = highlight(v.replace(/\n$/, ''));
+        pre.onclick = () => {
+          ed.insert(v);
+          ed.focus();
+        };
+      }
+    }
+  }
   rq.oninput = paintRef;
   paintRef();
 
@@ -221,6 +304,7 @@ export function openScreenEditor(o) {
       if (lastGood && lastGood !== ed.value && err.kind === 'syntax') el('span', { class: 'ss-dim' }, status).textContent = '  (the preview shows the last version that worked)';
     } else status.textContent = 'Running';
     ed.setErrors(err ? [err] : []);
+    paintWarn();
   };
   const build = (src, keepOld) => {
     const next = new ScreenRuntime({ src, w: W, h: H, host, canvas: keepOld ? document.createElement('canvas') : canvas, palette: paletteOf(part() || c0), screen: { type: (part() || c0).type, name: c0.label || '' }, onLog: log });
@@ -249,6 +333,7 @@ export function openScreenEditor(o) {
       b.textContent = `Line ${probe.error.line}: ${probe.error.message}`;
       b.onclick = () => ed.gotoLine(probe.error.line);
       el('span', { class: 'ss-dim' }, status).textContent = '  (the preview shows the last version that worked)';
+      paintWarn();
     } else restart(src);
     if (o.onCode) o.onCode(src, false);
   };
@@ -291,6 +376,7 @@ export function openScreenEditor(o) {
       simDirty = false;
       paintSim();
     }
+    paintOuts();
   };
   raf = requestAnimationFrame(loopFn);
 
@@ -321,7 +407,7 @@ export function openScreenEditor(o) {
   current = {
     close,
     editor: ed,
-    peek: () => ({ code: ed.value, error: rt && rt.error, frames: rt ? rt.frameN : 0, sim: Object.fromEntries(sim.vals), bypass: sim.bypass, logs: logLines.slice() }),
+    peek: () => ({ code: ed.value, error: rt && rt.error, frames: rt ? rt.frameN : 0, sim: Object.fromEntries(sim.vals), bypass: sim.bypass, logs: logLines.slice(), warnings: ed.warnings.map((w) => ({ line: w.line, message: w.message })) }),
     setSim: (p, v) => { io.set(p, v); simDirty = true; },
     pointer: (type, x, y) => rt && rt.pointer(type, x, y),
   };

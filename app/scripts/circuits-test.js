@@ -690,6 +690,197 @@ const S = process.env.SHOTS || '/tmp';
   });
   ok(tl.nodes.join() === 'fztest~a,fztest', 'Test mode plays the loop pedal as its two halves: ' + tl.nodes.join());
   await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(300);
+
+  // 17. direct links (no circuit in between), fan out and moving screens
+  const linkD = await win.evaluate(() => {
+    const { N, W, pedal, G: g0 } = window.__ct;
+    const mk = (gain) => {
+      const G = g0();
+      N(G, 'in', 'in'); N(G, 'out', 'out'); N(G, 'vca', 'vca', {}, { gain });
+      W(G, 'in', 'out', 'vca', 'in'); W(G, 'vca', 'out', 'out', 'in');
+      N(G, 'G', 'analog', { name: 'G', def: 0.5 }); N(G, 'O', 'anaout', { name: 'O' }); W(G, 'G', 'cv', 'O', '@in');
+      return G;
+    };
+    const jacks = [
+      { id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' },
+      { id: 'jeo', kind: 'exp', edge: 'top', t: 0.25, label: 'EXP OUT', dir: 'out' }, { id: 'jx', kind: 'exp', edge: 'top', t: 0.7, label: 'EXP' },
+    ];
+    const led = (id, x, color, o = {}) => ({ id, kind: 'led', x, y: 16, r: 2.5, color, on: true, label: '', labelPos: 'none', bind: 'on', ...o });
+    const ctls = [
+      { id: 'tg', kind: 'toggle', ways: 2, orient: 'v', x: 18, y: 70, pos: 0, label: 'TG', labelPos: 'below' },
+      { id: 'kn', kind: 'knob', x: 45, y: 70, r: 6.5, style: 'boss', value: 0, label: 'KN', labelPos: 'below' },
+      { id: 'kd', kind: 'knob', x: 72, y: 70, r: 6.5, style: 'boss', value: 0.2, label: 'KD', labelPos: 'below' },
+      led('l1', 15, '#ff2a1a'), led('l2', 30, '#3fa8ff'), led('lr', 50, '#ffffff', { look: 'rgb', r: 3 }),
+      { id: 'sc', kind: 'screen', x: 45, y: 40, w: 40, h: 16, type: 'oled', text: '', label: 'SCR', labelPos: 'none', shows: 'custom', script: 'function draw()\n  clear()\nend\n' },
+    ];
+    const d = pedal('Links', [{ id: 'A1', name: 'Loud', graph: mk(1) }, { id: 'A2', name: 'Half', graph: mk(0.5) }], { jacks, ctls, wires: [] });
+    d.enc.w = 90;
+    d.enc.h = 110;
+    return d;
+  });
+  await win.evaluate((d) => window.__tzFactory.load(d), linkD);
+  await win.evaluate(() => { const g = window.__tzCircuits.diagram(); g.setHeight(560); g.refresh(true); });
+  await win.waitForTimeout(400);
+  // audio: IN straight to OUT
+  await wdDrag('jack:jin', 'jack:jout');
+  d = await D();
+  ok(d.circuit.wires.length === 1 && d.circuit.wires[0].a.n === 'jack:jin' && d.circuit.wires[0].b.n === 'jack:jout', 'dragged the IN jack straight to the OUT jack');
+  const straight = await renderBlock(d, {});
+  // then IN fanned out to both circuits, both into OUT
+  await win.evaluate(() => window.__tzCircuits.diagram().removeWire((window.__tzFactory.design().circuit.wires[0] || {}).id));
+  await wdDrag('jack:jin', 'in:A1:in');
+  await wdDrag('jack:jin', 'in:A2:in');
+  await wdDrag('out:A1:out', 'jack:jout');
+  await wdDrag('out:A2:out', 'jack:jout');
+  d = await D();
+  ok(d.circuit.wires.filter((w) => w.a.n === 'jack:jin').length === 2 && d.circuit.wires.filter((w) => w.b.n === 'jack:jout').length === 2, 'one IN jack fanned out to two circuits by dragging from it twice');
+  const fanned = await renderBlock(d, {});
+  const xs0 = readWav(straight.file).chans[0], xf0 = readWav(fanned.file).chans[0], xd0 = readWav(di).chans[0];
+  const rs = segRms(xs0, 0.2, 10), rf = segRms(xf0, 0.2, 10), rdi = segRms(xd0, 0.2, 10);
+  ok(rs > 0.01 && Math.abs(rs / rdi - 1) < 0.03, `IN straight to OUT passes the guitar through as it is (${rs.toFixed(4)} vs ${rdi.toFixed(4)})`);
+  ok(Math.abs(rf / rs - 1.5) < 0.06, `IN split into a full and a half volume circuit adds up to 1.5 times (${(rf / rs).toFixed(3)})`);
+  fs.rmSync(straight.file, { force: true });
+  fs.rmSync(fanned.file, { force: true });
+  // controls and jacks straight to LEDs, an OUT jack and a control; one knob fanned out to two circuits and an LED
+  await wdDrag('ctl:tg', 'led:l1');
+  await wdDrag('ctl:kn', 'k:A1:G');
+  await wdDrag('ctl:kn', 'k:A2:G');
+  await wdDrag('ctl:kn', 'led:l2');
+  await wdDrag('ctl:kn', 'jo:jeo');
+  await wdDrag('ctl:tg', 'led:lr:r');
+  await wdDrag('ctl:kn', 'led:lr:g');
+  await wdDrag('jack:jx', 'led:lr:b');
+  await wdDrag('jack:jx', 'cin:kd');
+  d = await D();
+  const cOf = (id) => d.ctls.find((c) => c.id === id);
+  const knT = [cOf('kn').map, ...(cOf('kn').more || [])].map((m) => m.to);
+  ok(cOf('l1').bind === 'src' && cOf('l1').src.ctl === 'tg', 'a toggle wired straight to an LED');
+  ok(knT.includes('A1.G') && knT.includes('A2.G') && cOf('l2').src && cOf('l2').src.ctl === 'kn' && d.jacks.find((j) => j.id === 'jeo').from.ctl === 'kn', 'one knob fanned out to two circuit inputs, an LED and the EXP OUT jack');
+  const ch = cOf('lr').chans || {};
+  ok(ch.r && ch.r.ctl === 'tg' && ch.g && ch.g.ctl === 'kn' && ch.b && ch.b.jack === 'jx', 'the RGB LED has an input per colour, each wired from a different source');
+  ok(cOf('kd').from && cOf('kd').from.jack === 'jx', 'the EXP jack wired to move a knob');
+  const wdPorts = await win.evaluate(() => ['led:lr:r', 'led:lr:g', 'led:lr:b', 'cin:kd', 'cin:kn'].filter((k) => !document.querySelector(`.fz-wd [data-wp="${k}"]`)));
+  ok(!wdPorts.length, 'the diagram shows R, G and B inputs on the RGB LED and an input on each control' + (wdPorts.length ? ' (missing ' + wdPorts.join(', ') + ')' : ''));
+  // refusal: audio cannot drive an LED
+  const nBefore = JSON.stringify((await D()).ctls.find((c) => c.id === 'l1'));
+  await wdDrag('jack:jin', 'led:l1');
+  const refusal = await win.evaluate(() => window.__tzCircuits.diagram().lastRefusal());
+  ok(/audio/i.test(refusal) && JSON.stringify((await D()).ctls.find((c) => c.id === 'l1')) === nBefore, 'an audio jack dropped on an LED is refused: ' + refusal);
+  // deleting one wire of a fan out keeps the others
+  // the knob's wires all leave the same port, so pick this one by itself
+  await win.evaluate(() => document.querySelector('.fz-wd .fz-wd-wirehit[data-ww="m:kn:1"]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  await win.waitForTimeout(100);
+  await win.keyboard.press('Delete');
+  await win.waitForTimeout(200);
+  d = await D();
+  const knT2 = [cOf('kn').map, ...(cOf('kn').more || [])].filter((m) => m && m.to).map((m) => m.to);
+  ok(knT2.length === 1 && knT2[0] === 'A1.G' && cOf('l2').src && d.jacks.find((j) => j.id === 'jeo').from, 'deleting one wire of the knob leaves its other wires: ' + knT2.join(', '));
+  await wdDrag('ctl:kn', 'k:A2:G');
+  await win.screenshot({ path: path.join(S, 'circuits-links-diagram.png') });
+  // Test mode: the LEDs follow, the knob reaches both circuits, the jack moves the other knob
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1800);
+  const lt = () => win.evaluate(async () => {
+    const m = await import('./js/pages/factory-play.js');
+    const st = window.__tz.state.status.blocks.fztest;
+    const fills = [...document.querySelectorAll('.fz-stage .led-part circle')].map((c) => c.getAttribute('fill'));
+    return { leds: Object.fromEntries(m.testLeds().map((l) => [l.cid, l.on])), cv: st && st.cv, vals: m.testValues(), fills };
+  });
+  let L = await lt();
+  ok(L.leds.l1 === false && L.leds.lr === false, 'in Test mode the toggle LED is off and the RGB LED dark to start: ' + JSON.stringify(L.leds));
+  await win.evaluate(() => window.__tzFactory.testSet('tg', 1));
+  await win.waitForTimeout(300);
+  L = await lt();
+  ok(L.leds.l1 === true, 'flipping the toggle lights the LED wired straight to it');
+  ok(L.leds.lr === '#ff0000' && L.fills.includes('#ff0000'), 'the toggle lights the red of the RGB LED (' + L.leds.lr + ')');
+  await win.evaluate(() => window.__tzFactory.testSet('kn', 0.8));
+  await win.waitForTimeout(900);
+  L = await lt();
+  ok(L.cv && Math.abs(L.cv[0] - 0.8) < 0.01 && Math.abs(L.cv[1] - 0.8) < 0.01, 'the knob reaches both circuits (' + (L.cv && L.cv.slice(0, 2).map((v) => v.toFixed(2))) + ')');
+  ok(typeof L.leds.l2 === 'string' && L.leds.l2 !== '#3fa8ff', 'and sets the brightness of its LED (' + L.leds.l2 + ')');
+  ok(L.leds.lr === '#ffcc00' && L.fills.includes('#ffcc00'), 'the knob adds green to the RGB LED: ' + L.leds.lr);
+  await win.evaluate(async () => (await import('./js/pages/factory-play.js')).playSetParam('u.x.jx', 1));
+  await win.waitForTimeout(300);
+  L = await lt();
+  ok(L.leds.lr === '#ffccff' && L.fills.includes('#ffccff'), 'an expression pedal on the EXP jack adds blue: ' + L.leds.lr);
+  ok(L.vals['u.kd'] === 1, 'and moves the knob wired to it (' + L.vals['u.kd'] + ')');
+  await win.evaluate(() => window.__tzFactory.testSet('tg', 0));
+  await win.waitForTimeout(300);
+  L = await lt();
+  ok(L.leds.lr === '#00ccff' && L.leds.l1 === false, 'switching the toggle off takes the red out again: ' + L.leds.lr);
+  await win.screenshot({ path: path.join(S, 'circuits-links-test.png') });
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(300);
+  // move the screen box: its place is saved with the design and comes back on load
+  const sb0 = await win.evaluate(() => { const b = window.__tzCircuits.diagram().geo().sboxes.find((x) => x.c.id === 'sc'); return { x: b.x, y: b.y }; });
+  const zoom = await win.evaluate(() => { const g = document.querySelector('.fz-wd-svg > g').getAttribute('transform'); return +/scale\(([\d.]+)/.exec(g)[1]; });
+  const hd = await center('.fz-wd [data-wsdrag="sc"]');
+  await drag({ x: hd.x - 40, y: hd.y }, { x: hd.x - 40 + 160 * zoom, y: hd.y + 64 * zoom });
+  d = await D();
+  const scD = d.ctls.find((c) => c.id === 'sc');
+  ok(typeof scD.wx === 'number' && Math.abs(scD.wx - (sb0.x - 230) - 160) <= 8 && Math.abs(scD.wy - sb0.y - 64) <= 8, `dragged the screen box in the diagram (${sb0.x - 230},${sb0.y} -> ${scD.wx},${scD.wy})`);
+  await win.evaluate((d) => window.__tzFactory.load(d), d);
+  await win.waitForTimeout(300);
+  const sb1 = await win.evaluate(() => { const b = window.__tzCircuits.diagram().geo().sboxes.find((x) => x.c.id === 'sc'); return { x: b.x, y: b.y }; });
+  ok(sb1.x === 230 + scD.wx && sb1.y === scD.wy, 'the screen keeps its place after loading the design again');
+  await win.screenshot({ path: path.join(S, 'circuits-links-moved.png') });
+  // screen output straight to an LED and a control (compiled, no Test mode needed)
+  const scr = await win.evaluate(async () => {
+    const F = await import('./js/pages/factory-circuit.js');
+    const d = JSON.parse(JSON.stringify(window.__tzFactory.design()));
+    const sc = d.ctls.find((c) => c.id === 'sc');
+    sc.sio = { ins: [{ id: 'i1', name: 'Knob', sig: 'n', from: { ctl: 'kn' } }], outs: [{ id: 'o1', name: 'Lamp', sig: 'b' }] };
+    const l1 = d.ctls.find((c) => c.id === 'l1');
+    l1.src = { scr: 'sc', o: 0 };
+    d.ctls.find((c) => c.id === 'tg').from = { scr: 'sc', o: 0 };
+    const def = F.designToDef(d, { id: 'custom.scrlink' });
+    const led = def.controls.find((c) => c.cid === 'l1');
+    const pl = (def.plinks || []).find((l) => l.from === 'u.s.sc.0');
+    return { off: led.ledFn({ 'u.s.sc.0': 0 }, { bypass: false }, null), on: led.ledFn({ 'u.s.sc.0': 1 }, { bypass: false }, null), moves: pl && pl.to === 'u.tg' && pl.value({ 'u.s.sc.0': 1 }) === 1, reads: F.readLink(d, sc.sio.ins[0].from, { 'u.kn': 0.4 }, null, {}) };
+  });
+  ok(scr.off === null && scr.on === true && scr.moves && Math.abs(scr.reads - 0.4) < 1e-9, 'a screen output lights an LED and flips a switch, a screen input reads a knob straight');
+  // on the board: the knob moves a volume pedal through the EXP OUT jack, the LEDs light
+  await win.evaluate(() => window.__tzFactory.save(true));
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
+  const linkId = (await D()).blockId;
+  const savedRec = await win.evaluate(async (id) => (await import('./js/catalog/custom.js')).customBlocks().find((r) => r.id === id), linkId);
+  ok(savedRec && savedRec.design.ctls.find((c) => c.id === 'sc').wx === scD.wx, 'the saved block keeps the screen position');
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(400);
+  const lids = await win.evaluate(async (id) => {
+    const st = await import('./js/state.js');
+    const a = st.addBlock(id, 300, 160), v = st.addBlock('tz.dimmer', 620, 160);
+    st.connect({ node: a.id, port: 'c0' }, { node: v.id, port: 'c0' });
+    st.connect({ node: '__in', port: 0 }, { node: a.id, port: 0 });
+    st.connect({ node: a.id, port: 0 }, { node: '__out', port: 0 });
+    st.syncGraph();
+    return { a: a.id, v: v.id };
+  }, linkId);
+  await win.waitForTimeout(1200);
+  const lb = () => win.evaluate(async (ids) => {
+    const st = await import('./js/state.js');
+    const fills = [...document.querySelectorAll(`[data-node="${ids.a}"] circle.led`)].map((c) => c.getAttribute('fill'));
+    const all = [...document.querySelectorAll(`[data-node="${ids.a}"] circle`)].map((c) => c.getAttribute('fill'));
+    return { pos: st.uiParams(st.blockById(ids.v)).pos, fills, all };
+  }, lids);
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.setParam(ids.a, 'u.kn', 0.3); }, lids);
+  await win.waitForTimeout(500);
+  let B1 = await lb();
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.setParam(ids.a, 'u.kn', 0.9); }, lids);
+  await win.waitForTimeout(500);
+  const B2 = await lb();
+  ok(Math.abs(B1.pos - 0.3) < 0.01 && Math.abs(B2.pos - 0.9) < 0.01, `on the board the knob wired straight to EXP OUT moves the volume pedal (${B1.pos} then ${B2.pos})`);
+  const offFills = B2.fills.slice();
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.setParam(ids.a, 'u.tg', 1); }, lids);
+  await win.waitForTimeout(700);
+  B1 = await lb();
+  ok(!offFills.includes('#ff2a1a') && B1.fills.includes('#ff2a1a'), 'on the board the toggle lights its LED (' + offFills.join(' ') + ' -> ' + B1.fills.join(' ') + ')');
+  ok(!B2.all.includes('#ffe600') && B1.all.includes('#ffe600'), 'and the RGB LED mixes red with the knob\'s green (#ffe600)');
+  await win.screenshot({ path: path.join(S, 'circuits-links-board.png') });
+  await win.evaluate(async (ids) => { const st = await import('./js/state.js'); st.removeBlocks([ids.a, ids.v]); }, lids);
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
 
   await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   ok(errs.length === 0, 'no console errors');

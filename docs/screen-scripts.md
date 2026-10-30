@@ -30,6 +30,23 @@ function draw()
 end
 ```
 
+### Hints while you type
+
+The code editor knows the API and the pedal you are working on:
+
+* **Completion**: a list opens as you type (Tone Zone functions, widgets, your own variables and functions,
+  `math.` / `string.` / `colors.` fields). Inside quotes it offers values that fit: control names from this
+  pedal for `knob("`, this screen's port names for `input("` and `output("`, colours, fonts, themes, icons and
+  signals. Up and Down pick, Enter or Tab inserts, Esc closes, Ctrl+Space opens it by hand.
+* **Signature help**: after `(` a box shows the parameters with their types and what they mean, with the one
+  you are typing in bold. Ctrl+Shift+Space shows it again.
+* **Hovers**: rest the pointer on an API name to see its parameters and description, or on your own function
+  to see where it is defined.
+* **Checks**: obvious mistakes get a dotted underline and a mark in the line numbers: a wrong number of
+  arguments, a function that does not exist, text where a number goes (or the other way round), and a control
+  or port name the pedal does not have. They are only hints: the script still runs. Hover the underline to
+  read it, or click the hint count under the code to jump to the first one.
+
 ## How a script runs
 
 * The top of the script runs once when the screen starts (set up variables here).
@@ -214,29 +231,132 @@ Signals come from the circuit in the wiring diagram. in and out are the input an
 | `setInput(name, value)` | Write a circuit input, like setInput("delay.time", 350). Goes through the control wired to it. |
 | `signals()` | Names of the signals this pedal has. |
 
-### The screen's own inputs and outputs
+## Screen ports
 
-A screen can have up to 16 inputs and 16 outputs, each analog (a number from -255 to 255) or binary (0 or 1).
-Add them in the screen's inspector (Inputs and outputs) or with the +in and +out buttons on the screen's box in
-the wiring diagram, then wire them there: a circuit output (Analog output or Binary output part) into a screen
-input, a screen output into circuit inputs (the value goes in as it is, kept within the input's range).
+A screen can have its own inputs and outputs in the wiring diagram, up to 16 of each. Inputs bring values from a circuit into the script. Outputs let the script drive circuit inputs. A port is analog (a number from -255 to 255) or binary (0 or 1), and is found by number (1 is the first) or by its name (any case).
 
 | Call | What it does |
 | --- | --- |
-| `input(n)` | The value wired into input n (1 for the first), or by name: input("Level"). 0 when nothing is wired or the pedal is not playing. |
-| `output(n, value)` | Set output n (or by name): output("Set", 120). Binary outputs take true / false or 0 / 1. |
-| `outputValue(n)` | What output n is set to now. |
-| `ports()` | The names: {ins = {...}, outs = {...}}. |
+| `input(n) or input(name)` | The value wired into this input: analog -255 to 255, binary 0 or 1. 0 when nothing is wired, when the pedal is not playing, or when there is no such input. |
+| `output(n, value) or output(name, value)` | Set an output. Analog takes a number (kept within -255 to 255), binary takes true / false or 0 / 1. Only changes are sent. Returns false when there is no such output. |
+| `outputValue(n) or outputValue(name)` | What the output is set to now (0 until the script sets it). Saved with the preset. |
+| `ports()` | The port names: ports().ins and ports().outs are lists, in order. |
+
+### Adding inputs and outputs
+
+* Select the screen in the Pedal Factory. In the inspector, **Inputs and outputs** has **+ Input** and **+ Output**. The screen's box in the wiring diagram has **+in** and **+out** buttons too.
+* Each port has a **name** (up to 16 characters, "In 1", "Out 1" ... to start with) and a **Signal**: Analog or Binary.
+* An input **Reads** one source: usually a circuit output (an Analog output or Binary output part inside a circuit). Pick it in the inspector or drag a wire to the screen's input in the wiring diagram. In the diagram you can also wire a control, an EXP or footswitch IN jack, or another screen's output straight to it.
+* An output **Drives** one or more circuit inputs: Analog input or Binary input parts, a circuit's on / off, or the wet / dry mix. Use **Drive a circuit input** in the inspector, or drag a wire from the screen's output to the circuit's input.
+* Scripts find ports by number or name. Removing a port renumbers the ones after it, and renaming one breaks scripts that use the old name, so update the code too.
+
+### Reading inputs
+
+input() reads the newest value the audio engine reported for the circuit output wired to it. The engine reports about 30 times a second and a board screen draws about 22 frames a second, so read inputs inside draw() (or update()) every frame. A very fast signal is sampled, so put an Envelope follower or a Smoother in the circuit when you want a steady reading.
+
+* Analog inputs give the value the circuit output puts out (most parts put out 0 to 1), kept within -255 to 255. Wired straight from a control or a jack they read 0 to 1 (a switch: its position from 0 to 1), from another screen's output its value as it is.
+* Binary inputs give 1 or 0 (values above 0.5 count as 1).
+* An input reads 0 when nothing is wired to it, when what it read is gone, when the pedal is not playing (the engine is off), and when an EXP jack it reads has nothing plugged in. Circuit outputs also read 0 on the factory stage outside Test mode, since the circuit only plays in Test mode and on the board. In the code editor preview it reads what you set in the Test tab.
+* In Lua 0 counts as true, so compare a binary input with 1: if input("Gate") == 1 then ... end
 
 ```lua
--- doubles what a circuit puts out and sends it on to another circuit
+-- input "Env" (analog) reads a circuit's Analog output, wired from an Envelope follower (0 to 1)
 function draw()
   clear()
-  local v = input("Level")
-  output(1, v * 2)
-  text(string.format("%.2f", v), 2, 2)
+  local env = input("Env")
+  text("ENV", 2, 2, colors.dim)
+  meter(2, 12, W - 4, 8, env)
+  graph(2, 24, W - 4, H - 26, history("env", env, 60), colors.fg, 0, 1)
 end
 ```
+
+```lua
+-- input "Gate" (binary) reads a Binary output, for example from a Comparator
+function draw()
+  clear()
+  if input("Gate") == 1 then
+    fillCircle(W - 8, 8, 5, colors.good)
+  else
+    circle(W - 8, 8, 5, colors.dim)
+  end
+  text("GATE", 2, 4, colors.fg)
+end
+```
+
+### Writing outputs
+
+output(n, value) sets an output, and the circuit inputs it drives follow. The value goes in as it is (no 0 to 1 mapping like a knob), kept within the circuit input's own range: an Analog input part is 0 to 1 unless you change its Low and High, a Binary input takes 0 or 1. When a knob and a screen output drive the same input, the values are combined (averaged unless the input says otherwise). Until the script sets an output, the inputs it drives keep their default value.
+
+```lua
+-- output "Boost" (binary) drives a circuit's Binary input
+local on = outputValue("Boost") == 1
+function draw()
+  clear()
+  on = toggle("BOOST", 2, 2, W - 4, 14, on)
+  output("Boost", on)
+end
+```
+
+```lua
+-- output "Rate" (analog) drives an LFO's Rate input (set that Analog input's Low and High to 0.1 and 10)
+local rate = outputValue("Rate")
+if rate == 0 then rate = 1 end
+function draw()
+  clear()
+  rate = slider("RATE", 2, 2, W - 4, 12, rate, 0.1, 10)
+  output("Rate", math.round(rate, 2))
+  text(string.format("%.2f Hz", rate), 2, 18)
+end
+```
+
+Tips for outputs:
+
+* Calling output() every frame is fine: only changes are sent to the engine.
+* On the board an output change is saved with the preset and can be undone, like turning a knob (a burst of changes is one undo step). outputValue() gives the saved value back when the screen starts again, as in the examples above.
+* Outputs change at the screen's frame rate (about 20 a second). For a smooth sweep put a Smoother part after the circuit input, or ease the value in the script: shown = shown + (target - shown) * 0.3
+* Round values that change all the time (math.round(v, 2)) or send them less often with if every(50) then ... end, so the engine and the undo history get fewer changes.
+* For a button that is only on while pressed: output("Hold", mouse.down and inside(0, 0, W, H))
+* On the board a screen runs only while its pedal is in view, so its outputs stop changing when you scroll away. Build anything that must keep running into the circuit itself.
+
+### Listing the ports
+
+```lua
+-- every input with its value
+function draw()
+  clear()
+  for i, name in ipairs(ports().ins) do
+    text(name .. ": " .. string.format("%.2f", input(i)), 2, 2 + (i - 1) * 9)
+  end
+end
+```
+
+### A screen wired both ways
+
+An auto wah with a screen that shows the envelope and sets the sensitivity. In the circuit, an Envelope follower goes to an Analog output "Env", and the circuit has an Analog input "Sensitivity" (0 to 1) and a Binary input "Freeze". The screen has input 1 "Env" (analog, reads the circuit's "Env"), output 1 "Sens" (analog, drives "Sensitivity") and output 2 "Hold" (binary, drives "Freeze").
+
+```lua
+-- reads the envelope, sets the sensitivity, holds the sweep
+local sens = outputValue("Sens")
+if sens == 0 then sens = 0.5 end
+local hold = outputValue("Hold") == 1
+
+function draw()
+  clear()
+  local env = input("Env")
+  text("ENV", 2, 2, colors.dim, "small")
+  bar(22, 2, W - 24, 6, env)
+  sens = slider("SENS", 2, 12, W - 4, 10, sens)
+  output("Sens", math.round(sens, 2))
+  hold = toggle("HOLD", 2, 26, 40, 12, hold)
+  output("Hold", hold)
+  if hold then fillCircle(W - 8, 32, 4, colors.warn) end
+end
+```
+
+### Trying it out
+
+* In the code editor the **Test** tab has a slider (analog) or a check box (binary) for each screen input, and shows what each output is set to.
+* In the factory's **Test** mode and on the board the inputs and outputs are live: the circuit runs and the screen reads and drives it.
 
 ## Time and memory
 
@@ -276,8 +396,9 @@ screen runs (board, test mode, factory preview, editor preview) gives the same i
 | `getSignal(name)` | a signal value: `in`, `out`, `inDb`, `outDb`, `env`, `on`, `lfo`, `tempo`, `<stage>.<key>` |
 | `setInput(name, v)` | write a circuit input (today through the control wired to it) |
 | `signals()` | names a script can read |
-| `screenInput(n)` / `screenOutput(n, v)` | this screen's own inputs and outputs (`io.cid` says which screen); an input reads the block status `cv[idx]` of the circuit output wired to it, an output sets the block param `u.s.<screen id>.<n - 1>` that drives the circuit inputs wired to it |
+| `screenInput(n)` / `screenOutput(n, v)` | this screen's own inputs and outputs (`io.cid` says which screen); an input reads the block status `cv[idx]` of the circuit output wired to it (or a control, jack or screen output linked straight to it, see `pages/circuit-links.js`), an output sets the block param `u.s.<screen id>.<n - 1>` that drives the circuit inputs wired to it |
 | `screenOutputValue(n)` / `screenPorts()` | an output's current value, and the port names and kinds |
+| `io.screenIn(i)` (optional) | a value for input i (0 based) that wins over the wiring: the code editor's Test tab uses it |
 
 `<stage>.<key>` is a stage of the design's circuit, by its id or type (`delay.time`, `overdrive.gain`): the
 block's live status for that stage first, then the value the circuit runs with.
@@ -295,5 +416,5 @@ addInputSink({ set: (ctx, name, v) => false /* true when handled */ });
 
 Files: `lang.js` (tokenizer, parser, compiler), `stdlib.js`, `vm.js` (budget), `runtime.js` (the API),
 `host.js` (bridge), `surface.js` / `board.js` / `factory-ui.js` (where screens run), `code-editor.js`,
-`screen-editor.js`, `generator.js`, `gen-ui.js`, `templates.js`, `docs.js` (this reference).
+`hints.js` (completion, signature help, hovers, checks), `screen-editor.js`, `generator.js`, `gen-ui.js`, `templates.js`, `docs.js` (this reference).
 Tests: `app/scripts/screenscript-test.js`.

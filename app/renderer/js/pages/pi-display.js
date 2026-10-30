@@ -77,7 +77,7 @@ export function renderDisplay(main, ctx) {
   const bankName = () => (at.slot < 0 ? 'Board preset, not on the Pi yet' : banks[at.bank] ? banks[at.bank].name : 'Board');
   const edits = el('div', { class: 'pi-edits' }, pc);
   const scr = mountScreen(holder, {
-    w, h, theme: d.theme, preset: state.preset, banks, bankIndex: at.bank, slot: at.slot, bankName: bankName(), cpu: dev ? dev.cpu : 30,
+    w, h, theme: d.theme, preset: state.preset, banks, bankIndex: at.bank, slot: at.slot, bankName: bankName(), cpu: dev ? dev.dsp : 30,
     onLoad: async (bi, si) => {
       const list = [];
       banks.forEach((b, i) => b.presets.forEach((p, j) => p && list.push([i, j, p])));

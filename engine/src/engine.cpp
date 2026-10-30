@@ -4,6 +4,7 @@
 #include "engine.h"
 
 #include <chrono>
+#include <cstdint>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -238,9 +239,17 @@ int Engine::connectMatching(void* h, const std::string& pattern, int index, bool
 // ------------------------------------------------------------------ RT process
 static inline void flushDenormals()
 {
+  // decaying filter / reverb / feedback states otherwise fall into denormals and stall the CPU
 #if defined(__x86_64__) || defined(__i386__)
-  // FTZ + DAZ: decaying filter / reverb / feedback states otherwise fall into denormals and stall the CPU
-  _mm_setcsr(_mm_getcsr() | 0x8040);
+  _mm_setcsr(_mm_getcsr() | 0x8040); // FTZ + DAZ
+#elif defined(__aarch64__)
+  uint64_t fpcr;
+  __asm__ __volatile__("mrs %0, fpcr" : "=r"(fpcr));
+  if (!(fpcr & (1ull << 24))) __asm__ __volatile__("msr fpcr, %0" : : "r"(fpcr | (1ull << 24))); // FZ
+#elif defined(__arm__) && defined(__ARM_FP)
+  uint32_t fpscr;
+  __asm__ __volatile__("vmrs %0, fpscr" : "=r"(fpscr));
+  if (!(fpscr & (1u << 24))) __asm__ __volatile__("vmsr fpscr, %0" : : "r"(fpscr | (1u << 24))); // FZ
 #endif
 }
 
@@ -628,13 +637,20 @@ void Engine::swapGraph(std::shared_ptr<CompiledGraph> g)
   retired.clear();
 }
 
+std::map<std::string, std::vector<std::string>> Engine::followersOf(const json& g)
+{
+  // a block split in two halves (effects loop): the extra half follows the block's params and events
+  std::map<std::string, std::vector<std::string>> f;
+  for (const auto& nj : g.value("nodes", json::array()))
+    if (nj.contains("also") && nj["also"].is_string()) f[nj["also"].get<std::string>()].push_back(nj.value("id", ""));
+  return f;
+}
+
 void Engine::setGraph(const json& g)
 {
   lastGraph = g;
-  // a block split in two halves (effects loop): the extra half follows the block's params and events
-  followers.clear();
-  for (const auto& nj : g.value("nodes", json::array()))
-    if (nj.contains("also") && nj["also"].is_string()) followers[nj["also"].get<std::string>()].push_back(nj.value("id", ""));
+  currentKey.clear();
+  followers = followersOf(g);
   auto cg = compile(g, blocks, false);
   swapGraph(cg);
   send({{"ev", "graphApplied"}, {"nodes", int(cg->nodes.size())}});
@@ -642,6 +658,12 @@ void Engine::setGraph(const json& g)
 
 void Engine::rebuild()
 {
+  if (!graphCache.empty())
+  {
+    // built for the old rate / buffer / quality
+    graphCache.clear();
+    send({{"ev", "cacheCleared"}});
+  }
   if (lastGraph.is_null()) return;
   auto cg = compile(lastGraph, blocks, true);
   swapGraph(cg);
@@ -652,7 +674,53 @@ void Engine::handleCommand(const json& cmd)
 {
   const std::string c = cmd.value("cmd", "");
   if (c == "setGraph")
+  {
     setGraph(cmd["graph"]);
+    currentKey = cmd.value("key", "");
+  }
+  else if (c == "preload")
+  {
+    // build a graph now, switch to it later with useGraph (no file loading at switch time)
+    const std::string key = cmd.value("key", "");
+    if (key.empty() || key == currentKey) return;
+    CachedGraph cg;
+    cg.graph = cmd["graph"];
+    cg.followers = followersOf(cg.graph);
+    cg.g = compile(cg.graph, cg.blocks, false);
+    const int nn = int(cg.g->nodes.size());
+    graphCache[key] = std::move(cg);
+    send({{"ev", "preloaded"}, {"key", key}, {"nodes", nn}});
+  }
+  else if (c == "useGraph")
+  {
+    const std::string key = cmd.value("key", "");
+    auto it = graphCache.find(key);
+    if (key == currentKey && !key.empty())
+      send({{"ev", "graphApplied"}, {"key", key}, {"nodes", current ? int(current->nodes.size()) : 0}, {"cached", true}});
+    else if (it == graphCache.end())
+      send({{"ev", "notPreloaded"}, {"key", key}});
+    else
+    {
+      CachedGraph next = std::move(it->second);
+      graphCache.erase(it);
+      // keep the outgoing preset built so switching back is just as fast
+      if (!currentKey.empty() && current) graphCache[currentKey] = CachedGraph{lastGraph, blocks, followers, current};
+      lastGraph = std::move(next.graph);
+      blocks = std::move(next.blocks);
+      followers = std::move(next.followers);
+      currentKey = key;
+      swapGraph(next.g);
+      send({{"ev", "graphApplied"}, {"key", key}, {"nodes", int(current->nodes.size())}, {"cached", true}});
+    }
+  }
+  else if (c == "dropCache")
+  {
+    std::set<std::string> keep;
+    for (const auto& k : cmd.value("keep", json::array()))
+      if (k.is_string()) keep.insert(k.get<std::string>());
+    for (auto it = graphCache.begin(); it != graphCache.end();)
+      it = keep.count(it->first) ? std::next(it) : graphCache.erase(it);
+  }
   else if (c == "param" || c == "params" || c == "event")
   {
     // the block, and any half that follows it

@@ -2,7 +2,7 @@
 // (pseudo plugin 'custom', kind 'Custom'). Test mode registers the design being edited as a hidden block.
 import { registerPluginDefs, unregisterPlugin, getDef } from './index.js';
 import { designToDef, cvValue } from '../pages/factory-circuit.js';
-import { state, setParam, blockById } from '../state.js';
+import { state, setParam, blockById, uiParams } from '../state.js';
 import { sendCtrl } from '../control.js';
 import { installCustomForm } from '../gfx/forms-custom.js';
 import { bus } from '../util.js';
@@ -10,43 +10,71 @@ import { bus } from '../util.js';
 installCustomForm();
 
 // circuit outputs wired to EXP / footswitch OUT jacks: the engine reports them (status cv[]), and they move
-// whatever is plugged in on the board, like an expression pedal or a footswitch would
+// whatever is plugged in on the board, like an expression pedal or a footswitch would. Jacks wired straight to
+// a control, jack or screen (source 'link') read the block's params, on every status and every param change.
 const lastOut = new Map(); // blockId:i -> last value sent
+function pushOut(b, o, i, v) {
+  const k = b.id + ':' + i;
+  if (o.sig === 'b') {
+    const on = v > 0.5 && !b.bypass ? 1 : 0;
+    if (lastOut.get(k) === on) return;
+    lastOut.set(k, on);
+    sendCtrl(b, i, on, 'press');
+    return;
+  }
+  const t = Math.max(0, Math.min(1, (v - o.lo) / ((o.hi - o.lo) || 1)));
+  if (Math.abs((lastOut.get(k) ?? -1) - t) < 0.002) return;
+  lastOut.set(k, t);
+  // continuous: straight into the targets' params, without an undo step per change
+  for (const c of state.preset.cables) {
+    if (c.from.node !== b.id || c.from.port !== 'c' + i) continue;
+    const tb = blockById(c.to.node);
+    const inp = tb && getDef(tb.type)?.ctrl?.ins?.[parseInt(String(c.to.port).slice(1), 10)];
+    if (!inp || !inp.param) continue;
+    const x = inp.invert ? 1 - t : t;
+    const val = inp.curve === 'log' && inp.min > 0 ? inp.min * Math.pow(inp.max / inp.min, x) : (inp.min ?? 0) + ((inp.max ?? 1) - (inp.min ?? 0)) * x;
+    setParam(tb.id, inp.param, val, { silent: true });
+  }
+}
+function pushBlock(b, st, onlyLinks) {
+  const d = b.type && b.type.startsWith('custom.') ? getDef(b.type) : null;
+  const outs = d && d.ctrl && d.ctrl.outs;
+  if (!outs || !outs.length) return;
+  let ui = null;
+  outs.forEach((o, i) => {
+    let v;
+    if (o.source === 'link') {
+      const r = o.read((ui = ui || uiParams(b)), st, b);
+      v = r ? r.t : undefined;
+    } else if (o.source === 'cv' && !onlyLinks) v = cvValue(st, o.cv);
+    if (v !== undefined) pushOut(b, o, i, v);
+  });
+}
 function pushCtrlOuts(ev) {
   const st = ev && ev.blocks;
   if (!st || !state.preset || !Array.isArray(state.preset.blocks)) return;
-  for (const b of state.preset.blocks) {
-    const d = b.type && b.type.startsWith('custom.') ? getDef(b.type) : null;
-    const outs = d && d.ctrl && d.ctrl.outs;
-    if (!outs || !outs.length) continue;
-    outs.forEach((o, i) => {
-      if (o.source !== 'cv') return;
-      const v = cvValue(st[b.id], o.cv);
-      if (v === undefined) return;
-      const k = b.id + ':' + i;
-      if (o.sig === 'b') {
-        const on = v > 0.5 && !b.bypass ? 1 : 0;
-        if (lastOut.get(k) === on) return;
-        lastOut.set(k, on);
-        sendCtrl(b, i, on, 'press');
-        return;
-      }
-      const t = Math.max(0, Math.min(1, (v - o.lo) / ((o.hi - o.lo) || 1)));
-      if (Math.abs((lastOut.get(k) ?? -1) - t) < 0.002) return;
-      lastOut.set(k, t);
-      // continuous: straight into the targets' params, without an undo step per change
-      for (const c of state.preset.cables) {
-        if (c.from.node !== b.id || c.from.port !== 'c' + i) continue;
-        const tb = blockById(c.to.node);
-        const inp = tb && getDef(tb.type)?.ctrl?.ins?.[parseInt(String(c.to.port).slice(1), 10)];
-        if (!inp || !inp.param) continue;
-        const x = inp.invert ? 1 - t : t;
-        const val = inp.curve === 'log' && inp.min > 0 ? inp.min * Math.pow(inp.max / inp.min, x) : (inp.min ?? 0) + ((inp.max ?? 1) - (inp.min ?? 0)) * x;
-        setParam(tb.id, inp.param, val, { silent: true });
-      }
-    });
+  for (const b of state.preset.blocks) pushBlock(b, st[b.id], false);
+}
+// a param changed: controls moved by it follow (def.plinks), OUT jacks wired to it send
+let depth = 0;
+function onParam({ id, p }) {
+  if (depth > 4 || !state.preset) return;
+  const b = blockById(id);
+  const d = b && b.type && b.type.startsWith('custom.') ? getDef(b.type) : null;
+  if (!d) return;
+  depth++;
+  try {
+    for (const l of d.plinks || []) {
+      if (l.from !== p) continue;
+      const v = l.value(uiParams(b), b);
+      if (v !== undefined && b.params[l.to] !== v) setParam(b.id, l.to, v, { silent: true });
+    }
+    if (d.ctrl && d.ctrl.outs && d.ctrl.outs.some((o) => o.source === 'link')) pushBlock(b, state.status && state.status.blocks ? state.status.blocks[b.id] : null, true);
+  } finally {
+    depth--;
   }
 }
+bus.on('param', onParam);
 let outsHooked = false;
 export function hookCtrlOuts() {
   if (outsHooked || !window.tz || !window.tz.engine) return;
