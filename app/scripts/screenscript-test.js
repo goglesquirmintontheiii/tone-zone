@@ -356,7 +356,7 @@ function draw()
   lvl = audio.level("in")
   pk = audio.peak("in")
   bands = audio.spectrum("in", 16)
-  wave = audio.wave("out", 64)
+  wave = audio.wave("out", 512)
   pitch = audio.pitch("out")
   outLvl = audio.level("out")
   jacks = table.concat(audio.jacks(), ",")
@@ -374,7 +374,7 @@ end`, 's1', { frames: 3, demo: false });
   ok(fl.fs_magic === 'TZFX' && fl.fs_n === 3 && fl.fs_f === 0.25 && fl.fs_s === 'hello' && fl.fs_size === 16 && fl.fs_nextPos === 17 && fl.fs_hex === '54 5a 46 58', 'a binary file round trips through bin.pack, fs.writeBytes, fs.readBin and bin.unpack');
   ok(fl.fs_okDots === false && /not allowed/.test(fl.fs_eDots) && fl.fs_okAbs === false && /start inside/.test(fl.fs_eAbs) && !fl.fsErr, 'scripts can not leave the sandbox: ' + fl.fs_eDots);
   ok(fl.seen === 600000 && fl.budgetOk === false && /1 MB/.test(fl.budgetErr) && fl.small === true && fl.left < 1048576 - 600000, 'two screens of one pedal share the files and the 1 MB budget: ' + fl.budgetErr);
-  ok(fl.lvl > 0.01 && fl.pk >= fl.lvl && fl.nb === 16 && fl.bandMax > 0.3 && fl.nw === 64 && fl.waveMax > 0.05 && fl.pitch === 110 && fl.outLvl > 0.1 && fl.ready === true && !fl.audioErr, `audio analysis in the preview (level ${fl.lvl.toFixed(2)}, ${fl.nb} bands, ${fl.nw} samples, pitch ${fl.pitch})`);
+  ok(fl.lvl > 0.01 && fl.pk >= fl.lvl && fl.nb === 16 && fl.bandMax > 0.3 && fl.nw === 512 && fl.waveMax > 0.2 && fl.pitch === 110 && fl.outLvl > 0.1 && fl.ready === true && !fl.audioErr, `audio analysis in the preview (level ${fl.lvl.toFixed(2)}, peak ${fl.pk.toFixed(2)}, ${fl.nb} bands max ${fl.bandMax.toFixed(2)}, ${fl.nw} samples max ${fl.waveMax.toFixed(2)}, pitch ${fl.pitch}, out ${fl.outLvl.toFixed(2)}, ready ${fl.ready}, ${JSON.stringify(fl.audioErr)})`);
   ok(fl.gens.join(',') === 's1:bass' && /IN/i.test(fl.jacks), 'a generator runs in the preview fake: ' + fl.gens.join(',') + ' jacks ' + fl.jacks);
   // the bridge: on the board the engine side gets the calls through setAudioBackend
   const br = await win.evaluate(async () => {
@@ -612,13 +612,13 @@ end
     return win.evaluate(() => (document.querySelector('.ss-tip.open') || {}).textContent || '');
   };
   let tip = await hoverAt('rect(1, 2)');
-  ok(/rect needs at least 4/.test(tip), 'hovering the underline explains it');
+  ok(/rect needs at least 4/.test(tip), 'hovering the underline explains it: ' + tip.slice(0, 120));
   await shotEd('screens-hint-warnings.png');
   tip = await hoverAt('input("');
   ok(/input\(\[port: port\]\) -> number/.test(tip) && /The value wired into this input/.test(tip) && /port: Input number/.test(tip), 'hovering input shows its signature and description: ' + tip.slice(0, 100));
   await shotEd('screens-hint-hover.png');
   tip = await hoverAt('level', 1);
-  ok(/level \(a variable\)/.test(tip) && /line 1/.test(tip), 'hovering a script variable says where it is defined');
+  ok(/level \(a variable\)/.test(tip) && /line 1/.test(tip), 'hovering a script variable says where it is defined: ' + tip.slice(0, 120));
   await win.mouse.move(5, 5);
   // the Test tab: simulated inputs, outputs shown
   ok((await win.$$('.ss-pane-test [data-sin]')).length === 2 && (await win.$$('.ss-pane-test [data-sout]')).length === 2, 'the Test tab has the screen inputs and outputs');

@@ -42,7 +42,7 @@ const { makeDI, measure } = require('./loudness');
     T.editor.view = { z, x: mx - (b.x + v.w * cx) * z, y: my - (b.y + v.h * cy) * z };
     T.editor.applyView();
   }, [z, cx, cy]);
-  await zoomTo(1.2);
+  await zoomTo(0.76);
   await wait(1500);
   await (await win.$('#board')).screenshot({ path: path.join(out, 'unit.png') });
 
@@ -100,7 +100,8 @@ const { makeDI, measure } = require('./loudness');
     await win.screenshot({ path: path.join(out, file), clip: { x: p0.x - 4, y: p0.y - 4, width: p1.x - p0.x + 8, height: p1.y - p0.y + 8 } });
   };
 
-  // ---- 3. every control is interactive
+  // ---- 3. every control is interactive (cables hidden: the input cable hangs over the left panel)
+  await win.evaluate(() => (document.getElementById('layerCables').style.display = 'none'));
   await zoomTo(1.6, 0.45, 0.62);
   await wait(1200);
   const roles = await win.evaluate(() => [...window.__tz.editor.views.get(window.__nx).views.values()].map((e) => ({ role: e.ctl.role, t: e.ctl.t, p: e.ctl.p, interactive: !!e.ctl.interactive })).filter((c) => c.t !== 'led'));
@@ -143,6 +144,7 @@ const { makeDI, measure } = require('./loudness');
     if (c.p === '_mute' && after) await win.mouse.click(p.x, p.y);
   }
   await win.evaluate(async () => { const st = await import('./js/state.js'); st.setParam(window.__nx, '_tuner', 0, { silent: true }); const n = window.__tz.state.ui[window.__nx].nx; n.page = 'rig'; });
+  await win.evaluate(() => (document.getElementById('layerCables').style.display = ''));
   ok(missing.length === 0, `${interacted} controls respond ${missing.slice(0, 10).join(', ')}`);
 
   // ---- 4. screen pages by pointer
