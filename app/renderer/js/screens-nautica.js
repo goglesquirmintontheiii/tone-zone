@@ -96,7 +96,7 @@ function swapSlots(st, a, z) {
 function loadPresetInto(b, st, pi) {
   pi = ((pi % N.NX_NPRESETS) + N.NX_NPRESETS) % N.NX_NPRESETS;
   const src = N.nxPresetSrc(st, pi);
-  Object.assign(st, { name: src.name, slots: src.slots, scenes: src.scenes, sc: src.sc | 0, route: src.route | 0, mix: src.mix, fs: src.fs, exp: src.exp, eon: src.eon, side: src.side, scn: src.scn, pi });
+  Object.assign(st, { name: src.name, slots: src.slots, scenes: src.scenes, sc: src.sc | 0, route: src.route | 0, mix: src.mix, fs: src.fs, exp: src.exp, eon: src.eon, side: src.side, scn: src.scn, trim: src.trim || 0, pi });
   if (st.g && st.g.dmode > 0) st.mode = st.g.dmode - 1;
   if (b && (uiParams(b)._emv | 0)) setUi(b, '_emv', 0);
   const n = b && nav(b);
@@ -105,7 +105,7 @@ function loadPresetInto(b, st, pi) {
 function savePreset(b, st, pi = st.pi | 0) {
   captureScene(st);
   st.user = st.user || {};
-  st.user[pi] = N.clone({ name: st.name, slots: st.slots, scenes: st.scenes, sc: st.sc, route: st.route, mix: st.mix, fs: st.fs, exp: st.exp, eon: st.eon, side: st.side, scn: st.scn });
+  st.user[pi] = N.clone({ name: st.name, slots: st.slots, scenes: st.scenes, sc: st.sc, route: st.route, mix: st.mix, fs: st.fs, exp: st.exp, eon: st.eon, side: st.side, scn: st.scn, trim: st.trim || 0 });
   put(b, st, true);
   flash(b, 'SAVED  ' + N.nxPresetLabel(st, pi), 1400);
 }

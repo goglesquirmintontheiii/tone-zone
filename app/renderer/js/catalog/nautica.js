@@ -143,6 +143,8 @@ export const NX_FACTORY = [
   preset('LOFI TAPE', { A1: slot('fx.lofi', 1, { mix: 0.7 }), A2: slot('amp.solid120'), A3: slot('cab.212jc'), A4: slot('mod.chorus', 1, { depth: 0.7 }), A5: slot('dly.lofi', 1, { mix: 0.28 }), A6: slot('rev.cloud', 1, { mix: 0.3 }) }),
   preset('ROTARY ORGAN', { A1: slot('dyn.vca'), A2: slot('amp.lux', 1, { gain: 0.5, level: -3.5 }), A3: slot('mod.rotary'), A4: slot('cab.112us'), A5: slot('rev.room', 1, { mix: 0.18 }) }, { 1: { A3: { v: { speed: 1 } } } }),
 ];
+// per-preset output trim (dB), measured so every factory preset renders at -17 LUFS (scripts/nautica-test.js checks it)
+export const NX_TRIM = {};
 export const NX_INIT = () => preset('EMPTY RIG', { A1: slot('amp.silver', 1, { gain: 0.35 }), A2: slot('cab.212twin') });
 
 // footswitches: 0..13 floor, 14..15 above the treadles, 16..19 EXT FS jacks; pedals: 0..1 treadles, 2..3 EXT EXP jacks
@@ -174,7 +176,7 @@ export function nxLive(p) {
   return {
     name: p.name, slots, scenes, sc: 0, route: p.route | 0, mix: Object.assign({ a: 1, b: 1, ap: 0, bp: 0 }, p.mix || {}),
     fs: p.fs ? clone(p.fs) : FS_DEFAULT(), exp: p.exp ? clone(p.exp) : [{ t: 'auto' }, { t: 'auto' }, { t: 'none' }, { t: 'none' }], eon: p.eon ? p.eon.slice() : [1, 1, 1, 1],
-    side: p.side ? clone(p.side) : SIDE_DEFAULT(), scn: p.scn ? p.scn.slice() : NX_SCENE_NAMES.slice(),
+    side: p.side ? clone(p.side) : SIDE_DEFAULT(), scn: p.scn ? p.scn.slice() : NX_SCENE_NAMES.slice(), trim: p.trim ?? NX_TRIM[p.name] ?? 0,
   };
 }
 // logical outputs: 0 STEREO 1, 1 STEREO 2, 2..5 OUT 1..4 pairs, 6 PHONES, 7 XLR
@@ -407,7 +409,7 @@ export const nxSameA = (x, y) => JSON.stringify(x || { t: 'auto' }) === JSON.str
 // volume dials: 0.8 = unity, log taper, bottom = off
 export const nxVolDb = (pos) => (pos < 0.02 ? -60 : clamp(40 * Math.log10(pos / 0.8), -60, 6));
 export const nxVolFmt = (pos) => (pos < 0.02 ? 'OFF' : (nxVolDb(pos) > 0 ? '+' : '') + nxVolDb(pos).toFixed(1) + ' dB');
-const CAL = -4; // calibrated so the factory presets sit near unity
+const CAL = -4; // base output trim; each preset adds its own (st.trim)
 let dcache = { key: '', o: null };
 function nxDerive(ui) {
   const key = [ui._st, ui.exp1, ui.exp2, ui._xexp1, ui._xexp2, ui._emv, ui._tuner, ui._mute, ui.mvol, ui.pvol, ui.xvol].join('|');
@@ -455,7 +457,7 @@ function nxDerive(ui) {
   const mute = (ui._mute ?? 0) > 0.5;
   const mdb = nxVolDb(ui.mvol ?? 0.8), pdb = nxVolDb(ui.pvol ?? 0.8), xdb = nxVolDb(ui.xvol ?? 0.8);
   nxOuts(g).forEach((x, j) => {
-    let lv = (x.lvl || 0) + CAL + (x.m ? mdb : 0) + (j === 6 ? pdb : 0) + (j === 7 ? xdb : 0);
+    let lv = (x.lvl || 0) + CAL + ((x.src | 0) === 3 ? 0 : st.trim || 0) + (x.m ? mdb : 0) + (j === 6 ? pdb : 0) + (j === 7 ? xdb : 0);
     if (mute && j !== 6) lv = -60;
     o[`o${j}.src`] = x.src | 0; o[`o${j}.lvl`] = clamp(lv, -60, 12); o[`o${j}.mono`] = x.mono | 0;
   });
