@@ -70,18 +70,19 @@ jobs:
           fi
           gh release upload "v$V" app/dist/*.AppImage --clobber
 
-  # Raspberry Pi: cross compiled on Debian Bookworm, so the binaries need no newer glibc than Pi OS Bookworm (2.36)
+  # Raspberry Pi: cross compiled on Ubuntu 22.04, whose glibc (2.35) is older than Pi OS Bookworm's (2.36), so the
+  # binaries run there. TZ_MAX_GLIBC fails the build if that ever slips.
   pi-bundle:
     needs: appimage
     if: needs.appimage.outputs.exists == 'false'
-    runs-on: ubuntu-24.04
-    container: debian:bookworm
+    runs-on: ubuntu-22.04
     steps:
-      - name: Toolchain
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates cmake make g++ crossbuild-essential-arm64 nodejs qemu-user
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake make g++-aarch64-linux-gnu gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu qemu-user
       - name: Build DSP engine (aarch64, Cortex-A53 baseline for Pi 3B+ / 4 / 5)
         run: TZ_MAX_GLIBC=2.36 ./scripts/build-engine.sh arm64
       - name: Engine self-test under qemu
