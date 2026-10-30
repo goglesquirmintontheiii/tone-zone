@@ -19,7 +19,7 @@ const S = process.argv[2] || '/tmp';
     const bv = E.views.get(pb.id);
     // drop two pedals roughly over slots 1 and 6
     const a = E.addAt('ib.ts9', pb.x + 260, pb.y + 150, true);
-    const b = E.addAt('bx.ds1', pb.x + 400, pb.y + 430, true);
+    const b = E.addAt('bx.ds1', pb.x + 640, pb.y + 150, true);
     const va = E.views.get(a.id), vb = E.views.get(b.id);
     const inSlot = (v) => bv.slots.some((s) => Math.abs(v.block.x + v.w / 2 - (pb.x + s.x + 80)) < 1 && Math.abs(v.block.y + v.h / 2 - (pb.y + s.y + 135)) < 1);
     E.view = { x: 60, y: 80, z: 0.8 }; E.applyView();
@@ -33,10 +33,18 @@ const S = process.argv[2] || '/tmp';
     const E = window.__tz.editor, v = E.views.get(id), br = E.board.getBoundingClientRect();
     return { x: br.left + E.view.x + (v.block.x + 12) * E.view.z, y: br.top + E.view.y + (v.block.y + v.h / 2) * E.view.z };
   }, r.pb);
+  await win.waitForTimeout(600); // let the drop animation finish
   await win.mouse.move(p.x, p.y); await win.mouse.down(); await win.mouse.move(p.x + 120, p.y + 60, { steps: 10 }); await win.mouse.up();
   await win.waitForTimeout(300);
   const moved = await win.evaluate(({ a }) => { const b = window.__tz.state.preset.blocks.find((x) => x.id === a); return { x: b.x, y: b.y }; }, r);
   ok(Math.abs(moved.x - r.ax - 150) < 15 && Math.abs(moved.y - r.ay - 75) < 15, `pedal moved with the board (${moved.x - r.ax}, ${moved.y - r.ay})`);
+  // floor units don't go on boards
+  const big = await win.evaluate(({ pb }) => {
+    const E = window.__tz.editor, bv = E.views.get(pb);
+    const a = E.addAt('tz.atlas', bv.block.x + bv.w / 2, bv.block.y + bv.h / 2, true);
+    return E.boardMembers(pb).includes(a.id);
+  }, r);
+  ok(!big, 'Atlas Floor kept off the board');
   // name and colours
   await win.evaluate(async (id) => {
     const st = await import('./js/state.js');

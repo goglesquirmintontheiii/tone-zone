@@ -6,7 +6,7 @@ import { SEL, def } from './helpers.js';
 export const BOARD_SLOT = { w: 160, h: 270, padX: 34, padY: 30 };
 export const BOARD_SIZES = [
   ['tiny', 'Tiny', 4, 1],
-  ['small', 'Small', 4, 2],
+  ['small', 'Small', 8, 1],
   ['medium', 'Medium', 6, 2],
   ['large', 'Large', 9, 2],
   ['xl', 'XL', 12, 2],

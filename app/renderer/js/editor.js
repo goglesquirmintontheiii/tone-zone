@@ -442,6 +442,15 @@ export class Editor {
     const bv = this.boardAt(gv.block.x + gv.w / 2, gv.block.y + gv.h / 2);
     if (!bv || !bv.slots) return;
     const { cols, rows } = bv.def.pedalboard, S = BOARD_SLOT;
+    // floor units, amps and cabs don't go on boards: slide them off below the board
+    const base = gv.def.baseForm;
+    if (gv.w > S.w * 3 || gv.h > S.h + 20 || base === 'amp' || base === 'cab' || gv.def.cat === 'Pedalboard') {
+      const dy = bv.block.y + bv.h + 40 - gv.block.y;
+      for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x, v.block.y + dy); }
+      this.updateCablesFor(ids);
+      toast(`${gv.def.name} is too big for a pedalboard`, 'info');
+      return;
+    }
     const n = Math.min(cols, Math.ceil((gv.w + 6) / S.w)), m = Math.min(rows, Math.ceil((gv.h + 6) / S.h));
     const others = this.boardMembers(bv.block.id).filter((i) => !ids.includes(i)).map((i) => this.views.get(i));
     const hits = (x, y) => others.some((o) => x < o.block.x + o.w - 4 && x + gv.w > o.block.x + 4 && y < o.block.y + o.h - 4 && y + gv.h > o.block.y + 4);
