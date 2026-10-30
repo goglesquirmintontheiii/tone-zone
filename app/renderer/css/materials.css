@@ -1,0 +1,32 @@
+/* Material picker (ui/material-picker.js), used by the pedalboard inspector and the Pedal Factory */
+.mtp { border: 1px solid var(--line); border-radius: 10px; background: rgba(var(--well-rgb), 0.18); margin-bottom: 10px; overflow: hidden; }
+.mtp-head { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; cursor: pointer; }
+.mtp-head.static { cursor: default; }
+.mtp-head:hover:not(.static) { background: rgba(var(--fg-rgb), 0.04); }
+.mtp-head .mt-sw { flex: none; border-radius: 50%; }
+.mtp-tt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.mtp-tt b { font-size: 12px; color: var(--text); font-weight: 700; }
+.mtp-tt small { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtp-caret { width: 14px; height: 14px; opacity: 0.6; transition: transform 0.15s; }
+.mtp-caret.open { transform: rotate(180deg); }
+.mtp-body { padding: 2px 10px 10px; border-top: 1px solid var(--line); }
+.mtp-sec { margin-top: 8px; }
+.mtp-sec h6 { margin: 0 0 6px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.mtp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 4px; }
+.mtp-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 2px 4px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; text-align: center; }
+.mtp-tile:hover { background: rgba(var(--fg-rgb), 0.05); }
+.mtp-tile.on { border-color: rgba(var(--accent-rgb), 0.65); background: rgba(var(--accent-rgb), 0.12); }
+.mtp-tile span { font-size: 10px; line-height: 1.15; color: var(--text2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mtp-tile.on span { color: var(--text); }
+/* checker behind swatches so glass and acrylic read as see-through */
+.mt-sw { background: repeating-conic-gradient(rgba(var(--fg-rgb), 0.16) 0 25%, transparent 0 50%) 0 0 / 8px 8px; border-radius: 50%; }
+.mtp-cols { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.mtp-col { all: unset; width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); cursor: pointer; }
+.mtp-col.burst { background: radial-gradient(circle, var(--c) 35%, #2a1408 100%); }
+.mtp-col.on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mtp-pick { width: 26px; height: 22px; padding: 0; border: 1px solid var(--line2); border-radius: 6px; background: none; cursor: pointer; }
+.mtp-note { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+.mtp-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; color: var(--text2); }
+.mtp-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.insp-mat.flash .mtp { animation: mtp-flash 1.2s var(--ease); }
+@keyframes mtp-flash { 0%, 40% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.7); } 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0); } }

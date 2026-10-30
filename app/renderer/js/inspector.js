@@ -2,7 +2,7 @@
 import { MIC_TYPES, MIC_COLORS, defaultMicXY } from './gfx/cabgeom.js';
 import { el, esc, bus, clamp } from './util.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
-import { state, blockById, uiParams, setParam, setBypass, setVariant, removeBlocks, duplicateBlocks, engineParamsFor, commitNow, sendParamsFor } from './state.js';
+import { state, blockById, uiParams, setParam, setBypass, setVariant, removeBlocks, duplicateBlocks, engineParamsFor, commit, commitNow, sendParamsFor } from './state.js';
 import { knobPos, knobValue } from './nodeview.js';
 import { hooksFor } from './plugins.js';
 import { ioConf, setIo, IO_PORT_NAMES, IO_DEFAULT_LABELS, portsSnapshot, requestPorts, openPortPicker, sendEngineSettings } from './pages/settings.js';
@@ -111,6 +111,11 @@ function render() {
     seen.add(c.p);
     rowFor(ctlSec, b, c, ui);
   }
+  // a def can add its own section (pedalboards use it for their material pickers)
+  if (d.inspectorSection) {
+    const sec = el('div', { class: 'insp-section' }, body);
+    try { d.inspectorSection(b, sec, { params: () => uiParams(b), setParams: (obj) => setParams(b.id, obj), rerender: () => render() }); } catch (e) { console.error(e); }
+  }
   // cab mics: up to 4, on any speaker, mixed and panned
   if (d.cabMics) {
     const ms = el('div', { class: 'insp-section' }, body);
@@ -192,6 +197,17 @@ function render() {
     }
   }
   updateCost();
+}
+
+// several params as one undo step (quick repeats merge, like knob drags)
+function setParams(id, obj) {
+  const b = blockById(id);
+  const keys = Object.keys(obj);
+  if (!b || !keys.length) return;
+  commit();
+  Object.assign(b.params, obj);
+  sendParamsFor(b);
+  bus.emit('param', { id, p: keys[0], v: obj[keys[0]] });
 }
 
 function rowFor(parent, b, c, ui, rawIndex = false) {

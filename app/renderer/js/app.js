@@ -340,7 +340,9 @@ function initNodeMenu() {
     if (!io) {
       if (!d.alwaysOn) items.push({ label: b.bypass ? 'Enable' : 'Bypass', icon: 'power', kbd: 'B', onClick: () => setBypass(id, !b.bypass) });
       if (canSwitchVariant(d)) items.push({ label: (b.variant || 'mono') === 'stereo' ? 'Switch to mono' : 'Switch to stereo', icon: 'cable', onClick: () => { setVariant(id, (b.variant || 'mono') === 'stereo' ? 'mono' : 'stereo'); editor.rerenderNode(id); } });
-      if (d.recolor) items.push({ title: d.pedalboard ? 'Frame colour' : 'Colour' }, { swatches: d.recolorSwatches || CABLE_COLORS, onPick: (c) => setParam(id, 'jacket', c) }, { sep: true });
+      if (d.recolor && !d.pedalboard) items.push({ title: 'Colour' }, { swatches: d.recolorSwatches || CABLE_COLORS, onPick: (c) => setParam(id, 'jacket', c) }, { sep: true });
+      // boards: select it and reveal the material pickers in the inspector
+      if (d.pedalboard) items.push({ label: 'Frame material…', icon: 'magic', onClick: () => { editor.select([id]); setTimeout(() => { const s = document.querySelector('#inspector [data-reveal="material"]'); if (s) { s.scrollIntoView({ block: 'start', behavior: 'smooth' }); s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash'); } }, 120); } });
       if (d.pedalboard) items.push({ label: 'Rename…', icon: 'edit', onClick: async () => { const n = await prompt('Rename pedalboard', b.params?.name || d.name); if (n) setParam(id, 'name', n); } });
       else {
         items.push({ label: 'Rotate right', icon: 'redo', kbd: 'R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], 90) });

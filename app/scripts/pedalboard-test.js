@@ -56,11 +56,38 @@ const S = process.argv[2] || '/tmp';
   const nameShown = await win.evaluate((id) => [...document.querySelectorAll(`[data-node="${id}"] text`)].some((t) => t.textContent === 'MAIN BOARD'), r.pb);
   ok(nameShown, 'name shown above the board');
   await win.screenshot({ path: S + '/pedalboard.png' });
-  for (const st of [1, 2]) {
+  for (const st of [1, 2, 3, 4]) {
     await win.evaluate(async ({ id, st }) => { (await import('./js/state.js')).setParam(id, 'style', st); }, { id: r.pb, st });
     await win.waitForTimeout(300);
     await win.screenshot({ path: S + '/pedalboard-style' + st + '.png' });
   }
+  // materials: frame, rails and screws; older jacket colours still work
+  const mat = await win.evaluate(async (id) => {
+    const st = await import('./js/state.js');
+    const M = await import('./js/gfx/materials.js');
+    const node = () => document.querySelector(`[data-node="${id}"]`);
+    const used = () => [...node().querySelectorAll('[fill^="url(#mt-"]')].map((e) => e.getAttribute('fill').slice(5, -1));
+    const legacy = used().some((u) => u.startsWith('mt-metal-aluminium-anodized-9aa0a8'));
+    const b = window.__tz.state.preset.blocks.find((x) => x.id === id);
+    st.setParam(id, 'style', 3);
+    Object.assign(b.params, M.toParams({ m: 'wood', s: 'ebony', f: 'nitro' }, 'frame'), M.toParams({ m: 'metal', s: 'brass', f: 'polished' }, 'screw'));
+    st.setParam(id, 'railMat', 'frame');
+    await new Promise((r) => setTimeout(r, 300));
+    const u = used();
+    const defsOk = u.every((x) => document.getElementById(x) && document.querySelector('#globalDefs #' + x));
+    const img = document.querySelector('#globalDefs #' + u.find((x) => x.startsWith('mt-wood')) + ' image');
+    // messy screws are the same on every redraw
+    const crosses = () => [...node().querySelectorAll('path[transform^="rotate"]')].map((e) => e.getAttribute('transform')).join('|');
+    const c1 = crosses();
+    window.__tz.editor.rerenderNode(id);
+    const c2 = crosses();
+    return { legacy, wood: u.some((x) => x.startsWith('mt-wood-ebony-nitro')), brass: u.some((x) => x.startsWith('mt-metal-brass-polished')), defsOk, dataImg: !!img && /^data:image\//.test(img.getAttribute('href')), stable: c1 && c1 === c2 };
+  }, r.pb);
+  ok(mat.legacy, 'old jacket colour still drawn as the frame');
+  ok(mat.wood && mat.brass, 'frame and screw materials drawn');
+  ok(mat.defsOk && mat.dataImg, 'material defs live in #globalDefs with image tiles');
+  ok(mat.stable, 'messy screws keep their look between redraws');
+  await win.screenshot({ path: S + '/pedalboard-materials.png' });
   // all six sizes
   await win.evaluate(async () => {
     const st = await import('./js/state.js');
