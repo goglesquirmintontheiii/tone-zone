@@ -59,8 +59,10 @@ the `fuse2` package.
 - **Couplers**: tiny double male and double female 1/4" couplers. A male coupler turns to fit the jack you drop it
   on and joins two pedals with no cable.
 - **Pedal Factory tab**: build your own pedals. Design the enclosure (16 shapes, materials, finishes, wear and
-  patterns) and every knob, switch and jack, wire the controls to a circuit (24 starter circuits), try it with your
-  guitar in Test mode, then save it as a block. Saved pedals appear under **Custom** in the block list.
+  patterns) and every knob, switch, encoder, LED, screen and jack. Build circuits in a drag and drop circuit editor
+  (35 built-in circuits to start from), wire controls and jacks to them in the wiring diagram, script custom screens
+  ([docs/screen-scripts.md](docs/screen-scripts.md)), try it with your guitar in Test mode, then save it as a block.
+  Saved pedals appear under **Custom** in the block list.
 - **App themes**: Dark, White or Monochrome. Pedal graphics stay the same.
 - **Raspberry Pi tab**: a placeholder for now. This is where putting presets on a Pi-based pedal will live.
 
