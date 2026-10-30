@@ -412,7 +412,12 @@ const S = process.env.SHOTS || '/tmp';
   await win.screenshot({ path: path.join(S, 'factory-test.png') });
   await win.click('#fzTest');
   await win.waitForTimeout(1500);
-  const back = await win.evaluate(() => ({ over: window.__tzFactory.graphOverridden(), testing: window.__tzFactory.testing(), status: Object.keys(window.__tz.state.status.blocks || {}), board: window.__tz.state.preset.blocks.filter((b) => !b.id.startsWith('__')).map((b) => b.id) }));
+  // pedalboards hold pedals but make no sound of their own, so the engine does not report them
+  const back = await win.evaluate(async () => {
+    const { getDef, kindOf } = await import('./js/catalog/index.js');
+    const sounds = (b) => !b.id.startsWith('__') && !(getDef(b.type) && kindOf(getDef(b.type)) === 'Pedalboard');
+    return { over: window.__tzFactory.graphOverridden(), testing: window.__tzFactory.testing(), status: Object.keys(window.__tz.state.status.blocks || {}), board: window.__tz.state.preset.blocks.filter(sounds).map((b) => b.id) };
+  });
   ok(!back.over && !back.testing, 'test mode ended, override cleared');
   ok(!back.status.includes('fztest') && back.board.every((id) => back.status.includes(id)), 'the engine runs the board again' + ` (missing ${back.board.filter((id) => !back.status.includes(id)).join(' ')})`);
   // leaving the tab also ends a test
