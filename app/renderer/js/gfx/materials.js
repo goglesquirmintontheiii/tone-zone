@@ -119,7 +119,46 @@ export function normalize(spec, fallback) {
     const c = typeof s.c === 'string' ? s.c.toLowerCase() : '';
     out.c = pal.some((p) => p.id === c) ? c : isHex(c) ? c : M.def.c && (isHex(M.def.c) || pal.some((p) => p.id === M.def.c)) ? M.def.c : pal[0].hex;
   }
+  const w = normWear(s.w, out.m);
+  if (w) out.w = w;
   return out;
+}
+
+// ------------------------------------------------------------------ wear
+// Stackable wear layers drawn over the material, each with an amount 0..1. Stored as spec.w = { scratch: 0.6, ... }.
+export const WEAR = [
+  { id: 'scratchL', name: 'Lightly scratched' },
+  { id: 'scratch', name: 'Scratched' },
+  { id: 'rust', name: 'Rusted', only: ['metal'] },
+  { id: 'chipL', name: 'Lightly chipped' },
+  { id: 'chip', name: 'Chipped' },
+  { id: 'fade', name: 'Faded' },
+  { id: 'relic', name: "Relic'd" },
+  { id: 'stain', name: 'Stained' },
+  { id: 'dent', name: 'Dented' },
+];
+export function wearFor(m) {
+  return WEAR.filter((x) => !x.only || x.only.includes(m));
+}
+function normWear(w, m) {
+  if (!w || typeof w !== 'object') return null;
+  const out = {};
+  for (const x of wearFor(m)) {
+    const v = +w[x.id];
+    if (v > 0) out[x.id] = Math.round(Math.min(1, v) * 100) / 100;
+  }
+  return Object.keys(out).length ? out : null;
+}
+export function wearToString(w) {
+  return w ? Object.entries(w).map(([k, v]) => k + ':' + v).join(',') : '';
+}
+export function wearFromString(str) {
+  const w = {};
+  for (const part of String(str || '').split(',')) {
+    const [k, v] = part.split(':');
+    if (k && +v > 0) w[k.trim()] = +v;
+  }
+  return w;
 }
 
 /** Hex colour of a spec's colour value (palette ids resolve to their hex). */
@@ -147,11 +186,11 @@ export function specLabel(spec) {
 /** Spec from block params with a prefix, e.g. frameMat/frameSub/frameFin/frameCol. */
 export function fromParams(p, prefix, fallback) {
   if (!p || !p[prefix + 'Mat']) return normalize(fallback);
-  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'] }, fallback);
+  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'], w: wearFromString(p[prefix + 'Wear']) }, fallback);
 }
 export function toParams(spec, prefix) {
   const s = normalize(spec);
-  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c };
+  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c, [prefix + 'Wear']: wearToString(s.w) };
 }
 
 // ------------------------------------------------------------------ colour helpers
@@ -260,8 +299,8 @@ function texMetal(s, q) {
   const col = coated ? rgb(colorHex(s)) : null;
   let lo = rgb(sub.dark), hi = rgb(sub.light);
   if (s.f === 'anodized') {
-    hi = mix(col, [255, 255, 255], 0.22);
-    lo = mul(col, 0.72);
+    hi = mix(col, [255, 255, 255], 0.14);
+    lo = mul(col, 0.82);
   } else if (coated) {
     hi = mix(col, [255, 255, 255], 0.06);
     lo = mul(col, 0.9);
@@ -274,7 +313,7 @@ function texMetal(s, q) {
       case 'brushed':
       case 'anodized': {
         const row = fbm(u, v, 3, 128, 2, 11);
-        t = 0.5 + (row - 0.5) * 0.55 + (fbm(u, v, 1, 16, 2, 19) - 0.5) * 0.3 + (hash(u * W | 0, v * H | 0, 3) - 0.5) * 0.08;
+        t = 0.5 + (row - 0.5) * 0.6 + (fbm(u, v, 1, 16, 2, 19) - 0.5) * 0.12 + (hash(u * W | 0, v * H | 0, 3) - 0.5) * 0.08;
         break;
       }
       case 'polished':
@@ -748,7 +787,203 @@ export function paint(parent, tag, attrs, spec, opts = {}) {
   if (f.overlay) mk(tag, Object.assign({}, attrs, { fill: f.overlay }), g);
   if (opts.sheen !== false) mk(tag, Object.assign({}, attrs, { fill: f.sheen, opacity: f.sheenOpacity * (opts.sheenOpacity ?? 1) }), g);
   if (opts.edge !== false) mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: f.translucent ? 'rgba(255,255,255,0.55)' : f.hi, 'stroke-width': opts.edgeWidth || 0.8, 'stroke-opacity': f.translucent ? 0.8 : 0.45 }), g);
+  if (opts.wear !== false) {
+    const ns = normalize(spec);
+    if (ns.w) wearOverlay(g, tag, attrs, ns, opts);
+  }
   return { g, f };
+}
+
+// what shows through chips and worn spots
+function bareOf(s) {
+  const coated = s.m === 'metal' && ['anodized', 'powder', 'flake', 'hammertone'].includes(s.f);
+  if (s.m === 'metal') {
+    const sub = BY_ID.get('metal').subs.find((x) => x.id === s.s);
+    return { spec: coated ? { m: 'metal', s: s.s, f: 'bare' } : null, hex: coated ? sub.light : sub.dark };
+  }
+  if (s.m === 'wood') return { spec: { m: 'wood', s: s.s, f: 'matte' }, hex: BY_ID.get('wood').subs.find((x) => x.id === s.s).light };
+  const base = rgb(TEXBASE(s));
+  const hex = { plastic: hexOf(mix(base, [255, 255, 255], 0.35)), glass: '#f4f8fa', acrylic: '#f4f8fa', carbon: '#6a6d72', tolex: '#3a2a1e', stone: hexOf(mix(base, [255, 255, 255], 0.3)), rubber: hexOf(mix(base, [255, 255, 255], 0.2)), glow: '#f2f4ea', pearl: '#ffffff', concrete: hexOf(mul(base, 0.7)) }[s.m] || '#cccccc';
+  return { spec: null, hex };
+}
+function TEXBASE(s) {
+  const pal = paletteFor(s);
+  if (pal) return colorHex(s);
+  const M = BY_ID.get(s.m);
+  const sub = M.subs && M.subs.find((x) => x.id === s.s);
+  return sub && sub.light ? sub.light : '#999999';
+}
+function seedNum(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+// small canvas helpers for wear tiles (drawn three times across the edges so they tile)
+function canvasTile(W, fn) {
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = W;
+  const x = c.getContext('2d');
+  fn(x, W);
+  return c.toDataURL('image/png');
+}
+function wrapDraw(x, W, draw) {
+  for (const dx of [-W, 0, W]) for (const dy of [-W, 0, W]) {
+    x.save();
+    x.translate(dx, dy);
+    draw();
+    x.restore();
+  }
+}
+const wearTiles = new Map();
+function wearTile(kind, amt, bare, seed) {
+  const key = [kind, amt, bare, seed].join('|');
+  if (wearTiles.has(key)) return wearTiles.get(key);
+  let r = 0;
+  const rnd = () => hash(r++, seed, 777);
+  const W = 256;
+  let url;
+  if (kind === 'scratchL' || kind === 'scratch') {
+    const heavy = kind === 'scratch';
+    const n = Math.round((heavy ? 30 : 14) + amt * (heavy ? 110 : 40));
+    const lines = [];
+    for (let i = 0; i < n; i++) {
+      const x0 = rnd() * W, y0 = rnd() * W, a = (rnd() - 0.5) * 1.2 + (rnd() < 0.3 ? 1.57 : 0), len = (heavy ? 18 : 8) + rnd() * (heavy ? 70 : 30), bend = (rnd() - 0.5) * 10;
+      lines.push([x0, y0, a, len, bend, rnd()]);
+    }
+    url = canvasTile(W, (x) => wrapDraw(x, W, () => {
+      for (const [x0, y0, a, len, bend, k] of lines) {
+        const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len;
+        x.beginPath();
+        x.moveTo(x0, y0);
+        x.quadraticCurveTo((x0 + x1) / 2 - Math.sin(a) * bend, (y0 + y1) / 2 + Math.cos(a) * bend, x1, y1);
+        x.strokeStyle = k < 0.25 ? 'rgba(0,0,0,0.35)' : `rgba(255,255,255,${(heavy ? 0.35 : 0.22) + k * 0.35})`;
+        x.lineWidth = heavy ? 0.6 + k * 1.1 : 0.4 + k * 0.5;
+        x.stroke();
+      }
+    }));
+  } else if (kind === 'dent') {
+    const n = Math.round(4 + amt * 22);
+    const dents = [];
+    for (let i = 0; i < n; i++) dents.push([rnd() * W, rnd() * W, 3 + rnd() * 9 * (0.6 + amt)]);
+    url = canvasTile(W, (x) => wrapDraw(x, W, () => {
+      for (const [cx, cy, rr] of dents) {
+        let g = x.createRadialGradient(cx - rr * 0.35, cy - rr * 0.35, 0, cx, cy, rr);
+        g.addColorStop(0, 'rgba(0,0,0,0.45)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.12)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g;
+        x.beginPath();
+        x.arc(cx, cy, rr, 0, Math.PI * 2);
+        x.fill();
+        g = x.createRadialGradient(cx + rr * 0.4, cy + rr * 0.4, 0, cx + rr * 0.2, cy + rr * 0.2, rr * 0.8);
+        g.addColorStop(0, 'rgba(255,255,255,0.4)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        x.fillStyle = g;
+        x.beginPath();
+        x.arc(cx + rr * 0.2, cy + rr * 0.2, rr * 0.8, 0, Math.PI * 2);
+        x.fill();
+      }
+    }));
+  } else if (kind === 'stain') {
+    const rings = Math.round(1 + amt * 5), blots = Math.round(3 + amt * 14);
+    const R = [], B = [];
+    for (let i = 0; i < rings; i++) R.push([rnd() * W, rnd() * W, 12 + rnd() * 22, rnd()]);
+    for (let i = 0; i < blots; i++) B.push([rnd() * W, rnd() * W, 6 + rnd() * 26, rnd()]);
+    url = canvasTile(W, (x) => wrapDraw(x, W, () => {
+      for (const [cx, cy, rr, k] of B) {
+        const g = x.createRadialGradient(cx, cy, 0, cx, cy, rr);
+        g.addColorStop(0, `rgba(40,30,15,${0.18 + k * 0.2})`);
+        g.addColorStop(1, 'rgba(40,30,15,0)');
+        x.fillStyle = g;
+        x.beginPath();
+        x.arc(cx, cy, rr, 0, Math.PI * 2);
+        x.fill();
+      }
+      for (const [cx, cy, rr, k] of R) {
+        x.strokeStyle = `rgba(60,45,25,${0.35 + k * 0.25})`;
+        x.lineWidth = 1.2 + k * 1.6;
+        x.beginPath();
+        x.arc(cx, cy, rr, k * 6, k * 6 + Math.PI * (1.4 + k * 0.6));
+        x.stroke();
+      }
+    }));
+  } else {
+    // pixel tiles: rust, chips, relic blotches, fade
+    const bc = rgb(bare);
+    const fn = (u, v) => {
+      if (kind === 'rust') {
+        const n = fbm(u, v, 5, 5, 5, seed % 997);
+        const m = smooth(0.62 - amt * 0.22, 0.7 - amt * 0.18, n);
+        if (m <= 0) return [0, 0, 0, 0];
+        const d = fbm(u, v, 24, 24, 2, 5);
+        const c = mix([92, 38, 14], [176, 88, 34], d);
+        return [c[0], c[1], c[2], m * 235 * (0.7 + d * 0.3)];
+      }
+      if (kind === 'fade') {
+        const n = fbm(u, v, 3, 3, 3, seed % 991);
+        return [238, 234, 224, (0.25 + n * 0.5) * 255];
+      }
+      const light = kind === 'chipL';
+      const w = worley(u, v, light ? 22 : 12, light ? 22 : 12, seed % 983, 1);
+      const show = hash(w.id, 4, seed % 977) < (kind === 'relic' ? 0.05 + amt * 0.17 : (light ? 0.04 : 0.06) + amt * (light ? 0.12 : 0.22));
+      const rr = (kind === 'relic' ? 0.4 : 0.22) + hash(w.id, 5, 3) * 0.2 + (fbm(u, v, 32, 32, 2, 9) - 0.5) * 0.3;
+      if (!show || w.d > rr) return [0, 0, 0, 0];
+      if (w.d > rr - 0.06) return [0, 0, 0, 120]; // dark rim where the finish breaks
+      const c = mul(bc, 0.9 + hash(u * W | 0, v * W | 0, 2) * 0.2);
+      return [c[0], c[1], c[2], 255];
+    };
+    url = tile(W, W, fn, true);
+  }
+  wearTiles.set(key, url);
+  return url;
+}
+function wearPattern(kind, amt, bare, variant, scale) {
+  const id = `mw-${kind}-${num(amt)}-${bare.replace('#', '')}-${variant}-${num(scale)}`;
+  if (!document.getElementById(id)) {
+    const url = wearTile(kind, amt, bare, 1 + (variant % 3));
+    const w = 256 * scale;
+    const p = mk('pattern', { id, width: w, height: w, patternUnits: 'userSpaceOnUse', patternTransform: `translate(${(variant * 37) % 97 * scale} ${(variant * 61) % 89 * scale}) rotate(${variant * 45})` }, defsHost());
+    mk('image', { href: url, width: w, height: w, preserveAspectRatio: 'none' }, p);
+  }
+  return `url(#${id})`;
+}
+let clipN = 0;
+/** Wear layers over a painted shape. opts.seed keeps them the same on every redraw. */
+export function wearOverlay(g, tag, attrs, spec, opts = {}) {
+  const w = spec.w;
+  if (!w) return;
+  const scale = (opts.wearScale || opts.scale || 1) * 0.6;
+  const variant = seedNum(String(opts.seed || '')) % 8;
+  const bare = bareOf(spec);
+  const q = (v) => Math.round(v * 10) / 10 || 0.1;
+  const layer = (fill, op = 1) => mk(tag, Object.assign({}, attrs, { fill, opacity: op, 'pointer-events': 'none' }), g);
+  if (w.fade) {
+    layer(wearPattern('fade', 1, '#ffffff', variant, scale * 2), w.fade * 0.55);
+  }
+  if (w.stain) layer(wearPattern('stain', q(w.stain), '#000000', variant, scale), 0.5 + w.stain * 0.5);
+  if (w.rust) layer(wearPattern('rust', q(w.rust), '#000000', variant, scale), 1);
+  if (w.relic) {
+    // worn through at the edges, plus a few rubbed spots
+    const size = Math.min(120, tag === 'circle' ? attrs.r * 2 : tag === 'rect' ? Math.min(attrs.width, attrs.height) : opts.size || 20);
+    const sw = size * (0.06 + w.relic * 0.16);
+    const id = 'mwc' + (++clipN) + '-' + seedNum(String(opts.seed || '')).toString(36);
+    const cp = mk('clipPath', { id }, g);
+    mk(tag, Object.assign({}, attrs), cp);
+    const cg = mk('g', { 'clip-path': `url(#${id})`, 'pointer-events': 'none' }, g);
+    const bf = bare.spec ? materialFill(bare.spec, { scale: opts.scale || 1 }).fill : bare.hex;
+    const v = seedNum(String(opts.seed || '') + 'r');
+    const dash = [];
+    for (let i = 0; i < 8; i++) dash.push((4 + hash(i, v, 1) * 20) * (size / 40 + 0.5), (1 + hash(i, v, 2) * (12 - w.relic * 10)) * (size / 40 + 0.5));
+    mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw * 2, 'stroke-dasharray': dash.map((x) => x.toFixed(1)).join(' '), 'stroke-linejoin': 'round' }), cg);
+    mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw, 'stroke-linejoin': 'round' }), cg);
+    mk(tag, Object.assign({}, attrs, { fill: wearPattern('relic', q(w.relic), bare.hex, variant, scale) }), cg);
+  }
+  if (w.chip) layer(wearPattern('chip', q(w.chip), bare.hex, variant, scale), 1);
+  if (w.chipL) layer(wearPattern('chipL', q(w.chipL), bare.hex, variant, scale), 1);
+  if (w.dent) layer(wearPattern('dent', q(w.dent), '#000000', variant, scale), 0.6 + w.dent * 0.4);
+  if (w.scratch) layer(wearPattern('scratch', q(w.scratch), '#000000', variant, scale), 0.5 + w.scratch * 0.5);
+  if (w.scratchL) layer(wearPattern('scratchL', q(w.scratchL), '#000000', variant, scale), 0.4 + w.scratchL * 0.6);
 }
 
 /** A small swatch (circle) for pickers: an <svg> element drawn with the material. */

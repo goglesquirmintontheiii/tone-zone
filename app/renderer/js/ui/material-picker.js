@@ -1,7 +1,7 @@
 // Material picker: material, then type (if any), finish and colour or stain, with small previews.
-// materialPicker(parent, { value, onChange(spec, live), title, allowStock, collapsible, key, open })
+// materialPicker(parent, { value, onChange(spec, live), title, allowStock, collapsible, key, open, wear })
 import { el } from '../util.js';
-import { MATERIALS, normalize, finishesFor, paletteFor, colorHex, specLabel, swatchSVG, material } from '../gfx/materials.js';
+import { MATERIALS, normalize, finishesFor, paletteFor, colorHex, specLabel, swatchSVG, material, wearFor } from '../gfx/materials.js';
 
 const openState = new Map(); // key -> open, so the picker stays open across inspector redraws
 
@@ -54,7 +54,7 @@ export function materialPicker(parent, o) {
       tileBtn(g, d, M.name, spec.m === M.id, () => {
         if (spec.m === M.id) return;
         // keep the colour when the new material takes one
-        emit({ m: M.id, s: M.def.s, f: M.def.f, c: /^#/.test(spec.c || '') ? spec.c : M.def.c });
+        emit({ m: M.id, s: M.def.s, f: M.def.f, c: /^#/.test(spec.c || '') ? spec.c : M.def.c, w: spec.w });
       }, M.id);
     }
     if (spec.m === 'stock') {
@@ -86,7 +86,37 @@ export function materialPicker(parent, o) {
       pick.oninput = () => emit({ ...spec, c: pick.value }, true);
       pick.onchange = () => emit({ ...spec, c: pick.value });
     }
+    if (o.wear) wearSection(body);
     if (o.extra) o.extra(body, spec);
+  }
+  // stackable wear layers, each with an amount
+  function wearSection(body) {
+    const sec = el('div', { class: 'mtp-sec' }, body);
+    el('h6', {}, sec).textContent = 'Wear';
+    const chips = el('div', { class: 'mtp-wear' }, sec);
+    const w = spec.w || {};
+    const set = (id, v, live) => {
+      const nw = { ...(spec.w || {}) };
+      if (v > 0) nw[id] = v;
+      else delete nw[id];
+      emit({ ...spec, w: nw }, live);
+    };
+    for (const x of wearFor(spec.m)) {
+      const b = el('button', { class: 'chip sm' + (w[x.id] ? ' on' : ''), type: 'button', 'data-wear': x.id }, chips);
+      b.textContent = x.name;
+      b.onclick = () => set(x.id, w[x.id] ? 0 : 0.5);
+    }
+    for (const x of wearFor(spec.m)) {
+      if (!w[x.id]) continue;
+      const row = el('div', { class: 'mtp-amt' }, sec);
+      el('span', {}, row).textContent = x.name;
+      const r = el('input', { type: 'range', min: 0.05, max: 1, step: 0.05, 'data-wear-amt': x.id }, row);
+      r.value = w[x.id];
+      const paint = () => r.style.setProperty('--p', ((r.value - 0.05) / 0.95) * 100 + '%');
+      paint();
+      r.oninput = () => { paint(); set(x.id, +r.value, true); };
+      r.onchange = () => set(x.id, +r.value);
+    }
   }
   function grid(body, title, cls) {
     const sec = el('div', { class: 'mtp-sec' }, body);

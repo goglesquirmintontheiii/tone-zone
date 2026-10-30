@@ -15,12 +15,20 @@ export const BOARD_SIZES = [
 ];
 export const BOARD_STYLES = ['FULL VELCRO', 'VELCRO STRIPS', 'SCREWS', 'MESSY', 'BLANK'];
 
-const MAT_KEYS = ['Mat', 'Sub', 'Fin', 'Col'];
+const MAT_KEYS = ['Mat', 'Sub', 'Fin', 'Col', 'Wear'];
 const matParams = (pre) => MAT_KEYS.map((k) => pre + k);
 
+function wearOf(str) {
+  const w = {};
+  for (const part of String(str || '').split(',')) {
+    const [k, v] = part.split(':');
+    if (k && +v > 0) w[k.trim()] = +v;
+  }
+  return w;
+}
 // older presets stored a plain frame colour (jacket) and screw colour (screwCol)
 export function boardSpecs(p = {}) {
-  const get = (pre) => (p[pre + 'Mat'] ? { m: p[pre + 'Mat'], s: p[pre + 'Sub'], f: p[pre + 'Fin'], c: p[pre + 'Col'] } : null);
+  const get = (pre) => (p[pre + 'Mat'] ? { m: p[pre + 'Mat'], s: p[pre + 'Sub'], f: p[pre + 'Fin'], c: p[pre + 'Col'], w: wearOf(p[pre + 'Wear']) } : null);
   const frame = get('frame') || { m: 'metal', s: 'aluminium', f: 'anodized', c: p.jacket || '#1d1e22' };
   const ownRails = p.railMat && p.railMat !== 'frame';
   const rail = ownRails ? get('rail') : frame;
@@ -41,7 +49,7 @@ function inspectorSection(block, host, api) {
         [...host.querySelectorAll('.mtp, .mtp-row')].forEach((n) => n.remove());
         const p = api.params();
         const sp = boardSpecs(p);
-        materialPicker(host, { key: 'pb-frame', title: 'Frame', value: sp.frame, collapsible: true, open: true, onChange: (s) => api.setParams(M.toParams(s, 'frame')) });
+        materialPicker(host, { key: 'pb-frame', title: 'Frame', value: sp.frame, collapsible: true, open: true, wear: true, onChange: (s) => api.setParams(M.toParams(s, 'frame')) });
         const row = document.createElement('label');
         row.className = 'mtp-row';
         row.innerHTML = '<input type="checkbox"> Rails match the frame';
@@ -52,7 +60,7 @@ function inspectorSection(block, host, api) {
           draw();
         };
         host.appendChild(row);
-        if (sp.ownRails) materialPicker(host, { key: 'pb-rail', title: 'Rails', value: sp.rail, collapsible: true, onChange: (s) => api.setParams(M.toParams(s, 'rail')) });
+        if (sp.ownRails) materialPicker(host, { key: 'pb-rail', title: 'Rails', value: sp.rail, collapsible: true, wear: true, onChange: (s) => api.setParams(M.toParams(s, 'rail')) });
         materialPicker(host, { key: 'pb-screw', title: 'Screwheads', value: sp.screw, collapsible: true, onChange: (s) => api.setParams(M.toParams(s, 'screw')) });
       };
       draw();
