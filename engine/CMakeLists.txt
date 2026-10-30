@@ -37,5 +37,10 @@ target_include_directories(tonezone-engine PRIVATE
 target_include_directories(tonezone-engine SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen)
 target_compile_definitions(tonezone-engine PRIVATE NAM_SAMPLE_FLOAT NAM_ENABLE_A2_FAST EIGEN_NO_DEBUG)
 target_compile_options(tonezone-engine PRIVATE -O3 ${TZ_ARCH_FLAGS} -fno-math-errno -ffp-contract=fast -Wno-deprecated-declarations)
+# GCC 11 (Ubuntu 22.04, used for the Pi build) rejects a type alias in the bundled NAM resampler header that newer
+# compilers accept ("changes meaning of LanczosResampler"); let it through for the one file that includes it
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+  set_source_files_properties(src/blocks/nam.cpp PROPERTIES COMPILE_OPTIONS "-fpermissive")
+endif()
 target_link_options(tonezone-engine PRIVATE -static-libstdc++ -static-libgcc)
 target_link_libraries(tonezone-engine PRIVATE dl pthread)

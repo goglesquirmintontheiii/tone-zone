@@ -8,3 +8,4 @@ engine/dist-pi/
 dist-pi/
 *.pem.key
 tz-pi-signing-key.pem
+__pycache__/
