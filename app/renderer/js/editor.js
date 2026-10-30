@@ -807,7 +807,13 @@ export class Editor {
   // --- controls
   screenLocal(e, v, c) {
     const w = this.toWorld(e.clientX, e.clientY);
-    return { x: w.x - v.block.x - (c.x - c.w / 2), y: w.y - v.block.y - (c.y - c.h / 2) };
+    let X = w.x - v.block.x, Y = w.y - v.block.y;
+    // undo the block's rotation so taps land in the screen's own coordinates
+    const r = v.rot || 0, fw = v.fw ?? v.w, fh = v.fh ?? v.h;
+    if (r === 90) [X, Y] = [Y, fh - X];
+    else if (r === 180) [X, Y] = [fw - X, fh - Y];
+    else if (r === 270) [X, Y] = [fw - Y, X];
+    return { x: X - (c.x - c.w / 2), y: Y - (c.y - c.h / 2) };
   }
   screenOf(v, c) {
     return v.screens.find((s) => s.ctl === c);
