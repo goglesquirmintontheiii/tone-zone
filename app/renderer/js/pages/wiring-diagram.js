@@ -281,13 +281,15 @@ export function mountDiagram(mid, api) {
       g.addEventListener('click', () => !r.jack.virtual && api.select(r.jack.id));
     }
     if (geo.outRows.length) svg('text', { x: geo.rx + 4, y: 13, class: 'fz-wd-group' }, vg, 'OUTPUTS');
+    // wires go under the circuit boxes, so wires passing behind a box do not look plugged into it
+    const gw = svg('g', { class: 'fz-wd-wires' }, vg);
     // circuits
     for (const b of geo.boxes) {
       const g = svg('g', { class: 'fz-wd-box' + (b.inst.on === false ? ' off' : ''), 'data-winst': b.inst.id }, vg);
       svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8, class: 'fz-wd-boxbg' }, g);
       const hd = svg('g', { class: 'fz-wd-boxhead', 'data-wdrag': b.inst.id }, g);
       svg('rect', { x: b.x, y: b.y, width: b.w, height: 24, rx: 8, class: 'fz-wd-boxtop' }, hd);
-      svg('text', { x: b.x + 10, y: b.y + 16, class: 'fz-wd-title' }, hd, (b.inst.name || 'Circuit').slice(0, 24));
+      svg('text', { x: b.x + 10, y: b.y + 16, class: 'fz-wd-title' }, hd, ((n) => (n.length > 21 ? n.slice(0, 20) + '...' : n))(b.inst.name || 'Circuit'));
       const ed = svg('g', { class: 'fz-wd-btn', 'data-wedit': b.inst.id }, g);
       svg('rect', { x: b.x + b.w - 46, y: b.y + 4, width: 18, height: 16, rx: 4 }, ed);
       svg('path', { d: `M${b.x + b.w - 42},${b.y + 16}l1.5-4 6-6 2.5 2.5-6 6z`, class: 'fz-wd-ico' }, ed);
@@ -309,7 +311,6 @@ export function mountDiagram(mid, api) {
       g.addEventListener('dblclick', () => api.editInst(b.inst.id));
     }
     // wires
-    const gw = svg('g', { class: 'fz-wd-wires' }, vg);
     for (const w of geo.wires) {
       const a = geo.ports.get(w.a), b = geo.ports.get(w.b);
       const hot = hoverKey && (hoverKey === w.a || hoverKey === w.b || hoverKey === w.id || (w.ctl && hoverKey === 'ctl:' + w.ctl.id));

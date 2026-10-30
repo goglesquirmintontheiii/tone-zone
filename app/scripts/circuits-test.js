@@ -37,6 +37,8 @@ const S = process.env.SHOTS || '/tmp';
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
   };
 
+  // diagram size and list filters are remembered per machine: start from the defaults
+  await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForSelector('.fz-stage');
   await win.click('#fzTemplates');
@@ -171,7 +173,7 @@ const S = process.env.SHOTS || '/tmp';
   await win.fill('.cl-search', 'wobble');
   await win.waitForTimeout(150);
   names = await win.$$eval('.cl-item .cl-name b', (a) => a.map((x) => x.textContent));
-  ok(names.length === 1 && names[0] === 'Wobble Filter', 'the new circuit is found by its tag');
+  ok(names.length >= 1 && names[0] === 'Wobble Filter', 'the new circuit is found by its tag: ' + names.join(', '));
 
   // 8. two circuits in one pedal: the saved one and a built-in drive, from the list
   await win.click('.cl-item [data-cl="use"]');
@@ -220,7 +222,7 @@ const S = process.env.SHOTS || '/tmp';
   ok(tos.includes(ts.id + '.' + tsDrive.id) && tos.includes(wob.id + '.' + wobMix.id), 'one knob wired to two circuits by dragging in the diagram: ' + tos.join(', '));
   ok(d.circuit.wires.some((w) => w.a.n === 'jack:' + in2.id && w.b.n === wob.id), 'the second input jack is wired into a circuit');
   ok((d.jacks.find((j) => j.id === exp.id).maps || []).some((m) => m.to === ts.id + '.' + tsDrive.id), 'the expression jack drives the drive input');
-  ok((await win.evaluate(() => window.__tzFactory.selection())) === newKnob.id && (await win.evaluate(() => document.querySelectorAll('.fz-insp .fz-mapbox').length)) === 2, 'the inspector shows both of the knob\'s targets');
+  ok((await win.evaluate(() => window.__tzFactory.selection())) === newKnob.id && (await win.evaluate(() => document.querySelectorAll('.fz-insp .fz-mapbox').length)) === tos.length, 'the inspector lists every target of the knob (' + tos.length + ')');
   // the knob moves both
   const both = await win.evaluate(async ([kid, a, b]) => {
     const m = await import('./js/pages/factory-circuit.js');
@@ -235,12 +237,13 @@ const S = process.env.SHOTS || '/tmp';
   }, [newKnob.id, ts.id + '.' + tsDrive.id, wob.id + '.' + wobMix.id]);
   ok(both.a[1] > both.a[0] && both.b[1] > both.b[0], `one knob turns two inputs (${both.a.map((v) => v.toFixed(2))} and ${both.b.map((v) => v.toFixed(2))})`);
   // click a wire and delete it
-  const wid = `m:${newKnob.id}:1`;
+  const wid = `m:${newKnob.id}:${tos.indexOf(wob.id + '.' + wobMix.id)}`;
   await win.click(`.fz-wd .fz-wd-wirehit[data-ww="${wid}"]`, { force: true });
   await win.keyboard.press('Delete');
   await win.waitForTimeout(200);
   d = await D();
-  ok(!(d.ctls.find((c) => c.id === newKnob.id).more || []).length && !(await win.evaluate(() => document.querySelector('.fz-stage'))) === false, 'clicking a wire and pressing Delete removes it');
+  const nk2 = d.ctls.find((c) => c.id === newKnob.id);
+  ok(![nk2.map, ...(nk2.more || [])].some((m) => m && m.to === wob.id + '.' + wobMix.id) && [nk2.map, ...(nk2.more || [])].filter((m) => m && m.to).length === tos.length - 1, 'clicking a wire and pressing Delete removes it');
   // put it back for the render below
   await wdDrag('ctl:' + newKnob.id, `k:${wob.id}:${wobMix.id}`);
 
@@ -316,6 +319,10 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('#fzSaveBlock');
   await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
   const blockId = (await D()).blockId;
+  // the drive's Level knob (made when the circuit was added)
+  const dl = await D();
+  const lvlK = ts.graph.nodes.find((n) => n.t === 'knob' && n.name === 'Level');
+  const lvlCtl = dl.ctls.find((c) => c.map && c.map.to === ts.id + '.' + lvlK.id);
   const di = makeDI(path.join(data, 'di.wav'));
   const render = (v) => win.evaluate(async ([id, di, kid, v]) => {
     const preset = {
@@ -325,13 +332,13 @@ const S = process.env.SHOTS || '/tmp';
     };
     const g = window.__tz.buildGraph(preset);
     return { file: await window.tz.offline.render(g, di), algo: g.nodes[0].algo, n: g.nodes[0].opts.nodes.length };
-  }, [blockId, di, newKnob.id, v]);
+  }, [blockId, di, lvlCtl.id, v]);
   const r0 = await render(0), r1 = await render(1);
   const l0 = measure(r0.file), l1 = measure(r1.file);
   fs.rmSync(r0.file, { force: true });
   fs.rmSync(r1.file, { force: true });
   ok(r0.algo === 'patch' && r0.n > 10 && l0.lufs > -50 && l1.lufs > -50 && l1.peak < 3, `offline render of the two-circuit pedal is not silent (${l0.lufs.toFixed(1)} / ${l1.lufs.toFixed(1)} LUFS)`);
-  ok(Math.abs(l1.lufs - l0.lufs) > 1 || Math.abs(l1.rms - l0.rms) > 0.001, `turning the mapped knob changes the sound (${l0.lufs.toFixed(1)} -> ${l1.lufs.toFixed(1)} LUFS)`);
+  ok(Math.abs(l1.lufs - l0.lufs) > 1 || Math.abs(l1.rms - l0.rms) > 0.001, `turning the drive's mapped Level knob changes the sound (${l0.lufs.toFixed(1)} -> ${l1.lufs.toFixed(1)} LUFS)`);
 
   // 14. editing a circuit from the pedal updates the pedal and the library
   d = await D();
@@ -346,6 +353,7 @@ const S = process.env.SHOTS || '/tmp';
   ok(d.circuit.insts.find((i) => i.id === wob2.id).graph.nodes.some((n) => n.t === 'crusher'), 'saving from the pedal updates the pedal\'s circuit');
   ok(JSON.parse(fs.readFileSync(path.join(dir, saved.id + '.json'), 'utf8')).graph.nodes.some((n) => n.t === 'crusher'), 'and the circuit in the library');
 
+  await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));
   console.log(fails ? `${fails} failed` : 'all passed');

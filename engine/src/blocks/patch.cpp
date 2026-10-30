@@ -92,6 +92,7 @@ struct Node
   // state
   float on = 1.f, m = 1.f, g = 0.f, fz = 0.f, x1 = 0.f, ph = 0.f, last = 0.f;
   int step = 0, prevTrig = 0;
+  uint32_t rng = 0x9e3779b9u;
   bool latch = false, first = true;
   SVF svf[2];
   OnePole lp[2];
@@ -569,7 +570,11 @@ public:
         float w;
         if (shape == 5)
         {
-          if (n.ph < n.x1) n.last = float(std::rand()) / float(RAND_MAX) * 2.f - 1.f;
+          if (n.ph < n.x1)
+          {
+            n.rng ^= n.rng << 13, n.rng ^= n.rng >> 17, n.rng ^= n.rng << 5; // xorshift: no locks on the audio thread
+            n.last = float(n.rng & 0xffffff) / float(0xffffff) * 2.f - 1.f;
+          }
           w = n.last;
         }
         else w = LFO::value(n.ph, shape);
