@@ -56,5 +56,7 @@ talk to a real Pi yet. Next: phase 1 (ARM build, denormal fix, measured block co
 
 ## Pedal Factory
 
-The Factory tab designs a pedal's look. Next: pick and wire the sound blocks (the circuit panel), map controls to
-their parameters, and save the result as a block that shows up in the block list.
+The Factory builds working pedals: enclosure, parts and materials, circuits in the circuit editor, the wiring
+diagram, scripted screens, Test mode and saving as a block. Next: LEDs and screens driven straight from more engine
+signals, two-channel control cables on the board (so a footswitch jack's ring reaches a pedal too), and sharing
+pedals and circuits as files.
