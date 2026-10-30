@@ -468,7 +468,8 @@ function rank(items, prefix, keepAll) {
     if (it.kind === 'own' || it.kind === 'var') sc += 0.2;
     scored.push([sc, it]);
   }
-  scored.sort((a, b) => b[0] - a[0] || a[1].label.length - b[1].label.length || a[1].label.localeCompare(b[1].label));
+  // values keep their own order (ports, controls) until there is something to match
+  if (p || !keepAll) scored.sort((a, b) => b[0] - a[0] || a[1].label.length - b[1].label.length || a[1].label.localeCompare(b[1].label));
   return scored.slice(0, keepAll ? 200 : 60).map((x) => x[1]);
 }
 export { typeLabel };

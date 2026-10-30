@@ -21,6 +21,7 @@ import { migrateCtl } from './factory-kinds.js';
 import { openLibrary } from './factory-library.js';
 import { jackOnOutline } from './factory-render.js';
 import { screenInspector, liveStage } from '../screenscript/factory-ui.js';
+import { showcaseTemplates, codedScreen, SYNTH_SCRIPT, ECHO_SCRIPT } from './factory-showcase.js';
 
 const STORE = 'tz.factory.design.v1';
 const PREFS = 'tz.factory.prefs.v1';
@@ -312,6 +313,13 @@ const TEMPLATES = [
     })),
   },
 ];
+// coded screens for Twin Echo and Synth Box, and the showcase templates (factory-showcase.js)
+for (const t of TEMPLATES) {
+  const code = { delay: ECHO_SCRIPT, synth: SYNTH_SCRIPT }[t.id];
+  const mk = t.make;
+  if (code) t.make = () => codedScreen(mk(), code);
+}
+TEMPLATES.splice(TEMPLATES.findIndex((t) => t.id === 'blank'), 0, ...showcaseTemplates({ base, txt, knob, stomp, led, jack, art, toggle, FONTS }));
 // LEDs that follow a footswitch: 'fz0' = the first footswitch
 for (const t of TEMPLATES) {
   const mk = t.make;

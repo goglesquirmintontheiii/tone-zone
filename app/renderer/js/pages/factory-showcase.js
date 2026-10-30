@@ -54,6 +54,7 @@ const knobMap = (t) => ({ to: t.to, min: 0, max: 1, taper: 'lin', invert: false 
 const valsMap = (t, n) => ({ to: t.to, values: [...Array(n)].map((_, i) => (n > 1 ? i / (n - 1) : 0)) });
 const binMap = (t) => ({ to: t.to, min: 0, max: 1, taper: 'lin', invert: false });
 function finish(d, insts) {
+  for (const c of d.ctls) if (c.kind === 'foot' && !c.map) c.map = { to: 'bypass' };
   d.circuit = { v: 3, insts, wires: [], cwires: [], mix: false, mixDef: 1, combine: {} };
   seriesWires(d);
   syncStages(d.circuit);
@@ -196,7 +197,7 @@ export function showcaseTemplates(h) {
             kk(176, 22, 'RATE', rate, 0.3), kk(200, 22, 'DEPTH', dep, 0.5), kk(176, 50, 'TIME', time, 0.6), kk(200, 50, 'REPEATS', rep, 0.35),
             kk(78, 80, 'ECHO', emix, 0.3, { r: 5 }), kk(142, 80, 'VERB', vmix, 0.3, { r: 5 }),
             { id: uid('d'), kind: 'dip', x: 110, y: 79, n: 4, bits: [1, 0, 0, 0], color: '#1f4fbf', label: 'SETUP', labelPos: 'below', maps: [binMap(compOn), knobMap(tape), knobMap(shim), knobMap(vib)] },
-            led(30, 106, '#3ddc84'), led(80, 106, '#ff7a2f', { bindTo: 'fz1' }), led(140, 106, '#b45cff', { bindTo: 'fz2' }), led(190, 106, '#ff2a1a', { bind: 'tap:' + c.inst.id }),
+            led(30, 106, '#3ddc84'), led(80, 106, '#ff7a2f', { bind: 'fz1' }), led(140, 106, '#b45cff', { bind: 'fz2' }), led(190, 106, '#ff2a1a', { bind: 'tap:' + c.inst.id }),
             stomp(30, 122, { r: 6, label: 'BYPASS', labelPos: 'none' }),
             stomp(80, 122, { r: 6, label: 'DRIVE', labelPos: 'none', map: binMap(driveOn) }),
             stomp(140, 122, { r: 6, label: 'MOD', labelPos: 'none', map: binMap(modOn) }),

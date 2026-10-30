@@ -290,6 +290,7 @@ end
     const c = d.ctls.find((x) => x.id === id);
     c.sio = { ins: [{ id: 'pe', name: 'Env', sig: 'n' }, { id: 'pg', name: 'Gate', sig: 'b' }], outs: [{ id: 'ps', name: 'Sens', sig: 'n' }, { id: 'ph', name: 'Hold', sig: 'b' }] };
     window.__tzFactory.load(d);
+    window.__tzFactory.select(id);
   }, scr.id);
   await win.waitForTimeout(300);
   await win.click('[data-ss="edit"]');
@@ -333,7 +334,7 @@ end
   sig = await win.evaluate(() => (document.querySelector('.ss-sig-p.on') || {}).textContent);
   ok(sig === 'w: number', 'the current parameter follows the commas (' + sig + ')');
   await shotEd('screens-hint-signature.png');
-  await win.keyboard.type('20)\n');
+  await win.keyboard.type('20, 10)\n');
   ok(!(await win.$('.ss-sig.open')), 'signature help closes after the call');
   // port names from this screen
   await win.keyboard.type('level = input("');
@@ -346,13 +347,13 @@ end
   labels = await acLabels();
   ok(labels.join(',') === 'Sens,Hold', 'output(" offers its outputs: ' + labels.join(', '));
   await win.keyboard.press('Escape');
-  await win.keyboard.type('Sens", level * 2)\nrect(1, 2)\nknob("Cutof")\noutput("Nope", 1)\nfilRect(0, 0, 4, 4)\ntext("hi", "two", 3)\nend\n');
+  await win.keyboard.type('Sens", level * 2)\nrect(1, 2)\nknob("Cutof")\noutput("Nope", 1)\nif false then filRect(0, 0, 4, 4) end\ntext("hi", "two", 3)\nend\n');
   await win.waitForTimeout(700);
   ed = await win.evaluate(() => window.__tzScreens.editor().peek());
   const wmsg = ed.warnings.map((w) => w.message).join(' | ');
   ok(ed.warnings.some((w) => /rect needs at least 4 arguments \(x, y, w, h\), this call has 2/.test(w.message)), 'a wrong argument count is underlined: ' + wmsg);
   ok(/no knob called "Cutof".*CUTOFF/.test(wmsg) && /no output called "Nope"/.test(wmsg), 'unknown control and port names are flagged');
-  ok(/filRect is not a Tone Zone function.*fillRect/.test(wmsg) && /y should be a number, not text/.test(wmsg), 'unknown functions and text for a number are flagged');
+  ok(/filRect is not a Tone Zone function.*fillRect/.test(wmsg) && /x should be a number, not text/.test(wmsg), 'unknown functions and text for a number are flagged');
   ok(!ed.error && ed.frames > 0, 'the checks do not stop the script');
   ok((await win.$$('.ss-marks .ss-warn')).length === ed.warnings.length && (await win.$$('.ss-gutter-in div.warn')).length >= 4, 'warnings are underlined and marked in the gutter');
   ok(/5 hints/.test(await win.$eval('.ss-status', (s) => s.textContent)), 'the status counts the hints');
