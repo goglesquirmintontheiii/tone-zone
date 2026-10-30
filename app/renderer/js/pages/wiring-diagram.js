@@ -9,7 +9,7 @@ import { PARTS, hasTap } from './circuit-parts.js';
 import { legendSVG } from './circuit-render.js';
 import {
   instInputs, instAudioIns, instAudioOuts, instOutputs, instOf, jackList, effectiveWires, mappingsOf, mapTo, targetInfo, addMapping, removeMapping, uid, resolveJack,
-  nodeSig, ctlJacks, jackIsOut, screenIO, SCREEN_PORTS,
+  nodeSig, ctlJacks, jackIsOut, screenIO, SCREEN_PORTS, loopRole,
 } from './factory-circuit.js';
 
 const PREF = 'tz.factory.wd.v1';
@@ -179,7 +179,7 @@ export function mountDiagram(mid, api) {
     }
     group('Jacks');
     for (const j of J.ins) {
-      rows.push({ jack: j, y, h: ROWH, label: (j.label || 'IN') + (j.virtual ? ' (no jack)' : ''), audio: true });
+      rows.push({ jack: j, y, h: ROWH, label: (j.label || (loopRole(j) ? 'RETURN' : 'IN')) + (j.virtual ? ' (no jack)' : loopRole(j) ? ' (return ' + (j.loopN || 1) + ')' : ''), audio: true });
       ports.set('jack:' + j.id, { x: COL, y: y + ROWH / 2, dir: 'out', kind: 'a', sig: 'a', jack: j });
       y += ROWH + 4;
     }
@@ -236,7 +236,7 @@ export function mountDiagram(mid, api) {
     const outRows = [];
     for (const j of J.outs) {
       const stereo = j.kind === 'phones';
-      outRows.push({ jack: j, y: ry, label: (j.label || 'OUT') + (j.virtual ? ' (no jack)' : ''), h: stereo ? ROWH + 18 : ROWH });
+      outRows.push({ jack: j, y: ry, label: (j.label || (loopRole(j) ? 'SEND' : 'OUT')) + (j.virtual ? ' (no jack)' : loopRole(j) ? ' (send ' + (j.loopN || 1) + ')' : ''), h: stereo ? ROWH + 18 : ROWH });
       ports.set('jack:' + j.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'a', sig: 'a', jack: j });
       if (stereo) {
         ports.set('jack:' + j.id + ':L', { x: rx + 18, y: ry + ROWH + 7, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'L', label: 'Left', small: true, labelRight: true });
@@ -698,7 +698,7 @@ export function mountDiagram(mid, api) {
   function signature() {
     const D = api.design();
     if (!D) return '';
-    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.n, c.ways, c.bind, c.sio, c.color]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps, j.from]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.t, n.name, n.steps]), hasTap(i.graph)]), D.circuit && D.circuit.wires, D.circuit && D.circuit.cwires, api.selected(), selWire, P.collapsed]);
+    return JSON.stringify([D.ctls.map((c) => [c.id, c.kind, c.label, c.hidden, c.map, c.more, c.maps, c.n, c.ways, c.bind, c.sio, c.color]), D.jacks.map((j) => [j.id, j.kind, j.label, j.maps, j.from, j.loop, j.loopN]), D.circuit && D.circuit.insts && D.circuit.insts.map((i) => [i.id, i.name, i.x, i.y, i.on, i.graph.nodes.filter((n) => PARTS[n.t]?.io).map((n) => [n.id, n.t, n.name, n.steps]), hasTap(i.graph)]), D.circuit && D.circuit.wires, D.circuit && D.circuit.cwires, api.selected(), selWire, P.collapsed]);
   }
   function refresh(force) {
     if (raf) return;

@@ -9,7 +9,7 @@ import {
   SHAPES, FONTS, SCREENS, ART_KINDS, JACKS, shapePoints, roundPoly, jackSpot, artPath, encSpec, isClear, drawJackGfx, drawControl, ctlHalf, renderPedal, thumb, r1,
 } from './factory-render.js';
 import { STAGES, makeCircuit, migrateCircuit, autoMap, targetsFor, targetInfo, mapTo } from './factory-circuit.js';
-import { applyCircuit, renderCircuitPane, wiringSection, expSection } from './factory-wiring.js';
+import { applyCircuit, renderCircuitPane, wiringSection, expSection, loopSection } from './factory-wiring.js';
 import { initCircuitUI, refreshCircuitUI, circuitKeysBusy } from './factory-circuits.js';
 import { startTest, stopTest, updateTest, testing, renderPlay, playDown, updateViews, engineRunning, testValues, testInfo, playSet } from './factory-play.js';
 import { saveCustomBlock, customBlocks, deleteCustomBlock } from '../catalog/custom.js';
@@ -1493,6 +1493,7 @@ function inspJack(host, j, multi) {
   if (!multi) slider(s, 'Along', j.t, 0.04, 0.96, 0.01, (v) => (j.t = v));
   el('p', { class: 'fz-note' }, s).textContent = { phones: 'A stereo headphone out (TRS) on the board.', xlr: 'A balanced XLR out on the board.', exp: 'A control input: an expression pedal plugged in here turns one of your controls.', fsw: 'A footswitch input (TRS): plug one or two external footswitches in on the board. Tip and ring each send an on / off. Wire it in the wiring diagram.', power: 'Just for looks: the board does not need power.' }[j.kind] || 'Drag a jack around the pedal to move it to another edge.';
   if ((j.kind === 'exp' || j.kind === 'fsw') && !multi) expSection(host, D, j, H());
+  if ((j.kind === 'in' || j.kind === 'out') && !multi) loopSection(host, D, j, H()); // effects loop SEND / RETURN
   if (j.kind !== 'power') jackAngleSection(host, D, j, multi, H());
   if (j.kind !== 'power') partMaterial(host, j);
 }

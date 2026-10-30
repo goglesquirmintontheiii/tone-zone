@@ -631,6 +631,10 @@ void Engine::swapGraph(std::shared_ptr<CompiledGraph> g)
 void Engine::setGraph(const json& g)
 {
   lastGraph = g;
+  // a block split in two halves (effects loop): the extra half follows the block's params and events
+  followers.clear();
+  for (const auto& nj : g.value("nodes", json::array()))
+    if (nj.contains("also") && nj["also"].is_string()) followers[nj["also"].get<std::string>()].push_back(nj.value("id", ""));
   auto cg = compile(g, blocks, false);
   swapGraph(cg);
   send({{"ev", "graphApplied"}, {"nodes", int(cg->nodes.size())}});
@@ -649,34 +653,36 @@ void Engine::handleCommand(const json& cmd)
   const std::string c = cmd.value("cmd", "");
   if (c == "setGraph")
     setGraph(cmd["graph"]);
-  else if (c == "param")
+  else if (c == "param" || c == "params" || c == "event")
   {
-    auto it = blocks.find(cmd.value("id", ""));
-    if (it != blocks.end()) it->second->setParam(cmd.value("name", ""), cmd.value("value", 0.f));
-  }
-  else if (c == "params")
-  {
-    auto it = blocks.find(cmd.value("id", ""));
-    if (it != blocks.end())
-      for (auto& [k, v] : cmd["values"].items())
-        if (v.is_number()) it->second->setParam(k, v.get<float>());
+    // the block, and any half that follows it
+    std::vector<std::string> ids{cmd.value("id", "")};
+    auto fo = followers.find(ids[0]);
+    if (fo != followers.end()) ids.insert(ids.end(), fo->second.begin(), fo->second.end());
+    for (const auto& id : ids)
+    {
+      auto it = blocks.find(id);
+      if (it == blocks.end()) continue;
+      if (c == "param") it->second->setParam(cmd.value("name", ""), cmd.value("value", 0.f));
+      else if (c == "params")
+      {
+        for (auto& [k, v] : cmd["values"].items())
+          if (v.is_number()) it->second->setParam(k, v.get<float>());
+      }
+      else
+      {
+        BlockEvent e;
+        e.type = cmd.value("type", 0);
+        e.value = cmd.value("value", 0.f);
+        e.arg = cmd.value("arg", 0);
+        it->second->events.push(e);
+      }
+    }
   }
   else if (c == "bypass")
   {
     auto it = blocks.find(cmd.value("id", ""));
     if (it != blocks.end()) it->second->bypass.store(cmd.value("on", false));
-  }
-  else if (c == "event")
-  {
-    auto it = blocks.find(cmd.value("id", ""));
-    if (it != blocks.end())
-    {
-      BlockEvent e;
-      e.type = cmd.value("type", 0);
-      e.value = cmd.value("value", 0.f);
-      e.arg = cmd.value("arg", 0);
-      it->second->events.push(e);
-    }
   }
   else if (c == "settings")
   {
@@ -782,6 +788,28 @@ void Engine::statusTick()
     if (c > 0) bj["load"] = a / c / periodNs;
     b->status(bj);
     bl[id] = bj;
+  }
+  // split blocks: the halves report as one (circuit outputs merged, loads added)
+  for (const auto& [id, fs] : followers)
+  {
+    if (!bl.contains(id)) continue;
+    json& t = bl[id];
+    for (const auto& f : fs)
+    {
+      if (!bl.contains(f)) continue;
+      const json& s = bl[f];
+      if (s.contains("load") && s["load"].is_number()) t["load"] = t.value("load", 0.0) + s["load"].get<double>();
+      if (s.contains("cv") && s["cv"].is_array())
+      {
+        if (!t.contains("cv") || !t["cv"].is_array()) t["cv"] = json::array();
+        json& cv = t["cv"];
+        for (size_t i = 0; i < s["cv"].size(); ++i)
+        {
+          while (cv.size() <= i) cv.push_back(nullptr);
+          if (cv[i].is_null()) cv[i] = s["cv"][i];
+        }
+      }
+    }
   }
   st["blocks"] = bl;
   send(st);

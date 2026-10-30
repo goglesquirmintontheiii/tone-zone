@@ -299,4 +299,31 @@ export function expSection(host, D, j, H) {
     el('button', { class: 'btn small', 'data-act': 'expmap', onclick: () => { const t = all.find((x) => !maps.some((m) => m.to === x[0])) || all[0]; j.maps = [...maps, mapTo(C, t[0], fsw ? { ch: 't' } : {})]; H.changed(false); H.rerender(false); } }, ar, '<i class="ic ic-plus"></i>Drive a circuit input');
   }
 }
+/** Output and input jacks: plain, or the SEND / RETURN of an effects loop (paired by number). */
+export function loopSection(host, D, j, H) {
+  const s = H.sec(host, 'Effects loop');
+  const send = j.kind === 'out';
+  H.selectField(s, 'Use', [['', send ? 'Normal output' : 'Normal input'], [send ? 'send' : 'return', send ? 'Loop send' : 'Loop return']], j.loop || '', (v) => {
+    if (v) {
+      j.loop = v;
+      // pair with the first loop number the other side has without a partner
+      const other = D.jacks.filter((x) => x !== j && x.loop === (send ? 'return' : 'send'));
+      const mine = D.jacks.filter((x) => x !== j && x.loop === v).map((x) => x.loopN || 1);
+      j.loopN = (other.map((x) => x.loopN || 1).find((n) => !mine.includes(n))) || Math.max(0, ...mine, ...other.map((x) => x.loopN || 1)) + 1;
+    } else {
+      delete j.loop;
+      delete j.loopN;
+    }
+  }, true);
+  if (!j.loop) {
+    el('p', { class: 'fz-note' }, s).textContent = send ? 'Make it a loop send to cable other pedals in the middle of this one.' : 'Make it a loop return to bring other pedals back into this one.';
+    return;
+  }
+  const nums = [...new Set([1, 2, 3, 4, ...D.jacks.filter((x) => x.loop).map((x) => x.loopN || 1)])].sort((a, b) => a - b);
+  H.selectField(s, 'Loop', nums.map((n) => [n, 'Loop ' + n]), j.loopN || 1, (v) => (j.loopN = +v));
+  const partner = D.jacks.find((x) => x !== j && x.loop === (send ? 'return' : 'send') && (x.loopN || 1) === (j.loopN || 1));
+  el('p', { class: 'fz-note' }, s).textContent = (send
+    ? 'Wire a signal to this send in the wiring diagram (say after the drive). On the board, cable it through other pedals into the '
+    : 'Wire this return into the rest of the circuits in the wiring diagram. On the board it takes what comes back from the ') + (partner ? `${partner.label || (send ? 'RETURN' : 'SEND')} jack` : (send ? 'return' : 'send') + ' of the same loop (add one)') + '. No extra delay: it all runs in the same audio cycle. With nothing plugged in, the return gets the send.';
+}
 export { targetLabel, CIRCUITS, instOf, mappingsOf };

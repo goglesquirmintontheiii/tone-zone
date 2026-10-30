@@ -590,6 +590,107 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForTimeout(300);
 
+  // 16. effects loop: a SEND and a RETURN on the pedal, in the same audio cycle
+  const loopDs = await win.evaluate(() => {
+    const { N, W, pedal, G: g0 } = window.__ct;
+    const drive = () => {
+      const G = g0();
+      N(G, 'in', 'in'); N(G, 'out', 'out'); N(G, 'od', 'overdrive', {}, { gain: 0.6 });
+      W(G, 'in', 'out', 'od', 'in'); W(G, 'od', 'out', 'out', 'in');
+      return G;
+    };
+    // blend: what came back (A) with the dry input (B, crosses over the loop) at a mix set by a Value part
+    const blend = () => {
+      const G = g0();
+      N(G, 'in', 'in', { name: 'WET' }); N(G, 'dry', 'in', { name: 'DRY' }); N(G, 'out', 'out');
+      N(G, 'xf', 'xfade'); N(G, 'mx', 'const', {}, { value: 0.3 });
+      W(G, 'in', 'out', 'xf', 'a'); W(G, 'dry', 'out', 'xf', 'b'); W(G, 'mx', 'cv', 'xf', '@mix'); W(G, 'xf', 'out', 'out', 'in');
+      return G;
+    };
+    const mk = (loop) => {
+      const jacks = [
+        { id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jret', kind: 'in', edge: 'right', t: 0.7, label: 'RET', ...(loop ? { loop: 'return', loopN: 1 } : {}) },
+        { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' }, { id: 'jsend', kind: 'out', edge: 'left', t: 0.7, label: 'SEND', ...(loop ? { loop: 'send', loopN: 1 } : {}) },
+      ];
+      const wires = [
+        { id: 'w1', a: { n: 'jack:jin', p: '' }, b: { n: 'D', p: 'in' } }, { id: 'w2', a: { n: 'jack:jin', p: '' }, b: { n: 'B', p: 'dry' } },
+        { id: 'w5', a: { n: 'B', p: 'out' }, b: { n: 'jack:jout', p: '' } },
+        ...(loop ? [{ id: 'w3', a: { n: 'D', p: 'out' }, b: { n: 'jack:jsend', p: '' } }, { id: 'w4', a: { n: 'jack:jret', p: '' }, b: { n: 'B', p: 'in' } }] : [{ id: 'w3', a: { n: 'D', p: 'out' }, b: { n: 'B', p: 'in' } }]),
+      ];
+      return pedal(loop ? 'Loop pedal' : 'No loop pedal', [{ id: 'D', name: 'Drive', graph: drive() }, { id: 'B', name: 'Blend', graph: blend() }], { jacks, wires });
+    };
+    return { loop: mk(true), plain: mk(false) };
+  });
+  const imp = path.join(data, 'imp.wav');
+  {
+    const n = 48000 * 2, buf = Buffer.alloc(44 + n * 4);
+    buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 4, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
+    buf.writeUInt32LE(16, 16); buf.writeUInt16LE(3, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(48000, 24);
+    buf.writeUInt32LE(48000 * 4, 28); buf.writeUInt16LE(4, 32); buf.writeUInt16LE(32, 34); buf.write('data', 36); buf.writeUInt32LE(n * 4, 40);
+    for (let i = 0; i < n; i++) buf.writeFloatLE(i === 4800 ? 0.5 : 0, 44 + i * 4);
+    fs.writeFileSync(imp, buf);
+  }
+  const loopRender = (design, how, src) => win.evaluate(async ([design, how, src]) => {
+    const cu = await import('./js/catalog/custom.js');
+    const ci = await import('./js/catalog/index.js');
+    const st = await import('./js/state.js');
+    const id = await cu.saveCustomBlock(design, { asNew: true });
+    const drv = ci.allDefs().find((d) => d.algo === 'drive' && !d.hidden && /screamer|ts/i.test((d.name || '') + ' ' + (d.typeName || ''))) || ci.allDefs().find((d) => d.algo === 'drive' && !d.hidden);
+    const blocks = [{ id: '__in', type: '__in', x: 0, y: 0, params: {} }, { id: '__out', type: '__out', x: 0, y: 0, params: {} }, { id: 'lp', type: id, x: 0, y: 0, params: {}, variant: 'mono' }];
+    const cables = [{ id: 'a', from: { node: '__in', port: 0 }, to: { node: 'lp', port: 0 } }, { id: 'b', from: { node: 'lp', port: 0 }, to: { node: '__out', port: 0 } }];
+    if (how === 'self') cables.push({ id: 's', from: { node: 'lp', port: 1 }, to: { node: 'lp', port: 1 } });
+    if (how === 'ts') {
+      blocks.push({ id: 'ts', type: drv.id, x: 0, y: 0, params: {}, variant: 'mono' });
+      cables.push({ id: 's1', from: { node: 'lp', port: 1 }, to: { node: 'ts', port: 0 } }, { id: 's2', from: { node: 'ts', port: 0 }, to: { node: 'lp', port: 1 } });
+    }
+    const preset = { version: 1, name: 'loop check', blocks, cables };
+    const g = window.__tz.buildGraph(preset);
+    // the cycle check: SEND -> pedal -> own RETURN is fine, OUT -> pedal -> own IN is a loop
+    const cyc = how === 'ts' ? {
+      ok: st.cableMakesLoop({ node: 'ts', port: 0 }, { node: 'lp', port: 1 }, preset),
+      bad: st.cableMakesLoop({ node: 'ts', port: 0 }, { node: 'lp', port: 0 }, { ...preset, cables: [...cables.filter((c) => c.id !== 's1' && c.id !== 's2'), { id: 'x', from: { node: 'lp', port: 0 }, to: { node: 'ts', port: 0 } }] }),
+    } : null;
+    return { file: await window.tz.offline.render(g, src), nodes: g.nodes.map((n) => n.id), drv: drv && drv.name, cyc };
+  }, [design, how, src]);
+  const rd = (r) => readWav(r.file).chans[0];
+  const plain = await loopRender(loopDs.plain, 'none', di), self = await loopRender(loopDs.loop, 'self', di), open = await loopRender(loopDs.loop, 'none', di), viaTs = await loopRender(loopDs.loop, 'ts', di);
+  const xp = rd(plain), xs = rd(self), xo = rd(open), xt = rd(viaTs);
+  const maxDiff = (a, b) => {
+    let m = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) m = Math.max(m, Math.abs(a[i] - b[i]));
+    return m;
+  };
+  ok(self.nodes.includes('lp~a') && self.nodes.includes('lp') && !plain.nodes.includes('lp~a'), 'a pedal with an effects loop runs as two engine nodes: ' + self.nodes.join(', '));
+  ok(segRms(xp, 0.2, 10) > 0.01 && maxDiff(xs, xp) < 1e-6, `SEND cabled to its own RETURN sounds the same as no loop (max difference ${maxDiff(xs, xp).toExponential(1)})`);
+  ok(maxDiff(xo, xs) < 1e-6, 'an unplugged RETURN gets the SEND (same as cabling them together)');
+  ok(maxDiff(xt, xs) > 0.01 && segRms(xt, 0.2, 10) > 0.01, `a drive pedal between SEND and RETURN changes the sound (${viaTs.drv}, difference ${maxDiff(xt, xs).toFixed(3)})`);
+  ok(viaTs.cyc && viaTs.cyc.ok === false && viaTs.cyc.bad === true, 'the cycle check allows SEND -> pedal -> RETURN and still finds a real loop');
+  const ip = await loopRender(loopDs.plain, 'none', imp), is = await loopRender(loopDs.loop, 'self', imp);
+  const peakAt = (x) => x.reduce((b, v, i) => (Math.abs(v) > Math.abs(x[b]) ? i : b), 0);
+  const ipx = rd(ip), isx = rd(is);
+  ok(peakAt(isx) === peakAt(ipx) && maxDiff(isx, ipx) < 1e-6, `an impulse through the loop lines up with no loop (peak at sample ${peakAt(isx)} vs ${peakAt(ipx)}, no added delay)`);
+  for (const r of [plain, self, open, viaTs, ip, is]) fs.rmSync(r.file, { force: true });
+  // the loop in the factory: jacks marked in the inspector, shown in the diagram
+  await win.evaluate((d) => window.__tzFactory.load(d), loopDs.loop);
+  await win.evaluate(() => window.__tzCircuits.diagram().refresh(true));
+  await win.waitForTimeout(300);
+  const lbl = await win.evaluate(() => [...document.querySelectorAll('.fz-wd .fz-wd-label')].map((t) => t.textContent).filter((t) => /send|return/i.test(t)));
+  ok(lbl.some((t) => /return 1/.test(t)) && lbl.some((t) => /send 1/.test(t)), 'the diagram marks the loop send and return: ' + lbl.join(', '));
+  await win.evaluate(() => window.__tzFactory.select('jsend'));
+  await win.waitForTimeout(300);
+  ok(await win.evaluate(() => [...document.querySelectorAll('.fz-insp h5')].some((h) => h.textContent === 'Effects loop')), 'the jack inspector has the Effects loop setting');
+  await win.screenshot({ path: path.join(S, 'circuits-loop.png') });
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1200);
+  const tl = await win.evaluate(async () => {
+    const m = await import('./js/pages/factory-play.js');
+    const i = m.testInfo();
+    const g = i.graphs[i.graphs.length - 1];
+    return { nodes: g.nodes.map((n) => n.id), out: (window.__tz.state.status.outPeak || [0])[0] };
+  });
+  ok(tl.nodes.join() === 'fztest~a,fztest', 'Test mode plays the loop pedal as its two halves: ' + tl.nodes.join());
+  await win.evaluate(() => window.__tzFactory.test(false));
+
   await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));

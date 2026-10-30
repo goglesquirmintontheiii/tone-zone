@@ -4,12 +4,17 @@
 // -255..255) that are evaluated once per chunk. A normal slot reads its input span (xlo..xhi, default 0..1) as
 // 0..1 and scales that into its own range lo..hi; a raw slot takes the value as it is (clamped to lo..hi).
 // Audio loops are only allowed through 'fb' parts (a delay of at least one chunk); control loops read the
-// previous chunk's value. 'cout' parts are circuit outputs: their values are reported in the status as cv[idx].
+// previous chunk's value. 'cout' parts are circuit outputs: their values are reported in the status as cv[idx]
+// (null for outputs this patch does not have).
+// A pedal with an effects loop runs as two patches (before the sends, after the returns) wired on the board:
+// 'cvsend' turns a control value into an audio channel and 'cvrecv' reads it back, so control wires can cross
+// from one half to the other in the same cycle; an 'ain' with idx2 reads its right channel from another input.
 //
 // opts: { params: [{name, def, min, max}],            exposed params (the pedal's circuit inputs)
 //         nodes:  [{k, algo?, opts?, idx?, pi?, tap?, slots: [{p, def, lo, hi, log, int, tab, raw, xlo, xhi}]}],
 //         edges:  [[fromNode, fromPort, toNode, toPort, isControl]],
-//         outs:   [[aoutIdx, ch]] per engine output (ch 0 = L, 1 = R, -1 = mono sum), mix, mixDef }
+//         outs:   [[aoutIdx, ch]] per engine output (ch 0 = L, 1 = R, -1 = mono sum), mix, mixDef,
+//         ch:     internal channels (1 or 2, default from the block's inputs and outputs) }
 #include "common.h"
 
 namespace tz
@@ -24,7 +29,7 @@ enum Kind
 {
   K_ALGO, K_SUM, K_AIN, K_AOUT, K_VCA, K_FILTER, K_SHAPER, K_MIXER, K_XFADE, K_SWITCH, K_POL, K_FB, K_BYPASS,
   K_PARAM, K_CONST, K_LFO, K_ENV, K_SEQ, K_SCALE, K_MATH, K_SMOOTH, K_SH, K_AND, K_OR, K_XOR, K_NOT, K_TOGGLE,
-  K_CMP, K_WINDOW, K_ADD, K_SUB, K_MUL, K_DIV, K_CDELAY, K_COUT, K_UNKNOWN
+  K_CMP, K_WINDOW, K_ADD, K_SUB, K_MUL, K_DIV, K_CDELAY, K_COUT, K_CVSEND, K_CVRECV, K_UNKNOWN
 };
 struct KindInfo
 {
@@ -70,6 +75,8 @@ const std::vector<KindInfo>& kinds()
     {"div", K_DIV, 0, 0, 1, {"a", "b"}},
     {"cdelay", K_CDELAY, 0, 0, 1, {"in", "time"}},
     {"cout", K_COUT, 0, 0, 1, {"in"}},
+    {"cvsend", K_CVSEND, 0, 1, 0, {"in"}},
+    {"cvrecv", K_CVRECV, 1, 0, 1, {}},
   };
   return v;
 }
@@ -98,7 +105,7 @@ struct Node
   std::vector<int> inBuf;              // per audio input: buffer id to read (-1 silent, -2 summed into scratch)
   std::vector<int> outBuf;             // per audio output: buffer id
   std::vector<float> cv;               // control outputs
-  int idx = 0, pi = -1, tap = -1;
+  int idx = 0, idx2 = -1, pi = -1, tap = -1;
   bool late = false;                   // fb: its input is read at the end of the chunk
   // state
   float on = 1.f, m = 1.f, g = 0.f, fz = 0.f, x1 = 0.f, ph = 0.f, last = 0.f;
@@ -134,7 +141,7 @@ public:
 
   PatchBlock(const json& o, int nIn, int nOut)
   {
-    C = std::min(2, std::max(1, std::max(nIn, nOut)));
+    C = std::min(2, std::max(1, o.value("ch", std::max(nIn, nOut))));
     for (auto& pj : o.value("params", json::array()))
       addParam(pj.value("name", "p"), pj.value("def", 0.f), pj.value("min", 0.f), pj.value("max", 1.f));
     if (o.value("mix", false)) mixParam = addParam("mix", o.value("mixDef", 1.f), 0.f, 1.f);
@@ -145,6 +152,7 @@ public:
       Node n;
       const std::string k = nj.value("k", "sum");
       n.idx = nj.value("idx", 0);
+      n.idx2 = nj.value("idx2", -1);
       n.pi = nj.value("pi", -1);
       n.tap = nj.value("tap", -1);
       if (k == "algo")
@@ -428,7 +436,8 @@ public:
       case K_AIN:
         for (int c = 0; c < C; ++c)
         {
-          const float* x = nIn > 0 ? in[std::min(n.idx, nIn - 1)] + off : silent.data();
+          const int src = c == 1 && n.idx2 >= 0 ? n.idx2 : n.idx;
+          const float* x = nIn > 0 ? in[std::min(src, nIn - 1)] + off : silent.data();
           std::memcpy(output(n, 0, c), x, sizeof(float) * len);
         }
         break;
@@ -605,6 +614,13 @@ public:
         break;
       }
       case K_COUT: n.cv[0] = clampf(natIn(n, 0, 0.f), -kLim, kLim); break;
+      case K_CVSEND:
+      {
+        const float v = natIn(n, 0, 0.f);
+        for (int c = 0; c < C; ++c) std::fill(output(n, 0, c), output(n, 0, c) + len, v);
+        break;
+      }
+      case K_CVRECV: n.cv[0] = input(n, 0, 0, len)[len - 1]; break;
       case K_CONST: n.cv[0] = clampf(natIn(n, 0, 0.f), 0.f, 1.f); break;
       case K_LFO:
       {
@@ -787,7 +803,7 @@ public:
     if (nc)
     {
       json cv = json::array();
-      for (int k = 0; k < nc; ++k) cv.push_back(0.f);
+      for (int k = 0; k < nc; ++k) cv.push_back(nullptr);
       for (auto& nd : nodes)
         if (nd.kind == K_COUT && nd.idx >= 0) cv[nd.idx] = std::round(nd.cv[0] * 1000.f) / 1000.f;
       j["cv"] = cv;

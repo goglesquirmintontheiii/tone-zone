@@ -54,6 +54,10 @@ export const ctlJacks = (D) => D.jacks.filter((j) => j.kind === 'exp' || j.kind 
 export const jackIsOut = (j) => !!(j && ((j.from && j.from.n) || j.dir === 'out'));
 /** A screen's inputs and outputs (up to 16 each). */
 export const SCREEN_PORTS = 16;
+/** Effects loop jacks: an output jack can be a SEND, an input jack a RETURN; j.loopN pairs them (1, 2...). */
+export const loopRole = (j) => (j && j.loop === 'send' && j.kind === 'out' ? 'send' : j && j.loop === 'return' && j.kind === 'in' ? 'return' : null);
+const mainIn = (j) => loopRole(j) !== 'return';
+const mainOut = (j) => loopRole(j) !== 'send';
 export const screenIO = (c) => {
   if (!c.sio) c.sio = { ins: [], outs: [] };
   if (!Array.isArray(c.sio.ins)) c.sio.ins = [];
@@ -275,14 +279,15 @@ export function seriesWires(d) {
   const J = jackList(d);
   const W = (a, b) => C.wires.push({ id: uid('w'), a, b });
   C.wires = [];
-  let src = J.ins.length ? [{ n: 'jack:' + J.ins[0].id, p: '' }] : [];
+  const in0 = J.ins.find(mainIn) || J.ins[0];
+  let src = in0 ? [{ n: 'jack:' + in0.id, p: '' }] : [];
   for (const inst of C.insts) {
     const i = instAudioIns(inst)[0], o = instAudioOuts(inst)[0];
     if (!i || !o) continue;
     for (const s of src) W(s, { n: inst.id, p: i.id });
     src = [{ n: inst.id, p: o.id }];
   }
-  for (const s of src) for (const j of J.outs) W(s, { n: 'jack:' + j.id, p: '' });
+  for (const s of src) for (const j of J.outs.filter(mainOut)) W(s, { n: 'jack:' + j.id, p: '' });
 }
 export function autoMap(d) {
   const C = d.circuit;
@@ -335,10 +340,11 @@ export function effectiveWires(D) {
   const J = jackList(D);
   const ws = C.wires.filter((w) => endOk(D, J, w.a, 'src') && endOk(D, J, w.b, 'dst'));
   const fed = (j) => ws.filter((w) => w.b.n.startsWith('jack:') && resolveJack(J, w.b.n.slice(5), 'out') === j);
-  const main = J.outs.find((j) => fed(j).length);
+  // a SEND only gets what is wired to it
+  const main = J.outs.find((j) => mainOut(j) && fed(j).length);
   if (!main) return ws;
   const out = ws.slice();
-  for (const j of J.outs) if (!fed(j).length) for (const w of fed(main)) out.push({ id: 'auto-' + j.id + '-' + w.id, a: w.a, b: { n: 'jack:' + j.id, p: '' }, auto: true });
+  for (const j of J.outs) if (mainOut(j) && !fed(j).length) for (const w of fed(main)) out.push({ id: 'auto-' + j.id + '-' + w.id, a: w.a, b: { n: 'jack:' + j.id, p: '' }, auto: true });
   return out;
 }
 
@@ -364,8 +370,8 @@ export function addInstance(D, rec, at) {
       for (const s of srcs) C.wires.push({ id: uid('w'), a: s, b: { n: inst.id, p: i.id } });
       for (const b of outsHit) C.wires.push({ id: uid('w'), a: { n: inst.id, p: o.id }, b: { n: b, p: '' } });
     } else {
-      C.wires.push({ id: uid('w'), a: { n: 'jack:' + J.ins[0].id, p: '' }, b: { n: inst.id, p: i.id } });
-      for (const j of J.outs) C.wires.push({ id: uid('w'), a: { n: inst.id, p: o.id }, b: { n: 'jack:' + j.id, p: '' } });
+      C.wires.push({ id: uid('w'), a: { n: 'jack:' + (J.ins.find(mainIn) || J.ins[0]).id, p: '' }, b: { n: inst.id, p: i.id } });
+      for (const j of J.outs.filter(mainOut)) C.wires.push({ id: uid('w'), a: { n: inst.id, p: o.id }, b: { n: 'jack:' + j.id, p: '' } });
     }
   }
   syncStages(C);
@@ -572,7 +578,128 @@ export function compilePatch(D) {
     else E.outs.push([i, hasPair && j.kind === 'out' ? 0 : hasPair && j.kind === 'stereo' ? 1 : -1]);
   });
   if (C.mix) Object.assign(E, { mix: true, mixDef: C.mixDef ?? 1 });
+  // for splitting at an effects loop (splitPatch): engine nodes of the jacks; not sent to the engine
+  Object.defineProperty(E, 'jackNodes', { value: { ain, aout: J.outs.map((_, i) => [aout[i], aoutR[i]]) }, enumerable: false });
   return E;
+}
+
+/**
+ * A pedal with an effects loop runs as two engine patches so the board can cable SEND -> pedals -> RETURN in the
+ * same audio cycle: A = everything that does not depend on a return (fed by the main inputs, puts out the sends,
+ * then a dry copy of the inputs for bypass, then "carry" channels for signals A hands over to B), B = everything
+ * after the returns (fed by the dry copies, the returns and the carries, puts out the main outputs). Control
+ * wires crossing over ride a carry channel (cvsend / cvrecv). Returns null when the pedal has no loop jacks.
+ *   { a: {opts, nIn, nOut}, b: {opts, nIn, nOut}, inA: {uiIn: ch}, inB: {uiIn: ch}, outA: {uiOut: [ch]},
+ *     outB: {uiOut: [ch]}, carry: [[aCh, bCh]], pairs: [[uiSend, uiReturn]] }
+ */
+export function splitPatch(D, E) {
+  const J = jackList(D);
+  const isRet = J.ins.map((j) => loopRole(j) === 'return'), isSend = J.outs.map((j) => loopRole(j) === 'send');
+  if (!isRet.some(Boolean) && !isSend.some(Boolean)) return null;
+  const jn = E.jackNodes;
+  const C = Math.min(2, Math.max(1, J.ins.length, E.outs.length));
+  // engine channels of each output jack (PHONES has two)
+  const chans = [];
+  let k0 = 0;
+  for (const j of J.outs) {
+    const n = j.kind === 'phones' ? 2 : 1;
+    chans.push([...Array(n)].map((_, q) => k0 + q));
+    k0 += n;
+  }
+  // B: everything downstream of a return; main outputs always in B, sends always in A
+  const N = E.nodes.length;
+  const succ = [...Array(N)].map(() => []);
+  for (const e of E.edges) succ[e[0]].push(e[2]);
+  const inB = new Array(N).fill(false);
+  const stack = jn.ain.filter((_, i) => isRet[i]);
+  while (stack.length) {
+    const n = stack.pop();
+    if (inB[n]) continue;
+    inB[n] = true;
+    stack.push(...succ[n]);
+  }
+  J.outs.forEach((_, i) => jn.aout[i].forEach((n) => (inB[n] = !isSend[i])));
+  const mainIns = J.ins.map((_, i) => i).filter((i) => !isRet[i]);
+  const rets = J.ins.map((_, i) => i).filter((i) => isRet[i]);
+  const mainChans = J.outs.flatMap((_, i) => (isSend[i] ? [] : chans[i]));
+  const nd = mainChans.length;
+  const A = { nodes: [], edges: [], outs: [] }, B = { nodes: [], edges: [], outs: mainChans.map((c) => E.outs[c]) };
+  const map = new Map();
+  E.nodes.forEach((n, i) => {
+    const nn = { ...n };
+    if (n.k === 'ain') nn.idx = isRet[n.idx] ? nd + rets.indexOf(n.idx) : mainIns.indexOf(n.idx);
+    const H = inB[i] ? B : A;
+    map.set(i, H.nodes.push(nn) - 1);
+  });
+  let fresh = 1 + Math.max(0, ...E.nodes.filter((n) => n.k === 'aout').map((n) => n.idx));
+  const addA = (n) => A.nodes.push(n) - 1, addB = (n) => B.nodes.push(n) - 1;
+  const outA = {}, inA = {}, inBm = {}, outB = {}, carry = [];
+  let aCh = 0;
+  J.outs.forEach((_, i) => {
+    if (!isSend[i]) return;
+    outA[i] = chans[i].map(() => aCh++);
+    for (const c of chans[i]) A.outs.push(E.outs[c]);
+  });
+  mainIns.forEach((ui, q) => (inA[ui] = q));
+  rets.forEach((ui, q) => (inBm[ui] = nd + q));
+  J.outs.forEach((_, i) => !isSend[i] && (outB[i] = chans[i].map((c) => mainChans.indexOf(c))));
+  // dry copies of the inputs: what the engine passes through when the pedal is bypassed
+  if (mainIns.length)
+    for (let q = 0; q < nd; q++) {
+      const src = map.get(jn.ain[mainIns[Math.min(q, mainIns.length - 1)]]);
+      const o = addA({ k: 'aout', idx: fresh++ });
+      A.edges.push([src, 0, o, 0, 0]);
+      A.outs.push([A.nodes[o].idx, 0]);
+      carry.push([aCh++, q]);
+    }
+  if (E.mix && nd) addB({ k: 'ain', idx: 0 }); // the dry signal the wet / dry mix blends in
+  let bCh = nd + rets.length;
+  const memo = new Map();
+  for (const [f, fp, t, tp, ctl] of E.edges) {
+    if (inB[f] === inB[t]) {
+      (inB[f] ? B : A).edges.push([map.get(f), fp, map.get(t), tp, ctl]);
+      continue;
+    }
+    if (inB[f]) continue; // after a return back to before the sends: that would need a real loop
+    const key = (ctl ? 'c' : 'a') + f + ':' + fp;
+    let src = memo.get(key);
+    if (src == null) {
+      if (!ctl) {
+        const o = addA({ k: 'aout', idx: fresh++ });
+        A.edges.push([map.get(f), fp, o, 0, 0]);
+        for (let c = 0; c < C; c++) {
+          A.outs.push([A.nodes[o].idx, c]);
+          carry.push([aCh++, bCh + c]);
+        }
+        src = addB({ k: 'ain', idx: bCh, idx2: C === 2 ? bCh + 1 : -1 });
+        bCh += C;
+      } else {
+        const cs = addA({ k: 'cvsend', slots: [{ p: 'in', def: 0, lo: -LIM, hi: LIM, raw: true }] });
+        A.edges.push([map.get(f), fp, cs, 0, 1]);
+        const o = addA({ k: 'aout', idx: fresh++ });
+        A.edges.push([cs, 0, o, 0, 0]);
+        A.outs.push([A.nodes[o].idx, 0]);
+        carry.push([aCh++, bCh]);
+        const ai = addB({ k: 'ain', idx: bCh++ });
+        src = addB({ k: 'cvrecv' });
+        B.edges.push([ai, 0, src, 0, 0]);
+      }
+      memo.set(key, src);
+    }
+    B.edges.push([src, ctl ? 0 : 0, map.get(t), tp, ctl]);
+  }
+  const pairs = [];
+  J.outs.forEach((j, i) => {
+    if (!isSend[i]) return;
+    const r = J.ins.findIndex((x, q) => isRet[q] && (x.loopN || 1) === (j.loopN || 1));
+    if (r >= 0) pairs.push([i, r]);
+  });
+  const base = { params: E.params, ch: C };
+  return {
+    a: { opts: { ...base, nodes: A.nodes, edges: A.edges, outs: A.outs }, nIn: mainIns.length, nOut: aCh },
+    b: { opts: { ...base, nodes: B.nodes, edges: B.edges, outs: B.outs, ...(E.mix ? { mix: true, mixDef: E.mixDef } : {}) }, nIn: bCh, nOut: nd },
+    inA, inB: inBm, outA, outB, carry, pairs,
+  };
 }
 
 // ------------------------------------------------------------------ the block definition
@@ -604,6 +731,7 @@ export function designToDef(design, o = {}) {
   migrateCircuit(D);
   const C = D.circuit;
   const opts = compilePatch(D);
+  const split = splitPatch(D, opts);
   const couts = circuitOutputs(D);
   const coutOf = new Map(couts.map((x) => [x.key, x]));
   // every exposed value is sent, so a changed default reaches a running engine
@@ -617,7 +745,8 @@ export function designToDef(design, o = {}) {
     if (j.kind === 'phones') jackKinds['o' + i] = 'phones';
     if (j.kind === 'xlr') jackKinds['o' + i] = 'xlr';
   });
-  const ports = { ins: ins.map((j, i) => (j.virtual ? 'INPUT' : j.label || (ins.length > 1 ? 'IN ' + (i + 1) : 'INPUT'))), outs: outs.map((j) => (j.virtual ? 'OUTPUT' : j.label || 'OUTPUT')) };
+  const loopName = (j) => (loopRole(j) === 'send' ? 'SEND' : 'RETURN') + ((j.loopN || 1) > 1 ? ' ' + j.loopN : '');
+  const ports = { ins: ins.map((j, i) => (j.virtual ? 'INPUT' : j.label || (loopRole(j) ? loopName(j) : ins.length > 1 ? 'IN ' + (i + 1) : 'INPUT'))), outs: outs.map((j) => (j.virtual ? 'OUTPUT' : j.label || (loopRole(j) ? loopName(j) : 'OUTPUT'))) };
 
   // controls and their mappings
   const controls = [];
@@ -820,6 +949,7 @@ export function designToDef(design, o = {}) {
   };
   if (tapSub != null) def.tapSub = tapSub;
   if (ctrlIns.length || ctrlOuts.length) def.ctrl = { ins: ctrlIns, outs: ctrlOuts };
+  if (split) def.loopSplit = split;
   if (couts.length) def.couts = couts.map((x) => ({ key: x.key, name: x.name, sig: x.sig, idx: x.idx, min: x.min, max: x.max }));
   if (Object.keys(screenIO).length) def.screenIO = screenIO;
   if (o.hidden) def.hidden = true;

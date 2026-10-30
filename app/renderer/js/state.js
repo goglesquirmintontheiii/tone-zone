@@ -107,6 +107,8 @@ export function buildGraph(preset = state.preset) {
   const live = preset === state.preset;
   const nodes = [];
   const maps = {};
+  const splits = {}; // custom pedals with an effects loop run as two engine nodes (factory-circuit.js splitPatch)
+  const cables = [];
   for (const b of preset.blocks) {
     maps[b.id] = channelMap(b);
     if (b.id === '__in' || b.id === '__out') continue;
@@ -114,22 +116,72 @@ export function buildGraph(preset = state.preset) {
     if (!d || !d.algo) continue;
     const params = engineParamsFor(b);
     if (live) lastSent[b.id] = Object.assign({}, params);
+    if (d.loopSplit) {
+      // A (up to the sends) follows the block's params and events; B (after the returns) is the block itself
+      const S = d.loopSplit, A = b.id + '~a';
+      splits[b.id] = S;
+      nodes.push({ id: A, algo: d.algo, nIn: S.a.nIn, nOut: S.a.nOut, opts: S.a.opts, params, bypass: false, also: b.id });
+      nodes.push({ id: b.id, algo: d.algo, nIn: S.b.nIn, nOut: S.b.nOut, opts: S.b.opts, params, bypass: !!b.bypass && !d.alwaysOn });
+      for (const [ca, cb] of S.carry) cables.push({ from: { node: A, port: ca }, to: { node: b.id, port: cb } });
+      // a RETURN with nothing plugged in gets its SEND, like a loop with nothing in it
+      for (const [so, ri] of S.pairs)
+        if (!preset.cables.some((c) => c.to.node === b.id && c.to.port === ri))
+          cables.push({ from: { node: A, port: S.outA[so][0] }, to: { node: b.id, port: S.inB[ri] } });
+      continue;
+    }
     const m = maps[b.id];
     const nIn = m.ins.reduce((a, x) => a + x.length, 0), nOut = m.outs.reduce((a, x) => a + x.length, 0);
     nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: b.opts ? Object.assign({}, d.opts, b.opts) : d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
   }
   const valid = new Set(nodes.map((n) => n.id).concat(['__in', '__out']));
-  const cables = [];
+  // where a UI jack lands in the engine: {node, chans}
+  const end = (id, port, dir) => {
+    const S = splits[id];
+    if (!S) return { node: id, chans: maps[id]?.[dir][port] };
+    if (dir === 'outs') return S.outA[port] ? { node: id + '~a', chans: S.outA[port] } : { node: id, chans: S.outB[port] };
+    return S.inA[port] !== undefined ? { node: id + '~a', chans: [S.inA[port]] } : { node: id, chans: S.inB[port] !== undefined ? [S.inB[port]] : undefined };
+  };
   for (const c of preset.cables) {
     if (c.ctrl || typeof c.from.port !== 'number' || !valid.has(c.from.node) || !valid.has(c.to.node)) continue;
-    const a = maps[c.from.node]?.outs[c.from.port], z = maps[c.to.node]?.ins[c.to.port];
+    const fe = end(c.from.node, c.from.port, 'outs'), te = end(c.to.node, c.to.port, 'ins');
+    const a = fe.chans, z = te.chans;
     if (!a || !z) continue;
     // stereo -> stereo: L->L, R->R; stereo -> mono: L only; mono -> stereo: into L (the engine normals L to R)
     const n = Math.min(a.length, z.length);
-    for (let k = 0; k < n; k++) cables.push({ from: { node: c.from.node, port: a[k] }, to: { node: c.to.node, port: z[k] } });
-    if (a.length === 1 && z.length === 2 && (c.to.node === '__out')) cables.push({ from: { node: c.from.node, port: a[0] }, to: { node: c.to.node, port: z[1] } });
+    for (let k = 0; k < n; k++) cables.push({ from: { node: fe.node, port: a[k] }, to: { node: te.node, port: z[k] } });
+    if (a.length === 1 && z.length === 2 && (te.node === '__out')) cables.push({ from: { node: fe.node, port: a[0] }, to: { node: te.node, port: z[1] } });
   }
   return { nodes, cables };
+}
+/**
+ * Would an audio cable from -> to (each {node, port}) close a loop? A pedal with an effects loop counts as two
+ * halves (before its sends, after its returns), so SEND -> other pedals -> its own RETURN is not a loop.
+ */
+export function cableMakesLoop(from, to, preset = state.preset) {
+  const split = (id) => getDef(preset.blocks.find((b) => b.id === id)?.type)?.loopSplit;
+  const half = (id, port, dir) => {
+    const S = split(id);
+    if (!S || typeof port !== 'number') return id;
+    return (dir === 'out' ? S.outA[port] : S.inA[port] !== undefined) ? id + '~a' : id;
+  };
+  const adj = new Map();
+  const link = (a, b) => (adj.has(a) ? adj.get(a) : adj.set(a, []).get(a)).push(b);
+  for (const c of preset.cables) {
+    if (c.ctrl || typeof c.from.port !== 'number') continue; // control cables carry no audio
+    link(half(c.from.node, c.from.port, 'out'), half(c.to.node, c.to.port, 'in'));
+  }
+  for (const b of preset.blocks) if (split(b.id)) link(b.id + '~a', b.id);
+  const start = half(to.node, to.port, 'in'), goal = half(from.node, from.port, 'out');
+  const seen = new Set();
+  const stack = [start];
+  while (stack.length) {
+    const n = stack.pop();
+    if (n === goal) return true;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    for (const m of adj.get(n) || []) stack.push(m);
+  }
+  return false;
 }
 // a page (Pedal Factory test mode) can play its own graph instead of the board until it clears the override
 let graphOverride = null;

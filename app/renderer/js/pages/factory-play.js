@@ -21,7 +21,7 @@ function hookStatus() {
 export const engineRunning = () => Date.now() - lastStatus < 2000;
 export const testing = () => !!T;
 export const testInfo = () => (T ? { graphs: T.graphs.slice(), params: { ...T.block.params }, bypass: T.block.bypass, def: T.def.id } : null);
-const chainKey = (d) => JSON.stringify([d.opts, d.ports, d.jackKinds]);
+const chainKey = (d) => JSON.stringify([d.opts, d.ports, d.jackKinds, d.loopSplit]);
 const ioCopy = (id) => JSON.parse(JSON.stringify(state.preset.blocks.find((b) => b.id === id) || { id, type: id, params: {} }));
 
 function graph() {
@@ -29,9 +29,12 @@ function graph() {
   const pin = io('__in'), pout = io('__out');
   const ports = nodePorts(T.block);
   const cables = [];
-  for (let i = 0; i < Math.min(2, ports.ins.length); i++) cables.push({ from: { node: '__in', port: i }, to: { node: NODE, port: i } });
-  const outs = Math.min(2, ports.outs.length);
-  for (let i = 0; i < outs; i++) cables.push({ from: { node: NODE, port: i }, to: { node: '__out', port: i } });
+  // effects loop jacks stay unplugged here (a RETURN then gets its SEND)
+  const S = T.def.loopSplit;
+  const ins = ports.ins.map((_, i) => i).filter((i) => !S || S.inA[i] !== undefined).slice(0, 2);
+  const outs = ports.outs.map((_, i) => i).filter((i) => !S || !S.outA[i]).slice(0, 2);
+  ins.forEach((p, i) => cables.push({ from: { node: '__in', port: i }, to: { node: NODE, port: p } }));
+  outs.forEach((p, i) => cables.push({ from: { node: NODE, port: p }, to: { node: '__out', port: i } }));
   const g = buildGraph({ blocks: [pin, pout, T.block], cables });
   T.sent = engineParamsFor(T.block);
   T.graphs.push(g);

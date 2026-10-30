@@ -7,7 +7,7 @@ import { screenPointer } from './screens.js';
 import { getDef, jackKindOf, kindsCompatible, KIND_NAMES } from './catalog/index.js';
 import {
   state, blockById, addBlock, removeBlocks, duplicateBlocks, setParam, setBypass, connect, removeCable, setCableColor,
-  commitNow, uiParams, engineParamsFor, CABLE_COLORS, markDirty, estimatedLoad,
+  commitNow, uiParams, engineParamsFor, CABLE_COLORS, markDirty, estimatedLoad, cableMakesLoop,
 } from './state.js';
 import { showMenu } from './menus.js';
 import { footCtrl } from './control.js';
@@ -783,7 +783,7 @@ export class Editor {
       if (d.existing) {
         state.preset.cables = state.preset.cables.filter((c) => c.id !== d.existing.id);
       }
-      if (wouldCycle(from.node, to.node)) toast('That cable makes a feedback loop. It will run with one buffer of delay.', 'warn');
+      if (wouldCycle(from, to)) toast('That cable makes a feedback loop. It will run with one buffer of delay.', 'warn');
       const c = connect(from, to, d.color);
       if (c) {
         this.flashJack(to.node, 'i' + to.port);
@@ -1503,22 +1503,8 @@ function zOrder(b) {
 }
 
 function wouldCycle(from, to) {
-  // does `to` already reach `from`?
-  const adj = new Map();
-  for (const c of state.preset.cables) {
-    if (!adj.has(c.from.node)) adj.set(c.from.node, []);
-    adj.get(c.from.node).push(c.to.node);
-  }
-  const seen = new Set();
-  const stack = [to];
-  while (stack.length) {
-    const n = stack.pop();
-    if (n === from) return true;
-    if (seen.has(n)) continue;
-    seen.add(n);
-    for (const m of adj.get(n) || []) stack.push(m);
-  }
-  return false;
+  // does `to` already reach `from`? (a pedal's effects loop SEND -> ... -> its own RETURN is fine: state.js)
+  return cableMakesLoop(from, to);
 }
 
 export { engineParamsFor };

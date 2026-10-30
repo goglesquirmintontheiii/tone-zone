@@ -105,6 +105,7 @@ private:
   std::vector<std::shared_ptr<CompiledGraph>> retired;
   std::map<std::string, std::shared_ptr<Block>> blocks; // id -> block
   json lastGraph;
+  std::map<std::string, std::vector<std::string>> followers; // id -> nodes that also take its params / events ("also")
 
   Settings settings;
   std::atomic<float> inGain{1.f}, outGain{1.f};
