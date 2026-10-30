@@ -332,7 +332,7 @@ export class ScreenRuntime {
       else if (d < -0.5) d += 1;
     }
     st.last = v;
-    st.acc += d * ENC_STEPS;
+    st.acc += d * (e.steps || ENC_STEPS); // each encoder's own detents per turn
     const n = st.acc > 0 ? Math.floor(st.acc + 1e-6) : Math.ceil(st.acc - 1e-6);
     st.acc -= n;
     return n;

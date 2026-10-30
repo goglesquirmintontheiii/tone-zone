@@ -143,7 +143,7 @@ on(event, [name], fn) runs fn when something happens: a footswitch pressed, an e
 
 * **change** (control): any control changed. e.name, e.kind, e.value, e.old.
 * **switch** (switch): a toggle or rotary switch moved. e.value and e.old (positions from 1), e.option (its label).
-* **encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (24 per turn), e.value the position. Endless encoders wrap around without a jump in direction.
+* **encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (per turn: the Steps setting of the encoder, 24 by default and for plain knobs), e.value the position. Endless encoders wrap around without a jump in direction.
 * **footswitch_down** / **footswitch_up** (footswitch): a footswitch turned on / off. e.name, e.on. The bypass switch counts too.
 * **button_down** / **button_up** (push button): the same for latching push buttons.
 * **dip** (DIP switch): e.name, e.n (its number in the block), e.on.

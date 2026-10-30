@@ -4,6 +4,7 @@
 // and outputs (circuit outputs into the screen, screen outputs into circuit inputs).
 import { circuit, knobMap, valsMap, binMap, finish, screen, uid } from './factory-showcase-kit.js';
 import { floorTemplates } from './factory-showcase-floor.js';
+import { accTemplates } from './factory-showcase-acc.js';
 import { SYNTH_SCRIPT, ECHO_SCRIPT, VU_SCRIPT, TREM_SCRIPT, SQUEEZE_SCRIPT, COMMAND_SCRIPT, PATTERN_SCRIPT } from './factory-showcase-scripts.js';
 
 export { SYNTH_SCRIPT, ECHO_SCRIPT };
@@ -200,7 +201,7 @@ export function showcaseTemplates(h) {
     },
   ];
   // the Atlas Floor and Pixel Quest rebuilt as factory designs (factory-showcase-floor.js)
-  return [...list, ...floorTemplates(h)];
+  return [...list, ...floorTemplates(h), ...accTemplates(h)];
 }
 
 /** The Synth Box and Twin Echo templates get their coded screens. */

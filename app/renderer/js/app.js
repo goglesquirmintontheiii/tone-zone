@@ -356,6 +356,8 @@ function initNodeMenu() {
         items.push({ label: 'Rotate right', icon: 'redo', kbd: 'R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], 90) });
         items.push({ label: 'Rotate left', icon: 'undo', kbd: 'Shift+R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], -90) });
       }
+      // factory templates on the board: open an editable copy in the Pedal Factory (saving makes a new pedal)
+      if (d.template) items.push({ label: 'Edit a copy in the Pedal Factory', icon: 'factory', onClick: () => import('./catalog/templates.js').then((m) => m.openTemplateInFactory(b.type)) });
       items.push({ label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', onClick: () => editor.select(duplicateBlocks([...state.selection]).map((n) => n.id)) });
       items.push({ label: isFavorite(b.type) ? 'Remove from favourites' : 'Add to favourites', icon: 'star', onClick: () => toggleFavorite(b.type) });
       if (d.cabMics) items.push({ label: 'Add microphone', icon: 'mic', onClick: () => { import('./inspector.js').then((m) => { m.addMic(b); editor.select([id]); }); } });

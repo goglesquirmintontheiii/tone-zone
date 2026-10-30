@@ -97,7 +97,7 @@ export function controlList(D) {
     if (c.hidden) continue;
     const label = (c.label || '').trim();
     const base = { id: c.id, label, param: c.param || '', src: c };
-    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5, enc: c.part === 'encoder', wrap: c.part === 'encoder' && c.encMode !== 'clamp' });
+    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5, enc: c.part === 'encoder', wrap: c.part === 'encoder' && c.encMode !== 'clamp', steps: c.part === 'encoder' ? Math.max(4, Math.min(64, Math.round(c.encSteps || 24))) : 0 });
     else if (c.kind === 'toggle' || c.kind === 'sel') {
       const n = c.kind === 'toggle' ? c.ways || 2 : c.n || 4;
       const opts = (c.opts || []).slice(0, n);
