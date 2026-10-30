@@ -89,8 +89,10 @@ const testHooks = () => ({
   running: () => soloRunning(),
 });
 function openEditor(rec, onSaved, title) {
-  return openCircuitEditor({
-    host: mid,
+  // the editor covers the pedal canvas, the wiring diagram and the inspector
+  const host = mid.parentNode;
+  const ed = openCircuitEditor({
+    host,
     rec,
     title,
     test: testHooks(),
@@ -113,6 +115,8 @@ function openEditor(rec, onSaved, title) {
     },
     onClose: () => api.refresh(),
   });
+  ed.root.style.left = mid.offsetLeft + 6 + 'px';
+  return ed;
 }
 export function openNew() {
   const g = emptyGraph();
@@ -191,7 +195,7 @@ export function renderCircuitTab(host, H) {
   host.textContent = '';
   host.classList.add('cl-pane');
   const top = el('div', { class: 'cl-top' }, host);
-  const q = el('input', { type: 'search', class: 'cl-search', placeholder: 'Search circuits', 'data-cl': 'search' }, top);
+  const q = el('input', { type: 'text', class: 'cl-search', placeholder: 'Search circuits', 'data-cl': 'search' }, top);
   q.value = F.q;
   el('button', { class: 'btn small btn-accent', 'data-cl': 'new', title: 'Make a new circuit in the editor', onclick: () => openNew() }, top, '<i class="ic ic-plus"></i>New');
   const fr = el('div', { class: 'cl-filters' }, host);

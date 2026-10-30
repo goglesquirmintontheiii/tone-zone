@@ -4,7 +4,7 @@
 //
 // Design model (v3):
 //   D.circuit = { v: 3, insts: [{ id, ref, ver, name, graph, x, y, on }], wires: [{ id, a: {n, p}, b: {n, p} }],
-//                 combine: { target: 'sum' | 'max' | 'min' | 'avg' }, mix, mixDef, stages }
+//                 combine: { target: 'avg' (default) | 'sum' | 'max' | 'min' }, mix, mixDef, stages }
 //   wire ends: n = 'jack:<jack id>' or an instance id, p = the circuit's Audio in / Audio out node id.
 //   control targets: '<inst>.<control input node>', '<inst>.on', '<inst>.tap', 'bypass', 'mix'.
 //   c.map is a control's first target, c.more its others; DIP switches and XY pads keep c.maps[i]; expression
@@ -57,7 +57,45 @@ export function targetsFor(C, ctlKind) {
     if (sw && hasTap(inst.graph)) out.push([inst.id + '.tap', `${nm}: tap tempo`, { tap: true, label: 'Tap' }]);
     for (const k of instInputs(inst)) out.push([inst.id + '.' + k.id, `${nm}: ${k.name || 'Knob'}`, knobInfo(k)]);
   }
+  // values inside the circuits that no control input reaches yet: picking one adds an input for it
+  for (const inst of C.insts)
+    for (const n of inst.graph.nodes) {
+      const pt = PARTS[n.t];
+      if (!pt || pt.io) continue;
+      for (const p of pt.params) {
+        if (p.key === 'on' || p.sig || inst.graph.wires.some((w) => w.b.n === n.id && w.b.p === '@' + p.key)) continue;
+        out.push([`${inst.id}.+${n.id}.${p.key}`, `${inst.name || 'Circuit'}: ${n.label || pt.name} ${p.label} (new input)`, extraInfo(n, p)]);
+      }
+    }
   return out;
+}
+// a part value as a would-be control input
+function extraInfo(n, p) {
+  if (p.i && p.opts) return { min: 0, max: p.opts.length - 1, i: 1, opts: p.opts, def: Math.round(val(n, p) - p.min), label: p.label, key: p.key, extra: true };
+  if (p.i) return { min: 0, max: p.max - p.min, i: 1, def: Math.round(val(n, p) - p.min), label: p.label, key: p.key, extra: true };
+  const v = val(n, p);
+  const def = p.l && p.min > 0 ? Math.log(v / p.min) / Math.log(p.max / p.min) : (v - p.min) / (p.max - p.min || 1);
+  return { min: 0, max: 1, def: clamp(def, 0, 1), label: p.label, key: p.key, extra: true };
+}
+// turn a '<inst>.+<node>.<param>' target into a real control input wired to that value
+function exposeExtra(C, to) {
+  const m = /^([^.]+)\.\+([^.]+)\.(.+)$/.exec(to);
+  const inst = m && instOf(C, m[1]);
+  const n = inst && inst.graph.nodes.find((x) => x.id === m[2]);
+  const p = n && (PARTS[n.t]?.params || []).find((x) => x.key === m[3]);
+  if (!p) return null;
+  const info = extraInfo(n, p);
+  const ys = instInputs(inst).map((k) => k.y);
+  const names = new Set(instInputs(inst).map((k) => (k.name || '').toLowerCase()));
+  let name = p.label;
+  for (let i = 2; names.has(name.toLowerCase()); i++) name = p.label + ' ' + i;
+  const k = { id: nid(), t: 'knob', x: 40, y: (ys.length ? Math.max(...ys) : 100) + 64, p: {}, name, def: info.def, steps: info.i ? info.max + 1 : 0 };
+  if (p.opts) k.opts = p.opts.slice();
+  inst.graph.nodes.push(k);
+  const w = { id: nid('w'), a: { n: k.id, p: 'cv' }, b: { n: n.id, p: '@' + p.key } };
+  if (p.l) w.log = true;
+  inst.graph.wires.push(w);
+  return inst.id + '.' + k.id;
 }
 export function targetInfo(C, to) {
   if (!to) return null;
@@ -69,6 +107,12 @@ export function targetInfo(C, to) {
   const key = to.slice(dot + 1);
   if (key === 'on') return { min: 0, max: 1, i: 1, label: 'On', key: 'on' };
   if (key === 'tap') return hasTap(inst.graph) ? { tap: true, label: 'Tap' } : null;
+  if (key.startsWith('+')) {
+    const [nid2, pk] = key.slice(1).split('.');
+    const n = inst.graph.nodes.find((x) => x.id === nid2);
+    const p = n && (PARTS[n.t]?.params || []).find((x) => x.key === pk);
+    return p ? extraInfo(n, p) : null;
+  }
   const k = inst.graph.nodes.find((n) => n.id === key && PARTS[n.t]?.io === 'ctl');
   return k ? knobInfo(k) : null;
 }
@@ -80,12 +124,16 @@ export function targetLabel(C, to) {
 }
 export function mapTo(C, to, o = {}) {
   if (!isV3(C)) return v2MapTo(C, to, o);
+  if (to && to.includes('.+')) {
+    to = exposeExtra(C, to) || '';
+    syncStages(C);
+  }
   const info = targetInfo(C, to) || {};
   return Object.assign({ to, min: info.min ?? 0, max: info.max ?? 1, taper: 'lin', invert: false }, o);
 }
 /** A control's targets: its main one plus the extra ones. */
 export const mappingsOf = (c) => [c.map, ...(c.more || [])].filter((m) => m && m.to);
-export const COMBINES = [['sum', 'Add up'], ['max', 'Highest'], ['min', 'Lowest'], ['avg', 'Average']];
+export const COMBINES = [['avg', 'Average'], ['sum', 'Add up'], ['max', 'Highest'], ['min', 'Lowest']];
 /** Every control (and expression jack) that drives target `to`. */
 export function driversOf(D, to) {
   const out = [];
@@ -169,7 +217,7 @@ function v2ToV3(d) {
     (c.maps || []).forEach((m) => consider(m, c));
   }
   const { graph, knobs } = stagesToGraph(C2, refs);
-  const inst = { id: uid('c'), ref: C2.tpl ? 'b.' + C2.tpl : null, ver: 1, name: C2.name || circuitById(C2.tpl)?.name || 'Circuit', graph, x: 0, y: 0, on: true };
+  const inst = { id: uid('c'), ref: C2.tpl ? 'b.c-' + C2.tpl : null, ver: 1, name: C2.name || circuitById(C2.tpl)?.name || 'Circuit', graph, x: 0, y: 0, on: true };
   for (const { m, i, nm } of pend) {
     for (const k of ['min', 'max', 'values', 'taper', 'invert']) delete m[k];
     Object.assign(m, nm, { to: inst.id + '.' + knobs[i] });
@@ -597,7 +645,7 @@ export function designToDef(design, o = {}) {
     const out = {};
     for (const [to, vs] of got) {
       const info = targetInfo(C, to) || { min: 0, max: 1 };
-      const how = combine[to] || 'sum';
+      const how = combine[to] || 'avg';
       let v = how === 'max' ? Math.max(...vs) : how === 'min' ? Math.min(...vs) : vs.reduce((a, b) => a + b, 0) / (how === 'avg' ? vs.length : 1);
       v = clamp(v, info.min ?? 0, info.max ?? 1);
       if (info.i) v = Math.round(v);

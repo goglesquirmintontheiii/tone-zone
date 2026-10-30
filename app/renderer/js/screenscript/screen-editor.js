@@ -4,7 +4,7 @@ import { el } from '../util.js';
 import { CodeEditor } from './code-editor.js';
 import { ScreenRuntime } from './runtime.js';
 import { makeHost, simIO, controlList } from './host.js';
-import { screenPixels, paletteOf, rememberCanvas } from './surface.js';
+import { screenPixels, paletteOf } from './surface.js';
 import { API } from './docs.js';
 import { TEMPLATES, SNIPPETS } from './templates.js';
 import { loadCSS, keysTo, optsFor } from './factory-ui.js';
@@ -149,7 +149,7 @@ export function openScreenEditor(o) {
 
   // ---- reference
   const rp = panes.ref;
-  const rq = el('input', { type: 'search', class: 'ss-refq', placeholder: 'Search the reference' }, rp);
+  const rq = el('input', { type: 'text', class: 'ss-refq', placeholder: 'Search the reference' }, rp);
   const rlist = el('div', { class: 'ss-ref' }, rp);
   const paintRef = () => {
     const k = rq.value.trim().toLowerCase();
@@ -256,7 +256,6 @@ export function openScreenEditor(o) {
     timer = setTimeout(apply, 280);
   };
   restart(ed.value);
-  rememberCanvas(c0.id + '#editor', canvas, ed.value);
 
   // preview input
   const pos = (e) => {

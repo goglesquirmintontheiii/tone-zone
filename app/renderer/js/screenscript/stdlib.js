@@ -211,6 +211,8 @@ export function installStdlib(G, R, log) {
     round: (x, d = 0) => { const k = Math.pow(10, d); return Math.round(x * k) / k; },
     map: (v, a, b, c, d) => c + ((v - a) * (d - c)) / ((b - a) || 1),
     sign: (x) => Math.sign(x),
+    rad: (d) => (d * Math.PI) / 180,
+    deg: (r) => (r * 180) / Math.PI,
   };
   for (const k in mfn) {
     const f = mfn[k];

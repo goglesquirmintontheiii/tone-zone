@@ -152,6 +152,33 @@ end`, w: 64, h: 32, host: null, readBack: true });
   ok(wd.clicks === 1 && Math.abs(wd.v - 0.75) < 0.03 && wd.on === true, `button, slider and toggle react (${wd.clicks}, ${wd.v.toFixed(2)}, ${wd.on})`);
   ok(wd.badLine === 3 && wd.redTop[0] > 200, 'a script error shows on the screen with its line');
 
+  // text fields take typing, control changes call onControl, saved values come back
+  const ev = await win.evaluate(async () => {
+    const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
+    const { makeHost, simIO } = await import('./js/screenscript/host.js');
+    const design = { ctls: [{ id: 'k1', kind: 'knob', label: 'GAIN', value: 0.5 }, { id: 'f1', kind: 'foot', label: '', map: { to: 'bypass' } }] };
+    const { io, sim } = simIO(design, { demo: false });
+    const host = makeHost(design, io);
+    const src = 'name = "ab"\nchanges = 0\nfoots = 0\nfunction onControl(n, v) changes = changes + 1 last = n end\nfunction onFoot(n, on) foots = foots + 1 end\nsave("kept", {1, 2, x = "y"})\nfunction draw()\n  clear()\n  name = textfield("n", 0, 0, 60, 12, name)\nend';
+    const rt = new ScreenRuntime({ src, w: 64, h: 40, host });
+    let t = performance.now();
+    rt.frame(t);
+    rt.pointer('down', 10, 5); rt.pointer('up', 10, 5); rt.frame((t += 40));
+    const kb = !!rt.focus;
+    for (const k of ['c', 'd', 'Backspace', 'e', 'Enter']) rt.key({ key: k });
+    rt.frame((t += 40));
+    io.set('u.k1', 0.8);
+    sim.bypass = true;
+    rt.frame((t += 40));
+    rt.frame((t += 1000));
+    const rt2 = new ScreenRuntime({ src: 'k = load("kept", nil)\nr = k[2] + #k .. k.x\nmissing = load("nope", 7)', w: 32, h: 16, host });
+    rt2.frame(t);
+    return { kb, name: rt.vm.get('name'), changes: rt.vm.get('changes'), last: rt.vm.get('last'), foots: rt.vm.get('foots'), kept: rt2.vm.get('r'), missing: rt2.vm.get('missing'), err: rt.error || rt2.error };
+  });
+  ok(ev.kb && ev.name === 'abce', `a text field opens the keyboard and takes typing (${ev.name})`);
+  ok(ev.changes === 2 && ev.foots === 1, `onControl and onFoot are called (${ev.changes}, ${ev.foots}, ${ev.last})`);
+  ok(ev.kept === '4y' && ev.missing === 7 && !ev.err, 'save and load keep values');
+
   // ---- the factory: Shows -> Custom, code editor, generator
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForSelector('.fz-stage');
@@ -172,7 +199,8 @@ end`, w: 64, h: 32, host: null, readBack: true });
   ok(s1.shows === 'custom' && /function draw/.test(s1.script), 'Custom gives the screen a starting script');
   ok(!!(await win.$('[data-ss="edit"]')) && !!(await win.$('[data-ss="gen"]')) && !!(await win.$('[data-ss="template"]')), 'inspector has Edit code, Generate and templates');
   const st1 = await win.evaluate(() => window.__tzScreens.stage());
-  ok(st1.length === 1 && st1[0].connected && !st1[0].error && st1[0].frames > 0, 'the stage runs the screen live');
+  ok(st1.length === 1 && st1[0].connected && !st1[0].error && st1[0].frames > 0, 'the stage runs the screen live ' + JSON.stringify(st1));
+  await win.screenshot({ path: path.join(S, 'screens-inspector.png') });
   await win.selectOption('[data-ss="template"]', 'readout');
   await win.waitForTimeout(300);
   ok(/knob\(name\)/.test((await D()).ctls.find((c) => c.id === scr.id).script), 'a template replaces the script');
@@ -326,7 +354,7 @@ end
   const board = await win.evaluate(async ({ id, cutId, dipId }) => {
     const m = await import('./js/state.js');
     const b = m.addBlock(id, 900, 700);
-    const before = m.engineParamsFor(m.blockById(b.id));
+    const before = m.engineParamsFor({ id: 'x', type: id, params: {} }); // the defaults
     const ed2 = window.__tz.editor;
     ed2.view.z = 1.8;
     ed2.view.x = -b.x * 1.8 + 400;
@@ -335,13 +363,13 @@ end
     await new Promise((r) => setTimeout(r, 1200));
     const bb = m.blockById(b.id);
     const after = m.engineParamsFor(bb);
-    const k = Object.keys(after).find((x) => x.endsWith('.filter'));
+    const k = Object.keys(after).find((x) => !x.startsWith('u.') && after[x] !== before[x] && typeof after[x] === 'number');
     const { boardScreens } = await import('./js/screenscript/board.js');
     const v = ed2.views.get(b.id);
-    return { bid: b.id, knob: bb.params['u.' + cutId], dip2: bb.params['u.' + dipId + '.1'], dip4: bb.params['u.' + dipId + '.3'], filterBefore: before[k], filterAfter: after[k], screens: boardScreens(), img: !!v.g.querySelector('.ss-board image.ss-img[href^="data:image/png"]'), undo: m.canUndo() };
+    return { bid: b.id, knob: bb.params['u.' + cutId], dip2: bb.params['u.' + dipId + '.1'], dip4: bb.params['u.' + dipId + '.3'], filterBefore: before[k], filterAfter: after[k], fkey: k, screens: boardScreens(), img: !!v.g.querySelector('.ss-board image.ss-img[href^="data:image/png"]'), undo: m.canUndo() };
   }, { id: blockId, cutId: cut.id, dipId: dip.id });
   ok(Math.abs(board.knob - 0.9) < 1e-6 && board.dip2 === 1 && board.dip4 === 1, 'on the board the script turned the knob and flipped two DIPs');
-  ok(board.filterAfter !== board.filterBefore && typeof board.filterAfter === 'number', `the engine gets the knob's mapped value (${board.filterBefore} -> ${board.filterAfter})`);
+  ok(board.filterAfter !== board.filterBefore && typeof board.filterAfter === 'number', `the engine gets the mapped values (${board.fkey}: ${board.filterBefore} -> ${board.filterAfter})`);
   const bs = board.screens.find((x) => x.key.startsWith(board.bid));
   ok(bs && !bs.error && bs.frames > 5 && bs.connected && board.img, `the board screen repaints (${bs && bs.frames} frames)`);
   ok(board.undo, 'the change is undoable');
@@ -395,19 +423,31 @@ end
   }
   const placed = await win.evaluate(async (ids) => {
     const m = await import('./js/state.js');
-    const out = [];
-    ids.forEach((id, i) => out.push(m.addBlock(id, 3000 + (i % 3) * 420, 3000 + Math.floor(i / 3) * 330).id));
-    const ed2 = window.__tz.editor;
-    ed2.view.z = 0.95;
-    ed2.view.x = -3000 * 0.95 + 120;
-    ed2.view.y = -3000 * 0.95 + 70;
-    ed2.applyView && ed2.applyView();
-    await new Promise((r) => setTimeout(r, 1500));
+    const out = ids.map((id, i) => m.addBlock(id, 3000 + i * 900, 3000).id);
+    await new Promise((r) => setTimeout(r, 300));
+    return out;
+  }, ids);
+  for (let i = 0; i < placed.length; i++) {
+    const box = await win.evaluate(async (bid) => {
+      const ed2 = window.__tz.editor;
+      const v = ed2.views.get(bid);
+      const z = 1.7;
+      ed2.view.z = z;
+      ed2.view.x = -(v.block.x + v.w / 2) * z + 640;
+      ed2.view.y = -(v.block.y + v.h / 2) * z + 470;
+      ed2.applyView && ed2.applyView();
+      await new Promise((r) => setTimeout(r, 900));
+      const r = v.g.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }, placed[i]);
+    const clip = { x: Math.max(0, box.x - 10), y: Math.max(60, box.y - 10), width: Math.min(1280, box.width + 20), height: Math.min(880, box.height + 20) };
+    await win.screenshot({ path: path.join(S, `screens-look-${looks[i][1]}.png`), clip });
+  }
+  const running = await win.evaluate(async (out) => {
     const { boardScreens } = await import('./js/screenscript/board.js');
     return boardScreens().filter((s) => out.some((b) => s.key.startsWith(b + '|')));
-  }, ids);
-  ok(placed.length === looks.length && placed.every((s) => !s.error && s.frames > 3), 'six generated screens run on the board: ' + placed.filter((s) => s.error).map((s) => s.error.message).join('; '));
-  await win.screenshot({ path: path.join(S, 'screens-looks.png') });
+  }, placed);
+  ok(running.length === looks.length && running.every((s) => !s.error && s.frames > 3), 'six generated screens run on the board: ' + running.filter((s) => s.error).map((s) => s.error.message).join('; '));
 
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await app.close();

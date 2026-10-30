@@ -111,7 +111,7 @@ export function makeHost(design, io) {
   const list = controlList(design);
   const stages = (design && design.circuit && Array.isArray(design.circuit.stages) ? design.circuit.stages : []).filter((s) => s && s.id);
   const lv = { in: 0, out: 0, env: 0, t: 0 };
-  let paramCache = null, statusCache = null, lastFrame = 0;
+  let paramCache = null, lastFrame = 0;
   const ctx = { design, mode: io.mode, block: io.block, def: io.def, get status() { return io.blockStatus ? io.blockStatus() : null; }, params: () => params() };
   const params = () => {
     if (!paramCache) {
@@ -278,7 +278,6 @@ export function makeHost(design, io) {
     // per frame: levels, envelope and a fresh param cache
     beginFrame(now) {
       paramCache = null;
-      statusCache = null;
       const dt = lastFrame ? clamp((now - lastFrame) / 1000, 0, 0.5) : 0.05;
       lastFrame = now;
       lv.t = now / 1000;
@@ -292,7 +291,6 @@ export function makeHost(design, io) {
       lv.out = L.outPk || 0;
       lv.env = Math.max(lv.in, lv.env * Math.exp(-dt / 0.25));
       if (io.beginFrame) io.beginFrame(now);
-      void statusCache;
     },
     store: () => (io.storeGet ? io.storeGet() : null),
     saveStore: (o) => io.storeSet && io.storeSet(o),

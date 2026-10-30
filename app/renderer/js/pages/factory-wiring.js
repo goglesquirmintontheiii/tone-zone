@@ -108,7 +108,7 @@ export function wiringSection(host, D, c, H) {
     const drv = isV3(C) ? driversOf(D, m.to) : [];
     if (drv.length > 1) {
       const others = drv.filter((d) => d.c !== c || d.m !== m).map((d) => (d.c ? H.name(d.c) : (d.j.label || 'EXP') + ' jack'));
-      H.selectField(box, 'With ' + others.slice(0, 2).join(', ') + (others.length > 2 ? '...' : ''), COMBINES, (C.combine || {})[m.to] || 'sum', (v) => (C.combine = { ...(C.combine || {}), [m.to]: v })).classList.add('fz-combine');
+      H.selectField(box, 'With ' + others.slice(0, 2).join(', ') + (others.length > 2 ? '...' : ''), COMBINES, (C.combine || {})[m.to] || 'avg', (v) => (C.combine = { ...(C.combine || {}), [m.to]: v })).classList.add('fz-combine');
     }
     const t = KNOBLIKE.has(c.kind) ? c.value ?? 0.5 : n ? (c.kind === 'toggle' || c.kind === 'sel' ? (c.pos || 0) / Math.max(1, n - 1) : c.on ? 1 : 0) : 0;
     el('p', { class: 'fz-note' }, box).textContent = `Now: ${targetLabel(C, m.to)} = ${fmt(mapValue(m, info, t), info)}`;

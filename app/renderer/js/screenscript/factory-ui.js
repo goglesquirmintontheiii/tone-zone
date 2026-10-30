@@ -230,8 +230,8 @@ export function liveStage(root, D, mode) {
       ent.last = performance.now();
     }
   }
-  // drop runtimes of the other mode so a new test starts fresh
-  for (const [k, e] of stageEntries) if (!k.startsWith(mode + '|') && !e.canvas.isConnected) stageEntries.delete(k);
+  // drop runtimes that are no longer on the stage (other mode, deleted screens, another design)
+  for (const [k, e] of stageEntries) if (!e.canvas.isConnected) stageEntries.delete(k);
   if (!loop) loop = requestAnimationFrame(tick);
 }
 function tick(now) {

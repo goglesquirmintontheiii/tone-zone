@@ -59,7 +59,7 @@ class Editor {
       this.rec.name = this.nameIn.value;
       this.dirty = true;
     };
-    if (this.rec.builtin) el('span', { class: 'cz-badge' }, bar).textContent = 'Built in: saving makes your own copy';
+    if (this.rec.builtin) el('span', { class: 'cz-badge', title: 'Saving makes your own copy in the library' }, bar).textContent = 'Built in';
     const tb = el('button', { class: 'btn small', 'data-cz': 'templates', title: 'Start from a template' }, bar, '<i class="ic ic-board"></i>Templates');
     tb.onclick = (e) => this.templatesMenu(e.currentTarget);
     el('i', { class: 'fz-sep' }, bar);
@@ -116,7 +116,7 @@ class Editor {
   }
   buildPalette() {
     const p = this.pal;
-    const s = el('input', { type: 'search', class: 'cz-search', placeholder: 'Find a part', 'data-cz': 'find' }, p);
+    const s = el('input', { type: 'text', class: 'cz-search', placeholder: 'Find a part', 'data-cz': 'find' }, p);
     const list = el('div', { class: 'cz-pal-list' }, p);
     const paint = () => {
       list.textContent = '';
@@ -171,7 +171,8 @@ class Editor {
   fit() {
     const b = bounds(this.G, this.lay());
     const pad = 50;
-    const z = clamp(Math.min((this.W - pad * 2) / (b.x1 - b.x0 || 1), (this.H - pad * 2) / (b.y1 - b.y0 || 1)), 0.25, 1.4);
+    const z = clamp(Math.min((this.W - pad * 2) / (b.x1 - b.x0 || 1), (this.H - pad * 2) / (b.y1 - b.y0 || 1)), this.fitMin ?? 0.45, 1.3);
+    this.fitMin = 0.2;
     this.view = { z, x: (this.W - (b.x1 - b.x0) * z) / 2 - b.x0 * z, y: (this.H - (b.y1 - b.y0) * z) / 2 - b.y0 * z };
     this.draw();
   }

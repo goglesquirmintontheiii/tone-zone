@@ -110,5 +110,11 @@ flt = {'k': 'filter', 'slots': [{'p': 'freq', 'def': 400, 'lo': 300, 'hi': 3000,
 y10 = render(patch([AIN, envn, flt, AOUT], [[0, 0, 1, 0, 0], [0, 0, 2, 0, 0], [1, 0, 2, 0, 1], [2, 0, 3, 0, 0]]), guitar)
 check(rms(y10) > 0.005 and np.isfinite(y10).all(), f'envelope filter renders ({rms(y10):.4f})')
 
+# 9. a lookup table on a slot: 0.5 picks the middle entry (0.25)
+c5 = {'k': 'const', 'slots': [{'p': 'value', 'def': 0.5}]}
+vt = {'k': 'vca', 'slots': [{'p': 'gain', 'def': 1, 'lo': 0, 'hi': 1, 'tab': [0, 0.25, 1]}]}
+y11 = render(patch([AIN, c5, vt, AOUT], [[0, 0, 2, 0, 0], [1, 0, 2, 0, 1], [2, 0, 3, 0, 0]]), sine)
+check(abs(rms(y11[4800:]) / rms(dry[4800:]) - 0.25) < 0.01, 'a slot table picks its entry')
+
 print(f'{fails} failed' if fails else 'all passed')
 sys.exit(1 if fails else 0)

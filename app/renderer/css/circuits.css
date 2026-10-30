@@ -96,11 +96,14 @@ body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: 
 
 /* ------------------------------------------------------------ the circuit editor */
 .cz-modal { position: absolute; inset: 6px; z-index: 45; display: flex; flex-direction: column; background: var(--bg1); border: 1px solid var(--line2); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; outline: none; animation: fade 0.15s; }
-.cz-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.cz-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex: none; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+.cz-bar > * { flex-shrink: 0; }
+.cz-insp textarea, .cz-insp input { font-family: var(--font); }
 .cz-logo { width: 18px; height: 18px; color: var(--accent); }
 .cz-name { width: 220px; font-weight: 700; }
 .cz-name.bad { border-color: var(--bad) !important; }
 .cz-badge { font-size: 10.5px; color: var(--warn); border: 1px solid rgba(var(--warn-rgb), 0.4); border-radius: 999px; padding: 2px 8px; }
+.cz-align { display: inline-flex; flex-direction: row; flex: none; }
 .cz-align button { padding: 4px 8px; font-size: 11px; }
 .cz-bar .icon-btn.on { color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
 .cz-bar .icon-btn.sure { color: var(--bad); }
@@ -130,7 +133,7 @@ body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: 
 .cz-issue { all: unset; cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(var(--well-rgb), 0.5); color: var(--text2); }
 .cz-issue.error { color: var(--bad-text); } .cz-issue.warn { color: var(--warn); }
 .cz-issue:hover { background: rgba(var(--well-rgb), 0.75); }
-.cz-hint { position: absolute; right: 10px; bottom: 10px; font-size: 10.5px; color: var(--muted); pointer-events: none; }
+.cz-hint { position: absolute; left: 10px; top: 8px; font-size: 10.5px; color: var(--muted); pointer-events: none; }
 .cz-zoom { position: absolute; right: 10px; top: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
 .cz-insp { width: 290px; flex: none; overflow-y: auto; padding: 4px 12px 18px; border-left: 1px solid var(--line); background: var(--side-bg, var(--bg1)); }
 .cz-wired { all: unset; cursor: pointer; font-size: 11.5px; color: var(--teal-text); }
@@ -141,3 +144,5 @@ body.fz-wd-window { margin: 0; overflow: hidden; background: var(--bg1); color: 
 .cz-menu-i b { display: block; font-size: 12px; }
 .cz-menu-i small { display: block; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1300px) { .cz-pal { width: 180px; } .cz-insp { width: 250px; } }
+.cl-inst .fz-lbtn, .fz-mapbox .fz-lbtn { display: grid; opacity: 0.75; }
+.cl-inst .fz-lbtn:hover, .fz-mapbox .fz-lbtn:hover { opacity: 1; }

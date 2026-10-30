@@ -134,7 +134,7 @@ function draw()
     local cx = W * (i - 0.5) / n
     ring(cx, cy, r, amount(name), colors.accent, math.max(2, r * 0.18))
     text(tostring(math.floor(amount(name) * 100)), cx, cy, colors.fg, nil, "middle")
-    text(name:upper():sub(1, 9), cx, H - 8, colors.dim, nil, "center")
+    text(name:upper():sub(1, 9), cx, H - 8, fade(colors.fg, 0.55), nil, "center")
   end
 end
 `,
@@ -280,7 +280,7 @@ function draw()
   local bank = string.char(65 + math.floor((preset - 1) / 4))
   local slot = (preset - 1) % 4 + 1
   local size = math.floor(H * 0.6)
-  digits(bank .. slot, 4, math.floor((H - size) / 2), size, colors.fg, fade(colors.dim, 0.45))
+  digits(bank .. slot, 4, math.floor((H - size) / 2), size, colors.fg, fade(colors.dim, 0.3))
   -- the preset name: click it to rename
   local nx = math.floor(size * 1.5) + 10
   local name = names[preset] or ("PRESET " .. preset)
@@ -291,7 +291,7 @@ function draw()
   end
   -- the first item as a small readout
   if items[1] then
-    text(items[1]:upper():sub(1, 6) .. " " .. show(items[1]), nx, 20, colors.dim)
+    text(items[1]:upper():sub(1, 6) .. " " .. show(items[1]), nx, 20, fade(colors.fg, 0.6))
   end
   -- previous / next
   local by = H - 14
@@ -330,11 +330,12 @@ function draw()
   scale(S)
   -- the amp bounces with what you play
   local lv = math.clamp((signal("in") or 0) * 1.6, 0, 1)
-  local ay = h - 10 - 8 - math.floor(lv * 3)
+  local k = h >= 40 and 2 or 1 -- a bigger amp on bigger screens
+  local ay = h - 9 - 8 * k - math.floor(lv * 3)
   fillRect(0, h - 9, w, 9, colors.panel)
-  sprite(AMP, 2, ay, 1, {["#"] = colors.fg, o = colors.dim})
+  sprite(AMP, 2, ay, k, {["#"] = colors.fg, o = colors.dim})
   -- notes fly out
-  if lv > 0.25 and every(260) then table.insert(notes, {x = 13, y = ay, t = 0}) end
+  if lv > 0.25 and every(260) then table.insert(notes, {x = 2 + 12 * k, y = ay, t = 0}) end
   for i = #notes, 1, -1 do
     local m = notes[i]
     m.t = m.t + dt()

@@ -64,7 +64,7 @@ export function themeColors(elm) {
   const groups = {};
   for (const [g, k] of Object.entries(GROUP_VAR)) groups[g] = v(k, GROUP_FIX[g]);
   return {
-    bg: v('--board-bg', '#0f1218'), grid: v('--grid-line', 'rgba(255,255,255,0.04)'), node: v('--bg3', '#1b202b'), node2: v('--bg4', '#232937'),
+    bg: v('--bg1', '#0f1218'), grid: v('--grid-line', 'rgba(255,255,255,0.04)'), node: v('--bg3', '#1b202b'), node2: v('--bg4', '#232937'),
     text: v('--text', '#e9ecf3'), text2: v('--text2', '#b8bfcd'), muted: v('--muted', '#7d8597'), line: v('--line2', 'rgba(255,255,255,0.11)'),
     audio: v('--accent', '#ff7a2f'), ctl: v('--teal', '#37d6c2'), sel: v('--accent', '#ff7a2f'), err: v('--bad', '#ff4d5e'), warn: v('--warn', '#ffc24b'),
     note: 'rgba(255, 214, 102, 0.16)', noteText: v('--text', '#e9ecf3'), groups,
@@ -186,6 +186,13 @@ export function drawGraph(ctx, G, o) {
     ctx.fillRect(b.x, b.y, 3, HEAD);
     ctx.restore();
     const off = n.p && n.p.on === 0 && !pt.io;
+    if (!detail && o.labels) {
+      // small pictures: just the part name, readable at any scale
+      ctx.fillStyle = C.text;
+      ctx.font = `600 ${(10 / z).toFixed(1)}px Inter, system-ui, sans-serif`;
+      const nm = pt.io === 'ctl' || pt.io === 'in' || pt.io === 'out' ? n.name || pt.name : n.label || pt.name;
+      ctx.fillText(clip(ctx, nm, b.w - 6 / z), b.x + 5 / z, b.y + HEAD / 2 + 0.5);
+    }
     if (detail) {
       ctx.fillStyle = off ? C.muted : C.text;
       ctx.font = '600 11.5px Inter, system-ui, sans-serif';
@@ -331,6 +338,6 @@ export function renderThumb(G, w = 300, h = 180) {
   const pad = 14;
   const z = Math.min((w - pad * 2) / (b.x1 - b.x0 || 1), (h - pad * 2) / (b.y1 - b.y0 || 1), 1.2);
   const view = { z, x: (w - (b.x1 - b.x0) * z) / 2 - b.x0 * z, y: (h - (b.y1 - b.y0) * z) / 2 - b.y0 * z };
-  drawGraph(ctx, G, { L, view, w, h, colors: FIXED, detail: z > 0.42, grid: true });
+  drawGraph(ctx, G, { L, view, w, h, colors: FIXED, detail: z > 0.42, grid: true, labels: true });
   return cv.toDataURL('image/png');
 }

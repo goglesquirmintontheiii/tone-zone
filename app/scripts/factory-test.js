@@ -53,9 +53,16 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForSelector('.fz-stage');
   await win.waitForTimeout(300);
   const d00 = await D();
-  ok(d00.name === 'Old Fuzz' && d00.circuit.v === 2 && d00.circuit.stages[0].type === 'fuzz', 'old design loads with a real circuit');
-  const sid0 = d00.circuit.stages[0].id;
-  ok(d00.ctls[0].map.to === sid0 + '.gain' && d00.ctls[1].map.to === sid0 + '.level' && d00.ctls[2].map.to === 'bypass', 'old controls wired by their names');
+  const in00 = d00.circuit.insts && d00.circuit.insts[0];
+  ok(d00.name === 'Old Fuzz' && d00.circuit.v === 3 && in00 && in00.graph.nodes.some((n) => n.t === 'fuzz'), 'old design loads with a real circuit (migrated to a circuit graph)');
+  // a control's target is a circuit input wired to the fuzz value it used to drive
+  const drives = (m) => {
+    const k = m && m.to && m.to.split('.')[1];
+    const w = in00.graph.wires.find((x) => x.a.n === k);
+    const n = w && in00.graph.nodes.find((x) => x.id === w.b.n);
+    return n ? n.t + w.b.p : '';
+  };
+  ok(drives(d00.ctls[0].map) === 'fuzz@gain' && drives(d00.ctls[1].map) === 'fuzz@level' && d00.ctls[2].map.to === 'bypass', 'old controls wired by their names');
 
   // start from a known design
   await win.click('#fzTemplates');
@@ -63,7 +70,7 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(400);
   const d0 = await D();
   ok(d0.name === 'Classic Drive' && d0.ctls.length === 5, 'template loaded');
-  ok(d0.ctls.filter((c) => c.kind === 'knob').every((c) => c.map && c.map.to.startsWith(d0.circuit.stages[0].id + '.')), 'template knobs are wired to the circuit');
+  ok(d0.ctls.filter((c) => c.kind === 'knob').every((c) => c.map && c.map.to.startsWith(d0.circuit.insts[0].id + '.')), 'template knobs are wired to the circuit');
 
   // 1. add a knob from the parts panel
   await win.click('.fz-tabs [data-t="parts"]');
@@ -260,7 +267,10 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('[data-template="blank"]');
   await win.waitForTimeout(300);
   await win.click('.fz-tabs [data-t="circuit"]');
-  await win.click('[data-circuit="drivedelay"]');
+  await win.click('.cl-inst [data-cl="rminst"]');
+  await win.fill('.cl-search', '');
+  await win.dispatchEvent('.cl-search', 'input');
+  await win.click('[data-circuit-id="b.c-drivedelay"] [data-cl="use"]');
   await win.waitForTimeout(200);
   await win.click('.fz-tabs [data-t="parts"]');
   await win.click('.fz-tile[data-part="dip"]');
@@ -270,8 +280,11 @@ const S = process.env.SHOTS || '/tmp';
   await nIn.press('Enter');
   await win.waitForTimeout(200);
   for (let i = 0; i < 12; i++) {
+    // values nothing drives yet: picking one adds a circuit input for it
     const opts = await win.$$eval(`.fz-dipmap[data-dip="${i}"] .fz-dip-sel option`, (o) => o.map((x) => x.value).filter((v) => v && !v.endsWith('.on') && !v.endsWith('.tap')));
-    await win.selectOption(`.fz-dipmap[data-dip="${i}"] .fz-dip-sel`, opts[i]);
+    const dipMaps = (await D()).ctls.find((c) => c.kind === 'dip').maps;
+    const usedT = new Set((await D()).ctls.flatMap((c) => [c.map, ...(c.more || []), ...(c.maps || [])]).map((m) => m && m.to));
+    await win.selectOption(`.fz-dipmap[data-dip="${i}"] .fz-dip-sel`, opts.find((v) => v.includes('.+')) || opts.find((v) => !usedT.has(v)) || opts.find((v) => !(dipMaps || []).some((m) => m && m.to === v)));
     await win.waitForTimeout(60);
   }
   const dd = await D();
@@ -338,7 +351,7 @@ const S = process.env.SHOTS || '/tmp';
     const before = m.engineParamsFor(b);
     window.__tz.editor.remoteControl(bid, gain.cid, 0.9);
     const after = m.engineParamsFor(b);
-    const k = Object.keys(after).find((x) => x.endsWith('.gain'));
+    const k = def.design.ctls.find((c) => c.label === 'GAIN').map.to;
     return { before: before[k], after: after[k] };
   }, onBoard.id);
   ok(turned.after > turned.before + 0.3, `board knob drives the stage (${turned.before} -> ${turned.after})`);
@@ -366,7 +379,7 @@ const S = process.env.SHOTS || '/tmp';
     const g = i.graphs[i.graphs.length - 1];
     return { nodes: g.nodes.map((n) => n.id + ':' + n.algo), cables: g.cables.length, over: window.__tzFactory.graphOverridden(), status: Object.keys(window.__tz.state.status.blocks || {}) };
   });
-  ok(ti.over && ti.nodes.length === 1 && ti.nodes[0] === 'fztest:chain' && ti.cables >= 2, 'test mode sends a graph with the custom node: ' + ti.nodes.join(','));
+  ok(ti.over && ti.nodes.length === 1 && ti.nodes[0] === 'fztest:patch' && ti.cables >= 2, 'test mode sends a graph with the custom node: ' + ti.nodes.join(','));
   ok(ti.status.length === 1 && ti.status[0] === 'fztest', 'the engine runs only the tested pedal (' + ti.status.join(',') + ')');
   ok(await win.evaluate(() => document.querySelector('.fz-stagewrap').classList.contains('testing') && !!document.querySelector('.fz-meters')), 'testing banner and meters shown');
   // turn the TIME knob by dragging it on the stage
@@ -402,11 +415,11 @@ const S = process.env.SHOTS || '/tmp';
       cables: [{ id: 'a', from: { node: '__in', port: 0 }, to: { node: 'c1', port: 0 } }, { id: 'b', from: { node: 'c1', port: 0 }, to: { node: '__out', port: 0 } }],
     };
     const g = window.__tz.buildGraph(preset);
-    return { file: await window.tz.offline.render(g, di), algo: g.nodes[0].algo, chain: g.nodes[0].opts.chain.length };
+    return { file: await window.tz.offline.render(g, di), algo: g.nodes[0].algo, chain: g.nodes[0].opts.nodes.length };
   }, [blockId, di]);
   const lv = measure(wav.file);
   fs.rmSync(wav.file, { force: true });
-  ok(wav.algo === 'chain' && wav.chain >= 1 && lv.lufs > -45 && lv.peak < 0, `offline render of the custom block is not silent (${lv.lufs.toFixed(1)} LUFS)`);
+  ok(wav.algo === 'patch' && wav.chain >= 3 && lv.lufs > -45 && lv.peak < 0, `offline render of the custom block is not silent (${lv.lufs.toFixed(1)} LUFS)`);
 
   // 16. footswitch nut material: only the nut changes, the cap keeps its stock look
   await win.click('#tabs [data-tab="factory"]');
@@ -451,7 +464,8 @@ const S = process.env.SHOTS || '/tmp';
   ok((await D()).ctls.find((c) => c.id === enc.id).ringN === 24 && (await win.evaluate((id) => document.querySelectorAll(`.fz-stage [data-id="${id}"] .enc-led`).length, enc.id)) === 24, 'encoder ring has 24 LEDs');
   // a circuit template reuses the plain knobs but keeps the encoder
   await win.click('.fz-tabs [data-t="circuit"]');
-  await win.click('[data-circuit="delay"]');
+  await win.click('.cl-inst [data-cl="rminst"]');
+  await win.click('[data-circuit-id="b.c-delay"] [data-cl="use"]');
   await win.waitForTimeout(200);
   ok(!!(await D()).ctls.find((c) => c.id === enc.id), 'applying a circuit kept the encoder');
   await win.click('.fz-tabs [data-t="parts"]');

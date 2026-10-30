@@ -307,6 +307,7 @@ export class CodeEditor {
     }
     if (e.key === 'Escape' && this.find.open) {
       e.preventDefault();
+      e.stopPropagation();
       this.closeFind();
     }
   }
@@ -360,6 +361,7 @@ export class CodeEditor {
         this.findStep(e.shiftKey ? -1 : 1);
       } else if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         this.closeFind();
       }
     });
