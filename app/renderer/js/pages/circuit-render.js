@@ -256,7 +256,7 @@ export function drawGraph(ctx, G, o) {
     if (pt.io === 'ctl' && detail) {
       ctx.fillStyle = C.muted;
       ctx.font = '10px Inter, system-ui, sans-serif';
-      ctx.fillText(ctlSummary(n), b.x + 9, b.y + HEAD + ROW / 2 + 2);
+      ctx.fillText(clip(ctx, ctlSummary(n), b.w - 44), b.x + 9, b.y + HEAD + ROW / 2 + 2);
     }
     if (pt.io === 'cout' && detail && n.t === 'anaout') {
       ctx.fillStyle = C.muted;
@@ -319,7 +319,8 @@ function ctlSummary(n) {
   if (n.t === 'binary') return 'default ' + ((n.opts && n.opts[n.def ? 1 : 0]) || (n.def ? 'on' : 'off'));
   if (n.steps >= 2) return 'default ' + ((n.opts && n.opts[n.def | 0]) || 'pos ' + ((n.def | 0) + 1));
   const f = (v) => String(+(+v).toFixed(2));
-  return `default ${f(n.def ?? 0.5)}  (${f(n.min ?? 0)} to ${f(n.max ?? 1)})`;
+  const lo = n.min ?? 0, hi = n.max ?? 1;
+  return lo === 0 && hi === 1 ? 'default ' + f(n.def ?? 0.5) : `${f(n.def ?? 0.5)} of ${f(lo)}..${f(hi)}`;
 }
 /** A small key for the signal kinds (audio, analog, binary), as an SVG string for the editor and the diagram. */
 export function legendSVG() {

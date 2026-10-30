@@ -186,9 +186,9 @@ export function mountDiagram(mid, api) {
     for (const j of ctlJacks(D)) {
       const out = jackIsOut(j);
       if (j.kind === 'fsw') {
-        const h = ROWH + 16;
+        const h = ROWH + 18;
         rows.push({ jack: j, y, h, label: (j.label || 'FS') + (out ? ' (used as out)' : ' (footswitch in)'), dim: out });
-        const p = (k, l, i) => ports.set('jack:' + j.id + ':' + k, { x: 20 + i * 34, y: y + ROWH + 4, dir: 'out', kind: 'c', sig: 'b', jack: j, ch: k, label: l, small: true });
+        const p = (k, l, i) => ports.set('jack:' + j.id + ':' + k, { x: 18 + i * 52, y: y + ROWH + 7, dir: 'out', kind: 'c', sig: 'b', jack: j, ch: k, label: l, small: true, side: 'right' });
         p('t', 'Tip', 0);
         p('r', 'Ring', 1);
         y += h + 4;
@@ -236,13 +236,13 @@ export function mountDiagram(mid, api) {
     const outRows = [];
     for (const j of J.outs) {
       const stereo = j.kind === 'phones';
-      outRows.push({ jack: j, y: ry, label: (j.label || 'OUT') + (j.virtual ? ' (no jack)' : ''), h: stereo ? ROWH + 16 : ROWH });
+      outRows.push({ jack: j, y: ry, label: (j.label || 'OUT') + (j.virtual ? ' (no jack)' : ''), h: stereo ? ROWH + 18 : ROWH });
       ports.set('jack:' + j.id, { x: rx, y: ry + ROWH / 2, dir: 'in', kind: 'a', sig: 'a', jack: j });
       if (stereo) {
-        ports.set('jack:' + j.id + ':L', { x: rx + 22, y: ry + ROWH + 4, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'L', label: 'L', small: true });
-        ports.set('jack:' + j.id + ':R', { x: rx + 56, y: ry + ROWH + 4, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'R', label: 'R', small: true });
+        ports.set('jack:' + j.id + ':L', { x: rx + 18, y: ry + ROWH + 7, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'L', label: 'Left', small: true, labelRight: true });
+        ports.set('jack:' + j.id + ':R', { x: rx + 72, y: ry + ROWH + 7, dir: 'in', kind: 'a', sig: 'a', jack: j, side: 'R', label: 'Right', small: true, labelRight: true });
       }
-      ry += (stereo ? ROWH + 16 : ROWH) + 4;
+      ry += (stereo ? ROWH + 18 : ROWH) + 4;
     }
     const ctlOuts = ctlJacks(D);
     if (ctlOuts.length) {
@@ -437,7 +437,8 @@ export function mountDiagram(mid, api) {
       const c = svg(sg === 'a' ? 'circle' : 'rect', sg === 'a' ? { cx: p.x, cy: p.y, r: p.small ? 4.2 : 5 } : sg === 'b' ? { x: p.x - r0 + 0.5, y: p.y - r0 + 0.5, width: r0 * 2 - 1, height: r0 * 2 - 1, rx: 1 } : { x: p.x - r0, y: p.y - r0, width: r0 * 2, height: r0 * 2, rx: 1.5, transform: `rotate(45 ${p.x} ${p.y})` }, gp);
       c.setAttribute('class', `fz-wd-port ${p.kind} ${sg}${wired ? ' wired' : ''}${drag && !ok && drag.from !== k ? ' dim' : ''}${drag && ok && drag.from !== k ? ' ok' : ''}${hoverKey === k ? ' hot' : ''}`);
       c.setAttribute('data-wp', k);
-      if (p.small) svg('text', { x: p.x, y: p.y - 7, class: 'fz-wd-sub', 'text-anchor': 'middle' }, gp, p.label);
+      if (p.small && (p.labelRight || p.side === 'right')) svg('text', { x: p.x + 8, y: p.y + 3, class: 'fz-wd-sub' }, gp, p.label);
+      else if (p.small) svg('text', { x: p.x, y: p.y - 7, class: 'fz-wd-sub', 'text-anchor': 'middle' }, gp, p.label);
       c.addEventListener('pointerdown', (e) => startDrag(e, k));
       c.addEventListener('pointerenter', () => setHover(k));
       c.addEventListener('pointerleave', () => setHover(null));
