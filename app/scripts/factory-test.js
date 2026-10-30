@@ -863,6 +863,52 @@ const S = process.env.SHOTS || '/tmp';
     return d;
   });
 
+  // old designs: 'knob' control inputs load as analog inputs (2 way switches as binary), still wired
+  const mig2 = await win.evaluate(async () => {
+    const F = await import('./js/pages/factory-circuit.js');
+    const d = window.__tzFactory.template('blank');
+    const inst = d.circuit.insts[0];
+    const ctlNodes = inst.graph.nodes.filter((n) => n.t === 'analog' || n.t === 'binary');
+    // make it look like a v0.7 design
+    for (const n of ctlNodes) {
+      n.t = 'knob';
+      delete n.min;
+      delete n.max;
+    }
+    inst.graph.nodes.push({ id: 'oldsw', t: 'knob', x: 40, y: 600, p: {}, name: 'Old switch', def: 1, steps: 2, opts: ['Off', 'On'] });
+    window.__tzFactory.load(d);
+    const D2 = window.__tzFactory.design();
+    const g = D2.circuit.insts[0].graph;
+    const def = F.designToDef(D2, { id: 'custom.migcheck' });
+    const knob = D2.ctls.find((c) => c.map && c.map.to && c.map.to.startsWith(D2.circuit.insts[0].id + '.'));
+    return { kinds: g.nodes.filter((n) => ['knob', 'analog', 'binary'].includes(n.t)).map((n) => n.t), sw: g.nodes.find((n) => n.id === 'oldsw'), derived: knob ? def.derive({ ['u.' + knob.id]: 1 })[knob.map.to] : null };
+  });
+  ok(!mig2.kinds.includes('knob') && mig2.kinds.includes('analog') && mig2.sw.t === 'binary' && mig2.sw.def === 1, 'old control inputs load as analog / binary inputs: ' + mig2.kinds.join(', '));
+  ok(mig2.derived === 1, 'and the knobs wired to them still drive them (' + mig2.derived + ')');
+  // a PHONES jack shows left and right in the wiring diagram, each can be wired on its own
+  await win.evaluate(() => {
+    const d = window.__tzFactory.template('blank');
+    d.jacks.push({ id: 'jph', kind: 'phones', edge: 'top', t: 0.5, label: 'PHONES' });
+    window.__tzFactory.load(d);
+  });
+  await win.waitForTimeout(300);
+  await win.evaluate(() => window.__tzCircuits && window.__tzCircuits.diagram().refresh(true));
+  await win.waitForTimeout(300);
+  const ph = await win.evaluate(() => ['jack:jph', 'jack:jph:L', 'jack:jph:R'].map((k) => !!document.querySelector(`.fz-wd [data-wp="${k}"]`)));
+  ok(ph.every(Boolean), 'the PHONES jack has left and right ports in the diagram');
+  const phw = await win.evaluate(() => {
+    const dg = window.__tzCircuits.diagram();
+    const D2 = window.__tzFactory.design();
+    const inst = D2.circuit.insts[0];
+    const o = inst.graph.nodes.find((n) => n.t === 'out');
+    dg.connect('out:' + inst.id + ':' + o.id, 'jack:jph:R');
+    return window.__tzFactory.design().circuit.wires.some((w) => w.b.n === 'jack:jph' && w.b.p === 'R');
+  });
+  ok(phw, 'wiring a circuit to the right side of the PHONES jack');
+  const phOuts = await win.evaluate(async () => (await import('./js/pages/factory-circuit.js')).compilePatch(window.__tzFactory.design()).outs);
+  ok(phOuts.length === 3 && phOuts[1][1] === -1 && phOuts[2][1] === -1, 'the PHONES jack gets an engine output per side: ' + JSON.stringify(phOuts));
+  await win.screenshot({ path: path.join(S, 'factory-phones-lr.png') });
+
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));
   console.log(fails ? `${fails} failed` : 'all passed');
