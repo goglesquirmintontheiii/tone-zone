@@ -43,7 +43,7 @@ const { makeDI, measure } = require('./loudness');
       try { m = measure(r.wav); } catch (e) { r.error = 'measure ' + e.message; }
       fs.rmSync(r.wav, { force: true });
     }
-    const flag = r.error ? 'ERROR ' + r.error : !m ? 'SILENT' : m.tp > -1 ? 'CLIP' : m.lufs < -40 ? 'QUIET' : '';
+    const flag = r.error ? 'ERROR ' + r.error : !m ? 'SILENT' : m.peak > -0.05 ? 'CLIP' : m.tp > -1 ? 'HOT' : m.lufs < -40 ? 'QUIET' : '';
     if (r.error || !m) nErr++;
     const key = f.replace(/\.json$/, '');
     if (m) { levels[key] = m.lufs; detail[key] = m; }
