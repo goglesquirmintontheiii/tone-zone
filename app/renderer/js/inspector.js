@@ -16,7 +16,13 @@ export function initInspector(editor) {
   body = root.querySelector('.insp-body');
   bus.on('selection', render);
   bus.on('preset:changed', render);
-  bus.on('param', ({ id }) => id === current && refreshValues());
+  bus.on('param', ({ id, p }) => {
+    if (id !== current) return;
+    // some params change which inspector rows exist (a def lists them in inspectorRerenderOn)
+    const d = getDef(blockById(id)?.type);
+    if (d && d.inspectorRerenderOn && d.inspectorRerenderOn.includes(p)) render();
+    else refreshValues();
+  });
   bus.on('bypass', ({ id }) => id === current && render());
   bus.on('blockInfo', ({ id, info }) => {
     blockInfo[id] = info;

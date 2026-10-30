@@ -88,6 +88,31 @@ const S = process.argv[2] || '/tmp';
   ok(mat.defsOk && mat.dataImg, 'material defs live in #globalDefs with image tiles');
   ok(mat.stable, 'messy screws keep their look between redraws');
   await win.screenshot({ path: S + '/pedalboard-materials.png' });
+  // XL Max: three rows (10 + 9 + 9); a level meter (a bit taller than a row) still fits; glass takes no screws
+  const xl = await win.evaluate(async () => {
+    const st = await import('./js/state.js');
+    const M = await import('./js/gfx/materials.js');
+    st.loadPreset(st.newPreset('xlmax'), null);
+    const E = window.__tz.editor;
+    E.rebuild();
+    const pb = E.addAt('pb.xlmax', 0, 0, false);
+    const bv = E.views.get(pb.id);
+    const m = E.addAt('tz.meter', bv.block.x + 500, bv.block.y + bv.h - 150, true);
+    const mv = E.views.get(m.id);
+    const onBoard = E.boardMembers(pb.id).includes(m.id);
+    const b = window.__tz.state.preset.blocks.find((x) => x.id === pb.id);
+    Object.assign(b.params, M.toParams({ m: 'glass', s: 'clear', f: 'clear' }, 'frame'));
+    st.setParam(pb.id, 'style', 2);
+    await new Promise((r) => setTimeout(r, 200));
+    const screws = document.querySelectorAll(`[data-node="${pb.id}"] path[d*="M"][stroke-linecap="round"]`).length;
+    E.fit(false);
+    return { slots: bv.slots.length, rails: 0, onBoard, mh: mv.h, bottom: Math.round(bv.block.y + bv.h - (mv.block.y + mv.h)), style: b.params.style };
+  });
+  ok(xl.slots === 28, `XL Max has ${xl.slots} spots`);
+  ok(xl.onBoard, `level meter (${xl.mh} tall) sits on the board, ${xl.bottom} from the bottom edge`);
+  ok(xl.style === 0, 'glass board switched off the screw mounting');
+  await win.waitForTimeout(800);
+  await win.screenshot({ path: S + '/pedalboard-xlmax.png' });
   // all six sizes
   await win.evaluate(async () => {
     const st = await import('./js/state.js');

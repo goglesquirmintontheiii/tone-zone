@@ -67,25 +67,33 @@ export function installBoardForms(registerForm) {
     const p = (ctx.block && ctx.block.params) || {};
     const seed = (ctx.block && ctx.block.id) || def.id;
     const { cols, rows } = def.pedalboard;
+    const rowCols = def.pedalboard.rowCols || Array(rows).fill(cols);
     const S = BOARD_SLOT;
     const w = cols * S.w + S.padX * 2, h = rows * S.h + S.padY * 2;
+    const rowX = (r) => S.padX + ((cols - rowCols[r]) * S.w) / 2; // shorter rows are centred
     const specs = boardSpecs(p);
     const vel = VELCRO[Math.round(p.velcro || 0)] || VELCRO[0];
-    const style = Math.round(p.style || 0); // 0 full velcro, 1 strips per spot, 2 screws, 3 messy screws, 4 blank
+    let style = Math.round(p.style || 0); // 0 full velcro, 1 strips per spot, 2 screws, 3 messy screws, 4 blank
+    const glass = specs.frame.m === 'glass';
+    if (glass && (style === 2 || style === 3)) style = 4; // you can't screw into glass
     const ff = materialFill(specs.frame);
     const box = { x: 0, y: 0, w, h }; // multicolour fades and bursts span the whole board
-    softShadow(g, { w, h, rx: 14, blur: 14, opacity: ff.translucent ? 0.3 : 0.6, dy: 14 });
-    // frame
-    svg('rect', { width: w, height: h, rx: 14, fill: ff.translucent ? 'rgba(255,255,255,0.08)' : ff.edge }, g);
-    paint(g, 'rect', { x: 2, y: 2, width: w - 4, height: h - 4, rx: 12 }, specs.frame, { edge: false, glowWidth: 10, seed: seed + 'f', box });
-    svg('rect', { x: 1.2, y: 1.2, width: w - 2.4, height: h - 2.4, rx: 13, fill: 'none', stroke: ff.hi, 'stroke-width': 1.2, 'stroke-opacity': 0.7 }, g);
-    svg('rect', { x: 3, y: 3, width: w - 6, height: 3, rx: 1.5, fill: '#fff', opacity: 0.22 }, g);
-    // open deck between the rails
     const ix = S.padX - 12, iy = S.padY - 10;
-    svg('rect', { x: ix, y: iy, width: w - ix * 2, height: h - iy * 2, rx: 6, fill: '#08090b', opacity: ff.translucent ? 0.55 : 1 }, g);
-    svg('rect', { x: ix, y: iy, width: w - ix * 2, height: 6, rx: 3, fill: '#000', opacity: 0.6 }, g);
+    // the frame is one piece: an outer rounded rectangle with the deck opening cut out of it
+    const ring = `M14 0H${w - 14}A14 14 0 0 1 ${w} 14V${h - 14}A14 14 0 0 1 ${w - 14} ${h}H14A14 14 0 0 1 0 ${h - 14}V14A14 14 0 0 1 14 0Z` +
+      `M${ix + 6} ${iy}H${w - ix - 6}A6 6 0 0 1 ${w - ix} ${iy + 6}V${h - iy - 6}A6 6 0 0 1 ${w - ix - 6} ${h - iy}H${ix + 6}A6 6 0 0 1 ${ix} ${h - iy - 6}V${iy + 6}A6 6 0 0 1 ${ix + 6} ${iy}Z`;
+    softShadow(g, { w, h, rx: 14, blur: 14, opacity: ff.translucent ? 0.25 : 0.6, dy: 14 });
+    // opaque boards: the floor under the deck is in shadow. See-through boards leave it empty.
+    if (!ff.translucent) svg('rect', { x: ix, y: iy, width: w - ix * 2, height: h - iy * 2, rx: 6, fill: '#08090b' }, g);
     // rails: two per row of pedals (a regular pedal stands across both), each with a velcro strip
     const nr = rows * 2, rh = (h - iy * 2 - 8) / nr;
+    const frameLayer = () => {
+      paint(g, 'path', { d: ring, 'fill-rule': 'evenodd' }, specs.frame, { edge: false, glowWidth: 10, seed: seed + 'f', box, size: 40 });
+      svg('path', { d: ring, 'fill-rule': 'evenodd', fill: 'none', stroke: ff.hi, 'stroke-width': 1.2, 'stroke-opacity': 0.6 }, g);
+      svg('rect', { x: 3, y: 3, width: w - 6, height: 3, rx: 1.5, fill: '#fff', opacity: ff.translucent ? 0.35 : 0.22 }, g);
+      // inner lip shadow at the top of the opening
+      if (!ff.translucent) svg('rect', { x: ix, y: iy, width: w - ix * 2, height: 5, fill: '#000', opacity: 0.45 }, g);
+    };
     const rf = materialFill(specs.rail);
     let si = 0;
     for (let i = 0; i < nr; i++) {
@@ -104,10 +112,12 @@ export function installBoardForms(registerForm) {
       } else if (style === 1) {
         // one strip per pedal spot
         const mx = S.w * 0.04;
-        for (let c = 0; c < cols; c++) svg('rect', { x: S.padX + c * S.w + mx, y: sy + my, width: S.w - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
+        const r = Math.floor(i / 2);
+        for (let c = 0; c < rowCols[r]; c++) svg('rect', { x: rowX(r) + c * S.w + mx, y: sy + my, width: S.w - mx * 2, height: sh - my * 2, rx: 2, fill: vel.fill, stroke: vel.edge, 'stroke-width': 0.8 }, rail);
       } else if (style === 2 || style === 3) {
         // no velcro: two screws per spot on each rail, four per pedal. Messy: crooked crosses, a few stripped.
-        for (let c = 0; c < cols; c++)
+        const r = Math.floor(i / 2);
+        for (let c = 0; c < rowCols[r]; c++)
           for (const fx of [0.22, 0.78]) {
             const o = {};
             if (style === 3) {
@@ -117,14 +127,14 @@ export function installBoardForms(registerForm) {
               o.rnd = rnd;
             }
             si++;
-            screw(rail, S.padX + c * S.w + S.w * fx, sy + sh / 2, Math.min(5.5, sh * 0.16), specs.screw, o);
+            screw(rail, rowX(r) + c * S.w + S.w * fx, sy + sh / 2, Math.min(5.5, sh * 0.16), specs.screw, o);
           }
       }
       // style 4: blank rails
     }
-    // side caps over the rail ends, with screws (grain runs along the cap)
-    for (const x of [2, w - S.padX + 10]) {
-      paint(g, 'rect', { x, y: 2, width: S.padX - 12, height: h - 4, rx: 10 }, specs.frame, { angle: 90, edgeWidth: 0.8, glowWidth: 6, seed: seed + 'c' + x, box });
+    // the frame goes over the rail ends, then the screws that hold the rails (none on glass)
+    frameLayer();
+    for (const x of glass ? [] : [2, w - S.padX + 10]) {
       for (let r = 0; r < nr; r++) {
         const cy = iy + 4 + r * rh + rh / 2 - 1, cx = x + (S.padX - 12) / 2;
         screw(g, cx, cy, 3.2, specs.screw, style === 3 ? { rot: seeded(seed, 1000 + r + (x > 2 ? 50 : 0))() * 90 } : {});
@@ -137,7 +147,7 @@ export function installBoardForms(registerForm) {
     label(g, w / 2, -12, name, { size: 15, weight: 800, fill: '#d8dce4', ls: 1.6, font: "'Barlow Condensed', sans-serif" });
     label(g, w - 50, h - 8, 'TONE ZONE', { size: 6, weight: 700, fill: light ? '#333' : '#aab', opacity: 0.5, ls: 1.4 });
     const slots = [];
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) slots.push({ x: S.padX + c * S.w, y: S.padY + r * S.h });
+    for (let r = 0; r < rows; r++) for (let c = 0; c < rowCols[r]; c++) slots.push({ x: rowX(r) + c * S.w, y: S.padY + r * S.h, r, c });
     return { w, h, theme: { text: '#ccc', jackLabels: false }, jacks: [], slots };
   });
 }

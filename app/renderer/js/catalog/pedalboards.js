@@ -11,10 +11,11 @@ export const BOARD_SIZES = [
   ['medium', 'Medium', 6, 2],
   ['large', 'Large', 9, 2],
   ['xl', 'XL', 12, 2],
-  ['xlmax', 'XL Max', 14, 2],
+  ['xlmax', 'XL Max', 10, 3, [10, 9, 9]],
 ];
 export const BOARD_STYLES = ['FULL VELCRO', 'VELCRO STRIPS', 'SCREWS', 'MESSY', 'BLANK'];
 
+const count = (cols, rows, rowCols) => (rowCols ? rowCols.reduce((a, b) => a + b, 0) : cols * rows);
 const MAT_KEYS = ['Mat', 'Sub', 'Fin', 'Col', 'Wear', 'Multi'];
 const matParams = (pre) => MAT_KEYS.map((k) => pre + k);
 
@@ -53,7 +54,15 @@ function inspectorSection(block, host, api) {
         [...host.querySelectorAll('.mtp, .mtp-row')].forEach((n) => n.remove());
         const p = api.params();
         const sp = boardSpecs(p);
-        materialPicker(host, { key: 'pb-frame', title: 'Frame', value: sp.frame, collapsible: true, open: true, wear: true, onChange: (s) => api.setParams(M.toParams(s, 'frame')) });
+        materialPicker(host, {
+          key: 'pb-frame', title: 'Frame', value: sp.frame, collapsible: true, open: true, wear: true,
+          onChange: (s) => {
+            const st = Math.round(api.params().style || 0);
+            // glass can't take screws: fall back to full velcro
+            api.setParams(Object.assign(M.toParams(s, 'frame'), s.m === 'glass' && (st === 2 || st === 3) ? { style: 0 } : {}));
+            if ((s.m === 'glass') !== (sp.frame.m === 'glass')) api.rerender();
+          },
+        });
         const row = document.createElement('label');
         row.className = 'mtp-row';
         row.innerHTML = '<input type="checkbox"> Rails match the frame';
@@ -65,14 +74,25 @@ function inspectorSection(block, host, api) {
         };
         host.appendChild(row);
         if (sp.ownRails) materialPicker(host, { key: 'pb-rail', title: 'Rails', value: sp.rail, collapsible: true, wear: true, onChange: (s) => api.setParams(M.toParams(s, 'rail')) });
-        materialPicker(host, { key: 'pb-screw', title: 'Screwheads', value: sp.screw, collapsible: true, onChange: (s) => api.setParams(M.toParams(s, 'screw')) });
+        const style = Math.round(p.style || 0);
+        if (sp.frame.m === 'glass' && (style === 2 || style === 3)) {
+          // picked a screw mounting on a glass board: undo it
+          setTimeout(() => api.setParams({ style: 0 }), 0);
+          import('../util.js').then((u) => u.toast("Glass boards can't use screws", 'info'));
+        }
+        if (sp.frame.m === 'glass') {
+          const note = document.createElement('p');
+          note.className = 'mtp-note';
+          note.textContent = 'Glass frames have no screws, so the screw mountings are off.';
+          host.appendChild(note);
+        } else materialPicker(host, { key: 'pb-screw', title: 'Screwheads', value: sp.screw, collapsible: true, onChange: (s) => api.setParams(M.toParams(s, 'screw')) });
       };
       draw();
     })
   );
 }
 
-export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows]) =>
+export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows, rowCols]) =>
   def({
     id: 'pb.' + key,
     name: label + ' Pedalboard',
@@ -80,9 +100,9 @@ export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows]) =>
     ref: 'Tone Zone original',
     cat: 'Pedalboard',
     kind: 'Pedalboard',
-    typeName: `${cols * rows} pedals`,
+    typeName: `${count(cols, rows, rowCols)} pedals`,
     form: 'pedalboard',
-    pedalboard: { cols, rows },
+    pedalboard: { cols, rows, rowCols },
     algo: null,
     ports: { ins: [], outs: [] },
     rerenderOn: ['jacket', 'velcro', 'name', 'style', 'screwCol', ...matParams('frame'), ...matParams('rail'), ...matParams('screw')],
@@ -93,6 +113,7 @@ export const pedalboards = BOARD_SIZES.map(([key, label, cols, rows]) =>
       SEL('velcro', 'VELCRO', ['BLACK', 'WHITE', 'SEMI-CLEAR'], { virtual: true, hidden: true }),
     ],
     inspectorSection,
-    desc: `Holds ${cols * rows} regular pedals (${cols} x ${rows}). Drop pedals on it to snap them into place; drag the frame to move the whole board. Right-click to rename it or change the frame material; mounting, velcro and materials are in the inspector.`,
+    inspectorRerenderOn: ['style'],
+    desc: `Holds ${count(cols, rows, rowCols)} regular pedals (${rowCols ? rowCols.join(' + ') : cols + ' x ' + rows}). Drop pedals on it to snap them into place; drag the frame to move the whole board. Right-click to rename it or change the frame material; mounting, velcro and materials are in the inspector.`,
   })
 );
