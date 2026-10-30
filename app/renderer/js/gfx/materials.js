@@ -47,7 +47,8 @@ export const MATERIALS = [
       ['walnut', 'Walnut', '#8d6648', '#2e1c12', { mid: '#5a3e2c', alt: '#5a4436', k: 16, warp: 1.1, streak: 0.5, con: 0.6, pore: 0.32, porL: 7, cath: 0.6, vary: 0.7 }],
       ['mahogany', 'Mahogany', '#ad613a', '#552612', { k: 24, warp: 0.4, streak: 0.45, con: 0.35, pore: 0.3, porL: 6, ribbon: 6, vary: 0.4 }],
       ['koa', 'Figured koa', '#d49450', '#5a3014', { alt: '#9a5a26', k: 18, warp: 1.2, streak: 0.4, con: 0.6, pore: 0.16, porL: 6, cath: 0.4, flame: 1.5, chatoy: true, vary: 0.6 }],
-      ['zebrawood', 'Zebrawood', '#ecd6a4', '#3a2516', { k: 14, warp: 0.35, streak: 0.3, con: 1, pore: 0.2, porL: 6, stripe: true, vary: 0.3 }],
+      // zebra: dark stripe pairs per tile height, drawn by zebraAt() instead of rings
+      ['zebrawood', 'Zebrawood', '#ecdcb0', '#22150c', { mid: '#c8a66c', k: 6, warp: 0.3, streak: 0.4, con: 0.2, base: 0.7, pore: 0.16, porL: 6, zebra: 9, vary: 0.35, macro: 0.45 }],
       ['ash', 'Ash', '#ead6aa', '#9c7a4a', { k: 8, warp: 1.3, streak: 0.4, con: 0.7, pore: 0.55, porL: 9, porH: 2, porK: 1.3, ringPorous: true, cath: 0.7, vary: 0.35 }],
       ['pine', 'Pine', '#f0d196', '#b4733a', { k: 6, warp: 1.5, streak: 0.2, con: 0.8, sharp: 3, base: 0.66, pore: 0, cath: 0.8, knots: 2, vary: 0.4 }],
       ['bamboo', 'Bamboo', '#e4c682', '#a58040', { k: 40, warp: 0.1, streak: 0.55, con: 0.18, pore: 0.2, porL: 5, nodes: true, vary: 0.3 }],
@@ -485,6 +486,27 @@ function texWood(s, q) {
   const ringAA = Math.min(0.3, (2 * K) / (256 * qq));
   const porK = sp.porK || 1;
   const cols = Math.max(1, Math.floor(W / porL));
+  // zebrawood: long, gently wavy dark stripes of uneven width and spacing. Interlocked grain makes neighbours
+  // drift together and apart, some stripes taper out, some split into two lines.
+  const Z = sp.zebra | 0, zAA = ((Z * 1.3) / H) * (pv ? 0.5 : 1);
+  const zEdge = mix(dark, light, 0.42);
+  const zebraAt = (u, v) => {
+    const wave = (fbm(u, v, 3, 1, 3, sd + 81) - 0.5) * 1.4 + (fbm(u, v, 11, 2, 2, sd + 82) - 0.5) * 0.3;
+    const lock = (fbm(u, v, 5, 3, 2, sd + 83) - 0.5) * 0.9;
+    const g = Z * v + wave + lock + (fbm(u, v, 1, Z, 2, sd + 84) - 0.5) * 2.4;
+    const fl = Math.floor(g), ri = ((fl % Z) + Z) % Z, p = g - fl;
+    const w0 = 0.07 + 0.36 * Math.pow(hash(ri, sd, 6), 1.3);
+    const w = w0 * (0.35 + 1.3 * vnoise(u * 6, ri + 0.5, 6, Z, sd + 85)) / 2;
+    const c0 = 0.5 + (hash(ri, sd, 7) - 0.5) * 0.3;
+    const d = Math.abs(p - c0);
+    let band = 1 - smooth(w - zAA, w + zAA, d);
+    if (hash(ri, sd, 8) < 0.3 && w > 0.07) band *= smooth(w * 0.16, w * 0.16 + zAA * 1.5, d); // split stripe
+    const halo = (1 - smooth(w, w + 0.06, d)) * (1 - band);
+    // faint narrow lines between the main stripes
+    const g3 = g * 3 + 0.5, f3 = Math.floor(g3), i3 = ((f3 % (Z * 3)) + Z * 3) % (Z * 3);
+    const minor = (1 - smooth(0.03, 0.03 + zAA * 4, Math.abs(g3 - f3 - 0.5))) * 0.22 * hash(i3, sd, 9) * (1 - band);
+    return { band, halo, minor, core: smooth(0, Math.max(0.01, w), w - d), k: 0.8 + 0.4 * hash(ri, sd, 10) };
+  };
   const fn = (u, v, x, y) => {
     if (pv) (u *= 0.1), (v *= 0.5);
     // knots: rings bow around them
@@ -506,11 +528,9 @@ function texWood(s, q) {
     g += (fbm(u, vv, 1, Math.max(1, K >> 1), 2, sd + 3) - 0.5) * 0.9; // uneven ring widths
     const ri = ((Math.floor(g) % K) + K) % K, p = g - Math.floor(g);
     const rs = 0.55 + 0.9 * hash(ri, sd, 5);
-    let ring;
-    if (sp.stripe) {
-      const wd = 0.28 + 0.3 * hash(ri, sd, 6);
-      ring = smooth(1 - wd - 0.05, 1 - wd + 0.03, p) * (0.75 + 0.25 * rs);
-    } else ring = Math.pow(p, sharp) * rs * (1 - smooth(1 - ringAA, 1, p)); // soft fall so ring edges don't alias
+    let ring = Math.pow(p, sharp) * rs * (1 - smooth(1 - ringAA, 1, p)); // soft fall so ring edges don't alias
+    const zb = sp.zebra ? zebraAt(u, v) : null;
+    if (zb) ring = zb.band;
     let t = base + 0.25 - ring * sp.con * 0.75;
     // fine fibre lines along the grain
     const st = fbm(u, v, 3, 160, 2, sd + 21);
@@ -553,6 +573,13 @@ function texWood(s, q) {
       }
     }
     let c = ramp(t);
+    if (zb) {
+      // brown feathering at the stripe edges and faint lines between stripes, then the dark stripe itself with
+      // the fibres still showing in it
+      c = mix(c, zEdge, Math.min(1, zb.halo * 0.45 + zb.minor));
+      const sc = mul(mix(zEdge, dark, 0.55 + 0.45 * zb.core), (0.82 + st * 0.36) * zb.k);
+      c = mix(c, sc, zb.band);
+    }
     if (alt) c = mix(c, alt, smooth(0.5, 0.8, fbm(u, v, 3, sp.streaky ? 40 : 12, 3, sd + 33)) * (sp.streaky ? 0.75 : 0.35));
     if (sp.flame) {
       // curl: bright and dark bands across the grain, strongest in patches
