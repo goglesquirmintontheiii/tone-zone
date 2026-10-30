@@ -15,7 +15,7 @@ export const BOARD_SIZES = [
 ];
 export const BOARD_STYLES = ['FULL VELCRO', 'VELCRO STRIPS', 'SCREWS', 'MESSY', 'BLANK'];
 
-const MAT_KEYS = ['Mat', 'Sub', 'Fin', 'Col', 'Wear'];
+const MAT_KEYS = ['Mat', 'Sub', 'Fin', 'Col', 'Wear', 'Multi'];
 const matParams = (pre) => MAT_KEYS.map((k) => pre + k);
 
 function wearOf(str) {
@@ -26,9 +26,13 @@ function wearOf(str) {
   }
   return w;
 }
+function multiOf(str) {
+  const [mode, angle, stops] = String(str || '').split('|');
+  return mode ? { mode, angle: +angle || 0, stops: (stops || '').split(' ').filter(Boolean) } : null;
+}
 // older presets stored a plain frame colour (jacket) and screw colour (screwCol)
 export function boardSpecs(p = {}) {
-  const get = (pre) => (p[pre + 'Mat'] ? { m: p[pre + 'Mat'], s: p[pre + 'Sub'], f: p[pre + 'Fin'], c: p[pre + 'Col'], w: wearOf(p[pre + 'Wear']) } : null);
+  const get = (pre) => (p[pre + 'Mat'] ? { m: p[pre + 'Mat'], s: p[pre + 'Sub'], f: p[pre + 'Fin'], c: p[pre + 'Col'], w: wearOf(p[pre + 'Wear']), mc: multiOf(p[pre + 'Multi']) } : null);
   const frame = get('frame') || { m: 'metal', s: 'aluminium', f: 'anodized', c: p.jacket || '#1d1e22' };
   const ownRails = p.railMat && p.railMat !== 'frame';
   const rail = ownRails ? get('rail') : frame;

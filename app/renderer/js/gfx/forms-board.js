@@ -33,6 +33,9 @@ function screw(g, cx, cy, r, spec, o = {}) {
   const k = r * 0.55, sw = Math.max(0.8, r * 0.22);
   const slot = (f && f.edge) || '#222';
   const t = `rotate(${(o.rot || 0).toFixed(1)} ${cx} ${cy})`;
+  // a faint light bevel under the slot keeps it readable on dark heads
+  const bevel = `translate(${(sw * 0.3).toFixed(2)} ${(sw * 0.3).toFixed(2)}) ` + t;
+  svg('path', { d: `M${cx - k} ${cy}H${cx + k}M${cx} ${cy - k}V${cy + k}`, stroke: '#fff', 'stroke-opacity': 0.28, 'stroke-width': sw, 'stroke-linecap': 'round', transform: bevel }, g);
   if (!o.stripped) {
     svg('path', { d: `M${cx - k} ${cy}H${cx + k}M${cx} ${cy - k}V${cy + k}`, stroke: slot, 'stroke-width': sw, 'stroke-linecap': 'round', transform: t }, g);
     return;
@@ -70,10 +73,11 @@ export function installBoardForms(registerForm) {
     const vel = VELCRO[Math.round(p.velcro || 0)] || VELCRO[0];
     const style = Math.round(p.style || 0); // 0 full velcro, 1 strips per spot, 2 screws, 3 messy screws, 4 blank
     const ff = materialFill(specs.frame);
+    const box = { x: 0, y: 0, w, h }; // multicolour fades and bursts span the whole board
     softShadow(g, { w, h, rx: 14, blur: 14, opacity: ff.translucent ? 0.3 : 0.6, dy: 14 });
     // frame
     svg('rect', { width: w, height: h, rx: 14, fill: ff.translucent ? 'rgba(255,255,255,0.08)' : ff.edge }, g);
-    paint(g, 'rect', { x: 2, y: 2, width: w - 4, height: h - 4, rx: 12 }, specs.frame, { edge: false, glowWidth: 10, seed: seed + 'f' });
+    paint(g, 'rect', { x: 2, y: 2, width: w - 4, height: h - 4, rx: 12 }, specs.frame, { edge: false, glowWidth: 10, seed: seed + 'f', box });
     svg('rect', { x: 1.2, y: 1.2, width: w - 2.4, height: h - 2.4, rx: 13, fill: 'none', stroke: ff.hi, 'stroke-width': 1.2, 'stroke-opacity': 0.7 }, g);
     svg('rect', { x: 3, y: 3, width: w - 6, height: 3, rx: 1.5, fill: '#fff', opacity: 0.22 }, g);
     // open deck between the rails
@@ -90,7 +94,7 @@ export function installBoardForms(registerForm) {
       // slat with open gaps between them, like an aluminium rail board
       const sh = rh * 0.64, sy = y + (rh - sh) / 2;
       svg('rect', { x: ix - 2, y: sy + 3, width: w - ix * 2 + 4, height: sh, rx: 3, fill: '#000', opacity: rf.translucent ? 0.25 : 0.5 }, rail);
-      paint(rail, 'rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3 }, specs.rail, { edgeWidth: 0.6, glowWidth: 5, seed: seed + 'r' + i });
+      paint(rail, 'rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: sh, rx: 3 }, specs.rail, { edgeWidth: 0.6, glowWidth: 5, seed: seed + 'r' + i, box });
       svg('rect', { x: ix - 2, y: sy, width: w - ix * 2 + 4, height: 1.6, fill: '#fff', opacity: 0.3 }, rail);
       const rw = w - ix * 2 + 4, my = sh * 0.09;
       if (style === 0) {
@@ -120,7 +124,7 @@ export function installBoardForms(registerForm) {
     }
     // side caps over the rail ends, with screws (grain runs along the cap)
     for (const x of [2, w - S.padX + 10]) {
-      paint(g, 'rect', { x, y: 2, width: S.padX - 12, height: h - 4, rx: 10 }, specs.frame, { angle: 90, edgeWidth: 0.8, glowWidth: 6, seed: seed + 'c' + x });
+      paint(g, 'rect', { x, y: 2, width: S.padX - 12, height: h - 4, rx: 10 }, specs.frame, { angle: 90, edgeWidth: 0.8, glowWidth: 6, seed: seed + 'c' + x, box });
       for (let r = 0; r < nr; r++) {
         const cy = iy + 4 + r * rh + rh / 2 - 1, cx = x + (S.padX - 12) / 2;
         screw(g, cx, cy, 3.2, specs.screw, style === 3 ? { rot: seeded(seed, 1000 + r + (x > 2 ? 50 : 0))() * 90 } : {});

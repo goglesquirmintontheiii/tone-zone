@@ -1,8 +1,12 @@
 // Pedal Factory tab: design your own pedal. UI demo for now: no audio, nothing goes to the catalog yet.
 // The design is kept in memory (and in localStorage when it works). Units are millimetres.
-import { el, svg, clamp, shade, luminance } from '../util.js';
+import { el, svg, clamp, luminance } from '../util.js';
 import { drawKnob, drawToggle, drawButton, drawFoot, drawLed } from '../gfx/controls.js';
 import { installDefs } from '../gfx/defs.js';
+import { normalize, materialFill, multiFill, wearOverlay, paletteFor } from '../gfx/materials.js';
+import { materialPicker } from '../ui/material-picker.js';
+import { knobPart, buttonPart, footPart, togglePart, ledPart, bezel, nutPaint, BUTTON_SHAPES, TOGGLE_TIPS } from './factory-parts.js';
+import { renderPatterns, patternInspector, pruneImages } from './factory-patterns.js';
 
 const STORE = 'tz.factory.design.v1';
 const PREFS = 'tz.factory.prefs.v1';
@@ -20,7 +24,7 @@ const SHAPES = [
   ['box', 'Box'], ['wedge', 'Wedge'], ['slant', 'Slant'], ['chamfer', 'Chamfer'],
   ['arch', 'Arch'], ['coffin', 'Coffin'], ['pill', 'Pill'], ['shield', 'Shield'],
 ];
-const FINISHES = [['solid', 'Solid'], ['sparkle', 'Sparkle'], ['brushed', 'Brushed'], ['hammer', 'Hammertone'], ['gradient', 'Gradient']];
+const ENC_SCALE = 0.44; // material tile size on the enclosure (mm per board pixel)
 const BODY_SWATCHES = ['#1d1f24', '#f2f0ea', '#c9302c', '#e56b1f', '#f2c230', '#3a9a5b', '#1f8a8a', '#2b7bd6', '#5a3fb0', '#d6487e', '#8d99a8', '#8a5a2b'];
 const INK_SWATCHES = ['#111111', '#f4f1e8', '#ffffff', '#f2c230', '#c9302c', '#2b7bd6', '#3ddc84', '#8d99a8'];
 const LED_COLORS = ['#ff2a1a', '#3ddc84', '#3fa8ff', '#ffb020', '#f4f4ff', '#b45cff'];
@@ -99,10 +103,6 @@ const STACKS = {
 const uid = (p) => p + Math.random().toString(36).slice(2, 8);
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const r1 = (v) => Math.round(v * 10) / 10;
-function rng(seed) {
-  let s = seed * 9301 + 49297;
-  return () => ((s = (s * 16807) % 2147483647) / 2147483647);
-}
 const lsGet = (k) => {
   try {
     return JSON.parse(localStorage.getItem(k) || 'null');
@@ -115,13 +115,6 @@ const lsSet = (k, v) => {
     localStorage.setItem(k, JSON.stringify(v));
   } catch (_) {
     /* storage may be unavailable */
-  }
-};
-const safeShade = (c, a) => {
-  try {
-    return shade(c, a);
-  } catch (_) {
-    return c;
   }
 };
 const lum = (c) => {
@@ -404,38 +397,28 @@ const TEMPLATES = [
 let rid = 0;
 const theme = (d) => ({ text: d.labels.color, labelFont: d.labels.font, labelSize: d.labels.size, toggleTitles: false });
 
-function finishDefs(defs, pre, E) {
-  if (E.finish === 'gradient') {
-    const a = ((E.angle || 0) * Math.PI) / 180;
-    const g = svg('linearGradient', { id: pre + 'grad', x1: 0.5 - Math.cos(a) / 2, y1: 0.5 - Math.sin(a) / 2, x2: 0.5 + Math.cos(a) / 2, y2: 0.5 + Math.sin(a) / 2 }, defs);
-    svg('stop', { offset: 0, 'stop-color': E.color }, g);
-    svg('stop', { offset: 1, 'stop-color': E.color2 }, g);
-  } else if (E.finish === 'sparkle') {
-    const rnd = rng(7);
-    const light = safeShade(E.color, 0.7);
-    for (const [k, size, rot] of [['spk', 22, 0], ['spk2', 15, 37]]) {
-      const p = svg('pattern', { id: pre + k, width: size, height: size, patternUnits: 'userSpaceOnUse', patternTransform: `rotate(${rot})` }, defs);
-      const n = Math.round(14 + (E.flake ?? 0.5) * 70);
-      for (let i = 0; i < n; i++)
-        svg('circle', { cx: r1(rnd() * size), cy: r1(rnd() * size), r: (0.12 + rnd() * 0.32).toFixed(2), fill: rnd() > 0.45 ? '#ffffff' : light, opacity: (0.25 + rnd() * 0.75).toFixed(2) }, p);
-    }
-    const sheen = svg('radialGradient', { id: pre + 'sheen', cx: 0.35, cy: 0.25, r: 0.9 }, defs);
-    svg('stop', { offset: 0, 'stop-color': '#fff', 'stop-opacity': 0.28 }, sheen);
-    svg('stop', { offset: 0.6, 'stop-color': '#fff', 'stop-opacity': 0 }, sheen);
-  } else if (E.finish === 'brushed') {
-    const p = svg('pattern', { id: pre + 'br', width: 80, height: 2.4, patternUnits: 'userSpaceOnUse' }, defs);
-    const rnd = rng(3);
-    for (let i = 0; i < 8; i++) svg('rect', { y: r1(i * 0.3), width: 80, height: 0.3, fill: rnd() > 0.5 ? '#fff' : '#000', opacity: (0.03 + rnd() * 0.09).toFixed(3) }, p);
-    const g = svg('linearGradient', { id: pre + 'brs', x1: 0, y1: 0, x2: 1, y2: 0.25 }, defs);
-    for (const [o, c, a] of [[0, '#000', 0.12], [0.22, '#fff', 0.22], [0.42, '#000', 0.06], [0.62, '#fff', 0.26], [0.82, '#000', 0.04], [1, '#000', 0.16]]) svg('stop', { offset: o, 'stop-color': c, 'stop-opacity': a }, g);
-  } else if (E.finish === 'hammer') {
-    const f = svg('filter', { id: pre + 'ham', x: 0, y: 0, width: 1, height: 1 }, defs);
-    svg('feTurbulence', { type: 'fractalNoise', baseFrequency: 0.22, numOctaves: 2, seed: 5, result: 'n' }, f);
-    const li = svg('feDiffuseLighting', { in: 'n', surfaceScale: 2.6, 'lighting-color': '#ffffff', result: 'l' }, f);
-    svg('feDistantLight', { azimuth: 235, elevation: 48 }, li);
-    svg('feComposite', { in: 'l', in2: 'SourceGraphic', operator: 'arithmetic', k1: 1.05, k2: 0, k3: 0.12, k4: 0, result: 'c' }, f);
-    svg('feComposite', { in: 'c', in2: 'SourceAlpha', operator: 'in' }, f);
-  }
+// the enclosure's material spec; older designs had a finish + colour (and gradient colours)
+function encSpec(E) {
+  if (E.mat) return normalize(E.mat);
+  const c = /^#[0-9a-f]{6}$/i.test(E.color || '') ? E.color : '#1d1f24';
+  const by = {
+    sparkle: { f: 'flake' }, brushed: { f: 'anodized' }, hammer: { f: 'hammertone' },
+    gradient: { mc: { mode: 'linear', stops: [c, E.color2 || c], angle: E.angle ?? 90 } },
+  };
+  return normalize(Object.assign({ m: 'metal', s: 'aluminium', f: 'powder', c }, by[E.finish] || {}));
+}
+function migrateDesign(d) {
+  if (!d || !d.enc) return d;
+  if (!d.enc.mat) d.enc.mat = encSpec(d.enc);
+  if (!Array.isArray(d.enc.patterns)) d.enc.patterns = [];
+  if (d.enc.showThrough == null) d.enc.showThrough = 0.3;
+  return d;
+}
+// a spec with a new colour: keeps the material when its finish takes a colour, else powder coat
+function withColour(spec, c) {
+  const s = normalize(spec);
+  if (paletteFor(s)) return normalize({ ...s, c, mc: null });
+  return normalize({ m: 'metal', s: 'aluminium', f: 'powder', c, w: s.w });
 }
 
 function drawJackGfx(parent, j) {
@@ -446,7 +429,7 @@ function drawJackGfx(parent, j) {
     return;
   }
   // nut seen from the side, then the threaded sleeve
-  svg('rect', { x: -0.5, y: -6.2, width: 2.6, height: 12.4, rx: 0.5, fill: 'url(#g-chrome)', stroke: '#2a2d31', 'stroke-width': 0.3 }, parent);
+  if (!nutPaint(parent, j, { x: -0.5, y: -6.2, width: 2.6, height: 12.4, rx: 0.5 })) svg('rect', { x: -0.5, y: -6.2, width: 2.6, height: 12.4, rx: 0.5, fill: 'url(#g-chrome)', stroke: '#2a2d31', 'stroke-width': 0.3 }, parent);
   svg('path', { d: 'M-0.5,-3.1H2.1M-0.5,3.1H2.1', stroke: '#2a2d31', 'stroke-width': 0.3, opacity: 0.6 }, parent);
   svg('rect', { x: 2.1, y: -4, width: 1.6, height: 8, fill: 'url(#g-plugMetal)', stroke: '#2a2d31', 'stroke-width': 0.25 }, parent);
   if (j.kind === 'stereo' || j.kind === 'exp') svg('rect', { x: 2.5, y: -4, width: 0.4, height: 8, fill: j.kind === 'exp' ? '#2b7bd6' : '#c9302c', opacity: 0.8 }, parent);
@@ -455,7 +438,7 @@ function drawJackGfx(parent, j) {
 function drawScreen(g, c) {
   const s = SCREENS[c.type] || SCREENS.oled;
   const w = c.w, h = c.h;
-  svg('rect', { x: -w / 2 - 1.8, y: -h / 2 - 1.8, width: w + 3.6, height: h + 3.6, rx: 1.6, fill: '#0b0c0e', stroke: '#000', 'stroke-width': 0.4 }, g);
+  bezel(g, c, w, h);
   svg('rect', { x: -w / 2, y: -h / 2, width: w, height: h, rx: 0.6, fill: s.bg }, g);
   const lines = String(c.text || '').split('\n').slice(0, 4);
   const fs = Math.min(h / (lines.length + 1.2), w / 8);
@@ -491,7 +474,7 @@ function ctlExtent(c) {
   switch (c.kind) {
     case 'knob': return c.r + (c.ticks ? 6.5 : 2.5);
     case 'toggle': return c.orient === 'h' ? 9 : 10;
-    case 'button': return (c.shape === 'rect' ? (c.h || 6) / 2 : c.r) + (c.led ? 1 : 1.5);
+    case 'button': return (c.shape === 'rect' || c.shape === 'pill' ? (c.h || 6) / 2 : c.r) + (c.led ? 1 : 1.5);
     case 'foot': return c.style === 'rc' || c.style === 'ts' ? (c.h || 30) / 2 + 1 : (c.r || 7) + 4.5;
     case 'led': return c.r + 2;
     case 'screen': return c.h / 2 + 2.5;
@@ -502,18 +485,12 @@ function ctlExtent(c) {
 const ctlRadius = (c) => (c.kind === 'screen' ? Math.max(c.w, c.h) / 2 : c.kind === 'dip' ? (c.n * 2.8 + 2.4) / 2 : ctlExtent(c));
 
 function drawControl(parent, c, th) {
-  const b = { x: 0, y: 0, cid: c.id };
-  if (c.kind === 'knob') drawKnob(parent, { ...b, r: c.r, style: c.style, ticks: c.ticks ? 11 : false, scale: !!c.ticks, label: null }, { ...th, knobTicks: false }).set(c.value ?? 0.5);
-  else if (c.kind === 'toggle') {
-    const s = svg('g', { transform: 'scale(0.8)' }, parent);
-    const opts = (c.opts || []).slice(0, c.ways);
-    while (opts.length < c.ways) opts.push('');
-    drawToggle(s, { ...b, options: opts, orient: c.orient, optSize: 3.6, label: null }, th).set(clamp(c.pos || 0, 0, c.ways - 1));
-  } else if (c.kind === 'button') {
-    const r = c.r || 4;
-    drawButton(parent, { ...b, r, shape: c.shape, w: c.w || 12, h: c.h || 6, color: c.color, led: c.led, ledColor: c.ledColor, ledDy: c.shape === 'rect' ? -(c.h || 6) / 2 - 3 : -(r + 4), label: null }, th).set(!!c.on);
-  } else if (c.kind === 'foot') drawFoot(parent, { ...b, style: c.style, r: c.r || 7, w: c.w || 34, h: c.h || 30, label: null }, th);
-  else if (c.kind === 'led') drawLed(parent, { ...b, r: c.r || 2.5, color: c.color }).set(c.on ? true : null);
+  // each part can have its own material (factory-parts.js); no material keeps the stock look
+  if (c.kind === 'knob') knobPart(parent, c, th).set(c.value ?? 0.5);
+  else if (c.kind === 'toggle') togglePart(parent, c, th);
+  else if (c.kind === 'button') buttonPart(parent, c, th).set(!!c.on);
+  else if (c.kind === 'foot') footPart(parent, c, th);
+  else if (c.kind === 'led') ledPart(parent, c);
   else if (c.kind === 'screen') drawScreen(parent, c);
   else if (c.kind === 'dip') drawDip(parent, c);
   if (c.label && c.labelPos !== 'none') {
@@ -542,7 +519,8 @@ function renderPedal(root, d, o = {}) {
   const defs = svg('defs', {}, root);
   const cp = svg('clipPath', { id: pre + 'clip' }, defs);
   svg('path', { d: body }, cp);
-  finishDefs(defs, pre, E);
+  const spec = encSpec(E);
+  const mf = materialFill(spec, { scale: ENC_SCALE });
   const sh = svg('filter', { id: pre + 'sh', x: '-30%', y: '-30%', width: '160%', height: '160%' }, defs);
   svg('feDropShadow', { dx: 0, dy: 3, stdDeviation: 3.5, 'flood-color': '#000', 'flood-opacity': 0.55 }, sh);
   const th = theme(d);
@@ -558,18 +536,19 @@ function renderPedal(root, d, o = {}) {
     drawJackGfx(g, j);
   }
 
-  const fill = E.finish === 'gradient' ? `url(#${pre}grad)` : E.color;
-  svg('path', { d: body, fill, filter: `url(#${pre}sh)`, 'data-body': 1, 'data-sel': 'enc' }, root);
+  if (mf.glow) for (const [sw, op] of [[7, 0.12], [3.5, 0.22]]) svg('path', { d: body, fill: 'none', stroke: mf.glow, 'stroke-width': sw, 'stroke-opacity': op, 'pointer-events': 'none' }, root);
+  svg('path', { d: body, fill: mf.fill, filter: `url(#${pre}sh)`, 'data-body': 1, 'data-sel': 'enc' }, root);
+  // material extras, multicolour, then the pattern layers (blend modes mix with the body underneath)
   const cg = svg('g', { 'clip-path': `url(#${pre}clip)`, 'pointer-events': 'none' }, root);
-  if (E.finish === 'hammer') svg('rect', { x: -2, y: -2, width: W + 4, height: H + 4, fill: E.color, filter: `url(#${pre}ham)` }, cg);
-  else if (E.finish === 'sparkle') {
-    svg('rect', { width: W, height: H, fill: `url(#${pre}spk)` }, cg);
-    svg('rect', { width: W, height: H, fill: `url(#${pre}spk2)`, opacity: 0.8 }, cg);
-    svg('rect', { width: W, height: H, fill: `url(#${pre}sheen)` }, cg);
-  } else if (E.finish === 'brushed') {
-    svg('rect', { width: W, height: H, fill: `url(#${pre}br)` }, cg);
-    svg('rect', { width: W, height: H, fill: `url(#${pre}brs)` }, cg);
-  } else svg('rect', { width: W, height: H, fill: 'url(#p-grain)', opacity: 0.6 }, cg);
+  const full = { x: -2, y: -2, width: W + 4, height: H + 4 };
+  if (mf.overlay) svg('rect', { ...full, fill: mf.overlay }, cg);
+  if (spec.mc) svg('rect', { ...full, fill: multiFill(spec.mc), style: 'mix-blend-mode:multiply' }, cg);
+  const pats = (E.patterns || []).filter((L) => L.on);
+  if (pats.length) {
+    renderPatterns(cg, defs, pre, E.patterns, W, H);
+    // the material's texture shows through the patterns
+    if ((E.showThrough ?? 0.3) > 0) svg('rect', { ...full, fill: mf.fill, opacity: E.showThrough ?? 0.3, style: 'mix-blend-mode:soft-light' }, cg);
+  }
 
   // artwork (clipped to the body)
   const artG = svg('g', { 'clip-path': `url(#${pre}clip)` }, root);
@@ -579,8 +558,10 @@ function renderPedal(root, d, o = {}) {
     if (edit) g.dataset.id = a.id;
     svg('path', { d: artPath(a), fill: a.color, opacity: a.opacity ?? 1, 'fill-rule': 'evenodd' }, g);
   }
-  // lighting over body and art
-  svg('path', { d: body, fill: 'url(#g-shadeV)', opacity: 0.75, 'pointer-events': 'none' }, root);
+  // lighting over body and art, then the finish sheen and wear
+  svg('path', { d: body, fill: 'url(#g-shadeV)', opacity: 0.6, 'pointer-events': 'none' }, root);
+  svg('path', { d: body, fill: mf.sheen, opacity: mf.sheenOpacity * 0.8, 'pointer-events': 'none' }, root);
+  if (spec.w) wearOverlay(svg('g', { 'pointer-events': 'none' }, root), 'path', { d: body }, spec, { scale: ENC_SCALE, seed: 'enc' + W + 'x' + H, size: Math.min(W, H) });
   const ed = svg('g', { 'clip-path': `url(#${pre}clip)`, 'pointer-events': 'none' }, root);
   svg('path', { d: body, fill: 'none', stroke: '#fff', 'stroke-opacity': 0.22, 'stroke-width': 1.4 }, ed);
   svg('path', { d: body, fill: 'none', stroke: '#000', 'stroke-opacity': 0.55, 'stroke-width': 0.5, 'pointer-events': 'none' }, root);
@@ -588,7 +569,7 @@ function renderPedal(root, d, o = {}) {
   if (edit && o.grid) {
     const step = o.grid >= 2.5 ? o.grid : 5;
     const gp = svg('pattern', { id: pre + 'grid', width: step, height: step, patternUnits: 'userSpaceOnUse' }, defs);
-    const dark = lum(E.color) > 0.55;
+    const dark = lum(mf.base) > 0.55;
     svg('circle', { cx: 0, cy: 0, r: 0.22, fill: dark ? '#000' : '#fff', opacity: 0.45 }, gp);
     svg('rect', { width: W + 1, height: H + 1, fill: `url(#${pre}grid)`, 'clip-path': `url(#${pre}clip)`, 'pointer-events': 'none', class: 'fz-gridfill' }, root);
   }
@@ -708,7 +689,7 @@ function changed(live) {
 }
 
 function loadDesign(d, keepHistory) {
-  D = d;
+  D = migrateDesign(d);
   sel = null;
   if (!keepHistory) {
     hist.stack = [];
@@ -1328,14 +1309,17 @@ function inspEnclosure(host) {
   }
   slider(s2, 'Corners', E.radius, 0, 24, 0.5, (v) => (E.radius = v));
 
-  const s3 = sec(host, 'Finish');
-  seg(s3, null, FINISHES, E.finish, (v) => (E.finish = v)).classList.add('fz-wrap');
-  colors(s3, E.finish === 'gradient' ? 'From' : 'Colour', E.color, BODY_SWATCHES, (v) => (E.color = v), 'enc');
-  if (E.finish === 'gradient') {
-    colors(s3, 'To', E.color2, BODY_SWATCHES, (v) => (E.color2 = v), 'enc2');
-    slider(s3, 'Angle', E.angle, 0, 360, 5, (v) => (E.angle = v));
-  }
-  if (E.finish === 'sparkle') slider(s3, 'Flakes', E.flake ?? 0.5, 0, 1, 0.05, (v) => (E.flake = v));
+  const s3 = sec(host, 'Material');
+  if (!E.mat) E.mat = encSpec(E);
+  let picker = null;
+  // quick colour: sets the finish colour (or switches to powder coat)
+  colors(s3, 'Colour', (paletteFor(E.mat) && /^#/.test(E.mat.c || '') ? E.mat.c : '') || '', BODY_SWATCHES, (v) => {
+    E.mat = withColour(E.mat, v);
+    if (picker) picker.set(E.mat);
+  }, 'enc');
+  picker = materialPicker(s3, { key: 'fz-enc', value: E.mat, wear: true, onChange: (spec, live) => { E.mat = spec; changed(live); } });
+
+  patternInspector(host, E, { sec, row, slider, colors, seg, selectField, check, changed, rerender: renderInspector });
 
   const s4 = sec(host, 'Printed labels');
   selectField(s4, 'Font', FONTS, D.labels.font, (v) => (D.labels.font = v));
@@ -1395,6 +1379,32 @@ function inspJack(host, j) {
   seg(s, 'Edge', [['top', 'Top'], ['left', 'Left'], ['right', 'Right'], ['bottom', 'Bottom']], j.edge, (v) => (j.edge = v), false);
   slider(s, 'Along', j.t, 0.04, 0.96, 0.01, (v) => (j.t = v));
   el('p', { class: 'fz-note' }, s).textContent = 'Drag a jack around the pedal to move it to another edge.';
+  if (j.kind !== 'power') partMaterial(host, j, 'Nut');
+}
+const PART_NAMES = { knob: 'knobs', toggle: 'toggles', button: 'buttons', foot: 'footswitches', led: 'LED bezels', screen: 'screen bezels', jack: 'jack nuts' };
+// material picker for one part, plus "apply to all" shortcuts
+function partMaterial(host, c, title) {
+  const kind = c.kind === 'in' || c.kind === 'out' || c.kind === 'stereo' || c.kind === 'exp' ? 'jack' : c.kind;
+  const s = sec(host, title ? title + ' material' : { led: 'Bezel material', screen: 'Bezel material' }[kind] || 'Material');
+  s.classList.add('fz-partmat');
+  materialPicker(s, {
+    key: 'fz-part', value: c.mat || { m: 'stock' }, allowStock: true, wear: true,
+    onChange: (spec, live) => {
+      c.mat = spec.m === 'stock' ? null : spec;
+      changed(live);
+      if (!live && kind === 'button') renderInspector();
+    },
+  });
+  const all = (pred) => {
+    const m = c.mat ? clone(c.mat) : null;
+    for (const o of [...D.ctls, ...D.jacks]) if (o !== c && pred(o)) o.mat = m ? clone(m) : null;
+    changed(false);
+  };
+  const isJack = (o) => !!JACKS[o.kind] && o.kind !== 'power';
+  const ar = el('div', { class: 'fz-actrow' }, s);
+  el('button', { class: 'btn small', 'data-apply': 'kind', onclick: () => all((o) => (kind === 'jack' ? isJack(o) : o.kind === c.kind)) }, ar, 'Apply to all ' + PART_NAMES[kind]);
+  el('button', { class: 'btn small', 'data-apply': 'all', onclick: () => all((o) => o.kind !== 'dip' && o.kind !== 'power') }, ar, 'Apply to every part');
+  if (kind === 'knob') el('button', { class: 'btn small', onclick: () => { for (const o of D.ctls) if (o.kind === 'knob') { o.style = c.style; o.mat = c.mat ? clone(c.mat) : null; } changed(false); } }, ar, 'Copy cap and material to all knobs');
 }
 function inspControl(host, c) {
   const s = sec(host, itemName({ kind: 'ctl', item: { ...c, label: '' } }));
@@ -1410,12 +1420,16 @@ function inspControl(host, c) {
       while (c.opts.length < c.ways) c.opts.push(String.fromCharCode(65 + c.opts.length));
     });
     seg(s, 'Lever', [['v', 'Vertical'], ['h', 'Sideways']], c.orient, (v) => (c.orient = v), false);
+    seg(s, 'Tip', TOGGLE_TIPS, c.tip || 'bat', (v) => (c.tip = v), false);
     textField(s, 'Positions', c.opts.slice(0, c.ways).join(', '), (v) => (c.opts = v.split(',').map((x) => x.trim().toUpperCase().slice(0, 6))));
     seg(s, 'Set to', c.opts.slice(0, c.ways).map((o, i) => [i, o || String(i + 1)]), c.pos, (v) => (c.pos = +v), false);
   } else if (c.kind === 'button') {
-    seg(s, 'Shape', [['round', 'Round'], ['rect', 'Rectangle']], c.shape, (v) => (c.shape = v), false);
-    if (c.shape !== 'rect') slider(s, 'Size', c.r, 2.5, 7, 0.5, (v) => (c.r = v));
-    colors(s, 'Cap', c.color, ['#2a2c31', '#d8dade', '#c9302c', '#2b7bd6', '#3a9a5b', '#f2c230'], (v) => (c.color = v), 'cap');
+    seg(s, 'Shape', BUTTON_SHAPES, c.shape || 'round', (v) => (c.shape = v)).classList.add('fz-wrap');
+    if (c.shape === 'rect' || c.shape === 'pill') {
+      slider(s, 'Width', c.w || 12, 5, 30, 0.5, (v) => (c.w = v));
+      slider(s, 'Height', c.h || 6, 3, 14, 0.5, (v) => (c.h = v));
+    } else slider(s, 'Size', c.r, 2.5, 7, 0.5, (v) => (c.r = v));
+    if (!c.mat) colors(s, 'Cap', c.color, ['#2a2c31', '#d8dade', '#c9302c', '#2b7bd6', '#3a9a5b', '#f2c230'], (v) => (c.color = v), 'cap');
     check(s, 'LED ring', c.led, (v) => (c.led = v), true);
     if (c.led) {
       colors(s, 'LED', c.ledColor, LED_COLORS, (v) => (c.ledColor = v), 'led');
@@ -1455,6 +1469,7 @@ function inspControl(host, c) {
     }
     colors(s, 'Body', c.color, ['#c8102e', '#1f4fbf', '#1d1f24', '#3a9a5b'], (v) => (c.color = v), 'dip');
   }
+  if (c.kind !== 'dip') partMaterial(host, c);
   const s2 = sec(host, 'Label');
   textField(s2, 'Text', c.label, (v) => (c.label = v.toUpperCase()));
   seg(s2, 'Show', [['above', 'Above'], ['below', 'Below'], ['none', 'Hidden']], c.labelPos, (v) => (c.labelPos = v), false);
@@ -1656,7 +1671,7 @@ function openTemplates() {
     el('small', {}, card).textContent = t.desc;
     card.onclick = () => {
       closeTemplates();
-      D = t.make();
+      D = migrateDesign(t.make());
       sel = null;
       commit();
       view.touched = false;
@@ -1818,13 +1833,14 @@ export function renderFactory() {
     build(v);
     const saved = lsGet(STORE);
     const ok = saved && saved.enc && Array.isArray(saved.ctls) && Array.isArray(saved.jacks) && Array.isArray(saved.art) && saved.title && saved.sub && saved.circuit;
-    D = ok ? saved : TEMPLATES[0].make();
+    D = migrateDesign(ok ? saved : TEMPLATES[0].make());
+    pruneImages(new Set((D.enc.patterns || []).map((L) => L.img).filter(Boolean)));
     hist.stack = [];
     hist.idx = -1;
     commit();
     refreshAll();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderStage());
-    window.__tzFactory = { design: () => D, selection: () => sel };
+    window.__tzFactory = { design: () => D, selection: () => sel, load: (d) => loadDesign(clone(d), true), select: (id) => select(id) };
   }
   requestAnimationFrame(() => {
     if (!view.touched) fit();

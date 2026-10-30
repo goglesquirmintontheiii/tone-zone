@@ -119,9 +119,95 @@ export function normalize(spec, fallback) {
     const c = typeof s.c === 'string' ? s.c.toLowerCase() : '';
     out.c = pal.some((p) => p.id === c) ? c : isHex(c) ? c : M.def.c && (isHex(M.def.c) || pal.some((p) => p.id === M.def.c)) ? M.def.c : pal[0].hex;
   }
+  const mc = normMulti(s.mc);
+  if (mc) out.mc = mc;
   const w = normWear(s.w, out.m);
   if (w) out.w = w;
   return out;
+}
+
+// ------------------------------------------------------------------ multicolour
+// spec.mc = { mode, stops: [hex...], angle }: fades, bursts, gradients, two-tone, colour shift, rainbow.
+// Drawn over the texture with multiply, so grain and brushing show through (coloured finishes go neutral first).
+export const MULTI = [
+  { id: 'fade', name: 'Fade', min: 2, max: 3, angle: true, def: ['#2b5fd6', '#7a3fc4'] },
+  { id: 'burst', name: 'Burst', min: 3, max: 3, def: ['#f2b84a', '#9a4a18', '#1a0c05'] },
+  { id: 'linear', name: 'Linear', min: 2, max: 4, angle: true, def: ['#e8a030', '#c9302c'] },
+  { id: 'radial', name: 'Radial', min: 2, max: 4, def: ['#f2f2f2', '#2b7bd6'] },
+  { id: 'split', name: 'Two-tone', min: 2, max: 2, angle: true, def: ['#f1f0ec', '#c9302c'] },
+  { id: 'flip', name: 'Colour shift', min: 2, max: 3, angle: true, def: ['#2fb8a8', '#7a3fc4', '#d6487e'] },
+  { id: 'rainbow', name: 'Rainbow', min: 0, max: 0, angle: true, def: [] },
+];
+export const BURST_PRESETS = [
+  ['Sunburst', ['#f2b84a', '#b0501a', '#1e0e06']],
+  ['Cherry burst', ['#e05a3a', '#8a1410', '#1a0505']],
+  ['Tobacco burst', ['#d9a24a', '#6a3a14', '#140a05']],
+  ['Blue burst', ['#9fc4ee', '#2a4f9a', '#0a1430']],
+];
+function normMulti(mc) {
+  if (!mc || typeof mc !== 'object') return null;
+  const M = MULTI.find((x) => x.id === mc.mode);
+  if (!M) return null;
+  let stops = Array.isArray(mc.stops) ? mc.stops.filter(isHex).map((c) => c.toLowerCase()) : [];
+  stops = stops.slice(0, M.max);
+  for (let i = stops.length; i < M.min; i++) stops.push(M.def[i] || M.def[M.def.length - 1]);
+  const angle = Math.round(((+mc.angle || 0) % 360 + 360) % 360);
+  return { mode: M.id, stops, angle: M.angle ? angle : 0 };
+}
+export function multiToString(mc) {
+  return mc ? [mc.mode, mc.angle, mc.stops.join(' ')].join('|') : '';
+}
+export function multiFromString(str) {
+  const [mode, angle, stops] = String(str || '').split('|');
+  return mode ? { mode, angle: +angle || 0, stops: (stops || '').split(' ').filter(Boolean) } : null;
+}
+function multiFill(mc, box) {
+  const id = 'mc-' + mc.mode + '-' + mc.angle + '-' + mc.stops.map((c) => c.slice(1)).join('') + (box ? '-' + [box.x, box.y, box.w, box.h].map(num).join('-') : '');
+  if (!document.getElementById(id)) {
+    const a = (mc.angle * Math.PI) / 180;
+    // box: one gradient across several shapes (a whole pedalboard) in user space
+    const X = (u) => (box ? box.x + u * box.w : u), Y = (v) => (box ? box.y + v * box.h : v);
+    const units = box ? { gradientUnits: 'userSpaceOnUse' } : {};
+    const lin = () => mk('linearGradient', Object.assign({ id, x1: X(0.5 - Math.cos(a) / 2), y1: Y(0.5 - Math.sin(a) / 2), x2: X(0.5 + Math.cos(a) / 2), y2: Y(0.5 + Math.sin(a) / 2) }, units), defsHost());
+    const radial = (r) => {
+      const gg = mk('radialGradient', Object.assign({ id, cx: X(0.5), cy: Y(0.5), r: box ? r * Math.max(box.w, box.h) : r }, units), defsHost());
+      // stretch to the box's aspect, like objectBoundingBox does
+      if (box) gg.setAttribute('gradientTransform', `translate(${X(0.5)} ${Y(0.5)}) scale(1 ${box.h / Math.max(box.w, box.h) || 1}) scale(${box.w / Math.max(box.w, box.h) || 1} 1) translate(${-X(0.5)} ${-Y(0.5)})`);
+      return gg;
+    };
+    let g, stops;
+    const even = (cs) => cs.map((c, i) => [i / Math.max(1, cs.length - 1), c]);
+    switch (mc.mode) {
+      case 'burst':
+        g = radial(0.62);
+        stops = [[0, mc.stops[0]], [0.38, mc.stops[0]], [0.72, mc.stops[1]], [1, mc.stops[2]]];
+        break;
+      case 'radial':
+        g = radial(0.6);
+        stops = even(mc.stops);
+        break;
+      case 'split':
+        g = lin();
+        stops = [[0, mc.stops[0]], [0.5, mc.stops[0]], [0.5, mc.stops[1]], [1, mc.stops[1]]];
+        break;
+      case 'flip': {
+        g = lin();
+        const cs = mc.stops;
+        stops = [];
+        for (let i = 0; i <= 6; i++) stops.push([i / 6, cs[i % cs.length]]);
+        break;
+      }
+      case 'rainbow':
+        g = lin();
+        stops = ['#e8403a', '#f08a2a', '#f2d23a', '#4cc25a', '#2f8fe0', '#5a4ad0', '#b04ac8'].map((c, i) => [i / 6, c]);
+        break;
+      default:
+        g = lin();
+        stops = even(mc.stops);
+    }
+    for (const [o, c] of stops) mk('stop', { offset: o, 'stop-color': c }, g);
+  }
+  return `url(#${id})`;
 }
 
 // ------------------------------------------------------------------ wear
@@ -180,17 +266,18 @@ export function specLabel(spec) {
   const pal = paletteFor(s);
   const col = pal && (pal.find((p) => p.id === s.c || p.hex.toLowerCase() === s.c) || null);
   const head = sub ? (s.m === 'wood' || s.m === 'metal' ? sub.name + ' ' + (s.m === 'wood' ? 'wood' : '') : sub.name).trim() : M.name;
-  return [head, fin && fin.name.toLowerCase(), col ? col.name.toLowerCase() : pal ? s.c : ''].filter(Boolean).join(', ');
+  const mcName = s.mc && (MULTI.find((x) => x.id === s.mc.mode) || {}).name;
+  return [head, fin && fin.name.toLowerCase(), mcName ? mcName.toLowerCase() : col ? col.name.toLowerCase() : pal ? s.c : ''].filter(Boolean).join(', ');
 }
 
 /** Spec from block params with a prefix, e.g. frameMat/frameSub/frameFin/frameCol. */
 export function fromParams(p, prefix, fallback) {
   if (!p || !p[prefix + 'Mat']) return normalize(fallback);
-  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'], w: wearFromString(p[prefix + 'Wear']) }, fallback);
+  return normalize({ m: p[prefix + 'Mat'], s: p[prefix + 'Sub'], f: p[prefix + 'Fin'], c: p[prefix + 'Col'], w: wearFromString(p[prefix + 'Wear']), mc: multiFromString(p[prefix + 'Multi']) }, fallback);
 }
 export function toParams(spec, prefix) {
   const s = normalize(spec);
-  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c, [prefix + 'Wear']: wearToString(s.w) };
+  return { [prefix + 'Mat']: s.m, [prefix + 'Sub']: s.s, [prefix + 'Fin']: s.f, [prefix + 'Col']: s.c, [prefix + 'Wear']: wearToString(s.w), [prefix + 'Multi']: multiToString(s.mc) };
 }
 
 // ------------------------------------------------------------------ colour helpers
@@ -730,8 +817,10 @@ function spunId() {
  * Returns { fill, sheen, sheenOpacity, overlay, base, hi, lo, edge, ink, glow, translucent, spec }.
  */
 export function materialFill(spec, opts = {}) {
-  const s = normalize(spec);
+  let s = normalize(spec);
   if (s.m === 'stock') return null;
+  // under a multicolour layer, coloured finishes go neutral so the colours read true
+  if (s.mc && s.m !== 'wood' && paletteFor(s)) s = { ...s, c: '#d8d8d8' };
   const scale = opts.scale || 1, angle = opts.angle || 0, q = opts.preview ? 0.5 : 1;
   const id = `mt-${keyOf(s)}-${num(scale)}-${num(angle)}${q < 1 ? '-q' : ''}`;
   const ck = id + (opts.round ? '-r' : '');
@@ -785,12 +874,14 @@ export function paint(parent, tag, attrs, spec, opts = {}) {
   }
   mk(tag, Object.assign({}, attrs, { fill: f.fill }), g);
   if (f.overlay) mk(tag, Object.assign({}, attrs, { fill: f.overlay }), g);
+  const ns = normalize(spec);
+  if (ns.mc) {
+    g.setAttribute('style', 'isolation:isolate');
+    mk(tag, Object.assign({}, attrs, { fill: multiFill(ns.mc, opts.box), style: 'mix-blend-mode:multiply' }), g);
+  }
   if (opts.sheen !== false) mk(tag, Object.assign({}, attrs, { fill: f.sheen, opacity: f.sheenOpacity * (opts.sheenOpacity ?? 1) }), g);
   if (opts.edge !== false) mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: f.translucent ? 'rgba(255,255,255,0.55)' : f.hi, 'stroke-width': opts.edgeWidth || 0.8, 'stroke-opacity': f.translucent ? 0.8 : 0.45 }), g);
-  if (opts.wear !== false) {
-    const ns = normalize(spec);
-    if (ns.w) wearOverlay(g, tag, attrs, ns, opts);
-  }
+  if (opts.wear !== false && ns.w) wearOverlay(g, tag, attrs, ns, opts);
   return { g, f };
 }
 
@@ -857,7 +948,7 @@ function wearTile(kind, amt, bare, seed) {
         x.beginPath();
         x.moveTo(x0, y0);
         x.quadraticCurveTo((x0 + x1) / 2 - Math.sin(a) * bend, (y0 + y1) / 2 + Math.cos(a) * bend, x1, y1);
-        x.strokeStyle = k < 0.25 ? 'rgba(0,0,0,0.35)' : `rgba(255,255,255,${(heavy ? 0.35 : 0.22) + k * 0.35})`;
+        x.strokeStyle = k < 0.25 ? 'rgba(0,0,0,0.3)' : `rgba(255,255,255,${(heavy ? 0.22 : 0.14) + k * 0.25})`;
         x.lineWidth = heavy ? 0.6 + k * 1.1 : 0.4 + k * 0.5;
         x.stroke();
       }
@@ -926,9 +1017,14 @@ function wearTile(kind, amt, bare, seed) {
       }
       const light = kind === 'chipL';
       const w = worley(u, v, light ? 22 : 12, light ? 22 : 12, seed % 983, 1);
-      const show = hash(w.id, 4, seed % 977) < (kind === 'relic' ? 0.05 + amt * 0.17 : (light ? 0.04 : 0.06) + amt * (light ? 0.12 : 0.22));
+      const show = hash(w.id, 4, seed % 977) < (kind === 'relic' ? 0.02 + amt * 0.06 : (light ? 0.02 : 0.03) + amt * (light ? 0.06 : 0.12));
       const rr = (kind === 'relic' ? 0.4 : 0.22) + hash(w.id, 5, 3) * 0.2 + (fbm(u, v, 32, 32, 2, 9) - 0.5) * 0.3;
       if (!show || w.d > rr) return [0, 0, 0, 0];
+      if (kind === 'relic') {
+        // rubbed through: soft edges, no broken rim
+        const c = mul(bc, 0.9 + hash(u * W | 0, v * W | 0, 2) * 0.2);
+        return [c[0], c[1], c[2], 255 * Math.min(1, (rr - w.d) / 0.15) * 0.85];
+      }
       if (w.d > rr - 0.06) return [0, 0, 0, 120]; // dark rim where the finish breaks
       const c = mul(bc, 0.9 + hash(u * W | 0, v * W | 0, 2) * 0.2);
       return [c[0], c[1], c[2], 255];
@@ -966,17 +1062,21 @@ export function wearOverlay(g, tag, attrs, spec, opts = {}) {
   if (w.relic) {
     // worn through at the edges, plus a few rubbed spots
     const size = Math.min(120, tag === 'circle' ? attrs.r * 2 : tag === 'rect' ? Math.min(attrs.width, attrs.height) : opts.size || 20);
-    const sw = size * (0.06 + w.relic * 0.16);
+    const sw = size * (0.03 + w.relic * 0.11);
     const id = 'mwc' + (++clipN) + '-' + seedNum(String(opts.seed || '')).toString(36);
     const cp = mk('clipPath', { id }, g);
     mk(tag, Object.assign({}, attrs), cp);
     const cg = mk('g', { 'clip-path': `url(#${id})`, 'pointer-events': 'none' }, g);
     const bf = bare.spec ? materialFill(bare.spec, { scale: opts.scale || 1 }).fill : bare.hex;
     const v = seedNum(String(opts.seed || '') + 'r');
-    const dash = [];
-    for (let i = 0; i < 8; i++) dash.push((4 + hash(i, v, 1) * 20) * (size / 40 + 0.5), (1 + hash(i, v, 2) * (12 - w.relic * 10)) * (size / 40 + 0.5));
-    mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw * 2, 'stroke-dasharray': dash.map((x) => x.toFixed(1)).join(' '), 'stroke-linejoin': 'round' }), cg);
-    mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw, 'stroke-linejoin': 'round' }), cg);
+    const k = size / 40 + 0.5;
+    // a few dashed strokes with round ends along the edge make an uneven worn band
+    [[1, 1], [0.6, 2], [0.32, 3]].forEach(([wf, n]) => {
+      const dash = [];
+      for (let i = 0; i < 7; i++) dash.push((2 + hash(i, v, n) * 18 * (0.4 + w.relic)) * k, (2 + hash(i, v, n + 9) * 16 * (1.2 - w.relic)) * k);
+      mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw * 2 * wf, 'stroke-dasharray': dash.map((x) => x.toFixed(1)).join(' '), 'stroke-dashoffset': (hash(n, v, 5) * 50 * k).toFixed(1), 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }), cg);
+    });
+    mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: bf, 'stroke-width': sw * 0.5 }), cg);
     mk(tag, Object.assign({}, attrs, { fill: wearPattern('relic', q(w.relic), bare.hex, variant, scale) }), cg);
   }
   if (w.chip) layer(wearPattern('chip', q(w.chip), bare.hex, variant, scale), 1);
@@ -997,3 +1097,6 @@ export function swatchSVG(spec, size = 28, o = {}) {
   paint(s, 'circle', { cx: 14, cy: 14, r: 12 }, spec, { scale: o.scale || 0.35, round: true, preview: true, glowWidth: 2, edgeWidth: 0.8 });
   return s;
 }
+
+// noise helpers and the multicolour fill, shared with the Pedal Factory's pattern layers
+export { hash as noiseHash, fbm as noiseFbm, worley as noiseWorley, multiFill };

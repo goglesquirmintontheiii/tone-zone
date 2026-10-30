@@ -1,4 +1,4 @@
-// Pedal Factory: add a knob, drag it, change the enclosure colour, undo, and check for console errors.
+// Pedal Factory: add a knob, drag it, change the enclosure colour, per-part materials, patterns, wear, undo.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const S = process.env.SHOTS || '/tmp';
@@ -51,18 +51,18 @@ const S = process.env.SHOTS || '/tmp';
   // 3. change the enclosure colour from the inspector
   await win.keyboard.press('Escape');
   await win.waitForSelector('.fz-swatches[data-key="enc"]');
-  const before = (await D()).enc.color;
+  const before = (await D()).enc.mat.c;
   await win.click('.fz-swatches[data-key="enc"] [data-swatch="#c9302c"]');
   await win.waitForTimeout(200);
-  ok((await D()).enc.color === '#c9302c', 'enclosure colour changed');
+  ok((await D()).enc.mat.c === '#c9302c', 'enclosure colour changed');
   const fill = await win.evaluate(() => document.querySelector('.fz-stage [data-body]').getAttribute('fill'));
-  ok(fill === '#c9302c', 'pedal repainted');
+  ok(/^url\(#mt-metal-.*c9302c/.test(fill), 'pedal repainted');
   await win.screenshot({ path: path.join(S, 'factory-colour.png') });
 
   // 4. undo brings the colour back, a second undo puts the knob back where it was
   await win.click('#fzUndo');
   await win.waitForTimeout(200);
-  ok((await D()).enc.color === before, 'undo restored the colour');
+  ok((await D()).enc.mat.c === before, 'undo restored the colour');
   await win.click('#fzUndo');
   await win.waitForTimeout(200);
   const k3 = (await D()).ctls.find((c) => c.id === knob.id);
@@ -71,7 +71,53 @@ const S = process.env.SHOTS || '/tmp';
   await win.waitForTimeout(200);
   ok((await D()).ctls.find((c) => c.id === knob.id).x === k2.x, 'redo works');
 
-  // 5. other panels render without errors
+  // 5. per-knob materials: one wood, another glow in the dark
+  const knobs = (await D()).ctls.filter((c) => c.kind === 'knob');
+  await win.click(`.fz-stage [data-id="${knobs[0].id}"]`);
+  await win.click('.fz-partmat .mtp-mats [data-v="wood"]');
+  await win.waitForTimeout(200);
+  await win.click('.fz-partmat .mtp-subs [data-v="koa"]');
+  await win.waitForTimeout(200);
+  await win.click(`.fz-stage [data-id="${knobs[1].id}"]`);
+  await win.click('.fz-partmat .mtp-mats [data-v="glow"]');
+  await win.waitForTimeout(200);
+  let d5 = await D();
+  const km = (id) => (d5.ctls.find((c) => c.id === id).mat || {});
+  ok(km(knobs[0].id).m === 'wood' && km(knobs[0].id).s === 'koa', 'first knob is koa wood');
+  ok(km(knobs[1].id).m === 'glow', 'second knob glows');
+  ok(!km(knobs[2].id).m, 'third knob kept its stock look');
+  ok(await win.evaluate((id) => !!document.querySelector(`.fz-stage [data-id="${id}"] [fill^="url(#mt-wood-koa"]`), knobs[0].id), 'wood knob drawn in its material');
+
+  // 6. a pattern layer and wear on the enclosure
+  await win.keyboard.press('Escape');
+  await win.waitForSelector('.fz-pat-type');
+  await win.selectOption('.fz-pat-type', 'checker');
+  await win.waitForTimeout(300);
+  d5 = await D();
+  ok(d5.enc.patterns.length === 1 && d5.enc.patterns[0].type === 'checker', 'checkered pattern added');
+  ok(await win.evaluate(() => !!document.querySelector('.fz-stage [data-pattern]')), 'pattern drawn');
+  await win.click('[data-mtp="fz-enc"] [data-wear="scratch"]');
+  await win.waitForTimeout(200);
+  ok(((await D()).enc.mat.w || {}).scratch > 0, 'enclosure scratched');
+  await win.screenshot({ path: path.join(S, 'factory-materials.png') });
+
+  // 7. undo steps back through wear, pattern and the knob material
+  await win.click('#fzUndo');
+  await win.waitForTimeout(150);
+  ok(!(await D()).enc.mat.w, 'undo removed the wear');
+  await win.click('#fzUndo');
+  await win.waitForTimeout(150);
+  ok((await D()).enc.patterns.length === 0, 'undo removed the pattern');
+  await win.click('#fzUndo');
+  await win.waitForTimeout(150);
+  d5 = await D();
+  ok(!km(knobs[1].id).m && km(knobs[0].id).m === 'wood', 'undo put the second knob back to stock');
+  await win.click('#fzRedo');
+  await win.waitForTimeout(150);
+  d5 = await D();
+  ok(km(knobs[1].id).m === 'glow', 'redo brought the glow knob back');
+
+  // 8. other panels render without errors
   await win.click('.fz-tabs [data-t="layers"]');
   await win.click('.fz-tabs [data-t="circuit"]');
   await win.click('.fz-tabs [data-t="parts"]');
