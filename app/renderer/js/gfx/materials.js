@@ -13,6 +13,8 @@ export const PALETTES = {
   powder: P([['black', 'Black', '#1b1c20'], ['white', 'White', '#efede7'], ['cream', 'Cream', '#e7dcc0'], ['red', 'Red', '#c9302c'], ['orange', 'Orange', '#e56b1f'], ['yellow', 'Yellow', '#f2c230'], ['green', 'Green', '#3a9a5b'], ['olive', 'Olive', '#5d6337'], ['teal', 'Teal', '#1f8a8a'], ['blue', 'Blue', '#2b7bd6'], ['navy', 'Navy', '#1f2d55'], ['purple', 'Purple', '#5a3fb0'], ['pink', 'Pink', '#d6487e'], ['grey', 'Grey', '#8d99a8'], ['brown', 'Brown', '#6b4428']]),
   stain: P([['natural', 'Natural', '#ffffff'], ['honey', 'Honey', '#e8b25a'], ['amber', 'Amber', '#d48a2a'], ['cherry', 'Cherry', '#a8342a'], ['mahogany', 'Mahogany', '#7a2e1c'], ['walnut', 'Walnut', '#5a3a22'], ['ebony', 'Ebony black', '#1c1714'], ['grey', 'Weathered grey', '#8f8c86'], ['blue', 'Blue', '#2f5f9e'], ['green', 'Green', '#3d7a4a'], ['red', 'Red', '#b5262b'], ['purple', 'Purple', '#5e3a8a'], ['sunburst', 'Sunburst', '#d9952f'], ['cherryburst', 'Cherry burst', '#b8402e'], ['blueburst', 'Blue burst', '#3b6fb0']]),
   plastic: P([['black', 'Black', '#1c1d21'], ['white', 'White', '#f1f0ec'], ['cream', 'Cream', '#ece2c6'], ['red', 'Red', '#d0312d'], ['orange', 'Orange', '#ee7a22'], ['yellow', 'Yellow', '#f5cb2f'], ['lime', 'Lime', '#8cc63f'], ['green', 'Green', '#2f9a57'], ['teal', 'Teal', '#1fa0a0'], ['blue', 'Blue', '#2f7de0'], ['purple', 'Purple', '#6b45c4'], ['pink', 'Pink', '#e8579a'], ['grey', 'Grey', '#8a9099'], ['brown', 'Brown', '#6e4a2c']]),
+  // frosted glass and acrylic: clear frost first, then the tints
+  frost: P([['clear', 'Clear', '#eef3f7'], ['aqua', 'Aqua', '#5fc9d6'], ['blue', 'Blue', '#3b78d8'], ['green', 'Green', '#4caf6a'], ['amber', 'Amber', '#e0a23a'], ['red', 'Red', '#d64545'], ['purple', 'Purple', '#8e5bd8'], ['pink', 'Pink', '#e870aa'], ['grey', 'Grey', '#9aa3ad']]),
   tint: P([['aqua', 'Aqua', '#5fc9d6'], ['blue', 'Blue', '#3b78d8'], ['green', 'Green', '#4caf6a'], ['amber', 'Amber', '#e0a23a'], ['red', 'Red', '#d64545'], ['purple', 'Purple', '#8e5bd8'], ['pink', 'Pink', '#e870aa'], ['grey', 'Grey', '#9aa3ad']]),
   carbon: P([['black', 'Black', '#3a3d44'], ['silver', 'Silver', '#9aa3ad'], ['red', 'Red', '#b02a2a'], ['blue', 'Blue', '#2a5fb0'], ['gold', 'Kevlar gold', '#c9a23a'], ['green', 'Green', '#2f8a4f'], ['purple', 'Purple', '#6a3fb0']]),
   tolex: P([['black', 'Black', '#18181a'], ['cream', 'Cream', '#e5d8b8'], ['white', 'White', '#ecebe6'], ['brown', 'Brown', '#5a3a24'], ['tan', 'Tan', '#a87c4f'], ['red', 'Red', '#9e2124'], ['blue', 'Blue', '#24427a'], ['green', 'Green', '#2c5a3c'], ['grey', 'Grey', '#6a6d72'], ['purple', 'Purple', '#4a2a6a'], ['oxblood', 'Oxblood', '#5a1a1e']]),
@@ -63,12 +65,12 @@ export const MATERIALS = [
   },
   {
     id: 'glass', name: 'Glass',
-    finishes: F([['clear', 'Clear'], ['frosted', 'Frosted'], ['smoked', 'Smoked'], ['tinted', 'Tinted', { colors: 'tint' }], ['mirror', 'Mirror']]),
+    finishes: F([['clear', 'Clear'], ['frosted', 'Frosted', { colors: 'frost' }], ['smoked', 'Smoked'], ['tinted', 'Tinted', { colors: 'tint' }], ['mirror', 'Mirror']]),
     def: { f: 'clear' },
   },
   {
     id: 'acrylic', name: 'Acrylic',
-    finishes: F([['clear', 'Clear tint', { colors: 'tint' }], ['opaque', 'Opaque gloss', { colors: 'plastic' }], ['frosted', 'Frosted', { colors: 'tint' }], ['candy', 'Candy glitter', { colors: 'tint' }], ['swirl', 'Marbled', { colors: 'plastic' }]]),
+    finishes: F([['clear', 'Clear tint', { colors: 'tint' }], ['opaque', 'Opaque gloss', { colors: 'plastic' }], ['frosted', 'Frosted', { colors: 'frost' }], ['candy', 'Candy glitter', { colors: 'tint' }], ['swirl', 'Marbled', { colors: 'plastic' }]]),
     def: { f: 'clear', c: '#5fc9d6' },
   },
   {
@@ -172,7 +174,9 @@ export function normalize(spec, fallback) {
     out.c = pal.some((p) => p.id === c) ? c : isHex(c) ? c : M.def.c && (isHex(M.def.c) || pal.some((p) => p.id === M.def.c)) ? M.def.c : pal[0].hex;
   }
   if (OPACITY[out.m] && s.t !== '' && s.t != null && Number.isFinite(+s.t)) out.t = Math.round(Math.min(1, Math.max(0, +s.t)) * 100) / 100;
-  const mc = normMulti(s.mc);
+  // multicolour only goes on finishes that take any colour (paints, coatings, stains, tints)
+  const fin0 = M.finishes.find((x) => x.id === out.f);
+  const mc = pal && fin0.free !== false ? normMulti(s.mc) : null;
   if (mc) out.mc = mc;
   const w = normWear(s.w, out.m);
   if (w) out.w = w;
@@ -181,7 +185,9 @@ export function normalize(spec, fallback) {
 
 // ------------------------------------------------------------------ multicolour
 // spec.mc = { mode, stops: [hex...], angle }: fades, bursts, gradients, two-tone, colour shift, rainbow.
-// Drawn over the texture with multiply, so grain and brushing show through (coloured finishes go neutral first).
+// It tints the material: the texture is drawn in a neutral version of the finish (unstained wood, grey coating,
+// clear glass) and the colours go over it with multiply, so grain, brushing and flake show through. See-through
+// materials get the colours as a normal translucent layer instead, so they stay see-through.
 export const MULTI = [
   { id: 'fade', name: 'Fade', min: 2, max: 3, angle: true, def: ['#2b5fd6', '#7a3fc4'] },
   { id: 'burst', name: 'Burst', min: 3, max: 3, def: ['#f2b84a', '#9a4a18', '#1a0c05'] },
@@ -214,8 +220,9 @@ export function multiFromString(str) {
   const [mode, angle, stops] = String(str || '').split('|');
   return mode ? { mode, angle: +angle || 0, stops: (stops || '').split(' ').filter(Boolean) } : null;
 }
-function multiFill(mc, box) {
-  const id = 'mc-' + mc.mode + '-' + mc.angle + '-' + mc.stops.map((c) => c.slice(1)).join('') + (box ? '-' + [box.x, box.y, box.w, box.h].map(num).join('-') : '');
+// lift: lightens the stops (stains over wood), less so for dark ones so burst edges stay dark
+function multiFill(mc, box, lift = 0) {
+  const id = 'mc-' + mc.mode + '-' + mc.angle + '-' + mc.stops.map((c) => c.slice(1)).join('') + (box ? '-' + [box.x, box.y, box.w, box.h].map(num).join('-') : '') + (lift ? '-l' + lift : '');
   if (!document.getElementById(id)) {
     const a = (mc.angle * Math.PI) / 180;
     // box: one gradient across several shapes (a whole pedalboard) in user space
@@ -258,7 +265,12 @@ function multiFill(mc, box) {
         g = lin();
         stops = even(mc.stops);
     }
-    for (const [o, c] of stops) mk('stop', { offset: o, 'stop-color': c }, g);
+    const up = (c) => {
+      if (!lift) return c;
+      const v = rgb(c), k = lift * Math.min(1, lumOf(v) * 2.5);
+      return hexOf([v[0] + k, v[1] + k, v[2] + k]);
+    };
+    for (const [o, c] of stops) mk('stop', { offset: o, 'stop-color': up(c) }, g);
   }
   return `url(#${id})`;
 }
@@ -697,7 +709,7 @@ function texPlastic(s, q) {
 }
 
 function texGlass(s, q, acrylic) {
-  const tint = s.f === 'smoked' ? [34, 36, 40] : s.f === 'mirror' ? [210, 216, 222] : s.f === 'frosted' && !acrylic ? [238, 243, 247] : s.f === 'clear' && !acrylic ? [205, 230, 240] : rgb(colorHex(s));
+  const tint = s.f === 'smoked' ? [34, 36, 40] : s.f === 'mirror' ? [210, 216, 222] : s.f === 'clear' && !acrylic ? [205, 230, 240] : rgb(colorHex(s));
   // t moves the whole tile's opacity; the texture keeps its small variations around it
   const at = opacityOf(s);
   const W = 128 * q, H = 128 * q;
@@ -705,7 +717,7 @@ function texGlass(s, q, acrylic) {
     let c = tint, a = at;
     if (s.f === 'frosted') {
       const n = hash(x, y, 3);
-      c = mix(c, [255, 255, 255], n * 0.25);
+      c = mix(c, [255, 255, 255], 0.08 + n * 0.22);
       a += (n - 0.5) * 0.12;
     } else if (s.f === 'mirror') {
       c = mul(c, 0.8 + fbm(u, v, 2, 2, 3, 8) * 0.4);
@@ -1270,13 +1282,14 @@ function spunId() {
 export function materialFill(spec, opts = {}) {
   let s = normalize(spec);
   if (s.m === 'stock') return null;
-  // under a multicolour layer, coloured finishes go neutral so the colours read true
-  if (s.mc && s.m !== 'wood' && paletteFor(s)) s = { ...s, c: '#d8d8d8' };
+  // under a multicolour layer the finish goes neutral, so the colours read true and only tint it
+  const mt = s.mc ? multiTint(s) : null;
+  if (mt) s = mt.spec;
   const scale = opts.scale || 1, angle = opts.angle || 0, q = opts.preview ? (s.m === 'wood' ? 0.25 : 0.5) : 1;
   const variant = opts.variant | 0;
   const baseId = `mt-${keyOf(s)}-${num(scale)}-${num(angle)}${q < 1 ? '-q' : ''}`;
   const id = baseId + (variant ? '-v' + variant : '');
-  const ck = id + (opts.round ? '-r' : '');
+  const ck = id + (opts.round ? '-r' : '') + (mt ? '|' + multiToString(mt.mc) : '');
   if (fillCache.has(ck) && document.getElementById(id)) return fillCache.get(ck);
   const tk = keyOf(s) + (q < 1 ? '-q' : '');
   let tex = texCache.get(tk);
@@ -1342,7 +1355,14 @@ export function materialFill(spec, opts = {}) {
     ink: lumOf(base) > 0.5 ? '#141414' : '#f2f2f2',
     glow: s.m === 'glow' && s.f === 'glowing' ? colorHex(s) : null,
     translucent: !!tex.alpha && tex.see !== false,
+    multi: mt,
   };
+  if (mt) {
+    // colours for edges and ink follow the average multicolour
+    const avg = mt.mc.stops.length ? mt.mc.stops.map(rgb).reduce((a, c) => [a[0] + c[0], a[1] + c[1], a[2] + c[2]]).map((v) => v / mt.mc.stops.length) : [150, 120, 160];
+    const b2 = mt.see ? mix(base, avg, 0.8) : [base[0] * avg[0] / 255, base[1] * avg[1] / 255, base[2] * avg[2] / 255];
+    Object.assign(out, { base: hexOf(b2), hi: hexOf(mix(b2, [255, 255, 255], 0.45)), lo: hexOf(mul(b2, 0.55)), edge: hexOf(mul(b2, 0.35)), ink: lumOf(b2) > 0.5 ? '#141414' : '#f2f2f2' });
+  }
   if (s.m === 'wood' && s.f === 'stained' && BURSTS[s.c]) out.overlay = burstId(BURSTS[s.c]);
   if (opts.round && s.m === 'metal' && ['brushed', 'polished', 'anodized', 'bare'].includes(s.f)) out.overlay = spunId();
   fillCache.set(ck, out);
@@ -1369,14 +1389,49 @@ export function paint(parent, tag, attrs, spec, opts = {}) {
   if (f.spec.m === 'wood' && f.spec.s === 'plywood' && tag === 'rect') plyEdge(g, attrs, f.spec);
   if (f.overlay) mk(tag, Object.assign({}, attrs, { fill: f.overlay }), g);
   const ns = normalize(spec);
-  if (ns.mc) {
-    g.setAttribute('style', 'isolation:isolate');
-    mk(tag, Object.assign({}, attrs, { fill: multiFill(ns.mc, opts.box), style: 'mix-blend-mode:multiply' }), g);
+  if (f.multi) {
+    // the texture is already drawn right under it in this group, so multiply only needs an isolated group
+    if (!f.multi.see) g.setAttribute('style', 'isolation:isolate');
+    multiLayer(g, tag, attrs, ns, opts, f);
   }
   if (opts.sheen !== false) mk(tag, Object.assign({}, attrs, { fill: f.sheen, opacity: f.sheenOpacity * (opts.sheenOpacity ?? 1) }), g);
   if (opts.edge !== false) mk(tag, Object.assign({}, attrs, { fill: 'none', stroke: f.translucent ? 'rgba(255,255,255,0.55)' : f.hi, 'stroke-width': opts.edgeWidth || 0.8, 'stroke-opacity': f.translucent ? 0.8 : 0.45 }), g);
   if (opts.wear !== false && ns.w) wearOverlay(g, tag, attrs, ns, opts);
   return { g, f };
+}
+
+// How a multicolour spec is drawn: the neutral spec for the texture, the colours and how they go on
+function multiTint(s) {
+  const a = OPACITY[s.m] ? opacityOf(s) : 1;
+  if (a < 0.95) {
+    // see-through: a faint clear base keeps the frost, glitter and sheen, the colours carry most of the opacity
+    const a1 = Math.round(a * 30) / 100;
+    return { spec: { ...s, c: '#f4f6f8', t: a1 }, mc: s.mc, see: true, alpha: Math.round((1 - (1 - a) / (1 - a1)) * 100) / 100, lift: 0 };
+  }
+  // wood: unstained grain under a coloured stain, lifted like the single colour stains
+  if (s.m === 'wood') return { spec: { ...s, c: 'natural' }, mc: s.mc, see: false, alpha: 1, lift: 56 };
+  return { spec: { ...s, c: '#eeeeee' }, mc: s.mc, see: false, alpha: 1, lift: 0 };
+}
+
+/**
+ * The multicolour layer of a spec over a shape, for callers that draw the texture themselves. It is self
+ * contained (the texture is drawn again inside an isolated group when multiply needs a backdrop), so it works
+ * inside clipped or isolated groups too. opts must match the ones used for the base fill so the textures line up.
+ * own: pass the fill info when the texture is drawn right under it in an isolated group already (paint does).
+ */
+export function multiLayer(parent, tag, attrs, spec, opts = {}, own = null) {
+  const f = own || materialFill(spec, opts);
+  if (!f || !f.multi) return null;
+  const mt = f.multi;
+  const fill = multiFill(mt.mc, opts.box, mt.lift);
+  if (mt.see) return mk(tag, Object.assign({}, attrs, { fill, opacity: mt.alpha, 'pointer-events': 'none' }), parent);
+  if (own) return mk(tag, Object.assign({}, attrs, { fill, style: 'mix-blend-mode:multiply' }), parent);
+  const g = mk('g', { style: 'isolation:isolate', 'pointer-events': 'none' }, parent);
+  mk(tag, Object.assign({}, attrs, { fill: f.fill }), g);
+  if (f.layer2) mk(tag, Object.assign({}, attrs, { fill: f.layer2 }), g);
+  if (f.macro) mk(tag, Object.assign({}, attrs, { fill: f.macro }), g);
+  mk(tag, Object.assign({}, attrs, { fill, style: 'mix-blend-mode:multiply' }), g);
+  return g;
 }
 
 // plywood: the plies show as thin layers just inside the edge

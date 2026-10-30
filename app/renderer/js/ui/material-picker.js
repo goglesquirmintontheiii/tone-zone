@@ -92,7 +92,8 @@ export function materialPicker(parent, o) {
         pick.onchange = () => emit({ ...spec, c: pick.value });
       }
     }
-    if (o.multi !== false) multiSection(body);
+    // multicolour tints the finish, so it only shows where the finish takes any colour
+    if (o.multi !== false && mode === 'free') multiSection(body);
     if (o.wear) wearSection(body);
     if (o.extra) o.extra(body, spec);
   }
@@ -115,10 +116,10 @@ export function materialPicker(parent, o) {
     el('span', {}, ends).textContent = 'Clear';
     el('span', {}, ends).textContent = 'Solid';
   }
-  // multicolour: fades, bursts, gradients... over the material
+  // multicolour: fades, bursts, gradients... as a paint, coating, stain or tint over the material
   function multiSection(body) {
     const sec = el('div', { class: 'mtp-sec' }, body);
-    el('h6', {}, sec).textContent = 'Multicolour';
+    el('h6', {}, sec).textContent = spec.m === 'wood' ? 'Multicolour stain' : 'Multicolour';
     const chips = el('div', { class: 'mtp-wear' }, sec);
     const mc = spec.mc;
     const modes = [{ id: '', name: 'Off' }, ...MULTI];
