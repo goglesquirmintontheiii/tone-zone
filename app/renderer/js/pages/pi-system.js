@@ -5,6 +5,7 @@ import { card, field, seg, select, toggle, meter, demoNote, fakeProgress, copyBo
 import { uiAudioId } from './pi-live.js';
 
 // ------------------------------------------------------------------ Audio
+const tone = { on: false, tone: 0, side: 0, level: -20, timer: 0 }; // test tone settings, kept across redraws
 export function renderAudio(main, ctx) {
   const { store, dev } = ctx;
   const a = store.audio;
@@ -33,17 +34,25 @@ export function renderAudio(main, ctx) {
       }
       const opts = real.map((d) => [d.id, `${d.name} (${d.id.replace(/^hw:/, '')})`]);
       select(fc, opts, al[key], (v) => {
-        al[key] = v;
-        a[key] = uiAudioId(real.find((d) => d.id === v));
+        // the Pi may have sent a newer config since this was drawn: change the current one
+        const cur = store.audio, cal = cur.alsa || al;
+        cal[key] = v;
+        cur[key] = uiAudioId(real.find((d) => d.id === v));
         savePi();
         piLog(`Audio ${dir}: ${(real.find((d) => d.id === v) || {}).name || v}`, 'info', 'engine');
         ctx.rerender();
       }, { 'data-ctl': 'audio-' + dir });
-    } else select(fc, list.map((d) => [d.id, d.name]), a[key], (v) => { a[key] = v; savePi(); piLog(`Audio ${dir}: ${audioDevice(v).name}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-' + dir });
+    } else select(fc, list.map((d) => [d.id, d.name]), a[key], (v) => { store.audio[key] = v; savePi(); piLog(`Audio ${dir}: ${audioDevice(v).name}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-' + dir });
     const d = audioDevice(a[key]);
     if (d) el('div', { class: 'pi-devq ' + d.kind, 'data-q': d.id }, io).textContent = audioNote(d, model);
   };
   devRow('Input (guitar)', 'in', ins, 'input');
+  if (al && al.inputs.length) {
+    // interfaces with several inputs (a Helix sends 8 over USB): pick which one the guitar comes in on
+    const n = Math.max(al.inChannels || 0, al.inChannel || 1, 2);
+    field(io, 'Input channel', 'Which input of the device feeds the engine. On a Line 6 Helix, USB 7 is your dry guitar and USB 1/2 is the Helix\'s own sound.');
+    select(io.lastChild.lastChild, [...Array(n)].map((_, i) => [i + 1, 'Input ' + (i + 1)]), al.inChannel || 1, (v) => { (store.audio.alsa || al).inChannel = +v; savePi(); piLog(`Audio input channel: ${v}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-channel' });
+  }
   devRow('Output (amp, headphones, PA)', 'out', outs, 'output');
   const notes = el('ul', { class: 'pi-list small' }, io);
   el('li', {}, notes).textContent = 'The Pi has no audio input of its own. Use a HAT, a USB interface or a USB audio adapter.';
@@ -74,17 +83,17 @@ export function renderAudio(main, ctx) {
 
   const st = card(left, 'Engine', null);
   field(st, 'Sample rate');
-  seg(st.lastChild.lastChild, [[44100, '44.1 kHz'], [48000, '48 kHz'], [96000, '96 kHz']], a.rate, (v) => { a.rate = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'rate' });
+  seg(st.lastChild.lastChild, [[44100, '44.1 kHz'], [48000, '48 kHz'], [96000, '96 kHz']], a.rate, (v) => { store.audio.rate = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'rate' });
   field(st, 'Buffer', isPi3(model) ? 'Smaller = less latency but more CPU. On a Pi 3, 128 with a HAT, 256 with USB.' : 'Smaller = less latency but more CPU. 128 is safe, 64 for Pi 5 with a HAT.');
-  seg(st.lastChild.lastChild, [[32, '32'], [64, '64'], [128, '128'], [256, '256']], a.buffer, (v) => { a.buffer = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'buffer' });
+  seg(st.lastChild.lastChild, [[32, '32'], [64, '64'], [128, '128'], [256, '256']], a.buffer, (v) => { store.audio.buffer = +v; savePi(); ctx.rerender(); }, { 'data-ctl': 'buffer' });
   field(st, 'Periods');
-  seg(st.lastChild.lastChild, [[2, '2'], [3, '3 (USB)']], a.periods, (v) => { a.periods = +v; savePi(); ctx.rerender(); });
+  seg(st.lastChild.lastChild, [[2, '2'], [3, '3 (USB)']], a.periods, (v) => { store.audio.periods = +v; savePi(); ctx.rerender(); });
   field(st, 'Audio server');
-  seg(st.lastChild.lastChild, [['pipewire', 'PipeWire'], ['jack', 'JACK2 (lowest latency)']], a.server, (v) => { a.server = v; savePi(); });
+  seg(st.lastChild.lastChild, [['pipewire', 'PipeWire'], ['jack', 'JACK2 (lowest latency)']], a.server, (v) => { store.audio.server = v; savePi(); });
   const opt = (label, hint, key) => {
     const r = el('div', { class: 'pi-opt' }, st);
     el('div', {}, r, `<b>${label}</b><small>${hint}</small>`);
-    toggle(r, a[key], (v) => { a[key] = v; savePi(); });
+    toggle(r, a[key], (v) => { store.audio[key] = v; savePi(); });
   };
   opt('CPU at full speed', 'Performance governor, so the CPU never slows down while you play.', 'governor');
   opt('Keep one core for audio', 'Reserves core 4 for the engine (isolcpus). Needs a reboot.', 'isolate');
@@ -116,12 +125,35 @@ export function renderAudio(main, ctx) {
     mi.firstChild.style.width = 20 + Math.random() * 40 + '%';
     mo.firstChild.style.width = 30 + Math.random() * 40 + '%';
   }, 200);
-  const tt = el('button', { class: 'btn small' }, lv, 'Play test tone');
+  // test tone: replaces the preset on the Pi while it plays (30 s at most), to check each output
+  const tc = card(right, 'Test tone', 'Plays instead of the preset for up to 30 seconds, so you can check the outputs and the cables.');
+  field(tc, 'Tone');
+  seg(tc.lastChild.lastChild, [[0, '440 Hz'], [1, '1 kHz'], [2, 'Pink noise'], [3, 'Sweep']], tone.tone, (v) => { tone.tone = +v; sendTone(); ctx.rerender(); }, { 'data-ctl': 'tone-kind' });
+  field(tc, 'Output side');
+  seg(tc.lastChild.lastChild, [[0, 'Both'], [1, 'Left'], [2, 'Right']], tone.side, (v) => { tone.side = +v; sendTone(); ctx.rerender(); }, { 'data-ctl': 'tone-side' });
+  field(tc, 'Level', 'Start low: -20 dBFS is about as loud as a normal preset.');
+  const lvRow = tc.lastChild.lastChild;
+  const rng = el('input', { type: 'range', min: -40, max: -6, step: 1, value: tone.level, 'data-ctl': 'tone-level' }, lvRow);
+  const lvTxt = el('span', { class: 'pi-num' }, lvRow);
+  lvTxt.textContent = tone.level + ' dBFS';
+  rng.oninput = () => { tone.level = +rng.value; lvTxt.textContent = tone.level + ' dBFS'; };
+  rng.onchange = () => sendTone();
+  const tt = el('button', { class: 'btn small' + (tone.on ? ' btn-accent' : ''), 'data-act': 'test-tone' }, tc, tone.on ? 'Stop test tone' : 'Play test tone');
+  function sendTone(on = tone.on) {
+    if (!on && !tone.on) return;
+    tone.on = on;
+    clearTimeout(tone.timer);
+    if (on) tone.timer = setTimeout(() => { tone.on = false; ctx.rerender(); }, 30000); // the Pi stops it too
+    const name = ['440 Hz sine', '1 kHz sine', 'pink noise', 'sweep'][tone.tone];
+    const p = dev && ctx.live && act('testTone', { id: dev.id, on, tone: tone.tone, level: tone.level, side: tone.side });
+    if (p) p.catch((e) => { tone.on = false; toast(e.message || String(e), 'err'); ctx.rerender(); });
+    else if (on) toast(`Test tone: ${name} (demo)`);
+  }
   tt.onclick = () => {
-    piLog('Test tone 440 Hz, -18 dBFS on output', 'info', 'engine');
-    const p = dev && act('testTone', { id: dev.id });
-    if (p) p.then(() => toast('Test tone on the Pi output'), () => {});
-    else toast('Test tone on the Pi output (demo)');
+    const on = !tone.on;
+    piLog(on ? `Test tone: ${['440 Hz sine', '1 kHz sine', 'pink noise', 'sweep'][tone.tone]}, ${tone.level} dBFS, ${['both sides', 'left', 'right'][tone.side]}` : 'Test tone off', 'info', 'engine');
+    sendTone(on);
+    ctx.rerender();
   };
   demoNote(main, 'Levels and latency are estimates until a Pi is connected.');
 }

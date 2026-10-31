@@ -227,6 +227,9 @@ memory. The cost is RAM: about 80 to 150 MB for cog (more for Chromium) against 
 | The tab does not list the Pi | Add a Pi > type the address. Check `tonezone status` on the Pi. The API is only reachable from private and link-local addresses. |
 | "Wrong pairing code" | Run `tonezone pair` for the current code (a code works once). After 5 wrong tries wait 30 s. |
 | No sound | `tonezone logs`: look for `JACK:` and `audio running`. List devices with `aplay -l` and `arecord -l`. Pick the input and output in the tab's Audio section. |
+| No sound on a Pi with a desktop | The desktop runs PipeWire and Tone Zone joins it. `tonezone logs` should show `using PipeWire (the desktop's, user 1000)` and `audio: input ..., output ...`. If it says PipeWire's JACK library is missing, run the installer again (it adds `pipewire-jack` and `acl`). Someone has to be logged in to the desktop (auto-login is fine). |
+| Only 2 inputs on a Helix or other multichannel interface | Set the device's profile to Pro Audio in the desktop's sound settings (or `pavucontrol` > Configuration), then pick the input channel in the Audio section (a Helix sends the dry guitar on USB 7). |
+| Check the outputs | The Audio section's Test tone plays a 440 Hz or 1 kHz sine, pink noise or a sweep on both sides or one, instead of the preset, for up to 30 s. |
 | `jackd` errors like "cannot set hw params" | The device does not support 48 kHz or the buffer: try buffer 256 and periods 3 (USB) in the Audio section. |
 | Crackles / dropouts | Raise the buffer (128 to 256), lower the DSP budget, use Lite / Feather NAM models, avoid USB hubs. On a Pi 3 Wi-Fi and Ethernet share USB with the audio adapter: try the other one. Check `tonezone status` for under-voltage (use the official power supply). |
 | Thin, quiet guitar on a cheap USB adapter | Its input is mic / line level. Put a boost pedal, buffer or DI in front. |

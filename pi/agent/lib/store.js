@@ -45,7 +45,7 @@ function defaultState() {
         bankWaits: true,
       },
       display: { screen: 'none', rotation: 0, brightness: 80, timeout: 0, theme: 'dark', touch: true },
-      audio: { input: '', output: '', rate: 48000, buffer: 128, periods: 3, governor: true, isolate: false, server: 'auto' },
+      audio: { input: '', output: '', inChannel: 1, rate: 48000, buffer: 128, periods: 3, governor: true, isolate: false, server: 'auto' },
       updates: { channel: 'stable', auto: false, via: 'network', allowUnsigned: false },
       switching: { preload: true, spillover: false, midi: false },
     },

@@ -47,7 +47,7 @@ function pwDevices(ports) {
       if (!m.has(client)) m.set(client, { id: 'pw:' + client, name: client, kind: pwKind(client), driver: 'pipewire', ports: [] });
       m.get(client).ports.push(p.name);
     }
-    for (const d of m.values()) d.ports.sort();
+    for (const d of m.values()) d.ports.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     return [...m.values()];
   };
   // hardware capture ports are sources (we read from them), playback ports are sinks
@@ -72,6 +72,15 @@ function pipewireRunning() {
   const r = spawnSync('sh', ['-c', 'pgrep -x pipewire'], { encoding: 'utf8' });
   return r.status === 0;
 }
+// the desktop user whose PipeWire is running: { uid, dir } (their runtime dir holds the socket)
+function pipewireOwner() {
+  const r = spawnSync('sh', ['-c', 'ps -o uid= -p "$(pgrep -o -x pipewire)"'], { encoding: 'utf8' });
+  const uid = parseInt((r.stdout || '').trim(), 10);
+  return Number.isFinite(uid) ? { uid, dir: `/run/user/${uid}` } : null;
+}
+// PipeWire's JACK library (the plain libjack.so.0 is JACK2's, which can't talk to PipeWire)
+const PW_JACK = ['/usr/lib/aarch64-linux-gnu/pipewire-0.3/jack/libjack.so.0', '/usr/lib/arm-linux-gnueabihf/pipewire-0.3/jack/libjack.so.0', '/usr/lib/pipewire-0.3/jack/libjack.so.0'];
+const pwJackLib = () => PW_JACK.find((f) => fs.existsSync(f)) || '';
 
 class AudioServer {
   constructor() {
@@ -100,9 +109,20 @@ class AudioServer {
     }
     const server = cfg.server === 'auto' ? (pipewireRunning() ? 'pipewire' : 'jackd') : cfg.server;
     if (server === 'pipewire') {
+      const lib = pwJackLib();
+      const owner = pipewireOwner();
+      if (!lib) {
+        log.error("PipeWire is running but its JACK library is missing, so the engine can't join it. Run the installer again or: sudo apt install pipewire-jack", 'engine');
+        return { mode: 'none', jackLib: '', sel };
+      }
+      if (!owner) {
+        log.error('PipeWire is running but its user could not be found', 'engine');
+        return { mode: 'none', jackLib: '', sel };
+      }
       this.mode = 'pipewire';
-      log.info('using PipeWire (JACK layer)', 'engine');
-      return { mode: 'pipewire', jackLib: '', sel };
+      log.info(`using PipeWire (the desktop's, user ${owner.uid}) through its JACK layer, ${cfg.buffer} frames at ${cfg.rate} Hz`, 'engine');
+      // PIPEWIRE_LATENCY asks PipeWire for our buffer size instead of its large desktop default
+      return { mode: 'pipewire', jackLib: lib, sel, uid: owner.uid, env: { PIPEWIRE_RUNTIME_DIR: owner.dir, PIPEWIRE_LATENCY: `${cfg.buffer || 128}/${cfg.rate || 48000}` } };
     }
     if (!have('jackd')) {
       log.error('jackd is not installed (sudo apt install jackd2)', 'engine');

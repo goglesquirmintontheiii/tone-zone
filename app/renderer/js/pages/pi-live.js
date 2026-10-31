@@ -65,7 +65,7 @@ function audioIn(a) {
     output: uiAudioId(devs.outputs.find((d) => d.id === outId)) || 'jack35',
     rate: a.rate, buffer: a.buffer, periods: a.periods, governor: a.governor, isolate: a.isolate,
     server: a.mode === 'pipewire' || a.server === 'pipewire' ? 'pipewire' : 'jack',
-    alsa: { inputs: devs.inputs, outputs: devs.outputs, input: inId || '', output: outId || '' },
+    alsa: { inputs: devs.inputs, outputs: devs.outputs, input: inId || '', output: outId || '', inChannel: a.inChannel || 1, inChannels: a.inChannels || 0, mode: a.mode || '' },
   };
   // the tab edits this object in place, so keep what the Pi said to tell real changes apart
   Object.defineProperty(r, 'was', { value: { input: r.input, output: r.output, alsaIn: r.alsa.input, alsaOut: r.alsa.output }, enumerable: false });
@@ -76,6 +76,7 @@ function audioOut(v, last) {
   const was = v.was || (last && last.was) || {};
   const pick = (list, uiId) => (list.find((d) => uiAudioId(d) === uiId) || {}).id || '';
   const out = { rate: v.rate, buffer: v.buffer, periods: v.periods, governor: v.governor, isolate: v.isolate, server: v.server === 'pipewire' ? 'pipewire' : v.server === 'jack' ? 'jackd' : 'auto' };
+  if (al.inChannel) out.inChannel = al.inChannel;
   // a real device picked in the list wins; else a changed device type picks the first card of that type
   out.input = al.input !== was.alsaIn ? al.input : v.input !== was.input ? pick(al.inputs, v.input) || al.input : al.input;
   out.output = al.output !== was.alsaOut ? al.output : v.output !== was.output ? pick(al.outputs, v.output) || al.output : al.output;
@@ -194,7 +195,7 @@ export function createLive(api) {
       }
       case 'testPin': return api.api(a.id, 'POST', '/api/gpio/test', { pin: a.pin, kind: a.kind });
       case 'calibrate': throw new Error('Expression pedals (ADS1115 / MCP3008) are not supported on the Pi yet.');
-      case 'testTone': throw new Error('The test tone is not available on the Pi yet.');
+      case 'testTone': return api.api(a.id, 'POST', '/api/audio/testtone', { on: !!a.on, tone: a.tone, level: a.level, side: a.side });
       case 'checkUpdate': {
         const d = need(a.id);
         // ask GitHub from here, so it works when the Pi has no internet

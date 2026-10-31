@@ -343,12 +343,77 @@ public:
   void status(json& j) override { j["sel"] = int(std::round(p(pSel))); }
 };
 
+
+// Test tone for checking outputs: 440 Hz sine, 1 kHz sine, pink noise or a slow sweep (40 Hz to 12 kHz, 4 s),
+// at a set level, on both sides or one. Fades in so starting it doesn't click.
+class TestToneBlock : public Block
+{
+public:
+  int pTone, pLevel, pSide;
+  double sr = 48000, ph = 0, sweepT = 0;
+  float gainNow = 0.f;
+  uint32_t rnd = 22222;
+  float b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  TestToneBlock(const json&)
+  {
+    pTone = addParam("tone", 0.f, 0.f, 3.f);
+    pLevel = addParam("level", -18.f, -60.f, 0.f);
+    pSide = addParam("side", 0.f, 0.f, 2.f);
+    finalizeParams();
+  }
+  bool alwaysProcess() const override { return true; }
+  void prepare(const PrepareCtx& c) override { sr = c.sr; }
+  float white() { rnd = rnd * 1664525u + 1013904223u; return float(int32_t(rnd)) / 2147483648.f; }
+  // Paul Kellet's pink filter, scaled to about the same loudness as the sine
+  float pink()
+  {
+    const float w = white();
+    b0 = 0.99886f * b0 + w * 0.0555179f; b1 = 0.99332f * b1 + w * 0.0750759f; b2 = 0.96900f * b2 + w * 0.1538520f;
+    b3 = 0.86650f * b3 + w * 0.3104856f; b4 = 0.55000f * b4 + w * 0.5329522f; b5 = -0.7616f * b5 - w * 0.0168980f;
+    const float y = b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362f;
+    b6 = w * 0.115926f;
+    return y * 0.11f;
+  }
+  void process(const float* const*, float* const* out, int n) override
+  {
+    const int tone = int(std::lround(p(pTone)));
+    const int side = int(std::lround(p(pSide)));
+    const float target = std::pow(10.f, p(pLevel) / 20.f);
+    const float step = 1.f / float(0.02 * sr); // 20 ms fades
+    for (int i = 0; i < n; ++i)
+    {
+      double f = tone == 1 ? 1000.0 : 440.0;
+      if (tone == 3)
+      {
+        const double T = 4.0;
+        f = 40.0 * std::pow(12000.0 / 40.0, sweepT / T);
+        sweepT += 1.0 / sr;
+        if (sweepT >= T) sweepT = 0;
+      }
+      float v;
+      if (tone == 2) v = pink();
+      else
+      {
+        v = float(std::sin(ph)); // the level is the peak
+        ph += 2.0 * M_PI * f / sr;
+        if (ph > 2.0 * M_PI) ph -= 2.0 * M_PI;
+      }
+      gainNow += std::clamp(target - gainNow, -step, step);
+      v *= gainNow;
+      if (nOut > 0) out[0][i] = side == 2 ? 0.f : v;
+      if (nOut > 1) out[1][i] = side == 1 ? 0.f : v;
+    }
+    for (int c = 2; c < nOut; ++c) std::memset(out[c], 0, sizeof(float) * n);
+  }
+};
+
 RegisterBlock r7("select", [](const json& o, int, int) { return std::make_unique<SelectBlock>(o); });
 RegisterBlock r1("thru", [](const json& o, int, int) { return std::make_unique<ThruBlock>(o); });
 RegisterBlock r2("split", [](const json& o, int, int) { return std::make_unique<SplitBlock>(o); });
 RegisterBlock r3("merge", [](const json& o, int, int) { return std::make_unique<MergeBlock>(o); });
 RegisterBlock r4("meter", [](const json& o, int, int) { return std::make_unique<MeterBlock>(o); });
 RegisterBlock r5("stereo", [](const json& o, int, int) { return std::make_unique<StereoBlock>(o); });
+RegisterBlock r8("testtone", [](const json& o, int, int) { return std::make_unique<TestToneBlock>(o); });
 RegisterBlock r6("di", [](const json& o, int, int) { return std::make_unique<DIBlock>(o); });
 } // namespace
 } // namespace tz
