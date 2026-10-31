@@ -112,3 +112,32 @@ Each LCD shows the switch number, a sub line (slot and type, scene number...) an
 * Strips: PRESET & SCENE, LEVELS, FOCUSED BLOCK, TEMPO & TUNER, PEDALS, SIGNAL PATH; the menu button on the right end
   picks the content.
 * I/O bars: brightness from the jack's level (audio peak, or the control value for control jacks), red on clipping.
+
+## Pedal Factory template (template id `nautica`, block `custom.template.nautica`)
+
+A Lua version of the unit, built from this page (`app/renderer/js/pages/factory-showcase-nautica.js` for the design
+and circuit, `factory-nautica-scripts.js` for the screens; test `app/scripts/nautica-template-test.js`). The block in
+the pedal list stays the native `tz.nautica`.
+
+* **Layout**: the same panel scaled to 360 x 184 mm (the factory's widest enclosure). 24 screens: MAIN, the two
+  strips, the portrait SIDE screen (nav buttons, LED-ring encoders, XY pad, sliders, select encoder), 16 footswitch
+  displays, 2 treadle displays and the I/O bar LEDs (two halves of the rear rail). Screen canvases are at most 480 x
+  320 pixels, so MAIN and the strips draw on the native 560 x 250 / 560 x 22 layout and scale it.
+* **Blocks**: one fixed block type per slot (the native unit lets any model go anywhere): A1 dynamics, A2 drive, A3
+  amp, A4 EQ / cab, A5 modulation, A6 delay, A7 reverb, A8 loop 2; B1 pitch, B2 filter / wah, B3 synth, B4 flanger,
+  B5 delay 2, B6 loop 3, B7 loop 4, B8 loop 1 (master). Each slot offers the models of its type; the circuit has a
+  part per model family and the screens switch parts on and set their values.
+* **Signal flow**: path A and path B (serial, parallel, or dual with B from AUX IN), mixed, then the master loop 1
+  (in series), then the returns of loops 2 to 4 mixed in, freeze, volume pedal, master, mute. Every send is taken
+  before any return (send 1 = the A + B mix, send 2 = after the drives, sends 3 and 4 = after the compressor), so the
+  board runs SEND -> pedals -> RETURN in one audio cycle. OUT 1 and OUT 2 carry the main mix, OUT 3 path A or the dry
+  DI, OUT 4 path B or the dry DI, PHONES and XLR the main mix with their own dials.
+* **Screens talk through the pedal's files**: MAIN keeps the state (and saves it with the preset), writes
+  `nx/out.txt` (every circuit value, each screen sends its slice of 16 to the circuit) and `nx/ui.txt` (what the small
+  screens show); the side screen and the strips append commands to `nx/cmd.txt`. User presets are `presets/<n>.txt`
+  (A1 = 1 ... D7 = 28), the factory presets are in the shared code file `nx.lua`.
+* **Footswitch modes**: STOMP, SCENE, PRESET (the looper of the native unit has no factory part; FREEZE takes its
+  place on the HOLD button and as a footswitch function). EXT FS 1-4 and EXT EXP 1-2 are screen inputs of MAIN; EXT
+  FS OUT and EXT EXP OUT are driven by MAIN's outputs.
+* **Frame cost**: every screen skips its frame when nothing it shows changed (only MAIN on the tuner page, the strip
+  showing levels or tempo and the I/O rail redraw while sound plays).

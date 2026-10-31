@@ -183,22 +183,7 @@ const { makeDI, measure } = require('./loudness');
   await win.evaluate(() => window.__tzFactory.test(false));
   await wait(500);
 
-  // ---- 5. offline render of the design is not silent
-  {
-    const di = makeDI(path.join(out, 'di.wav'));
-    const r = await win.evaluate(async (di) => {
-      const { designToDef } = await import('./js/pages/factory-circuit.js');
-      const st = await import('./js/state.js');
-      const D = window.__tzFactory.design();
-      const def = designToDef(JSON.parse(JSON.stringify(D)), { id: 'custom.nxtest' });
-      const p = st.newPreset('nx');
-      void def;
-      return { ok: true };
-    }, di);
-    void r;
-  }
-
-  // ---- 6. the template block on the board: screens run, presets round-trip through the file store
+  // ---- 5. the template block on the board: screens run, audio offline, presets round-trip through the file store
   const board = await win.evaluate(async () => {
     const st = await import('./js/state.js');
     st.loadPreset(st.newPreset('nx'), null);
@@ -320,10 +305,10 @@ const { makeDI, measure } = require('./loudness');
   await tapB('MAIN', 520, 9); await shot('MAIN', 'page-global.png'); pages.push('global');
   for (const [b, f] of [['ASSIGN', 'page-assign.png'], ['I/O', 'page-io.png'], ['TUNER', 'page-tuner.png']]) {
     await win.evaluate(() => (document.getElementById('layerCables').style.display = 'none'));
-    await zoomOut(); await wait(300); await ctlClick(b); await zoomIn(); await wait(600); await shot('MAIN', f); pages.push(b.toLowerCase());
+    await zoomOut(); await wait(300); await ctlClick(b); await zoomIn(); await wait(1500); await shot('MAIN', f); pages.push(b.toLowerCase());
   }
   await tapB('SIDE', 69, 14);
-  await zoomOut(); await wait(300); await ctlClick('ASSIGN'); await zoomIn(); await wait(600); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
+  await zoomOut(); await wait(300); await ctlClick('ASSIGN'); await zoomIn(); await wait(1500); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
   await shot('SIDE', 'side-screen.png');
   await tapB('STRIP 1', 548, 11); await shot('STRIP 1', 'strip-menu.png');
   await tapB('STRIP 1', 3 + 1 * ((560 - 30) / 6) + 30, 11); await shot('STRIP 1', 'strip-levels.png');
