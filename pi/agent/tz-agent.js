@@ -52,6 +52,7 @@ const keyOf = (p) => `${p.id}:${p.rev || 0}`;
 async function startAudio() {
   const cfg = S.config.audio;
   audioInfo = await server.start(cfg);
+  broadcast({ t: 'config', config: configOut() });
   const env = Object.assign({}, audioInfo.env || {});
   if (audioInfo.jackLib) env.TZ_JACK_LIB = audioInfo.jackLib;
   // the desktop's PipeWire lives in that user's private runtime dir: let the tonezone user in
@@ -118,6 +119,9 @@ function connectEngine(ev) {
   }
 }
 engine.on('event', (ev) => {
+  // the Audio page shows whether the engine really got audio
+  if (ev.ev === 'audioError') { audioInfo.status = { ok: false, error: 'The engine could not join the audio server: ' + ev.error }; broadcast({ t: 'config', config: configOut() }); }
+  if (ev.ev === 'ready' && ev.running && audioInfo.status && !audioInfo.status.ok && audioInfo.mode !== 'none') { audioInfo.status = { ok: true, text: audioInfo.mode }; broadcast({ t: 'config', config: configOut() }); }
   if (ev.ev === 'ready') { route = ''; setTimeout(() => engine.send({ cmd: 'ports' }), 300); }
   if (ev.ev === 'ports' && ev.self) {
     const had = lastPorts && JSON.stringify(audio.pwDevices(lastPorts)) === JSON.stringify(audio.pwDevices(ev));
@@ -464,7 +468,7 @@ function audioConfigOut() {
   // how many channels the active input has (from the live ports), for the input channel picker
   let inChannels = 0;
   try { if (lastPorts) { const t = routeTargets(lastPorts); inChannels = t.inDev ? t.inDev.ports.length : 0; } } catch (_) { /* no ports yet */ }
-  return Object.assign({}, S.config.audio, { devices: devs, active: server.sel || null, mode: audioInfo.mode, inChannels });
+  return Object.assign({}, S.config.audio, { devices: devs, active: server.sel || null, mode: audioInfo.mode, inChannels, status: audioInfo.status || null });
 }
 function configOut() {
   return { gpio: S.config.gpio, display: S.config.display, audio: audioConfigOut(), updates: S.config.updates, switching: S.config.switching };
@@ -474,7 +478,7 @@ async function setConfig(part, value) {
   if (!value || typeof value !== 'object') throw new Error('Bad config');
   const old = S.config[part];
   const v = Object.assign({}, old, value);
-  delete v.devices; delete v.active; delete v.mode; delete v.inChannels;
+  delete v.devices; delete v.active; delete v.mode; delete v.inChannels; delete v.status;
   S.config[part] = v;
   store.save();
   if (part === 'gpio' && gpio) await gpio.configure(v);

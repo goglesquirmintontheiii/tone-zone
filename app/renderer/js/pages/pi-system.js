@@ -21,6 +21,9 @@ export function renderAudio(main, ctx) {
   const left = el('div', { class: 'pi-col' }, cols);
   const right = el('div', { class: 'pi-col' }, cols);
   const io = card(left, 'Input and output', 'They can be two different devices, like a USB adapter in and the headphone jack out.');
+  // a real Pi says whether audio is actually running (and why not)
+  const stt = ctx.live && a.alsa && a.alsa.status;
+  if (stt) el('div', { class: 'pi-audio-status ' + (stt.ok ? 'ok' : 'bad'), 'data-ctl': 'audio-status' }, io).textContent = stt.ok ? 'Audio running: ' + stt.text : 'No audio: ' + stt.error;
   // a real Pi lists the sound cards it actually has; the demo picks from the common ones
   const al = ctx.live && a.alsa ? a.alsa : null;
   const devRow = (label, dir, list, key) => {
