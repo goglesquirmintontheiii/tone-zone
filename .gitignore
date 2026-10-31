@@ -9,3 +9,4 @@ dist-pi/
 *.pem.key
 tz-pi-signing-key.pem
 __pycache__/
+app/undefined/
