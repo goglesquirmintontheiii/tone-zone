@@ -308,6 +308,7 @@ Call widgets inside draw(). They draw themselves and return what the user did, s
 | `inside(x, y, w, h)` | True when the pointer is over the area. |
 | `mouse.x, mouse.y, mouse.down, mouse.pressed, mouse.released` | The pointer this frame. |
 | `focused()` | True while a text field has the keyboard. |
+| `closeKeyboard([keep])` | Closes the on-screen keyboard, like pressing OK. closeKeyboard(false) cancels instead and puts the old text back. |
 
 ## Controls
 

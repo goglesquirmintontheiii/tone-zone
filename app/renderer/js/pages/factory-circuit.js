@@ -866,7 +866,7 @@ export function designToDef(design, o = {}) {
       else if (bind.startsWith('cv:')) {
         // a circuit output: binary lights it, analog sets its brightness (from the engine status cv[idx])
         const co = coutOf.get(bind.slice(3));
-        if (co) Object.assign(l, { bind: 'fn', cv: co.idx, ledFn: cvLed(co, c.color) });
+        if (co) Object.assign(l, { bind: 'fn', cv: co.idx, ledFn: cvLed(co, c.color, c.look === 'meter') });
         else Object.assign(l, { bind: 'fn', ledFn: () => null });
       }
       controls.push(l);
@@ -1056,7 +1056,7 @@ function dimmed(col, k) {
   const f = off + (1 - off) * k;
   return '#' + [0, 2, 4].map((i) => hex2(parseInt(c.slice(i, i + 2), 16) * f)).join('');
 }
-export function cvLed(co, color) {
+export function cvLed(co, color, meter = false) {
   return (ui, b, st) => {
     if (b && b.bypass) return null;
     const v = st && Array.isArray(st.cv) ? st.cv[co.idx] : undefined;
@@ -1064,6 +1064,7 @@ export function cvLed(co, color) {
     if (co.sig === 'b') return v > 0.5 ? true : null;
     const k = clamp((v - co.min) / ((co.max - co.min) || 1), 0, 1);
     if (k < 0.02) return null;
+    if (meter) return k; // a meter bar lights as far as the level
     return k > 0.98 ? true : dimmed(color, k);
   };
 }

@@ -221,6 +221,7 @@ export function linkLedFn(X, c) {
     const v = readRef(X, r, ui, st, b);
     if (!v) return null;
     if (bin) return v.t > 0.5 ? true : null;
+    if (c.look === 'meter') return v.t >= 0.02 ? v.t : null; // a meter bar lights as far as the level
     if (v.t < 0.02) return null;
     return v.t > 0.98 ? true : dimmed(color, v.t);
   };

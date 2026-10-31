@@ -1241,6 +1241,7 @@ export class ScreenRuntime {
       return val;
     }, 6);
     def('focused', () => !!this.focus);
+    def('closeKeyboard', (keep = true) => { if (this.focus) this.blur(truthy(keep)); }); // keep = false puts the old text back
     def('inside', (x, y, w, h) => this.hit(num(x), num(y), num(w), num(h), I.x, I.y));
     def('tapped', (x, y, w, h) => I.released && this.hit(num(x), num(y), num(w), num(h), I.rx, I.ry) && this.hit(num(x), num(y), num(w), num(h), I.px, I.py));
 

@@ -642,7 +642,7 @@ export function ledLook(parent, c) {
     return {
       g,
       set(on) {
-        const lvl = on ? clamp(c.level ?? 0.7, 0, 1) : 0;
+        const lvl = typeof on === 'number' ? clamp(on, 0, 1) : on ? clamp(c.level ?? 0.7, 0, 1) : 0; // a number: the level of a wired source
         if (lvl === cur) return;
         cur = lvl;
         segs.forEach((s, i) => s.set(i < Math.round(lvl * n) ? s.col : null));

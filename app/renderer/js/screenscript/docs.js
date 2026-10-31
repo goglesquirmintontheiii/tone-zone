@@ -140,6 +140,7 @@ export const API = [
       ['inside', 'inside(x, y, w, h)', 'True when the pointer is over the area.'],
       ['mouse', 'mouse.x, mouse.y, mouse.down, mouse.pressed, mouse.released', 'The pointer this frame.'],
       ['focused', 'focused()', 'True while a text field has the keyboard.'],
+      ['closeKeyboard', 'closeKeyboard([keep])', 'Closes the on-screen keyboard, like pressing OK. closeKeyboard(false) cancels instead and puts the old text back.'],
     ],
   },
   {

@@ -6,8 +6,8 @@ import { circuit, knobMap, valsMap, binMap, finish, screen, uid } from './factor
 import { ACC_PRESETS_SCRIPT, ACC_EDIT_SCRIPT, accFiles, DEEP } from './factory-acc-scripts.js';
 
 const W = 360, H = 246;
-// panel colours: the body, the deck behind the screens, the FX panels, and an accent per circuit
-const INK = '#e6e9ef', DIM = '#8d95a3';
+// the label colour and an accent per circuit
+const INK = '#e6e9ef';
 const SECT = { front: '#3ddc84', drive: '#ff7a2f', mod: '#b45cff', space: '#2b9bff' };
 
 // small builders on top of the factory helpers
@@ -192,18 +192,17 @@ export function accTemplates(h) {
         const ringEnc = (x, y, label, from, rgb, o = {}) => enc(x, y, label, { r: 7, cap: 'rubber', ring: true, ringN: 16, ringMode: 'dot', ringColor: '#38f07a', ringIn: 'one', ringRgb: true, ringFrom: from, ringLeds: rgb, encSteps: 16, ...o });
         const pbtn = (x, y, label, color) => ({ id: uid('b'), kind: 'button', x, y, r: 4.2, shape: 'round', color, led: false, ledColor: '#3fa8ff', on: false, label, labelPos: 'below' });
         const rgbLed = (x, y, label, chans) => led(x, y, '#ffffff', { look: 'rgb', r: 2, bind: 'on', chans, label, labelPos: 'below' });
-        const meterBar = (x, y, label, src) => led(x, y, '#3ddc84', { look: 'meter', n: 10, bind: 'src', src, level: 0.7, label, labelPos: 'below' });
+        const meterBar = (x, y, label, src) => led(x, y, '#3ddc84', { look: 'meter', n: 12, bind: 'src', src, level: 0.7, label, labelPos: 'below' });
         const bar = (x, y, label, color, src) => led(x, y, color, { look: 'bar', w: 58, h: 1.3, bind: 'src', src, label, labelPos: 'above' });
-        const dip = (x, y, label, maps, bits, color) => ({ id: uid('d'), kind: 'dip', x, y, n: maps.length, bits, look: 'piano', color, label, labelPos: 'below', maps });
+        const dip = (x, y, label, maps, bits, color) => ({ id: uid('d'), kind: 'dip', x, y, n: maps.length, bits, look: 'toggle', color, label, labelPos: 'below', maps });
         const dummy = (name) => binMap(Sp.input(name, 0, [], { bin: true }));
 
         // FX panels: x0 of each, 71 mm wide
         const P0 = [6, 81, 156, 231];
         const py = 112;
-        const fxRow = (i) => P0[i];
 
-        // footswitches: three groups along the bottom
-        const fsy = 214;
+        // footswitches in three groups along the bottom: presets, the four circuits, freeze / tap / bypass
+        const fsy = 216;
         const fsx = [24, 56, 98, 130, 162, 194, 236, 268, 300].map((x) => x - 2);
         const foot = (k, label, o = {}) => stomp(fsx[k], fsy, { style: 'soft', r: 6.5, label, labelPos: 'below', ...o });
         const feet = [
@@ -213,7 +212,7 @@ export function accTemplates(h) {
           foot(3, 'DRIVE', { map: { to: Dc.inst.id + '.on', min: 0, max: 1, taper: 'lin', invert: false } }),
           foot(4, 'MOD', { map: { to: M.inst.id + '.on', min: 0, max: 1, taper: 'lin', invert: false } }),
           foot(5, 'SPACE', { map: { to: Sp.inst.id + '.on', min: 0, max: 1, taper: 'lin', invert: false } }),
-          foot(6, 'FREEZE', { map: binMap(frzSw) }),
+          foot(6, 'FREEZE', { map: { ...binMap(frzSw), invert: true } }),
           foot(7, 'TAP', { map: { to: Sp.inst.id + '.tap' } }),
           foot(8, 'BYPASS', { map: { to: 'bypass' } }),
         ];
@@ -225,7 +224,6 @@ export function accTemplates(h) {
           enc: { size: 'custom', w: W, h: H, shape: 'box', radius: 7, dots: false, mat: { m: 'metal', s: 'aluminium', f: 'anodized', c: '#1d2027' } },
           labels: { font: FONTS[2][0], size: 2.3, color: INK },
           title: txt({ id: 'title', text: 'ADVANCED COMMAND CENTER', font: FONTS[1][0], weight: 700, x: 155, y: 9.5, size: 5, color: INK, ls: 1.8 }),
-          sub: txt({ id: 'sub', text: 'FOUR CIRCUITS   22 EFFECTS', font: FONTS[2][0], weight: 800, x: 332, y: 9.5, size: 2.2, color: '#ff7a2f', ls: 0.6, hidden: true }),
           art: [
             // the deck behind the screens and the nav, the FX panels, the footswitch strip, the treadle well
             art('rect', 155, 62, 298, 92, '#121419', { opacity: 0.92 }),
@@ -242,7 +240,7 @@ export function accTemplates(h) {
             // nav between the screens
             rgbLed(137, 24, 'SIGNAL', { r: clipOut, g: sLvl }),
             rgbLed(155, 24, 'TEMPO', { r: beatOut, g: beatOut, b: frzOut }),
-            rgbLed(173, 24, 'PRESET', { r: A(1), g: A(2), b: A(3) }),
+            rgbLed(173, 24, 'SLOT', { r: A(1), g: A(2), b: A(3) }),
             ringEnc(141.5, 50, 'PRESET', A(0), { r: A(1), g: A(2), b: A(3) }),
             ringEnc(168.5, 50, 'PAGE', B(12), { r: B(13), g: B(14), b: B(15) }, { ringN: 15, ringMode: 'arc', encSteps: 20 }),
             pbtn(141.5, 74, 'STORE', '#3a2a20'), pbtn(168.5, 74, 'RECALL', '#20303a'),
@@ -250,35 +248,35 @@ export function accTemplates(h) {
             meterBar(27, 92, 'INPUT', fIn), meterBar(62, 92, 'DRIVE', dLvl), meterBar(97, 92, 'OUTPUT', sLvl),
             enc(209, 93, 'EDIT 1'), enc(235, 93, 'EDIT 2'), enc(261, 93, 'EDIT 3'), enc(287, 93, 'EDIT 4'),
             // the right column: XY pad and the trims
-            { id: uid('x'), kind: 'xy', look: 'glow', x: 332, y: 40, w: 36, h: 32, color: '#b45cff', vx: 0.35, vy: 0.5, label: 'MORPH', labelPos: 'above', maps: [knobMap(space), knobMap(sweep)] },
-            { id: uid('m'), kind: 'trim', x: 321, y: 74, r: 3, look: 'round', color: '#f2c230', value: 0.25, label: 'GATE', labelPos: 'below', map: knobMap(gThr) },
-            { id: uid('m'), kind: 'trim', x: 343, y: 74, r: 3, look: 'round', color: '#f2c230', value: 0.75, label: 'OUTPUT', labelPos: 'below', map: knobMap(outLvl) },
+            { id: uid('x'), kind: 'xy', look: 'glow', x: 332, y: 44, w: 38, h: 34, color: '#b45cff', vx: 0.35, vy: 0.5, label: 'MORPH', labelPos: 'above', maps: [knobMap(space), knobMap(sweep)] },
+            { id: uid('m'), kind: 'trim', x: 321, y: 86, r: 3, look: 'round', color: '#f2c230', value: 0.25, label: 'GATE', labelPos: 'below', map: knobMap(gThr) },
+            { id: uid('m'), kind: 'trim', x: 343, y: 86, r: 3, look: 'round', color: '#f2c230', value: 0.75, label: 'OUTPUT', labelPos: 'below', map: knobMap(outLvl) },
             // FRONT
-            bar(fxRow(0) + 35.5, py + 8, 'FRONT', SECT.front, fLvl),
-            kk(fxRow(0) + 14, py + 24, 'SUSTAIN', sus, 0.5), kk(fxRow(0) + 36, py + 24, 'BLEND', blend, 0.8),
-            fader(fxRow(0) + 58, py + 33, 'OCTAVE', octLvl, 0, SECT.front),
-            dip(fxRow(0) + 25, py + 52, 'FRONT OPT', [binMap(gateSw), binMap(compSw), binMap(wahSw), binMap(whamSw)], [1, 1, 0, 0], '#1f6b3a'),
+            bar(P0[0] + 35.5, py + 8, 'FRONT', SECT.front, fLvl),
+            kk(P0[0] + 14, py + 24, 'SUSTAIN', sus, 0.5), kk(P0[0] + 36, py + 24, 'BLEND', blend, 0.8),
+            fader(P0[0] + 58, py + 33, 'OCTAVE', octLvl, 0, SECT.front),
+            dip(P0[0] + 25, py + 52, 'FRONT OPT', [binMap(gateSw), binMap(compSw), binMap(wahSw), binMap(whamSw)], [1, 1, 0, 0], '#1f6b3a'),
             // DRIVE
-            bar(fxRow(1) + 35.5, py + 8, 'DRIVE', SECT.drive, dLvl),
-            kk(fxRow(1) + 14, py + 24, 'GAIN', gain, 0.45), kk(fxRow(1) + 36, py + 24, 'TONE', tone, 0.55),
-            fader(fxRow(1) + 58, py + 33, 'BOOST', bst, 0.3, SECT.drive),
-            toggle(fxRow(1) + 25, py + 51, 3, ['OD', 'DS', 'FZ'], { orient: 'h', label: 'VOICE', labelPos: 'none', map: valsMap(voice, 3) }),
+            bar(P0[1] + 35.5, py + 8, 'DRIVE', SECT.drive, dLvl),
+            kk(P0[1] + 14, py + 24, 'GAIN', gain, 0.45), kk(P0[1] + 36, py + 24, 'TONE', tone, 0.55),
+            fader(P0[1] + 58, py + 33, 'BOOST', bst, 0.3, SECT.drive),
+            toggle(P0[1] + 25, py + 51, 3, ['OD', 'DS', 'FZ'], { orient: 'h', label: 'VOICE', labelPos: 'none', map: valsMap(voice, 3) }),
             // MOD
-            bar(fxRow(2) + 35.5, py + 8, 'MODULATION', SECT.mod, mLvl),
-            kk(fxRow(2) + 14, py + 24, 'RATE', rate, 0.35), kk(fxRow(2) + 36, py + 24, 'DEPTH', depth, 0.55),
-            fader(fxRow(2) + 58, py + 33, 'WET', wet, 0.5, SECT.mod),
-            { id: uid('r'), kind: 'sel', part: 'steps', look: 'lit', x: fxRow(2) + 25, y: py + 52, n: 5, opts: ['CHO', 'PHA', 'FLG', 'TRM', 'VIB'], pos: 0, ledColor: SECT.mod, label: 'MOD TYPE', labelPos: 'none', map: valsMap(mtype, 5) },
+            bar(P0[2] + 35.5, py + 8, 'MODULATION', SECT.mod, mLvl),
+            kk(P0[2] + 14, py + 24, 'RATE', rate, 0.35), kk(P0[2] + 36, py + 24, 'DEPTH', depth, 0.55),
+            fader(P0[2] + 58, py + 33, 'WET', wet, 0.5, SECT.mod),
+            { id: uid('r'), kind: 'sel', part: 'steps', look: 'lit', x: P0[2] + 25, y: py + 52, n: 5, opts: ['CHO', 'PHA', 'FLG', 'TRM', 'VIB'], pos: 0, ledColor: SECT.mod, label: 'MOD TYPE', labelPos: 'none', map: valsMap(mtype, 5) },
             // SPACE
-            bar(fxRow(3) + 35.5, py + 8, 'SPACE', SECT.space, sLvl),
-            kk(fxRow(3) + 14, py + 24, 'TIME', time, 0.6), kk(fxRow(3) + 36, py + 24, 'REPEATS', reps, 0.35),
-            fader(fxRow(3) + 58, py + 33, 'ECHO', echo, 0.3, SECT.space),
-            toggle(fxRow(3) + 13, py + 51, 3, ['DIG', 'TAPE', 'REV'], { orient: 'h', label: 'ECHO TYPE', labelPos: 'none', map: { to: etype.to, values: [0, 0.2, 0.5] } }),
-            dip(fxRow(3) + 37, py + 52, 'SPACE OPT', [binMap(lofiSw), binMap(slcSw), binMap(dotted), binMap(wobble)], [0, 0, 0, 0], '#1d3f8a'),
+            bar(P0[3] + 35.5, py + 8, 'SPACE', SECT.space, sLvl),
+            kk(P0[3] + 14, py + 24, 'TIME', time, 0.6), kk(P0[3] + 36, py + 24, 'REPEATS', reps, 0.35),
+            fader(P0[3] + 58, py + 33, 'ECHO', echo, 0.3, SECT.space),
+            toggle(P0[3] + 13, py + 51, 3, ['DIG', 'TAPE', 'REV'], { orient: 'h', label: 'ECHO TYPE', labelPos: 'none', map: { to: etype.to, values: [0, 0.2, 0.5] } }),
+            dip(P0[3] + 37, py + 52, 'SPACE OPT', [binMap(lofiSw), binMap(slcSw), binMap(dotted), binMap(wobble)], [0, 0, 0, 0], '#1d3f8a'),
             // footswitches and their LEDs
             ...feet,
             led(fsx[0], fsy - 18, '#ffffff', { look: 'rgb', r: 1.8, bind: 'on', chans: { r: A(1), g: A(2), b: A(3) } }),
             led(fsx[1], fsy - 18, '#ffffff', { look: 'rgb', r: 1.8, bind: 'on', chans: { r: A(1), g: A(2), b: A(3) } }),
-            fled(2, SECT.front), fled(3, SECT.drive), fled(4, SECT.mod), fled(5, SECT.space), fled(6, '#9fdcff'),
+            fled(2, SECT.front), fled(3, SECT.drive), fled(4, SECT.mod), fled(5, SECT.space), led(fsx[6], fsy - 18, '#9fdcff', { r: 1.8, bind: 'src', src: frzOut }),
             led(fsx[7], fsy - 18, '#ff2a1a', { r: 1.8, bind: 'tap:' + Sp.inst.id }), led(fsx[8], fsy - 18, '#ff2a1a', { r: 1.8, bind: 'on' }),
             // the treadle
             { id: uid('p'), kind: 'pedal', x: 332, y: 175, w: 38, h: 124, value: 0.5, color: '#191b20', grip: 'ridges', logo: 'EXP', label: 'TREADLE', labelPos: 'none', map: knobMap(exp) },
