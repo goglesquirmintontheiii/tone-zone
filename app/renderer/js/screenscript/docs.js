@@ -460,6 +460,7 @@ textfield(name: string, x: number, y: number, w: number, h: number, text: text, 
 tapped(x: number, y: number, w: number, h: number) -> bool
 inside(x: number, y: number, w: number, h: number) -> bool
 focused() -> bool
+closeKeyboard(keep?: bool)
 knob(name: control.knob) -> number
 setKnob(name: control.knob, value: number) -> bool
 switch(name: control.switch) -> number

@@ -276,6 +276,51 @@ const { makeDI, measure } = require('./loudness');
   });
   ok(ampOn === 0 || ampOn === false, 'loading A1 again brings back the saved file (amp block off): ' + ampOn);
   await (await win.$('#board')).screenshot({ path: path.join(out, 'template-board-after.png') });
+  // every page of the main screen, the side screen and a strip menu, by pointer on the board
+  const clipOf = (label) => win.evaluate((label) => {
+    const v = window.__tz.editor.views.get(window.__nxb);
+    const e = [...v.views.values()].find((q) => q.ctl.t === 'screen' && q.ctl.label === label);
+    const r = e.view.g.querySelector('image').getBoundingClientRect();
+    return { x: r.left - 2, y: r.top - 2, width: r.width + 4, height: r.height + 4 };
+  }, label);
+  // zoom in on the screens for sharper shots
+  await win.evaluate(() => {
+    const T = window.__tz, v = T.editor.views.get(window.__nxb), r = T.editor.svg.getBoundingClientRect(), vis = document.getElementById('board').getBoundingClientRect();
+    const z = (vis.width - 60) / 440;
+    T.editor.view = { z, x: (vis.left + vis.right) / 2 - r.left - 330 * z, y: (vis.top + vis.bottom) / 2 - r.top - 140 * z };
+    T.editor.applyView();
+  });
+  await wait(1500);
+  const shot = async (label, file) => { await wait(300); await win.screenshot({ path: path.join(out, file), clip: await clipOf(label) }); };
+  const ctlClick = async (label) => {
+    const p = await win.evaluate((label) => {
+      const v = window.__tz.editor.views.get(window.__nxb);
+      const e = [...v.views.values()].find((q) => q.ctl.t === 'button' && (q.ctl.label || '').toUpperCase() === label);
+      const r = e.view.g.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }, label);
+    await win.mouse.click(p.x, p.y);
+    await wait(350);
+  };
+  const pages = [];
+  await tapB('SIDE', 24, 14); await shot('MAIN', 'page-rig.png'); pages.push('rig');
+  await tapB('MAIN', 42 + 27, 68); await tapB('MAIN', 42 + 27, 68); await shot('MAIN', 'page-block.png'); pages.push('block');
+  await tapB('MAIN', 296 + 26, 34); await shot('MAIN', 'page-library.png'); pages.push('library');
+  await tapB('MAIN', 200, 9); await shot('MAIN', 'page-scenes.png'); pages.push('scenes');
+  await tapB('MAIN', 60, 9); await shot('MAIN', 'page-presets.png'); pages.push('presets');
+  await tapB('MAIN', 520, 9); await shot('MAIN', 'page-global.png'); pages.push('global');
+  for (const [b, f] of [['ASSIGN', 'page-assign.png'], ['I/O', 'page-io.png'], ['TUNER', 'page-tuner.png']]) {
+    await win.evaluate(() => (document.getElementById('layerCables').style.display = 'none'));
+    await ctlClick(b); await shot('MAIN', f); pages.push(b.toLowerCase());
+  }
+  await tapB('SIDE', 69, 14);
+  await ctlClick('ASSIGN'); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
+  await shot('SIDE', 'side-screen.png');
+  await tapB('STRIP 1', 548, 11); await shot('STRIP 1', 'strip-menu.png');
+  await tapB('STRIP 1', 3 + 1 * ((560 - 30) / 6) + 30, 11); await shot('STRIP 1', 'strip-levels.png');
+  await shot('STRIP 2', 'strip-2.png');
+  await shot('I/O L', 'io-left.png');
+  ok(pages.length === 10, 'screen pages shot: ' + pages.join(', '));
 
   ok(errs.length === 0, 'no console errors\n' + errs.join('\n'));
   console.log(fails ? `${fails} FAILED` : 'all passed');

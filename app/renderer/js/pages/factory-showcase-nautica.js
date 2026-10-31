@@ -302,9 +302,9 @@ export function nauticaTemplates(h) {
       };
       const btnLeds = buttons.map((b) => {
         const name = b.label === 'MUTE' ? null : 'LED ' + (b.label === 'HOLD' ? '' : b.label);
-        if (b.label === 'MUTE') return led(b.x, b.y - 3.2, '#ff3b30', { r: 0.9, bind: 'ctl:' + b.id });
-        if (b.label === 'HOLD') return led(b.x, b.y - 3.2, '#a98bff', { r: 0.9, bind: 'src', src: scrOf('Hold') });
-        return led(b.x, b.y - 3.2, '#2ee6d6', { r: 0.9, bind: 'src', src: scrOf(name) });
+        if (b.label === 'MUTE') return led(b.x - 7.6, b.y, '#ff3b30', { r: 0.9, bind: 'ctl:' + b.id });
+        if (b.label === 'HOLD') return led(b.x - 7.6, b.y, '#a98bff', { r: 0.9, bind: 'src', src: scrOf('Hold') });
+        return led(b.x - 7.6, b.y, '#2ee6d6', { r: 0.9, bind: 'src', src: scrOf(name) });
       });
       const exp1 = tread(u(1010), 132.9, u(112), u(330), 'EXP 1', { value: 1 });
       const exp2 = tread(u(1170), 132.9, u(112), u(330), 'EXP 2', { value: 0 });
