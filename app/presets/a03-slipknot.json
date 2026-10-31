@@ -14,17 +14,24 @@
  "order": 303,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 19,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 0,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -32,8 +39,8 @@
   {
    "id": "b2",
    "type": "dt.drop",
-   "x": -362,
-   "y": 7,
+   "x": -467,
+   "y": 58,
    "params": {
     "dsel": 2
    },
@@ -43,8 +50,8 @@
   {
    "id": "b3",
    "type": "tz.hush",
-   "x": -582,
-   "y": 17.5,
+   "x": -709,
+   "y": 69,
    "params": {
     "threshold": 0.45,
     "decay": 0.25
@@ -55,8 +62,8 @@
   {
    "id": "b4",
    "type": "ib.ts9",
-   "x": -802,
-   "y": 4,
+   "x": -949,
+   "y": 55,
    "params": {
     "gain": 0,
     "tone": 0.55,
@@ -68,8 +75,8 @@
   {
    "id": "b5",
    "type": "box.split2",
-   "x": -968,
-   "y": 71,
+   "x": -1162,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -77,8 +84,8 @@
   {
    "id": "b6",
    "type": "rivera.amp-ktre",
-   "x": -1652,
-   "y": 348,
+   "x": -816,
+   "y": -804,
    "params": {
     "ch": 2,
     "g3": 0.7,
@@ -95,8 +102,8 @@
   {
    "id": "b7",
    "type": "cab.4x12v30",
-   "x": -1550,
-   "y": 562,
+   "x": -714,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -117,8 +124,8 @@
   {
    "id": "b8",
    "type": "amp.orange",
-   "x": -1438,
-   "y": 1072,
+   "x": -1326,
+   "y": -804,
    "params": {
     "gain": 0.75,
     "bass": 0.6,
@@ -132,8 +139,8 @@
   {
    "id": "b9",
    "type": "cab.4x12orange",
-   "x": -1448,
-   "y": 1286,
+   "x": -1336,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -154,8 +161,8 @@
   {
    "id": "b10",
    "type": "tz.contour",
-   "x": -1800,
-   "y": 1827.5,
+   "x": -379,
+   "y": 362,
    "params": {
     "lowcut": 70,
     "mid1freq": 800,
@@ -168,8 +175,8 @@
   {
    "id": "b11",
    "type": "tz.reverb",
-   "x": -2072,
-   "y": 1796,
+   "x": -855,
+   "y": 326,
    "params": {
     "mode": 0,
     "decay": 0.2,
@@ -181,8 +188,8 @@
   {
    "id": "b12",
    "type": "tz.meter",
-   "x": -2272,
-   "y": 1811,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -190,8 +197,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2512,
-   "y": 19,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

@@ -48,6 +48,15 @@ export function drawable(c) {
   return x;
 }
 
+// rotary encoders click round in detent steps: c.encSteps a turn (one turn = the value going 0 to 1)
+export const ENC_STEPS_DEF = 24;
+export const encSteps = (c) => Math.max(4, Math.min(64, Math.round((c && c.encSteps) || ENC_STEPS_DEF)));
+/** v snapped to the nearest step (wraps: a value of 1 is 0 again when wrap). */
+export function encSnap(v, steps, wrap) {
+  const q = Math.round(v * steps) / steps;
+  return wrap ? ((q % 1) + 1) % 1 : Math.min(1, Math.max(0, q));
+}
+
 export const XY_LOOKS = [['pad', 'XY pad'], ['glow', 'Glow pad'], ['stick', 'Joystick'], ['thumb', 'Thumbstick']];
 const XY_NAMES = Object.fromEntries(XY_LOOKS);
 export const isStick = (c) => c.look === 'stick' || c.look === 'thumb';

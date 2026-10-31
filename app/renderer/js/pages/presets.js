@@ -80,25 +80,44 @@ async function thumbPNG(layout) {
   cx.globalAlpha = 1;
   return c.toDataURL('image/png');
 }
+// which of its blocks are missing (plugins off) is part of the key, so turning plugins back on redraws it
+function thumbKey(p) {
+  const missing = (p.layout?.b || []).filter(([t]) => { const d = getDef(t); return !d || d.missing; }).map(([t]) => t).sort().join(',');
+  return p.file + '|' + (p.mtime || 0) + '|' + (p.layout?.b || []).length + (missing ? '|m:' + missing : '');
+}
+function loadThumb(im, p) {
+  const key = thumbKey(p);
+  im._preset = p;
+  im._key = key;
+  if (thumbCache.has(key)) im.src = thumbCache.get(key);
+  else
+    cacheGet('preset|' + key)
+      .then((hit) => hit || thumbPNG(p.layout).then((u) => (cacheSet('preset|' + key, u), u)))
+      .then((u) => { thumbCache.set(key, u); if (im._key === key) im.src = u; })
+      .catch(() => {});
+}
+// plugins turned on or off (they load a few at a time): redraw the thumbnails whose missing blocks changed
+let catalogT = 0;
+bus.on('catalog', () => {
+  clearTimeout(catalogT);
+  catalogT = setTimeout(() => {
+    for (const im of document.querySelectorAll('#view-presets .pc-thumb')) if (im._preset && thumbKey(im._preset) !== im._key) loadThumb(im, im._preset);
+  }, 400);
+});
 function thumb(p) {
   const im = document.createElement('img');
   im.className = 'pc-thumb';
   im.alt = '';
   im.draggable = false;
-  const key = p.file + '|' + (p.mtime || 0) + '|' + (p.layout?.b || []).length;
-  if (thumbCache.has(key)) im.src = thumbCache.get(key);
-  else
-    cacheGet('preset|' + key)
-      .then((hit) => hit || thumbPNG(p.layout).then((u) => (cacheSet('preset|' + key, u), u)))
-      .then((u) => { thumbCache.set(key, u); im.src = u; })
-      .catch(() => {});
+  loadThumb(im, p);
   return im;
 }
 const sizeCache = new Map();
 // a block's real size, measured once by drawing it off-screen (falls back to a guess)
 export function sizeOf(d) {
   if (!d) return [120, 200];
-  if (sizeCache.has(d.id)) return sizeCache.get(d.id);
+  const sk = d.id + (d.missing ? '?' : '');
+  if (sizeCache.has(sk)) return sizeCache.get(sk);
   let r = null;
   try {
     const g = svg('g');
@@ -108,7 +127,7 @@ export function sizeOf(d) {
     if (res && res.w > 0 && res.h > 0) r = [Math.round(res.w), Math.round(res.h)];
   } catch {}
   r = r || sizeGuess(d);
-  sizeCache.set(d.id, r);
+  sizeCache.set(sk, r);
   return r;
 }
 function sizeGuess(d) {

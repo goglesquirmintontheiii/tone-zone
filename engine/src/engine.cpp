@@ -455,6 +455,7 @@ std::shared_ptr<CompiledGraph> Engine::compile(const json& gj, std::map<std::str
           for (size_t i = 0; i < it->second->defs.size(); ++i)
             nb->setParam(it->second->defs[i].name, it->second->p(int(i)));
         nb->prepare(ctx);
+        applyScript(id, *nb);
         if (!nb->loadError.empty()) send({{"ev", "blockError"}, {"id", id}, {"error", nb->loadError}});
         if (!nb->info.is_null()) send({{"ev", "blockInfo"}, {"id", id}, {"info", nb->info}});
         b = std::shared_ptr<Block>(std::move(nb));
@@ -653,6 +654,15 @@ void Engine::setGraph(const json& g)
   followers = followersOf(g);
   auto cg = compile(g, blocks, false);
   swapGraph(cg);
+  // script audio of blocks that are gone (and not in a preloaded preset) is dropped
+  auto known = [&](const std::string& id) {
+    if (blocks.count(id)) return true;
+    for (auto& [k, c] : graphCache)
+      if (c.blocks.count(id)) return true;
+    return false;
+  };
+  for (auto it = samples.begin(); it != samples.end();) it = known(it->first) ? std::next(it) : samples.erase(it);
+  for (auto it = scriptCmds.begin(); it != scriptCmds.end();) it = known(it->first) ? std::next(it) : scriptCmds.erase(it);
   send({{"ev", "graphApplied"}, {"nodes", int(cg->nodes.size())}});
 }
 
@@ -667,6 +677,78 @@ void Engine::rebuild()
   if (lastGraph.is_null()) return;
   auto cg = compile(lastGraph, blocks, true);
   swapGraph(cg);
+}
+
+// ------------------------------------------------------------------ script audio
+namespace
+{
+constexpr int kSampleSlots = 32;
+constexpr size_t kMaxSample = 48000 * 10; // samples per buffer
+std::shared_ptr<const Block::SampleData> parseSample(const json& cmd)
+{
+  auto sd = std::make_shared<Block::SampleData>();
+  sd->sr = std::max(1000.f, std::min(192000.f, cmd.value("sr", 48000.f)));
+  if (cmd.contains("data") && cmd["data"].is_array())
+  {
+    const auto& a = cmd["data"];
+    sd->x.reserve(std::min(a.size(), kMaxSample));
+    for (const auto& v : a)
+    {
+      if (sd->x.size() >= kMaxSample) break;
+      sd->x.push_back(v.is_number() ? std::max(-4.f, std::min(4.f, v.get<float>())) : 0.f);
+    }
+  }
+  else if (cmd.contains("b64") && cmd["b64"].is_string())
+  {
+    // little endian float32 or int16 samples
+    static const std::string tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int8_t rev[256];
+    std::fill(rev, rev + 256, int8_t(-1));
+    for (int i = 0; i < 64; ++i) rev[uint8_t(tab[i])] = int8_t(i);
+    rev[uint8_t('-')] = 62, rev[uint8_t('_')] = 63;
+    std::vector<uint8_t> bytes;
+    const std::string& s = cmd["b64"].get_ref<const std::string&>();
+    bytes.reserve(s.size() * 3 / 4);
+    uint32_t acc = 0;
+    int bits = 0;
+    for (unsigned char ch : s)
+    {
+      const int v = rev[ch];
+      if (v < 0) continue;
+      acc = (acc << 6) | uint32_t(v);
+      bits += 6;
+      if (bits >= 8)
+      {
+        bits -= 8;
+        bytes.push_back(uint8_t((acc >> bits) & 0xff));
+      }
+    }
+    const bool s16 = cmd.value("fmt", "f32") == "s16";
+    const size_t n = std::min(kMaxSample, bytes.size() / (s16 ? 2 : 4));
+    sd->x.resize(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+      if (s16) sd->x[i] = float(int16_t(uint16_t(bytes[2 * i]) | uint16_t(bytes[2 * i + 1]) << 8)) / 32768.f;
+      else
+      {
+        float f;
+        std::memcpy(&f, &bytes[4 * i], 4);
+        sd->x[i] = std::isfinite(f) ? std::max(-4.f, std::min(4.f, f)) : 0.f;
+      }
+    }
+  }
+  return sd;
+}
+} // namespace
+
+void Engine::applyScript(const std::string& id, Block& b)
+{
+  auto s = samples.find(id);
+  if (s != samples.end())
+    for (auto& [slot, sd] : s->second) b.setSample(slot, sd);
+  auto q = scriptCmds.find(id);
+  if (q != scriptCmds.end())
+    for (auto& [k, cmd] : q->second) b.scriptCmd(cmd);
 }
 
 // ------------------------------------------------------------------ commands / status
@@ -746,6 +828,37 @@ void Engine::handleCommand(const json& cmd)
         it->second->events.push(e);
       }
     }
+  }
+  else if (c == "sample" || c == "scope" || c == "voice" || c == "fx")
+  {
+    // script audio (docs/engine-blocks.md, patch):
+    //   {cmd: 'sample', id, slot, sr, data: [floats] | b64 + fmt ('f32' | 's16'), clear}
+    //   {cmd: 'scope', id, on, what: ['level', 'spec', 'wave', 'pitch'], jacks: [jack ids], bands, wave, span}
+    //   {cmd: 'voice', id, v, stop, type, freq, amp, ...}   {cmd: 'fx', id, f, stop, type, jack, ...}
+    std::vector<std::string> ids{cmd.value("id", "")};
+    auto fo = followers.find(ids[0]);
+    if (fo != followers.end()) ids.insert(ids.end(), fo->second.begin(), fo->second.end());
+    std::shared_ptr<const Block::SampleData> sd;
+    const int slot = cmd.value("slot", 1);
+    if (c == "sample" && (slot < 1 || slot > kSampleSlots)) return;
+    if (c == "sample" && !cmd.value("clear", false)) sd = parseSample(cmd);
+    const std::string key = c == "scope" ? "scope" : c == "voice" ? "v" + std::to_string(cmd.value("v", 0)) : "f" + std::to_string(cmd.value("f", 0));
+    for (const auto& id : ids)
+    {
+      if (id.empty()) continue;
+      if (c == "sample")
+      {
+        if (sd) samples[id][slot] = sd;
+        else samples[id].erase(slot);
+      }
+      else if (cmd.value("stop", false) || (c == "scope" && !cmd.value("on", true))) scriptCmds[id].erase(key);
+      else scriptCmds[id][key] = cmd;
+      auto it = blocks.find(id);
+      if (it == blocks.end()) continue;
+      if (c == "sample") it->second->setSample(slot, sd);
+      else it->second->scriptCmd(cmd);
+    }
+    if (c == "sample") send({{"ev", "sampleLoaded"}, {"id", ids[0]}, {"slot", slot}, {"len", sd ? int(sd->x.size()) : 0}});
   }
   else if (c == "bypass")
   {
@@ -867,6 +980,11 @@ void Engine::statusTick()
       if (!bl.contains(f)) continue;
       const json& s = bl[f];
       if (s.contains("load") && s["load"].is_number()) t["load"] = t.value("load", 0.0) + s["load"].get<double>();
+      if (s.contains("scope") && s["scope"].is_object())
+      {
+        if (!t.contains("scope") || !t["scope"].is_object()) t["scope"] = json::object();
+        for (auto& [k, v] : s["scope"].items()) t["scope"][k] = v;
+      }
       if (s.contains("cv") && s["cv"].is_array())
       {
         if (!t.contains("cv") || !t["cv"].is_array()) t["cv"] = json::array();
@@ -988,7 +1106,7 @@ int Engine::runOffline(const std::string& graphPath, const std::string& inWav, c
   float* outs[kNumSysOut];
   double totalNs = 0;
   // events timeline: [{t: seconds, cmd:{...}}]
-  json timeline = g.value("timeline", json::array());
+  json timeline = g.value("timeline", g.contains("graph") ? g["graph"].value("timeline", json::array()) : json::array());
   size_t tlIdx = 0;
   for (size_t pos = 0; pos < len; pos += block)
   {

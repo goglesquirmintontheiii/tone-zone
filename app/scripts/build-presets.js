@@ -8,6 +8,9 @@
 //     nodes: { key: ['type', {params}, {bypass, variant}] }, edges: [['in', 'a'], ['a', 'b', outPort, inPort], …],
 //     rows: [['a', 'b'], ['c']]                                                          (any graph, rows laid out R→L)
 //   }
+// Every preset with 3 or more blocks that fit on a pedalboard gets one (the smallest that holds them in signal
+// order, right to left, a row at a time); amps, cabs and floor units go in a row behind it. The hand-made presets
+// 01-09 (scripts/make-presets.js, run that first) get the same treatment here.
 // Knob, slider and treadle values are positions 0..1 (converted with the control's range). Selectors and toggles
 // take the option index, anything else is stored as is. Prefix a key with '=' to store a raw knob value.
 const { _electron: electron } = require('playwright');
@@ -43,11 +46,19 @@ const fs = require('fs');
   win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
   await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
   for (const sp of specs) sp.trimDb = trims[sp.file] || 0;
-  const out = await win.evaluate(async (specs) => {
+  // hand-made presets (not in the specs) only get their pedalboard
+  const dir = path.join(__dirname, '..', 'presets');
+  const known = new Set(require('./preset-specs.js').map((s) => s.file));
+  const extra = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !known.has(f.slice(0, -5)) && (!only || f.startsWith(only)))
+    .map((f) => ({ file: f.slice(0, -5), preset: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+  const out = await win.evaluate(async ([specs, extra]) => {
     const C = await import('./js/catalog/index.js');
     const { sizeOf } = await import('./js/pages/presets.js');
     const { knobValue } = await import('./js/nodeview.js');
     const { defaultMicXY } = await import('./js/gfx/cabgeom.js');
+    const { renderForm } = await import('./js/gfx/forms.js');
+    const { svg } = await import('./js/util.js');
+    const PB = await import('./js/catalog/pedalboards.js');
     const problems = [];
     const COLORS = ['#e8473d', '#f39c12', '#f1c40f', '#2ecc71', '#3498db', '#6c5ce7', '#e84393', '#1abc9c', '#ecf0f1'];
     const AUX = /^(EXP|CTL|CTRL|MIDI|USB|SEND|RETURN|TUNER|BYPASS|DI OUT|XLR|THRU|DIRECT|LINE OUT|PHONES|B OUT)/i;
@@ -197,7 +208,58 @@ const fs = require('fs');
       if (cabTrim) for (const k of order) if (nodes[k].d && nodes[k].d.cabMics) nodes[k].b.params.level = Math.max(-24, Math.min(12, +((nodes[k].b.params.level || 0) + cabTrim).toFixed(1)));
       return { version: 1, name: spec.name, tags: spec.tags || [], desc: spec.desc || '', factory: true, order: spec.order || 0, blocks, cables, view: null };
     };
-    const res = specs.map((s) => ({ file: s.file, preset: build(s) }));
+    // ---- pedalboard: size, jacks and plug reach of each block from its real drawing
+    const measure = (b) => {
+      const d = C.getDef(b.type);
+      try {
+        const rdef = Object.create(d);
+        rdef.ports = C.portsFor(d, b.variant || 'mono');
+        const r = renderForm({ g: svg('g'), views: new Map(), flip: false, thumb: true }, rdef);
+        if (r && r.w > 0) return { d, w: Math.round(r.w), h: Math.round(r.h), jacks: r.jacks || [] };
+      } catch (e) { /* fall back to the plain size */ }
+      const [w, h] = sizeOf(d);
+      return { d, w, h, jacks: [] };
+    };
+    const boardify = (file, p) => {
+      p.blocks = p.blocks.filter((b) => !(C.getDef(b.type) || {}).pedalboard);
+      const info = p.blocks.filter((b) => !b.type.startsWith('__')).map((b) => {
+        const m = measure(b);
+        return Object.assign(m, { b, f: PB.boardFootprint(m.w, m.h, m.jacks), on: PB.boardable(m.d, m.w, m.h) });
+      });
+      const on = info.filter((i) => i.on);
+      if (on.length < 3) return p;
+      const plan = PB.planBoard(on);
+      if (!plan) { problems.push(`${file}: ${on.length} pedals don't fit on a board`); return p; }
+      const pd = C.getDef('pb.' + plan.key).pedalboard, sz = PB.boardSize(pd), S = PB.BOARD_SLOT;
+      const bx = -sz.w, by = 0;
+      on.forEach((it, i) => { it.b.x = bx + plan.pos[i].x; it.b.y = by + plan.pos[i].y; });
+      // behind the board: amps (heads stacked on their cabs), cabs and floor units, right to left, standing on
+      // one line and centred over the board
+      const offs = info.filter((i) => !i.on), units = [];
+      for (let i = 0; i < offs.length; i++) {
+        const a = offs[i], c = offs[i + 1];
+        if (a.d.baseForm === 'amp' && !a.d.combo && c && c.d.baseForm === 'cab') {
+          const W = Math.max(a.w, c.w);
+          units.push({ w: W, h: a.h + 14 + c.h, put: (x, y) => { a.b.x = Math.round(x + (W - a.w) / 2); a.b.y = y; c.b.x = Math.round(x + (W - c.w) / 2); c.b.y = y + a.h + 14; } });
+          i++;
+        } else units.push({ w: a.w, h: a.h, put: (x, y) => { a.b.x = Math.round(x); a.b.y = y; } });
+      }
+      const GAP = 80, rowW = units.reduce((t, u) => t + u.w, 0) + GAP * Math.max(0, units.length - 1);
+      let x = rowW < sz.w ? -(sz.w - rowW) / 2 : 0;
+      for (const u of units) { x -= u.w; u.put(x, by - 170 - u.h); x -= GAP; }
+      // input on the right of the first row, output left of the row the chain ends on
+      const last = p.blocks.filter((b) => !b.type.startsWith('__')).pop();
+      const lastOn = on.findIndex((i) => i.b === last);
+      const endRow = lastOn >= 0 ? Math.floor((plan.pos[lastOn].y - S.padY + 20) / S.h) : 0;
+      for (const b of p.blocks) {
+        if (b.type === '__in') { b.x = 90; b.y = by + S.padY + S.h / 2 - 110; }
+        if (b.type === '__out') { b.x = bx - 260; b.y = by + S.padY + endRow * S.h + S.h / 2 - 110; }
+      }
+      p.blocks.unshift({ id: 'board1', type: 'pb.' + plan.key, x: bx, y: by, params: {} });
+      return p;
+    };
+    const res = specs.map((s) => ({ file: s.file, preset: boardify(s.file, build(s)) }));
+    for (const e of extra) res.push({ file: e.file, preset: boardify(e.file, e.preset) });
     // validate: load each into the engine graph builder
     for (const r of res) {
       try {
@@ -207,10 +269,9 @@ const fs = require('fs');
       }
     }
     return { res, problems };
-  }, specs);
+  }, [specs, extra]);
   if (out.problems.length) console.log('PROBLEMS\n' + out.problems.join('\n'));
   if (!check) {
-    const dir = path.join(__dirname, '..', 'presets');
     for (const r of out.res) fs.writeFileSync(path.join(dir, r.file + '.json'), JSON.stringify(r.preset, null, 1));
     console.log('wrote', out.res.length, 'presets');
   }

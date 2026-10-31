@@ -12,17 +12,24 @@
  "order": 264,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "tz.neonlead",
-   "x": -432,
-   "y": 16,
+   "x": -622,
+   "y": 28,
    "params": {
     "filter": 0.6,
     "reso": 0.4,
@@ -44,8 +51,8 @@
   {
    "id": "b3",
    "type": "bx.sy1",
-   "x": -648,
-   "y": 36,
+   "x": -947,
+   "y": 51,
    "params": {
     "wet": 0.6,
     "dry": 0.3
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "amp.jc120",
-   "x": -1138,
-   "y": 0,
+   "x": -724,
+   "y": -500,
    "params": {
     "gain": 0.3
    },
@@ -67,8 +74,8 @@
   {
    "id": "b5",
    "type": "cab.2x12jc",
-   "x": -1608,
-   "y": 34,
+   "x": -1204,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -89,8 +96,8 @@
   {
    "id": "b6",
    "type": "tz.crush",
-   "x": -1828,
-   "y": 39,
+   "x": -1189,
+   "y": 54,
    "params": {
     "bits": 0.6,
     "rate": 0.6,
@@ -102,8 +109,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -2114,
-   "y": 30,
+   "x": -382,
+   "y": 345,
    "params": {
     "time": 87.3587,
     "feedback": 0.44,
@@ -115,8 +122,8 @@
   {
    "id": "b8",
    "type": "tz.shimmer",
-   "x": -2348,
-   "y": 36,
+   "x": -836,
+   "y": 351,
    "params": {
     "decay": 0.6,
     "mix": 0.3
@@ -127,8 +134,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2548,
-   "y": 30,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -136,8 +143,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2788,
-   "y": 55,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

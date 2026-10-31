@@ -12,17 +12,24 @@
  "order": 224,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.large",
+   "x": -2228,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 67,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bh.tm300",
-   "x": -140,
-   "y": 104,
+   "x": -224,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "tz.vowel",
-   "x": -364,
-   "y": 53,
+   "x": -591,
+   "y": -28,
    "params": {
     "pos": 0.5
    },
@@ -41,8 +48,8 @@
   {
    "id": "b3",
    "type": "tz.comp",
-   "x": -634,
-   "y": 95,
+   "x": -1094,
+   "y": 45,
    "params": {
     "sustain": 0.45,
     "level": 0.55,
@@ -54,8 +61,8 @@
   {
    "id": "b4",
    "type": "jhs.atplus",
-   "x": -836,
-   "y": 106,
+   "x": -1420,
+   "y": 76,
    "params": {
     "level": 0.6,
     "gain": 0.55
@@ -66,8 +73,8 @@
   {
    "id": "b5",
    "type": "amp.dumble",
-   "x": -1330,
-   "y": 0,
+   "x": -1326,
+   "y": -646,
    "params": {
     "gain": 0.55,
     "treble": 0.5,
@@ -82,8 +89,8 @@
   {
    "id": "b6",
    "type": "cab.2x12cream",
-   "x": -1318,
-   "y": 214,
+   "x": -1314,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -104,8 +111,8 @@
   {
    "id": "b7",
    "type": "tz.harmony",
-   "x": -1602,
-   "y": 99,
+   "x": -1815,
+   "y": 49,
    "params": {
     "level1": 0.3,
     "semis1": 0
@@ -116,8 +123,8 @@
   {
    "id": "b8",
    "type": "kly.halo",
-   "x": -1872,
-   "y": 111,
+   "x": -374,
+   "y": 361,
    "params": {
     "time": 697,
     "feedback": 0.35,
@@ -129,8 +136,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -2144,
-   "y": 80,
+   "x": -855,
+   "y": 326,
    "params": {
     "decay": 0.5,
     "mix": 0.22
@@ -141,8 +148,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2344,
-   "y": 95,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -150,8 +157,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2584,
-   "y": 67,
+   "x": -2488,
+   "y": 370,
    "params": {}
   }
  ],

@@ -67,7 +67,7 @@ export const COMP_TYPES = [['ota', 'OTA'], ['vca', 'VCA'], ['opto', 'Opto']];
 // group: palette group, ain / aout: audio ports, cout: control outputs, params: values (each one a control input)
 export const GROUPS = [
   ['drive', 'Drive and clipping'], ['dyn', 'Dynamics'], ['eq', 'Filters and EQ'], ['mod', 'Modulation'], ['time', 'Delay and reverb'],
-  ['pitch', 'Pitch and synth'], ['route', 'Mixing and routing'], ['util', 'Utility'], ['ctl', 'Control signals'], ['logic', 'Logic and comparators'], ['io', 'Inputs and outputs'],
+  ['pitch', 'Pitch and synth'], ['route', 'Mixing and routing'], ['util', 'Utility'], ['script', 'Script audio'], ['ctl', 'Control signals'], ['logic', 'Logic and comparators'], ['io', 'Inputs and outputs'],
 ];
 const A_IN = [['in', 'In']], A_OUT = [['out', 'Out']], C_OUT = [['cv', 'Out']], B_OUT = [['cv', 'Out', 'b']];
 const SIG = { sig: 1 }; // drawn as a main input of control parts
@@ -118,6 +118,19 @@ N('mul', { name: 'Multiply', group: 'logic', cout: C_OUT, desc: 'A times B (kept
 N('div', { name: 'Divide', group: 'logic', cout: C_OUT, desc: 'A divided by B. Dividing by zero gives 0.', params: [RAW('a', 'A', 0), RAW('b', 'B', 1)] });
 N('cdelay', { name: 'Delay', group: 'logic', cout: C_OUT, desc: 'Puts out whatever came in, Time seconds later (up to 10 s). Works for analog and binary signals.',
   params: [RAW('in', 'In', 0), P('time', 'Time', 0, 10, 0.5, { raw: 1, unit: 's' })] });
+// script audio: sound a screen script makes or shapes. Wire their values from circuit inputs and drive those from
+// the screen's outputs in the wiring diagram. Every value glides in the engine, so a script can set them per frame.
+N('osc', { name: 'Script osc', group: 'script', aout: A_OUT, desc: 'An oscillator. Note is a MIDI note number (69 = A 440 Hz, fractions bend it), so a screen output can play it.',
+  params: [P('note', 'Note', 0, 127, 57, { raw: 1 }), P('amp', 'Level', 0, 1, 0.5), P('shape', 'Wave', 0, 4, 0, { i: 1, opts: ['Sine', 'Triangle', 'Saw', 'Square', 'Pulse'] }), P('pw', 'Pulse width', 0.05, 0.95, 0.5), P('glide', 'Glide', 0, 2000, 10, { unit: 'ms' })] });
+N('noise', { name: 'Script noise', group: 'script', aout: A_OUT, desc: 'White or pink noise.', params: [P('amp', 'Level', 0, 1, 0.3), P('color', 'Colour', 0, 1, 0, { i: 1, opts: ['White', 'Pink'] })] });
+N('adsr', { name: 'Script envelope', group: 'script', ain: A_IN, aout: A_OUT, cout: C_OUT, desc: 'An ADSR envelope: Gate on starts it, off lets it go. The audio input goes through it and Out is its level.',
+  params: [P('gate', 'Gate', 0, 1, 0, BSIG), P('attack', 'Attack', 0.5, 5000, 5, { l: 1, unit: 'ms' }), P('decay', 'Decay', 1, 5000, 150, { l: 1, unit: 'ms' }), P('sustain', 'Sustain', 0, 1, 0.7), P('release', 'Release', 1, 10000, 250, { l: 1, unit: 'ms' })] });
+N('sampler', { name: 'Script sampler', group: 'script', aout: A_OUT, cout: [['cv', 'Playing', 'b'], ['pos', 'Position']], desc: 'Plays a sound the screen script loads into its slot (1 to 8). Gate starts it; One shot plays to the end, Gate stops on release, Loop repeats while the gate is on.',
+  params: [P('slot', 'Slot', 1, 8, 1, { i: 1 }), P('gate', 'Gate', 0, 1, 0, BSIG), P('mode', 'Mode', 0, 2, 0, { i: 1, opts: ['One shot', 'Gate', 'Loop'] }), P('rate', 'Speed', 0.25, 4, 1, { l: 1 }), P('level', 'Level', 0, 2, 1), P('start', 'Start', 0, 1, 0)] });
+N('scriptin', { name: 'Script audio in', group: 'script', aout: A_OUT, desc: 'Sound a screen script sends into this circuit: to = "circuit:Name" in audio.gen or audio.play, where Name is this part\'s label or the circuit\'s name.',
+  params: [P('level', 'Level', 0, 2, 1)] });
+N('sgain', { name: 'Script gain', group: 'script', ain: A_IN, aout: A_OUT, desc: 'Gain with a low and a high cut that all glide over Smooth, for values a script sets every frame.',
+  params: [P('gain', 'Gain', 0, 2, 1), P('lp', 'High cut', 200, 20000, 20000, { l: 1, unit: 'Hz' }), P('hp', 'Low cut', 20, 2000, 20, { l: 1, unit: 'Hz' }), P('smooth', 'Smooth', 0, 500, 20, { unit: 'ms' })] });
 // circuit inputs and outputs (what the pedal's jacks and controls wire to)
 PARTS.in = { name: 'Audio in', group: 'io', io: 'in', ain: [], aout: A_OUT, cout: [], params: [], desc: 'Where the pedal sends audio into this circuit.' };
 PARTS.out = { name: 'Audio out', group: 'io', io: 'out', ain: A_IN, aout: [], cout: [], params: [], desc: 'What this circuit sends back out.' };

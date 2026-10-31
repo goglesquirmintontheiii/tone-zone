@@ -4,7 +4,9 @@
 // footswitch nut material, the dot grid toggle, an LED ring encoder, XY pad and step buttons, an angled jack wired
 // on the board, the My pedals library, palette variants (dots on the tiles), the LED ring down to 2 curved LEDs, the
 // toggle bank as a DIP look, the material part switcher (no quick colour rows), foot pedal materials, removed
-// controls migrating, and a footswitch jack on a saved block as a control jack.
+// controls migrating, a footswitch jack on a saved block as a control jack, the 360 mm width limit, encoders in
+// detent steps (Test mode and the board), the LED ring's Each LED and RGB inputs, the Atlas Floor and Pixel Quest
+// templates, and every template as a block in the block list.
 const { _electron: electron } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -410,9 +412,14 @@ const S = process.env.SHOTS || '/tmp';
   await win.screenshot({ path: path.join(S, 'factory-test.png') });
   await win.click('#fzTest');
   await win.waitForTimeout(1500);
-  const back = await win.evaluate(() => ({ over: window.__tzFactory.graphOverridden(), testing: window.__tzFactory.testing(), status: Object.keys(window.__tz.state.status.blocks || {}), board: window.__tz.state.preset.blocks.filter((b) => !b.id.startsWith('__')).map((b) => b.id) }));
+  // pedalboards hold pedals but make no sound of their own, so the engine does not report them
+  const back = await win.evaluate(async () => {
+    const { getDef, kindOf } = await import('./js/catalog/index.js');
+    const sounds = (b) => !b.id.startsWith('__') && !(getDef(b.type) && kindOf(getDef(b.type)) === 'Pedalboard');
+    return { over: window.__tzFactory.graphOverridden(), testing: window.__tzFactory.testing(), status: Object.keys(window.__tz.state.status.blocks || {}), board: window.__tz.state.preset.blocks.filter(sounds).map((b) => b.id) };
+  });
   ok(!back.over && !back.testing, 'test mode ended, override cleared');
-  ok(!back.status.includes('fztest') && back.board.every((id) => back.status.includes(id)), 'the engine runs the board again');
+  ok(!back.status.includes('fztest') && back.board.every((id) => back.status.includes(id)), 'the engine runs the board again' + ` (missing ${back.board.filter((id) => !back.status.includes(id)).join(' ')})`);
   // leaving the tab also ends a test
   await win.click('#fzTest');
   await win.waitForTimeout(300);
@@ -1101,6 +1108,248 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForTimeout(300);
 
+  {
+  // 25. the enclosure goes up to 360 mm wide
+  await win.evaluate(() => window.__tzFactory.load(window.__tzFactory.template('drive')));
+  await win.waitForTimeout(300);
+  await win.keyboard.press('Escape');
+  await win.waitForTimeout(150);
+  const wmax = await win.evaluate(() => {
+    const row = [...document.querySelectorAll('.fz-insp .fz-row')].find((r) => r.querySelector('label')?.textContent === 'Width');
+    const n = row.querySelector('input[type="number"]');
+    n.value = 420;
+    n.dispatchEvent(new Event('change'));
+    return { max: +row.querySelector('input[type="range"]').max, w: window.__tzFactory.design().enc.w };
+  });
+  ok(wmax.max === 360 && wmax.w === 360, `width goes up to 360 mm and no further (slider max ${wmax.max}, typed 420 gives ${wmax.w})`);
+
+  // 26. rotary encoders click round in detent steps, in Test mode and on the board; an LED ring with an input per LED
+  await win.evaluate(() => {
+    const d = window.__tzFactory.template('drive');
+    d.enc.w = 110;
+    d.ctls.push(
+      { id: 'encT', kind: 'knob', part: 'encoder', x: 55, y: 62, r: 7, value: 0.5, cap: 'rubber', ring: true, ringN: 12, ringMode: 'arc', ringColor: '#38f07a', ringIn: 'each', label: 'ENC', labelPos: 'none', encSteps: 24 },
+      { id: 'srcA', kind: 'knob', x: 90, y: 40, r: 5.5, style: 'boss', value: 0.5, label: 'A', labelPos: 'below' },
+      { id: 'srcB', kind: 'knob', x: 90, y: 62, r: 5.5, style: 'boss', value: 0.5, label: 'B', labelPos: 'below' },
+    );
+    d.ctls.find((c) => c.id === 'encT').ringLeds = { 0: { ctl: 'srcA' } };
+    window.__tzFactory.load(d);
+    window.__tzFactory.select('encT');
+  });
+  await win.waitForTimeout(400);
+  const encUi = await win.evaluate(() => ({
+    steps: !![...document.querySelectorAll('.fz-insp .fz-row label')].find((l) => l.textContent === 'Steps'),
+    inputs: [...document.querySelectorAll('.fz-insp .fz-seg button')].filter((b) => b.textContent === 'One input' || b.textContent === 'Each LED').map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')).join(','),
+    rgb: !![...document.querySelectorAll('.fz-insp .fz-row label')].find((l) => l.textContent === 'RGB LEDs'),
+    ports: [...document.querySelectorAll('[data-wp^="ring:encT"]')].map((e) => e.dataset.wp),
+    wired: [...document.querySelectorAll('.fz-wd-port.wired[data-wp^="ring:encT"]')].map((e) => e.dataset.wp),
+  }));
+  ok(encUi.steps && encUi.inputs === 'One input,Each LED*' && encUi.rgb, `the encoder inspector has Steps, the ring's Inputs (${encUi.inputs}) and RGB LEDs`);
+  ok(encUi.ports.length === 13 && encUi.ports.includes('ring:encT') && encUi.wired.join() === 'ring:encT:0', `Each LED: the wiring diagram has the Ring input and one per LED (${encUi.ports.length}), LED 1 wired (${encUi.wired.join()})`);
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1200);
+  const ebx = await (await win.$('.fz-stage [data-ctl="encT"]')).boundingBox();
+  await win.mouse.move(ebx.x + ebx.width / 2, ebx.y + ebx.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(ebx.x + ebx.width / 2, ebx.y + ebx.height / 2 - 30, { steps: 6 });
+  await win.mouse.up();
+  await win.waitForTimeout(900);
+  const turned = await win.evaluate(async () => {
+    const { testPulses } = await import('./js/pages/factory-play.js');
+    const v = window.__tzFactory.testInfo().params['u.encT'];
+    return { v, pulses: testPulses()['u.encT.cw'] || 0, n: window.__tzFactory.testInfo().params['u.encT.n'] };
+  });
+  ok(Math.abs(turned.v * 24 - Math.round(turned.v * 24)) < 1e-6 && turned.v > 0.55 && turned.pulses === Math.round((turned.v - 0.5) * 24) && turned.n === turned.pulses, `dragging the encoder in Test mode clicks in 24 steps (${turned.v.toFixed(4)} = ${Math.round(turned.v * 24)}/24, ${turned.pulses} CW pulses)`);
+  // the ring: LED 1 dims with the analog value wired to it, the others follow the encoder
+  await win.evaluate(() => window.__tzFactory.testSet('srcA', 0.4));
+  await win.waitForTimeout(250);
+  const ring1 = await win.evaluate(() => [...document.querySelectorAll('.fz-stage [data-ctl="encT"] .enc-led')].map((e) => e.dataset.on + ':' + e.dataset.k));
+  ok(ring1[0] === '1:0.40' && ring1.slice(1).some((x) => x === '1:1.00'), `Each LED: an analog input sets LED 1's brightness (${ring1.slice(0, 3).join(' ')})`);
+  await win.evaluate(() => window.__tzFactory.testSet('srcA', 0));
+  await win.waitForTimeout(250);
+  ok((await win.evaluate(() => document.querySelector('.fz-stage [data-ctl="encT"] .enc-led').dataset.on)) === '0', 'Each LED: at 0 the LED is off');
+  await win.screenshot({ path: path.join(S, 'factory-ring-each.png'), clip: { x: ebx.x - 60, y: ebx.y - 60, width: ebx.width + 200, height: ebx.height + 120 } });
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(400);
+  // RGB LEDs: three inputs per LED, mixed into its colour
+  await win.evaluate(() => {
+    const d = JSON.parse(JSON.stringify(window.__tzFactory.design()));
+    Object.assign(d.ctls.find((c) => c.id === 'encT'), { ringRgb: true, encSteps: 12, ringLeds: { '0r': { ctl: 'srcA' }, '0b': { ctl: 'srcB' }, '5g': { ctl: 'srcB' } } });
+    window.__tzFactory.load(d);
+    window.__tzFactory.select('encT');
+  });
+  await win.waitForTimeout(400);
+  const rgbPorts = await win.evaluate(() => [...document.querySelectorAll('[data-wp^="ring:encT:"]')].map((e) => e.dataset.wp.split(':')[2]));
+  ok(rgbPorts.length === 36 && ['0r', '0g', '0b', '11b'].every((k) => rgbPorts.includes(k)), `RGB LEDs: red, green and blue inputs for each LED (${rgbPorts.length})`);
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1200);
+  await win.evaluate(() => { window.__tzFactory.testSet('srcA', 1); window.__tzFactory.testSet('srcB', 0.5); });
+  await win.waitForTimeout(300);
+  const rgb = await win.evaluate(() => [...document.querySelectorAll('.fz-stage [data-ctl="encT"] .enc-led')].map((e) => e.getAttribute('fill')));
+  ok(rgb[0] === '#ff0080' && rgb[5] === '#008000', `RGB LEDs: LED 1 mixes red 100% and blue 50% (${rgb[0]}), LED 6 is green 50% (${rgb[5]})`);
+  await win.screenshot({ path: path.join(S, 'factory-ring-rgb.png'), clip: { x: ebx.x - 60, y: ebx.y - 60, width: ebx.width + 200, height: ebx.height + 120 } });
+  // 12 steps a turn now
+  await win.mouse.move(ebx.x + ebx.width / 2, ebx.y + ebx.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(ebx.x + ebx.width / 2, ebx.y + ebx.height / 2 - 40, { steps: 6 });
+  await win.mouse.up();
+  await win.waitForTimeout(200);
+  const v12 = await win.evaluate(() => window.__tzFactory.testInfo().params['u.encT']);
+  ok(Math.abs(v12 * 12 - Math.round(v12 * 12)) < 1e-6 && Math.abs(v12 - 0.5) > 0.05, `with 12 steps a turn the encoder clicks in twelfths (${v12.toFixed(4)})`);
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(400);
+  // One input with RGB: a Level input and the colour of the whole ring
+  await win.evaluate(() => {
+    const d = JSON.parse(JSON.stringify(window.__tzFactory.design()));
+    Object.assign(d.ctls.find((c) => c.id === 'encT'), { ringIn: 'one', ringFrom: { ctl: 'srcA' }, ringLeds: { g: { ctl: 'srcB' }, b: { ctl: 'srcB' } } });
+    window.__tzFactory.load(d);
+  });
+  await win.waitForTimeout(300);
+  const onePorts = await win.evaluate(() => [...document.querySelectorAll('[data-wp^="ring:encT"]')].map((e) => e.dataset.wp).join(','));
+  ok(onePorts === 'ring:encT,ring:encT:r,ring:encT:g,ring:encT:b', `One input with RGB: Level, R, G and B inputs (${onePorts})`);
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1200);
+  await win.evaluate(() => { window.__tzFactory.testSet('srcA', 0.5); window.__tzFactory.testSet('srcB', 1); });
+  await win.waitForTimeout(300);
+  const one = await win.evaluate(() => [...document.querySelectorAll('.fz-stage [data-ctl="encT"] .enc-led')].map((e) => (e.dataset.on === '1' ? e.getAttribute('fill') : '-')));
+  ok(one.filter((x) => x === '#00ffff').length === 6 && one.filter((x) => x === '-').length === 6, `One input with RGB: half the ring lit in the mixed colour (${one.join(' ')})`);
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(400);
+  // on the board: the block control carries the steps, a drag clicks in steps and the ring is wired
+  await win.evaluate(() => window.__tzFactory.save(true));
+  await win.waitForFunction(() => !!window.__tzFactory.design().blockId, null, { timeout: 5000 });
+  const encBlock = (await D()).blockId;
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(400);
+  const eboard = await win.evaluate(async (id) => {
+    const m = await import('./js/state.js');
+    const b = m.addBlock(id, 6400, 900);
+    await new Promise((r) => setTimeout(r, 500));
+    const ed = window.__tz.editor;
+    ed.view.z = 1.6;
+    ed.view.x = -b.x * 1.6 + 420;
+    ed.view.y = -b.y * 1.6 + 160;
+    ed.applyView && ed.applyView();
+    const v = ed.views.get(b.id);
+    const c = v.def.controls.find((x) => x.cid === 'encT');
+    return { bid: b.id, steps: c.steps, endless: c.endless, ring: v.views.has('encT.ring') };
+  }, encBlock);
+  await win.waitForTimeout(600);
+  ok(eboard.steps === 12 && eboard.endless && eboard.ring, `the board's encoder control has steps: ${eboard.steps}, and its ring is wired`);
+  const bb = await (await win.$(`[data-node="${eboard.bid}"] [data-ctl="encT"]`)) || (await win.evaluateHandle((bid) => window.__tz.editor.views.get(bid).g.querySelector('[data-ctl="encT"]'), eboard.bid));
+  const bbox = await bb.boundingBox();
+  await win.mouse.move(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2 - 33, { steps: 6 });
+  await win.mouse.up();
+  await win.waitForTimeout(700);
+  const bturn = await win.evaluate((bid) => { const p = window.__tz.state.preset.blocks.find((b) => b.id === bid).params; return { v: p['u.encT'], n: p['u.encT.n'] }; }, eboard.bid);
+  ok(typeof bturn.v === 'number' && Math.abs(bturn.v * 12 - Math.round(bturn.v * 12)) < 1e-6 && Math.abs(bturn.v - 0.5) > 0.05 && bturn.n === Math.round((bturn.v - 0.5) * 12), `dragging the encoder on the board clicks in steps (${bturn.v && bturn.v.toFixed(4)}, ${bturn.n} steps counted)`);
+  await win.screenshot({ path: path.join(S, 'factory-encoder-board.png') });
+  await win.click('#tabs [data-tab="factory"]');
+  await win.waitForTimeout(300);
+
+  // 27. the Atlas Floor and Pixel Quest as factory templates: they load, their screen scripts run, Test mode plays them
+  for (const id of ['atlas', 'pixelquest']) {
+    const sr = await runScreens(id);
+    ok(sr.length === (id === 'atlas' ? 3 : 1) && sr.every((x) => !x.err && x.frames > 40 && x.steps < 150000), `${id}: the screen scripts run without errors within their budget ` + JSON.stringify(sr));
+    await win.click('#fzTemplates');
+    await win.click(`[data-template="${id}"]`);
+    await win.waitForTimeout(800);
+    const d = await D();
+    ok(d.enc.w <= 360 && d.ctls.filter((c) => c.kind === 'foot').length === (id === 'atlas' ? 12 : 4) && d.ctls.some((c) => c.kind === 'pedal') === (id === 'atlas'), `${id}: ${d.enc.w} x ${d.enc.h} mm with ${d.ctls.length} controls`);
+    await bigShot(`factory-tpl-${id}-big.png`);
+    await win.evaluate(() => window.__tzFactory.test(true));
+    await win.waitForTimeout(1500);
+    await win.screenshot({ path: path.join(S, `factory-tpl-${id}-test.png`) });
+    const stage = await win.evaluate(() => window.__tzScreens.stage());
+    ok(stage.length === (id === 'atlas' ? 3 : 1) && stage.every((x) => !x.error && x.frames > 5), `${id}: its screens run in Test mode ${JSON.stringify(stage.map((x) => x.error || x.frames))}`);
+    await win.evaluate(() => window.__tzFactory.test(false));
+    await win.waitForTimeout(400);
+  }
+  // the Atlas screen runs the pedal: footswitches change the scene, the arrows and knob 1 edit a block, the strips follow
+  await win.evaluate(() => window.__tzFactory.load(window.__tzFactory.template('atlas')));
+  await win.waitForTimeout(500);
+  await win.evaluate(() => window.__tzFactory.test(true));
+  await win.waitForTimeout(1500);
+  const atlasOut = () => win.evaluate(() => {
+    const d = window.__tzFactory.design(), main = d.ctls.find((c) => c.label === 'MAIN'), P = window.__tzFactory.testInfo().params;
+    return Object.fromEntries(main.sio.outs.map((o, i) => [o.name, +P['u.s.' + main.id + '.' + i]]));
+  });
+  // a press, then wait until the screen has drawn a few frames (it sees control changes once per frame)
+  const frames = () => win.evaluate(() => Math.min(...window.__tzScreens.stage().map((x) => x.frames)));
+  const settle = async () => {
+    const f0 = await frames();
+    await win.waitForFunction((f0) => Math.min(...window.__tzScreens.stage().map((x) => x.frames)) >= f0 + 3, f0, { timeout: 5000 }).catch(() => {});
+  };
+  const atlasPress = async (label) => {
+    await win.evaluate((label) => { const c = window.__tzFactory.design().ctls.find((x) => x.label === label), P = window.__tzFactory.testInfo().params; return window.__tzFactory.testSet(c.id, P['u.' + c.id] > 0.5 ? 0 : 1); }, label);
+    await settle();
+  };
+  const a0 = await atlasOut();
+  await atlasPress('MODE');
+  await atlasPress('FS 2');
+  const a1 = await atlasOut();
+  await atlasPress('RIGHT');
+  await win.evaluate(() => window.__tzFactory.testSet(window.__tzFactory.design().ctls.find((c) => c.label === '1').id, 0.8));
+  await settle();
+  const a2 = await atlasOut();
+  ok(a0['Drive on'] === 0 && a0['Echo mix'] === 0.18 && Math.floor(a0.Strip) % 3 === 0, `Atlas: preset 1 scene 1 on the outputs (drive off, echo mix ${a0['Echo mix']})`);
+  ok(a1['Drive on'] === 1 && a1['Echo mix'] === 0.3 && Math.floor(a1.Strip) % 3 === 1, `Atlas: MODE then FS 2 recalls the LEAD scene (drive on, echo mix ${a1['Echo mix']}, strips in scene mode)`);
+  ok(Math.abs(a2.Drive - 0.8) < 1e-3, `Atlas: RIGHT then knob 1 sets the drive gain (${a2.Drive})`);
+  await win.screenshot({ path: path.join(S, 'factory-atlas-scene.png') });
+  await win.evaluate(() => window.__tzFactory.test(false));
+  await win.waitForTimeout(400);
+
+  // 28. every template is a block in the block list (Factory templates), and plays on the board
+  const tpl = await win.evaluate(async () => {
+    const { allDefs } = await import('./js/catalog/index.js');
+    const defs = allDefs().filter((d) => d.plugin === 'factory-templates');
+    return { ids: window.__tzFactory.templates(), defs: defs.map((d) => d.id), kinds: [...new Set(defs.map((d) => d.kind + '/' + d.cat))] };
+  });
+  const missing = tpl.ids.filter((id) => !tpl.defs.includes('custom.template.' + id));
+  ok(!missing.length && tpl.kinds.join() === 'Pedal/Factory templates', `every template is a block (${tpl.defs.length} of ${tpl.ids.length}${missing.length ? ', missing ' + missing.join(' ') : ''}, ${tpl.kinds.join()})`);
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(300);
+  await win.fill('#blockSearch', 'factory template');
+  await win.waitForTimeout(600);
+  // the list only draws the rows in view: read it at the top and scrolled to the end
+  const rowsNow = () => win.evaluate(() => ({ heads: [...document.querySelectorAll('#blockList .bl-head')].map((e) => e.textContent.trim()), names: [...document.querySelectorAll('#blockList .bl-item .name')].map((e) => e.textContent) }));
+  const top = await rowsNow();
+  await win.evaluate(() => { const l = document.getElementById('blockList'); l.scrollTop = l.scrollHeight; l.dispatchEvent(new Event('scroll')); });
+  await win.waitForTimeout(400);
+  const end = await rowsNow();
+  const list = { heads: [...top.heads, ...end.heads], names: [...new Set([...top.names, ...end.names])] };
+  ok(list.heads.some((h) => /Factory templates/i.test(h)) && list.names.includes('Atlas Floor') && list.names.includes('Pixel Quest'), `the block list has a Factory templates group (${list.names.slice(0, 6).join(', ')} ...)`);
+  await win.screenshot({ path: path.join(S, 'factory-templates-list.png') });
+  const onBoard = await win.evaluate(async () => {
+    const m = await import('./js/state.js');
+    const b = m.addBlock('custom.template.atlas', 7600, 900);
+    const b2 = m.addBlock('custom.template.pixelquest', 8500, 900);
+    await new Promise((r) => setTimeout(r, 1200));
+    const ed = window.__tz.editor;
+    ed.view.z = 0.9;
+    ed.view.x = -b.x * 0.9 + 60;
+    ed.view.y = -b.y * 0.9 + 120;
+    ed.applyView && ed.applyView();
+    const v = ed.views.get(b.id), v2 = ed.views.get(b2.id);
+    return { ok: !!v && !!v2, ctl: v.g.querySelectorAll('[data-ctl]').length, screens: v.g.querySelectorAll('.fz-ctl').length, w: v.def.design.enc.w };
+  });
+  await win.waitForTimeout(1500);
+  ok(onBoard.ok && onBoard.ctl >= 30, `the Atlas Floor and Pixel Quest template blocks are on the board (${onBoard.ctl} controls)`);
+  await win.screenshot({ path: path.join(S, 'factory-templates-board.png') });
+  // opening a template block in the factory gives an editable copy
+  const copy = await win.evaluate(async () => {
+    const { openTemplateInFactory } = await import('./js/catalog/templates.js');
+    const r = await openTemplateInFactory('custom.template.pixelquest');
+    const d = window.__tzFactory.design();
+    return { r, name: d.name, blockId: d.blockId || null };
+  });
+  ok(copy.r && copy.name === 'Pixel Quest' && !copy.blockId, 'opening a template block in the factory makes an editable copy (no block id)');
+  await win.fill('#blockSearch', '').catch(() => {});
+  await win.waitForTimeout(300);
+
+  }
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));
   console.log(fails ? `${fails} failed` : 'all passed');

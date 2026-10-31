@@ -959,7 +959,7 @@ class Editor {
       return;
     }
     const s = this.sec(h, 'Part');
-    if (STAGES[n.t]) this.text(s, 'Label', n.label || '', (v) => (n.label = v), { live: true, placeholder: pt.name, max: 30 });
+    if (STAGES[n.t] || pt.group === 'script') this.text(s, 'Label', n.label || '', (v) => (n.label = v), { live: true, placeholder: pt.name, max: 30 });
     if (STAGES[n.t]?.algo === 'drive') this.select(s, 'Clipping', CLIPS, n.voice || STAGES[n.t].opts.clip, (v) => (n.voice = v));
     if (STAGES[n.t]?.algo === 'comp') this.select(s, 'Type', COMP_TYPES, n.voice || 'ota', (v) => (n.voice = v));
     if (STAGES[n.t]) {

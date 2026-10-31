@@ -25,6 +25,7 @@ import { showcaseTemplates, codedScreen, SYNTH_SCRIPT, ECHO_SCRIPT } from './fac
 
 const STORE = 'tz.factory.design.v1';
 const PREFS = 'tz.factory.prefs.v1';
+export const MAX_W = 360; // widest enclosure, mm
 
 // ------------------------------------------------------------------ catalogues
 const SIZES = [
@@ -1407,7 +1408,7 @@ function inspEnclosure(host) {
     const m = SIZES.find((s) => s.w === E.w && s.h === E.h);
     E.size = m ? m.id : 'custom';
   };
-  slider(s1, 'Width', E.w, 30, 220, 1, setDim('w'));
+  slider(s1, 'Width', E.w, 30, MAX_W, 1, setDim('w'));
   slider(s1, 'Length', E.h, 50, 220, 1, setDim('h'));
 
   const s2 = sec(host, 'Shape');
@@ -1482,7 +1483,7 @@ function inspArt(host, a, multi) {
   if (a.kind === 'ring') slider(s, 'Thickness', a.thick ?? 0.18, 0.04, 0.45, 0.01, (v) => (a.thick = v));
   const s2 = sec(host, 'Placement');
   if (!multi) xy(s2, a);
-  slider(s2, 'Width', a.w, 2, 240, 0.5, (v) => (a.w = v));
+  slider(s2, 'Width', a.w, 2, MAX_W + 20, 0.5, (v) => (a.w = v));
   slider(s2, 'Height', a.h, 2, 240, 0.5, (v) => (a.h = v));
   slider(s2, 'Rotation', a.rot || 0, -180, 180, 1, (v) => (a.rot = v));
   if (multi) return;
@@ -2144,3 +2145,5 @@ export function renderFactory() {
     renderOverlay();
   });
 }
+// the templates as board blocks (catalog/templates.js)
+export { TEMPLATES, migrateDesign };

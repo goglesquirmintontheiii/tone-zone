@@ -13,17 +13,24 @@
  "order": 206,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 25,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tc.polytune3mini",
-   "x": -96,
-   "y": 40,
+   "x": -202,
+   "y": 85,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "tz.boost",
-   "x": -316,
-   "y": 11,
+   "x": -469,
+   "y": 56,
    "params": {
     "gain": 0.4,
     "bass": 0.45,
@@ -44,8 +51,8 @@
   {
    "id": "b3",
    "type": "tz.comp",
-   "x": -586,
-   "y": 0,
+   "x": -854,
+   "y": 45,
    "params": {
     "sustain": 0.35,
     "ratio": 0.4,
@@ -59,8 +66,8 @@
   {
    "id": "b4",
    "type": "box.split2",
-   "x": -752,
-   "y": 77,
+   "x": -1162,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -68,8 +75,8 @@
   {
    "id": "b5",
    "type": "amp.plexi",
-   "x": -1224,
-   "y": 360,
+   "x": -650,
+   "y": -804,
    "params": {
     "gain": 0.7,
     "master": 0.6,
@@ -85,8 +92,8 @@
   {
    "id": "b6",
    "type": "cab.4x12gb",
-   "x": -1232,
-   "y": 574,
+   "x": -658,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -107,8 +114,8 @@
   {
    "id": "b7",
    "type": "marshall.amp-bluesbreaker",
-   "x": -1304,
-   "y": 1084,
+   "x": -1250,
+   "y": -500,
    "params": {
     "a.gain": 0.55,
     "a.master": 0.6,
@@ -124,8 +131,8 @@
   {
    "id": "b8",
    "type": "celestion.cab-g12h4x12",
-   "x": -1814,
-   "y": 1084,
+   "x": -1770,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -146,8 +153,8 @@
   {
    "id": "b9",
    "type": "tz.reverb",
-   "x": -1474,
-   "y": 1594,
+   "x": -1575,
+   "y": 26,
    "params": {
     "mode": 0,
     "decay": 0.25,
@@ -159,8 +166,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -1674,
-   "y": 1609,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -168,8 +175,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2054,
-   "y": 25,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

@@ -106,6 +106,10 @@ private:
   std::map<std::string, std::shared_ptr<Block>> blocks; // id -> block
   json lastGraph;
   std::map<std::string, std::vector<std::string>> followers; // id -> nodes that also take its params / events ("also")
+  // script audio per block id: uploaded sample buffers (slot -> data) and the last analysis request
+  std::map<std::string, std::map<int, std::shared_ptr<const Block::SampleData>>> samples;
+  std::map<std::string, std::map<std::string, json>> scriptCmds; // id -> 'scope' | 'v<n>' | 'f<n>' -> last command
+  void applyScript(const std::string& id, Block& b);
 
   // presets built ahead of time (the Pi agent preloads next / previous for instant switching)
   struct CachedGraph

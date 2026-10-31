@@ -12,17 +12,24 @@
  "order": 202,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 16,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.tuner",
-   "x": -150,
-   "y": 0,
+   "x": -229,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "tz.select2",
-   "x": -420,
-   "y": 21,
+   "x": -635,
+   "y": 76,
    "params": {
     "fade": 30.85,
     "sel": 1,
@@ -43,8 +50,8 @@
   {
    "id": "b3",
    "type": "ehx.smallclone",
-   "x": -600,
-   "y": 389,
+   "x": -944,
+   "y": 62,
    "params": {
     "rate": 0.35,
     "deep": 0
@@ -55,8 +62,8 @@
   {
    "id": "b4",
    "type": "amp.twin",
-   "x": -1090,
-   "y": 342,
+   "x": -420,
+   "y": -500,
    "params": {
     "gain": 0.3,
     "treble": 0.55,
@@ -71,8 +78,8 @@
   {
    "id": "b5",
    "type": "cab.2x12twin",
-   "x": -1560,
-   "y": 376,
+   "x": -900,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -93,8 +100,8 @@
   {
    "id": "b6",
    "type": "bx.ds1",
-   "x": -606,
-   "y": 863,
+   "x": -1187,
+   "y": 51,
    "params": {
     "level": 0.4,
     "tone": 0.45,
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "box.split2",
-   "x": -772,
-   "y": 934,
+   "x": -1402,
+   "y": 122,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -115,8 +122,8 @@
   {
    "id": "b8",
    "type": "mesa.amp-markv",
-   "x": -1310,
-   "y": 762,
+   "x": -1448,
+   "y": -804,
    "params": {
     "gain": 0.45,
     "master": 0.38,
@@ -132,8 +139,8 @@
   {
    "id": "b9",
    "type": "cab.4x12v30",
-   "x": -1296,
-   "y": 976,
+   "x": -1434,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -154,8 +161,8 @@
   {
    "id": "b10",
    "type": "amp.bassman",
-   "x": -1236,
-   "y": 1486,
+   "x": -1952,
+   "y": -500,
    "params": {
     "gain": 0.6,
     "presence": 0.5,
@@ -170,8 +177,8 @@
   {
    "id": "b11",
    "type": "cab.4x10tweed",
-   "x": -1606,
-   "y": 1486,
+   "x": -2332,
+   "y": -500,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -186,8 +193,8 @@
   {
    "id": "b12",
    "type": "box.merge4",
-   "x": -1696,
-   "y": 1968,
+   "x": -202,
+   "y": 392,
    "params": {},
    "bypass": false,
    "variant": "mono"
@@ -195,8 +202,8 @@
   {
    "id": "b13",
    "type": "tz.reverb",
-   "x": -1968,
-   "y": 1906,
+   "x": -615,
+   "y": 326,
    "params": {
     "mode": 0,
     "decay": 0.25,
@@ -208,8 +215,8 @@
   {
    "id": "b14",
    "type": "tz.meter",
-   "x": -2168,
-   "y": 1921,
+   "x": -939,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -217,8 +224,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2408,
-   "y": 16,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

@@ -7,6 +7,7 @@ import { loadPlugins } from './plugins.js';
 import { loadCustomBlocks } from './catalog/custom.js';
 import './screens-eq.js';
 import './screens-tz5.js';
+import './screens-nautica.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, setParam, CABLE_COLORS } from './state.js';
@@ -14,6 +15,7 @@ import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu, prompt } from './menus.js';
 import { refreshPacks, renderLibrary, importDialog } from './pages/library.js';
 import { renderSettings, sendEngineSettings, onPorts, applyTheme } from './pages/settings.js';
+import { startRestore, onPortsLinks, hasSavedLinks } from './pw-links.js';
 import { renderCapture } from './pages/capture.js';
 import { renderPresets } from './pages/presets.js';
 import { refreshPresetList, openPreset, savePreset, step, updateTitle, showPresetMenu, localStorageSafeGet } from './presets.js';
@@ -40,6 +42,7 @@ async function boot() {
   initTabs();
   initTopbar();
   initEngineEvents();
+  startRestore(); // the engine may have said ready before we were listening
   initGlobalKeys();
   initFileDrop();
   initNodeMenu();
@@ -234,7 +237,9 @@ function initEngineEvents() {
       case 'ready':
         // resend the whole board, the engine may have restarted
         import('./state.js').then((m) => { m.syncGraph(); sendEngineSettings(); });
-        if (state.settings.autoConnect !== false && !state._autoConnected) {
+        // links from last time come back; auto-connect is only for a first start with nothing saved
+        startRestore();
+        if (state.settings.autoConnect !== false && !state._autoConnected && !hasSavedLinks()) {
           state._autoConnected = true;
           window.tz.engine.send({ cmd: 'autoConnect' });
         }
@@ -254,6 +259,7 @@ function initEngineEvents() {
         bus.emit('blockInfo', ev);
         break;
       case 'ports':
+        onPortsLinks(ev);
         onPorts(ev);
         break;
     }
@@ -350,6 +356,8 @@ function initNodeMenu() {
         items.push({ label: 'Rotate right', icon: 'redo', kbd: 'R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], 90) });
         items.push({ label: 'Rotate left', icon: 'undo', kbd: 'Shift+R', onClick: () => editor.rotateBlocks(state.selection.has(id) ? [...state.selection] : [id], -90) });
       }
+      // factory templates on the board: open an editable copy in the Pedal Factory (saving makes a new pedal)
+      if (d.template) items.push({ label: 'Edit a copy in the Pedal Factory', icon: 'factory', onClick: () => import('./catalog/templates.js').then((m) => m.openTemplateInFactory(b.type)) });
       items.push({ label: 'Duplicate', icon: 'copy', kbd: 'Ctrl+D', onClick: () => editor.select(duplicateBlocks([...state.selection]).map((n) => n.id)) });
       items.push({ label: isFavorite(b.type) ? 'Remove from favourites' : 'Add to favourites', icon: 'star', onClick: () => toggleFavorite(b.type) });
       if (d.cabMics) items.push({ label: 'Add microphone', icon: 'mic', onClick: () => { import('./inspector.js').then((m) => { m.addMic(b); editor.select([id]); }); } });

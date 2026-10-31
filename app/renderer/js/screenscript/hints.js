@@ -1,14 +1,17 @@
 // Type hints for the code editor: completions, signature help, hovers and light checks. Everything comes from
 // a quick, forgiving scan of the source (no full parse, never throws) and the API types in docs.js.
-// ctx (optional) describes the pedal: { controls: [{name, kind}], findControl(name, kind), ports: {ins, outs}, signals }.
+// ctx (optional) describes the pedal: { controls: [{name, kind}], findControl(name, kind), ports: {ins, outs}, signals,
+// files: [path], modules: [{ name, path, info }] (code files, info from moduleInfo), jacks: [name], file (this one) }.
 import { SIGS, API_NAMES, FIELDS, describe, sigText, typeLabel } from './docs.js';
 import { PALETTES, NAMED, SIZES, FONT_NAMES, EVENTS } from './runtime.js';
 import { ICON_NAMES } from './font.js';
 
 const KW = new Set(['and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then', 'true', 'until', 'while']);
-const LIBS = new Set(['math', 'string', 'table']);
+const LIBS = new Set(['math', 'string', 'table', 'fs', 'bin', 'audio']);
 const STR_METHODS = ['len', 'sub', 'upper', 'lower', 'rep', 'reverse', 'byte', 'format', 'find', 'match', 'gsub', 'split', 'trim', 'startsWith', 'endsWith', 'pad'];
-const CONSTS = ['W', 'H', 'colors', 'mouse', 'screen', 'math', 'string', 'table'];
+const CONSTS = ['W', 'H', 'colors', 'mouse', 'screen', 'math', 'string', 'table', 'fs', 'bin', 'audio'];
+const GEN_TYPES = ['sine', 'square', 'saw', 'tri', 'pulse', 'noise', 'sample'];
+const FX_TYPES = ['gain', 'lowpass', 'highpass', 'bandpass', 'drive'];
 const ALIGNS = ['left', 'center', 'right', 'middle'];
 const KINDS = ['knob', 'switch', 'dip', 'foot', 'button'];
 const SIGNALS = ['in', 'out', 'inDb', 'outDb', 'env', 'on', 'lfo', 'tempo'];
@@ -225,6 +228,9 @@ function valuesFor(type, ctx) {
       const pick = sub ? all.filter((c) => c.kind === sub) : all;
       return (pick.length ? pick : all).map((c) => [c.name, c.kind]);
     }
+    case 'file': return ((ctx && ctx.files) || []).map((v) => [v, 'file']);
+    case 'module': return ((ctx && ctx.modules) || []).filter((m) => m.path !== (ctx && ctx.file)).map((m) => [m.name, m.path]);
+    case 'jack': return ((ctx && ctx.jacks) || []).map((v) => [v, 'audio jack']);
     case 'port': {
       const list = (ctx && ctx.ports && (sub === 'in' ? ctx.ports.ins : ctx.ports.outs)) || [];
       return list.map((p, n) => [p.name || (sub === 'in' ? 'In ' : 'Out ') + (n + 1), (sub === 'in' ? 'input ' : 'output ') + (n + 1) + (p.sig === 'b' ? ', binary' : ', analog')]);
@@ -258,6 +264,73 @@ function closest(name, pool) {
   return best;
 }
 
+// ------------------------------------------------------------------ other code files
+/**
+ * What a code file offers the others: { ret (the name it returns, like M), fields: Map name -> {params, line}
+ * (functions of the returned table), globals: Map name -> {params, line} (functions not marked local) }.
+ */
+export function moduleInfo(src) {
+  const toks = lex(src);
+  const fields = new Map(), globals = new Map();
+  const lineOf = (pos) => { let k = 1; for (let i = 0; i < pos && i < src.length; i++) if (src.charCodeAt(i) === 10) k++; return k; };
+  const params = (j) => {
+    const out = [];
+    if (!toks[j] || toks[j].v !== '(') return out;
+    for (j++; toks[j] && toks[j].v !== ')'; j++) if (toks[j].t === 'name') out.push(toks[j].v);
+    return out;
+  };
+  let ret = null;
+  const named = new Map(); // table -> Map of its functions
+  const add = (obj, name, ps, at) => {
+    if (!named.has(obj)) named.set(obj, new Map());
+    named.get(obj).set(name, { params: ps, line: lineOf(at) });
+  };
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.t === 'kw' && t.v === 'function' && toks[i + 1] && toks[i + 1].t === 'name') {
+      const isLocal = toks[i - 1] && toks[i - 1].v === 'local';
+      const a = toks[i + 1], dot = toks[i + 2], b = toks[i + 3];
+      if (dot && (dot.v === '.' || dot.v === ':') && b && b.t === 'name') add(a.v, b.v, params(i + 4), b.s);
+      else if (!isLocal && dot && dot.v === '(') globals.set(a.v, { params: params(i + 2), line: lineOf(a.s) });
+    }
+    // M.name = function(a, b)
+    if (t.t === 'name' && toks[i + 1] && toks[i + 1].v === '.' && toks[i + 2] && toks[i + 2].t === 'name' && toks[i + 3] && toks[i + 3].v === '=' && toks[i + 4] && toks[i + 4].v === 'function' && !(toks[i - 1] && (toks[i - 1].v === '.' || toks[i - 1].v === ':'))) add(t.v, toks[i + 2].v, params(i + 5), toks[i + 2].s);
+    if (t.t === 'kw' && t.v === 'return' && toks[i + 1] && toks[i + 1].t === 'name' && i + 2 === toks.length) ret = toks[i + 1].v;
+  }
+  if (ret && named.has(ret)) for (const [k, v] of named.get(ret)) fields.set(k, v);
+  return { ret, fields, globals };
+}
+/** Local names bound to require("x") in a source: Map name -> module name. */
+export function requiresIn(src) {
+  const out = new Map();
+  const re = /(?:^|[^\w.])([A-Za-z_]\w*)\s*=\s*require\s*\(?\s*["']([^"'\n]+)["']/g;
+  let m;
+  while ((m = re.exec(src))) out.set(m[1], m[2]);
+  return out;
+}
+function findModule(ctx, name) {
+  const list = (ctx && ctx.modules) || [];
+  const n = String(name).trim();
+  const tries = /\.lua$/i.test(n) ? [n] : [n + '.lua', n.replace(/\./g, '/') + '.lua'];
+  return list.find((m) => tries.includes(m.path)) || null;
+}
+// functions other code files define as globals: name -> { params, line, path }
+function otherGlobals(ctx) {
+  const out = new Map();
+  for (const m of (ctx && ctx.modules) || []) {
+    if (m.path === ctx.file || !m.info) continue;
+    for (const [k, v] of m.info.globals) if (!out.has(k)) out.set(k, { ...v, path: m.path });
+  }
+  return out;
+}
+function moduleField(src, ctx, obj, field) {
+  const mod = requiresIn(src).get(obj);
+  const m = mod !== undefined ? findModule(ctx, mod) : null;
+  if (!m || !m.info) return null;
+  const f = m.info.fields.get(field);
+  return f ? { ...f, path: m.path } : null;
+}
+
 // ------------------------------------------------------------------ checks
 /** Light checks: [{ s, e, message }]. Never blocks anything, the script still runs. */
 export function lint(src, ctx) {
@@ -265,9 +338,10 @@ export function lint(src, ctx) {
   const out = [];
   const warn = (s, e, message) => out.push({ s, e: Math.max(e, s + 1), message });
   const globals = [...SIGS.keys()].filter((k) => !k.includes('.') && !SIGS.get(k).callback);
+  const others = otherGlobals(ctx);
   for (const c of calls) {
     if (c.member) continue;
-    const own = defs.get(c.name.split('.')[0]);
+    const own = defs.get(c.name.split('.')[0]) || others.get(c.name);
     const spec = SIGS.get(c.name);
     if (!spec) {
       if (c.name.includes('.')) {
@@ -277,8 +351,8 @@ export function lint(src, ctx) {
           warn(c.nameTok.s, c.nameTok.e, `${lib}.${fn} is not a ${lib} function.` + (alt ? ` Did you mean ${lib}.${alt}?` : ''));
         }
       } else if (!own && !API_NAMES.has(c.name) && !KW.has(c.name)) {
-        const alt = closest(c.name, [...globals, ...defs.keys()]);
-        warn(c.s, c.e, `${c.name} is not a Tone Zone function and is not defined in this script.` + (alt ? ` Did you mean ${alt}?` : ''));
+        const alt = closest(c.name, [...globals, ...defs.keys(), ...others.keys()]);
+        warn(c.s, c.e, `${c.name} is not a Tone Zone function and is not defined in this script${ctx && ctx.modules && ctx.modules.length ? ' or its code files' : ''}.` + (alt ? ` Did you mean ${alt}?` : ''));
       }
       continue;
     }
@@ -311,6 +385,23 @@ export function lint(src, ctx) {
       const [base, sub] = type.split('.');
       if (base === 'number' && L.kind === 'str') return warn(...at, `${p.name} should be a number, not text.`);
       if (['string', 'font', 'theme', 'icon', 'align', 'kind', 'signal', 'event'].includes(base) && L.kind === 'num') return warn(...at, `${p.name} should be text, not a number.`);
+      if (base === 'module' && L.kind === 'str' && ctx && ctx.modules) {
+        if (!findModule(ctx, L.v)) {
+          const names = ctx.modules.map((m) => m.name);
+          const alt = closest(L.v, names);
+          warn(...at, `There is no code file "${/\.lua$/i.test(L.v) ? L.v : L.v + '.lua'}".` + (alt ? ` Did you mean "${alt}"?` : names.length ? ` Code files: ${names.join(', ')}.` : ' Add one with New in the file list.'));
+        }
+        return;
+      }
+      if (base === 'jack' && L.kind === 'str' && ctx && ctx.jacks) {
+        const k = lc(L.v);
+        if (!ctx.jacks.some((j) => lc(j) === k) && !/^(in|out|input|output)\s*\d*$/.test(k) && !/^circuit(:|$)/.test(k)) warn(...at, `This pedal has no audio jack called "${L.v}". Jacks: ${ctx.jacks.join(', ')}.`);
+        return;
+      }
+      if (base === 'gentype' && L.kind === 'str') {
+        if (!GEN_TYPES.includes(L.v)) warn(...at, `type is ${GEN_TYPES.join(', ')}.`);
+        return;
+      }
       if (L.kind !== 'str') {
         if (base === 'control' && L.kind === 'num' && ctx && ctx.findControl && ctx.controls && !ctx.findControl(L.v, sub)) warn(...at, `This pedal has no ${sub || 'control'} number ${L.v}.`);
         if (base === 'port' && L.kind === 'num' && ctx && ctx.ports) {
@@ -389,7 +480,11 @@ export function hoverAt(src, pos, ctx) {
       name = obj.v + '.' + t.v;
       s = obj.s;
     } else if (prev.v === ':' && STR_METHODS.includes(t.v)) name = 'string.' + t.v;
-    else return null;
+    else {
+      const f = prev.v === '.' && obj && obj.t === 'name' ? moduleField(src, ctx, obj.v, t.v) : null;
+      if (f) return { s: obj.s, e: t.e, title: `function ${obj.v}.${t.v}(${f.params.join(', ')})`, body: `Defined in ${f.path} on line ${f.line}.` };
+      return null;
+    }
   }
   const own = defs.get(name);
   const spec = SIGS.get(name);
@@ -402,6 +497,8 @@ export function hoverAt(src, pos, ctx) {
     const what = own.kind === 'function' ? `function ${name}(${(own.params || []).join(', ')})` : own.kind === 'param' ? `${name} (a parameter)` : `${name} (a variable)`;
     return { s, e: t.e, title: what, body: `Defined in this script on line ${own.line}.` };
   }
+  const og = otherGlobals(ctx).get(name);
+  if (og) return { s, e: t.e, title: `function ${name}(${og.params.join(', ')})`, body: `Defined in ${og.path} on line ${og.line}.` };
   const d = describe(name) || (name.includes('.') ? describe(name) : '');
   if (d || API_NAMES.has(name)) return { s, e: t.e, title: name, body: d };
   if (name.includes('.') && FIELDS[name.split('.')[0]]) return { s, e: t.e, title: name, body: describe(name.split('.')[0]) };
@@ -440,7 +537,11 @@ export function completions(src, pos, ctx, force) {
   if (ch === '.' || ch === ':') {
     const om = /([A-Za-z_][\w]*)$/.exec(src.slice(Math.max(0, from - 41), from - 1));
     const obj = om ? om[1] : '';
-    if (ch === '.' && LIBS.has(obj)) {
+    const mod = ch === '.' && requiresIn(src).get(obj);
+    const mm = mod !== undefined && mod !== false ? findModule(ctx, mod) : null;
+    if (mm && mm.info) {
+      items = [...mm.info.fields].map(([k, f]) => ({ label: k, kind: 'own', detail: `(${f.params.join(', ')}) from ${mm.path}`, insert: k + '(', doc: `Defined in ${mm.path} on line ${f.line}.` }));
+    } else if (ch === '.' && LIBS.has(obj)) {
       for (const [k, sp] of SIGS) if (k.startsWith(obj + '.')) items.push(fnItem(k.slice(obj.length + 1), sp, k));
       if (obj === 'math') for (const k of ['pi', 'huge']) items.push({ label: k, kind: 'const', detail: 'number', insert: k, doc: describe('math.' + k) });
     } else if (ch === '.' && FIELDS[obj]) items = FIELDS[obj].map((f) => ({ label: f, kind: 'field', detail: obj, insert: f }));
@@ -457,6 +558,7 @@ export function completions(src, pos, ctx, force) {
       for (const [k, sp] of SIGS) if (sp.callback) add({ label: k, kind: 'event', detail: sigText(k, sp.overloads[0]).replace(/ -> .*$/, ''), insert: sigText(k, sp.overloads[0]).replace(/: \w+/g, '').replace(/[[\]]/g, ''), doc: sp.desc });
     } else {
       for (const [d, info] of defs) if (d !== prefix || info.s !== from) add(info.kind === 'function' ? { label: d, kind: 'own', detail: `your function (${(info.params || []).join(', ')})`, insert: d + '(', doc: `Defined on line ${info.line}.` } : { label: d, kind: 'var', detail: info.kind === 'param' ? 'parameter' : 'variable', insert: d });
+      for (const [k, g] of otherGlobals(ctx)) add({ label: k, kind: 'own', detail: `(${g.params.join(', ')}) from ${g.path}`, insert: k + '(', doc: `Defined in ${g.path} on line ${g.line}.` });
       for (const [k, sp] of SIGS) if (!k.includes('.') && !sp.callback) add(fnItem(k, sp, k));
       for (const k of CONSTS) add({ label: k, kind: 'const', detail: k === 'W' || k === 'H' ? 'number' : 'table', insert: k, doc: describe(k) });
       for (const k of KW) add({ label: k, kind: 'kw', detail: 'keyword', insert: k });

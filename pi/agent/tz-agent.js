@@ -58,8 +58,51 @@ async function startAudio() {
   if (engine.proc) engine.restart(env);
   else engine.start(env);
 }
+// the engine's latest ports listing; under PipeWire it is also the device list
+let lastPorts = null;
+let pwRoute = ''; // input|output the engine was last connected to under PipeWire
+const pwMode = () => audioInfo.mode === 'pipewire';
+function devicesNow() {
+  return pwMode() && lastPorts ? audio.pwDevices(lastPorts) : audio.listDevices();
+}
+// PipeWire: connect engine input 1 to the chosen input's first port and the outputs to the chosen output's ports
+function pwConnect(ev) {
+  const devs = audio.pwDevices(ev);
+  const sel = audio.pickDefaults(S.config.audio, devs);
+  server.sel = sel;
+  const me = ev.self + ':';
+  const mineIn = (ev.sinks || []).filter((p) => p.name.startsWith(me) && /:in_\d/.test(p.name)).sort((a, b) => a.name.localeCompare(b.name));
+  const mineOut = (ev.sources || []).filter((p) => p.name.startsWith(me) && /:out_/.test(p.name)).sort((a, b) => a.name.localeCompare(b.name));
+  const inDev = devs.inputs.find((d) => d.id === sel.input), outDev = devs.outputs.find((d) => d.id === sel.output);
+  const route = sel.input + '|' + sel.output;
+  const send = (src, dst, on) => engine.send({ cmd: 'connect', src, dst, on });
+  const hwPort = (n) => !n.startsWith(me);
+  if (route !== pwRoute) {
+    // the device changed: drop links from our main ports to other hardware
+    for (const p of mineIn) for (const c of p.connections || []) if (hwPort(c) && !(inDev && inDev.ports.includes(c))) send(c, p.name, false);
+    for (const p of mineOut) for (const c of p.connections || []) if (hwPort(c) && !(outDev && outDev.ports.includes(c))) send(p.name, c, false);
+    pwRoute = route;
+    if (inDev || outDev) log.info(`PipeWire: input ${inDev ? inDev.name : 'none'}, output ${outDev ? outDev.name : 'none'}`, 'engine');
+  }
+  if (inDev && mineIn[0] && !(mineIn[0].connections || []).includes(inDev.ports[0])) send(inDev.ports[0], mineIn[0].name, true);
+  if (outDev) {
+    // out_L / out_R to the first two playback ports (a mono device gets both)
+    mineOut.slice(0, 2).forEach((p, i) => {
+      const dst = outDev.ports[Math.min(i, outDev.ports.length - 1)];
+      if (dst && !(p.connections || []).includes(dst)) send(p.name, dst, true);
+    });
+  }
+}
 engine.on('event', (ev) => {
-  if (ev.ev === 'ready' && server.bridge) setTimeout(() => engine.send({ cmd: 'ports' }), 300);
+  if (ev.ev === 'ready' && (server.bridge || pwMode())) setTimeout(() => engine.send({ cmd: 'ports' }), 300);
+  if (ev.ev === 'ports' && ev.self) {
+    const had = lastPorts && JSON.stringify(audio.pwDevices(lastPorts)) === JSON.stringify(audio.pwDevices(ev));
+    lastPorts = ev;
+    if (pwMode()) {
+      pwConnect(ev);
+      if (!had) broadcast({ t: 'config', config: configOut() }); // devices came or went: show them
+    }
+  }
   if (ev.ev === 'ports' && server.bridge && ev.self) {
     // input through zita-a2j: connect it to engine input 1
     const mine = (ev.sinks || []).filter((p) => p.name.startsWith(ev.self + ':')).map((p) => p.name).sort();
@@ -241,7 +284,7 @@ function doAction({ action, block }) {
 let gpio = null;
 function startGpio() {
   const helper = path.join(hw.SLOT, 'bin', process.arch === 'arm' ? 'tz-gpio-armhf' : 'tz-gpio');
-  const outKind = (audio.listDevices().outputs.find((d) => d.id === (server.sel || {}).output) || {}).kind;
+  const outKind = (devicesNow().outputs.find((d) => d.id === (server.sel || {}).output) || {}).kind;
   // the 3.5 mm jack is driven by the PWM block on Pi 3 / 4: hardware PWM LEDs would break it
   const blocked = outKind === 'builtin' && board.model !== 'pi5' ? [12, 13, 18, 19] : [];
   if (!hw.FAKE && !fs.existsSync(helper)) { log.warn('GPIO helper missing, footswitches off', 'gpio'); return; }
@@ -362,7 +405,7 @@ function benchPreset(p) {
 
 // ------------------------------------------------------------------ device config
 function audioConfigOut() {
-  const devs = audio.listDevices();
+  const devs = devicesNow();
   return Object.assign({}, S.config.audio, { devices: devs, active: server.sel || null, mode: audioInfo.mode });
 }
 function configOut() {
@@ -503,7 +546,8 @@ R.add('POST', '/api/tap', () => { tap(); return { bpm }; });
 // config
 R.add('GET', '/api/config', () => configOut());
 R.add('PUT', '/api/config/:part', (c) => setConfig(c.params.part, c.body));
-R.add('GET', '/api/audio/devices', () => audio.listDevices());
+R.add('GET', '/api/audio/devices', () => devicesNow());
+R.add('GET', '/api/audio/ports', () => lastPorts || { sources: [], sinks: [] });
 R.add('GET', '/api/gpio/leds', () => (gpio ? gpio.ledState() : {}));
 R.add('POST', '/api/gpio/test', async (c) => {
   const pin = String(c.body.pin);

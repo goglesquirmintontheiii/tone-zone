@@ -161,6 +161,8 @@ export function cableMakesLoop(from, to, preset = state.preset) {
   const split = (id) => getDef(preset.blocks.find((b) => b.id === id)?.type)?.loopSplit;
   const half = (id, port, dir) => {
     const S = split(id);
+    // FX loop returns of a one-node unit (Nautica XL) read the previous engine cycle: no loop through them
+    if (dir === 'in' && typeof port === 'number' && getDef(preset.blocks.find((b) => b.id === id)?.type)?.loopReturns?.includes(port)) return id + '~r';
     if (!S || typeof port !== 'number') return id;
     return (dir === 'out' ? S.outA[port] : S.inA[port] !== undefined) ? id + '~a' : id;
   };

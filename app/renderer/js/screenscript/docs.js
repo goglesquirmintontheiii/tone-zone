@@ -31,7 +31,7 @@ export const API = [
       ['list', [
         '**change** (control): any control changed. e.name, e.kind, e.value, e.old.',
         '**switch** (switch): a toggle or rotary switch moved. e.value and e.old (positions from 1), e.option (its label).',
-        '**encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (24 per turn), e.value the position. Endless encoders wrap around without a jump in direction.',
+        '**encoder** (knob): an encoder (or knob) turned by at least one step. e.dir is 1 (clockwise) or -1 (counter clockwise), e.steps how many steps (per turn: the Steps setting of the encoder, 24 by default and for plain knobs), e.value the position. Endless encoders wrap around without a jump in direction.',
         '**footswitch_down** / **footswitch_up** (footswitch): a footswitch turned on / off. e.name, e.on. The bypass switch counts too.',
         '**button_down** / **button_up** (push button): the same for latching push buttons.',
         '**dip** (DIP switch): e.name, e.n (its number in the block), e.on.',
@@ -140,6 +140,7 @@ export const API = [
       ['inside', 'inside(x, y, w, h)', 'True when the pointer is over the area.'],
       ['mouse', 'mouse.x, mouse.y, mouse.down, mouse.pressed, mouse.released', 'The pointer this frame.'],
       ['focused', 'focused()', 'True while a text field has the keyboard.'],
+      ['closeKeyboard', 'closeKeyboard([keep])', 'Closes the on-screen keyboard, like pressing OK. closeKeyboard(false) cancels instead and puts the old text back.'],
     ],
   },
   {
@@ -243,6 +244,131 @@ export const API = [
     ],
   },
   {
+    group: 'Code files',
+    intro: 'A pedal can have code files next to the code of each screen: write shared functions once and use them from every screen of the pedal. Add them with New in the file list on the left of the code editor (a code file ends in .lua). Code files are saved with the design and with the saved pedal.',
+    items: [
+      ['require', 'm = require(name)', 'Run a code file of this pedal and get what it returns (usually a table of functions). name is the file without .lua, folders with / or . ("util", "lib/notes"). A file runs once: the next require gives the same value.'],
+    ],
+    guide: [
+      ['h', 'Writing a code file'],
+      ['list', [
+        'A code file is a normal script. What it returns is what require gives back, so most code files make a table, put functions in it and return it at the end.',
+        'Functions written without local (function helper() ... end) become globals that every file can call, like in Lua. A local table you return keeps things tidy.',
+        'Code files can require other code files. Two files that require each other in a loop are an error that names both.',
+        'All files share the screen\'s globals (W, H, colors, the drawing functions ...) and its work budget.',
+        'An error in a code file names the file and its line, like **util.lua line 3**. Click it in the status to open the file at that line. The hints know the functions of the other files: after m. the completion lists what util.lua returns.',
+        'A screen restarts when its code or any code file changes. require only loads code saved with the design: a .lua file a script writes with fs.write is data.',
+      ]],
+      ['code', '-- util.lua: shared helpers\nlocal M = {}\nfunction M.db(v)\n  return 20 * math.log(math.max(v, 0.00001), 10)\nend\nfunction M.title(s)\n  text(s, 2, 2, colors.dim, "small")\nend\nreturn M\n'],
+      ['code', '-- the screen: use them\nlocal util = require("util")\nfunction draw()\n  clear()\n  util.title("LEVEL")\n  text(string.format("%.1f dB", util.db(signal("in"))), 2, 12)\nend\n'],
+    ],
+  },
+  {
+    group: 'Files',
+    intro: 'Every pedal has its own small store of files, shared by all its screens: settings, user presets, lists, logs or your own file formats. Paths look like "presets/1.txt": letters, digits, space, _ - and ., with / between folders (no .., no / at the start). Everything together (the screens\' code, code files and data files) can use 1 MB per pedal.',
+    items: [
+      ['fs.read', 'fs.read(path)', 'The text of a file, or nil when there is no such file.'],
+      ['fs.write', 'fs.write(path, text)', 'Write a file (made if needed, replaced if it is there). Folders are made as needed.'],
+      ['fs.append', 'fs.append(path, text)', 'Add text to the end of a file (made if needed).'],
+      ['fs.exists', 'fs.exists(path)', 'True when there is a file or folder there.'],
+      ['fs.remove', 'fs.remove(path)', 'Remove a file (or an empty folder). True when something was removed.'],
+      ['fs.rename', 'fs.rename(from, to)', 'Rename or move a file.'],
+      ['fs.list', 'fs.list([folder])', 'The names in a folder (the top when left out): files first, then folders with / at the end.'],
+      ['fs.mkdir', 'fs.mkdir(path)', 'Make an empty folder.'],
+      ['fs.isDir', 'fs.isDir(path)', 'True when the path is a folder.'],
+      ['fs.size', 'fs.size(path)', 'Size of a file in bytes, or nil.'],
+      ['fs.free', 'fs.free(), fs.used(), fs.budget()', 'Bytes left, bytes used and the budget (1048576) of the pedal\'s files.'],
+      ['fs.readBytes', 'fs.readBytes(path)', 'A file as a list of numbers from 0 to 255.'],
+      ['fs.readBin', 'fs.readBin(path)', 'A file as a byte string (one character per byte), for bin.unpack and s:byte(i).'],
+      ['fs.writeBytes', 'fs.writeBytes(path, bytes)', 'Write bytes: a list of numbers from 0 to 255, or a byte string from bin.pack.'],
+      ['fs.appendBytes', 'fs.appendBytes(path, bytes)', 'Add bytes to the end of a file.'],
+    ],
+    guide: [
+      ['h', 'Where files are kept'],
+      ['list', [
+        '**Files you make in the code editor** (code files and any starting data) belong to the design: they are saved with it and with the saved pedal.',
+        '**Files a script writes on the board** belong to that pedal on the board: they are saved with the preset, so user presets kept on a pedal are still there next time. Each pedal on the board has its own. A script that writes over a file of the design changes it for that pedal only, and a new version of the design still brings its new code.',
+        '**In the code editor preview and in Test mode** scripts write to a sandbox for this session. The file list shows those files marked preview: **Keep** copies one into the design, **Reset** forgets them.',
+        'Writing is cheap: files are saved a moment after the last write, not on every call. Undo does not undo file writes.',
+      ]],
+      ['h', 'Text and bytes'],
+      ['list', [
+        'fs.read and fs.write are for text (saved as UTF-8). For your own formats use fs.readBin / fs.writeBytes with bin.pack and bin.unpack (or lists of numbers with fs.readBytes).',
+        'A byte string has one character per byte (0 to 255): s:byte(i) gives byte i, #s the length, string.char(65, 66) makes one.',
+        'When a write would go over 1 MB, or a path is not allowed, the call stops the script with an error that says why (use pcall to catch it). fs.free() tells how much room is left.',
+      ]],
+      ['code', '-- user presets kept on the pedal: tap SAVE to store the knobs, tap a slot to load it\nlocal slot = 1\nfunction draw()\n  clear()\n  slot = tabs({"1", "2", "3"}, 0, 0, W, 12, slot)\n  local path = "presets/" .. slot .. ".txt"\n  if button("SAVE", 2, 16, 40, 14) then\n    fs.write(path, knob(1) .. "," .. knob(2))\n  end\n  if fs.exists(path) and button("LOAD", 46, 16, 40, 14) then\n    local v = fs.read(path):split(",")\n    setKnob(1, tonumber(v[1]))\n    setKnob(2, tonumber(v[2]))\n  end\n  text(string.format("%d KB free", fs.free() // 1024), 2, H - 9, colors.dim, "small")\nend\n'],
+      ['code', '-- a log that keeps the last notes, one line each\non("footswitch_down", function(e)\n  fs.append("log.txt", string.format("%.1f %s\\n", time(), e.name))\nend)\nfunction draw()\n  clear()\n  local lines = (fs.read("log.txt") or ""):split("\\n")\n  for i = math.max(1, #lines - 4), #lines do\n    text(lines[i], 2, 2 + (i - math.max(1, #lines - 4)) * 9)\n  end\nend\n'],
+    ],
+  },
+  {
+    group: 'Binary data',
+    intro: 'bin turns numbers and text into bytes and back, for your own file formats. The format is a string of letters, like Lua\'s string.pack: "<I2 f s1" is a 16 bit number, a float and a short text.',
+    items: [
+      ['bin.pack', 'bin.pack(fmt, ...)', 'The values packed into a byte string.'],
+      ['bin.unpack', 'a, b, next = bin.unpack(fmt, data, [pos])', 'The values from a byte string, starting at byte pos (default 1), and the position after them.'],
+      ['bin.size', 'bin.size(fmt)', 'How many bytes a format takes (not for s and z).'],
+      ['bin.bytes', 'bin.bytes(data, [i], [j])', 'The bytes of a byte string as a list of numbers.'],
+      ['bin.str', 'bin.str(list)', 'A byte string from a list of numbers from 0 to 255.'],
+      ['bin.hex', 'bin.hex(data, [sep])', 'The bytes as hex text, like "01 ff 3a", to look at in print().'],
+      ['bin.utf8', 'bin.utf8(text), bin.text(data)', 'Text to UTF-8 bytes, and back.'],
+    ],
+    guide: [
+      ['h', 'Format letters'],
+      ['list', [
+        '**<** little endian (the default), **>** big endian.',
+        '**b** / **B** 8 bit number (signed / unsigned), **h** / **H** 16 bit, **i** / **I** 32 bit (i1 to i4 and I1 to I4 for other sizes).',
+        '**f** 32 bit float, **d** 64 bit float.',
+        '**s** text with its length in front (s1, s2 or s4 bytes for the length, s is s4), **z** text ending with a zero byte, **c8** exactly 8 bytes of text (padded with zeros), **x** one zero byte.',
+        'Spaces are ignored. A number that does not fit its size is an error.',
+      ]],
+      ['code', '-- a small custom format: a header, then points\nlocal pts = {{10, 0.5}, {20, 0.25}, {30, 1}}\nlocal data = bin.pack("<c4 I2", "PNTS", #pts)\nfor _, p in ipairs(pts) do data = data .. bin.pack("<H f", p[1], p[2]) end\nfs.writeBytes("points.bin", data)\n\n-- and read it back\nlocal s = fs.readBin("points.bin")\nlocal magic, n, pos = bin.unpack("<c4 I2", s)\nlocal back = {}\nfor i = 1, n do\n  local x, y\n  x, y, pos = bin.unpack("<H f", s, pos)\n  back[i] = {x, y}\nend\nfunction draw()\n  clear()\n  text(magic .. " " .. n .. " points, " .. #s .. " bytes", 2, 2)\n  text(bin.hex(s:sub(1, 8)), 2, 12, colors.dim, "small")\nend\n'],
+    ],
+  },
+  {
+    group: 'Audio',
+    intro: 'Scripts run at the screen\'s frame rate (20 to 30 a second), not for every sample, so they never slow the audio down. They read what the engine measures on the pedal\'s audio jacks, and they start and steer small sound makers that run inside the engine: oscillators, noise, envelopes and sample players that play buffers the script fills. Jacks are found by label (any case), "in" (the first input), "out" (the main output), "in 2", "out 2".',
+    items: [
+      ['audio.level', 'audio.level([jack])', 'How loud the jack is (RMS, 0 to 1). Default: the first input.'],
+      ['audio.peak', 'audio.peak([jack])', 'The peak level (0 to 1).'],
+      ['audio.spectrum', 'audio.spectrum([jack], [bins])', 'A list of bins (4 to 64, default 32) from 0 to 1, low to high (40 Hz to 16 kHz).'],
+      ['audio.wave', 'audio.wave([jack], [n])', 'The last n samples (16 to 1024, default 128) from -1 to 1, to draw a scope.'],
+      ['audio.pitch', 'audio.pitch([jack])', 'The pitch in Hz, 0 when there is none.'],
+      ['audio.onset', 'audio.onset([jack])', 'True in the frame a new note started.'],
+      ['audio.analysis', 'audio.analysis([jack], [bins], [n])', 'All of it in one table: rms, peak, pitch, onset, onsets (a count), bands, wave.'],
+      ['audio.jacks', 'audio.jacks()', 'The names of the pedal\'s audio jacks.'],
+      ['audio.ready', 'audio.ready()', 'True when the engine takes sounds (on the board without it, audio.gen gives false).'],
+      ['audio.gen', 'audio.gen(name, settings)', 'Start a sound maker, or change one that runs: {type = "saw", freq = 110, amp = 0.3, to = "out"}. Only changes are sent.'],
+      ['audio.note', 'audio.note(name, [freq], [amp])', 'Start a note on a sound maker (its envelope starts again).'],
+      ['audio.release', 'audio.release(name)', 'Let the note go (the envelope releases).'],
+      ['audio.stop', 'audio.stop(name)', 'Stop and remove a sound maker or a processor.'],
+      ['audio.buffer', 'audio.buffer(name, samples, [rate])', 'Fill a buffer with samples from -1 to 1 (a wavetable or a short sample, up to 96000 samples). rate in Hz, default 48000.'],
+      ['audio.play', 'audio.play(name, buffer, [settings])', 'Play a buffer, from the start each time: {loop = true, rate = 1, amp = 0.5, to = "out"}.'],
+      ['audio.fx', 'audio.fx(name, settings)', 'A simple processor on a jack: {type = "lowpass", jack = "out", freq = 800, q = 0.7}. Types: gain, lowpass, highpass, bandpass, drive.'],
+    ],
+    guide: [
+      ['h', 'Settings'],
+      ['list', [
+        '**type**: sine, square, saw, tri, pulse, noise or sample (audio.play sets sample).',
+        '**freq** (Hz), **amp** (0 to 1), **pw** (pulse width for pulse, 0 to 1).',
+        '**attack**, **decay**, **release** (seconds) and **sustain** (0 to 1): an envelope. With one, **gate = true** starts the note and **gate = false** lets it go (audio.note and audio.release do that for you). Without an envelope the sound plays while it runs.',
+        '**to**: where it goes. An output jack ("out") adds it after the circuit, an input jack ("in") adds it to what goes into the circuit, "circuit:Name" feeds a circuit input part with that name.',
+        '**buffer**, **loop**, **rate** (1 is as written), **start** (0 to 1) for samples, **pan** (-1 to 1).',
+        'For audio.fx: **jack**, **gain**, **freq**, **q**, **amount** (drive) and **mix** (0 to 1).',
+      ]],
+      ['h', 'Keep it light'],
+      ['list', [
+        'A screen can run 16 sound makers and 16 processors, with 192000 samples of buffers. Sounds stop when the screen starts again (a code change, a new preset).',
+        'Only changes reach the engine, so calling audio.gen every frame is fine. Steer the circuit itself with output() and setInput() as before.',
+        'There is no code for every sample: make your own sound by writing it into a buffer (a wavetable, a short sample) and playing it.',
+        'In the code editor preview the jacks carry a demo guitar plus your own sounds (not played out loud), so the analysis moves. On the board the engine does the work.',
+      ]],
+      ['code', '-- a spectrum and a scope of the input\nfunction draw()\n  clear()\n  local bands = audio.spectrum("in", 32)\n  local bw = W / #bands\n  for i, v in ipairs(bands) do\n    fillRect((i - 1) * bw, H - v * H, bw - 1, v * H, hsv(i * 8, 0.8, 1))\n  end\n  graph(0, 0, W, H / 2, audio.wave("in", 128), colors.fg, -1, 1)\nend\n'],
+      ['code', '-- a drone: a knob sets the pitch, the footswitch plays a note\naudio.gen("drone", {type = "saw", freq = 55, amp = 0.2, attack = 0.05, release = 0.8, to = "out"})\non("footswitch_down", function(e) audio.note("drone") end)\non("footswitch_up", function(e) audio.release("drone") end)\nfunction draw()\n  clear()\n  local f = 40 + knob(1) * 200\n  audio.gen("drone", {freq = math.round(f)})\n  text(math.round(f) .. " Hz", 2, 2)\n  meter(2, H - 10, W - 4, 8, audio.level("out"))\nend\n'],
+      ['code', '-- a wavetable made in the script, played in a loop\nlocal wt = {}\nfor i = 1, 256 do\n  local t = (i - 1) / 256\n  wt[i] = 0.6 * math.sin(t * 2 * math.pi) + 0.3 * math.sin(t * 6 * math.pi)\nend\naudio.buffer("table", wt)\naudio.play("pad", "table", {loop = true, rate = 220 * 256 / 48000, amp = 0.25})\nfunction draw()\n  clear()\n  graph(0, 0, W, H, wt, colors.accent, -1, 1)\n  text(audio.ready() and "PLAYING" or "NO ENGINE", 2, 2, colors.dim, "small")\nend\n'],
+    ],
+  },
+  {
     group: 'Language',
     intro: 'Screen scripts use a small Lua: local x = 1, if ... then ... elseif ... else ... end, for i = 1, 10 do ... end, while ... do ... end, function name(a, b) ... end, tables {1, 2, x = 3}. Comments start with --. Also allowed: x += 1, != for not equal.',
     items: [
@@ -259,7 +385,7 @@ export const API = [
 // every name the highlighter shows as an API word
 export const API_NAMES = new Set();
 for (const g of API) for (const [n] of g.items) API_NAMES.add(n);
-for (const n of ['H', 'icons', 'palettes', 'unclip', 'pop', 'rotate', 'scale', 'smooth', 'setCtl', 'setPedalOn', 'ipairs', 'tonumber', 'type', 'error', 'assert', 'select', 'unpack', 'next']) API_NAMES.add(n);
+for (const n of ['fs', 'bin', 'audio', 'fs.used', 'fs.budget', 'bin.text', 'H', 'icons', 'palettes', 'unclip', 'pop', 'rotate', 'scale', 'smooth', 'setCtl', 'setPedalOn', 'ipairs', 'tonumber', 'type', 'error', 'assert', 'select', 'unpack', 'next']) API_NAMES.add(n);
 
 // ------------------------------------------------------------------ types for the editor's hints
 // One line per function: name(param: type, optional?: type, rest...: type) -> returns, overloads joined by " | ".
@@ -334,6 +460,7 @@ textfield(name: string, x: number, y: number, w: number, h: number, text: text, 
 tapped(x: number, y: number, w: number, h: number) -> bool
 inside(x: number, y: number, w: number, h: number) -> bool
 focused() -> bool
+closeKeyboard(keep?: bool)
 knob(name: control.knob) -> number
 setKnob(name: control.knob, value: number) -> bool
 switch(name: control.switch) -> number
@@ -371,6 +498,48 @@ print(values...: any)
 on(event: event, fn: function) -> table | on(event: event, name: target, fn: function) -> table
 off(handle: table) -> bool
 events() -> table
+require(name: module) -> any
+fs.read(path: file) -> string
+fs.write(path: file, text: text) -> bool
+fs.append(path: file, text: text) -> bool
+fs.exists(path: file) -> bool
+fs.remove(path: file) -> bool
+fs.rename(from: file, to: string) -> bool
+fs.list(folder?: string) -> table
+fs.mkdir(path: string) -> bool
+fs.isDir(path: string) -> bool
+fs.size(path: file) -> number
+fs.used() -> number
+fs.free() -> number
+fs.budget() -> number
+fs.readBytes(path: file) -> table
+fs.readBin(path: file) -> string
+fs.writeBytes(path: file, bytes: any) -> bool
+fs.appendBytes(path: file, bytes: any) -> bool
+bin.pack(fmt: string, values...: any) -> string
+bin.unpack(fmt: string, data: string, pos?: number) -> any
+bin.size(fmt: string) -> number
+bin.bytes(data: string, i?: number, j?: number) -> table
+bin.str(bytes: table) -> string
+bin.hex(data: string, sep?: string) -> string
+bin.utf8(text: text) -> string
+bin.text(data: string) -> string
+audio.level(jack?: jack) -> number
+audio.peak(jack?: jack) -> number
+audio.spectrum(jack?: jack, bins?: number) -> table
+audio.wave(jack?: jack, n?: number) -> table
+audio.pitch(jack?: jack) -> number
+audio.onset(jack?: jack) -> bool
+audio.analysis(jack?: jack, bins?: number, n?: number) -> table
+audio.jacks() -> table
+audio.ready() -> bool
+audio.gen(name: text, settings: table) -> bool
+audio.note(name: text, freq?: number, amp?: number) -> bool
+audio.release(name: text) -> bool
+audio.stop(name: text) -> bool
+audio.buffer(name: text, samples: table, rate?: number) -> bool
+audio.play(name: text, buffer: text, settings?: table) -> bool
+audio.fx(name: text, settings: table) -> bool
 tostring(v: any) -> string
 tonumber(v: any) -> number
 type(v: any) -> string
@@ -466,6 +635,12 @@ const PDOC = {
   'on.name': 'Which control (or screen input, or the milliseconds for timer). Leave it out to hear them all.', 'on.fn': 'function(e) ... end, e has the details.',
   'off.handle': 'What on() gave back.',
   'every.ms': 'How often, in milliseconds.', 'blink.ms': 'Milliseconds on, then off (default 500).', 'save.value': 'Numbers, text, true / false or tables.', 'load.default': 'What to give when nothing is kept.',
+  path: 'A path like "presets/1.txt" in the pedal\'s files.', 'fs.list.folder': 'A folder (the top when left out).', 'fs.rename.from': 'The file to rename.', 'fs.rename.to': 'The new path.',
+  'fs.write.text': 'The text to write.', 'fs.append.text': 'The text to add.', bytes: 'A list of numbers from 0 to 255, or a byte string.', fmt: 'Format letters, like "<I2 f s1".',
+  data: 'A byte string (from fs.readBin or bin.pack).', 'bin.unpack.pos': 'Where to start, from 1 (default 1).', 'require.name': 'A code file of this pedal, without .lua.',
+  jack: 'An audio jack: its label, "in", "out", "in 2" ... (default: the first input).', bins: 'How many bands, 4 to 64 (default 32).', 'audio.wave.n': 'How many samples, 16 to 1024 (default 128).', 'audio.analysis.n': 'How many samples for wave (default 128).',
+  'audio.gen.name': 'Your name for the sound, like "bass".', settings: 'A table: {type = "saw", freq = 110, amp = 0.3, to = "out"} ...', freq: 'Pitch in Hz.', amp: 'Volume, 0 to 1.',
+  samples: 'A list of numbers from -1 to 1.', 'audio.buffer.rate': 'Samples per second (default 48000).', 'audio.play.buffer': 'The name of a buffer from audio.buffer.',
   'math.round.digits': 'Digits after the point (default 0).', 'string.format.fmt': 'Like "%.1f" or "%d ms".',
 };
 // short descriptions for names the API list only mentions next to others
@@ -490,6 +665,8 @@ const MEMBER_DESC = {
   'string.gsub': 'Replace every from with to (plain text).', 'string.split': 'A list of the parts between sep.', 'string.trim': 'Without spaces at the ends.', 'string.startsWith': 'True when the text starts with prefix.',
   'string.endsWith': 'True when the text ends with suffix.', 'string.pad': 'Padded on the left to n characters.',
   'table.insert': 'Add to the end, or at a position: table.insert(t, pos, v).', 'table.remove': 'Take out the last item (or the one at pos).', 'table.concat': 'Join the items into text.', 'table.sort': 'Sort a list (cmp(a, b) says a comes first).',
+  'fs.used': 'Bytes the pedal\'s files use (with the screens\' code).', 'fs.budget': 'The budget of the pedal\'s files: 1048576 bytes (1 MB).', 'bin.text': 'Text from UTF-8 bytes.',
+  fs: 'The pedal\'s files: fs.read, fs.write, fs.list ...', bin: 'Bytes for your own file formats: bin.pack, bin.unpack ...', audio: 'Audio of the jacks and sounds in the engine: audio.level, audio.gen ...',
   'table.unpack': 'The items as separate values.', 'table.count': 'How many keys a table has.', 'table.contains': 'True when the table has the value.',
 };
 // fields of the built in tables (for completion after a dot)
@@ -534,7 +711,7 @@ export function describe(name) {
   return MEMBER_DESC[name] || EXTRA_DESC[name] || '';
 }
 /** Parameter type as shown to people. */
-export const typeLabel = (t) => (t.startsWith('control') ? 'control' : t.startsWith('port') ? 'port' : t === 'target' ? 'name' : t);
+export const typeLabel = (t) => (t.startsWith('control') ? 'control' : t.startsWith('port') ? 'port' : t === 'target' ? 'name' : t === 'file' ? 'path' : t);
 /** "rect(x: number, y: number, [color: color]) -> nil" as plain text. */
 export function sigText(name, ov) {
   const ps = ov.params.map((p) => (p.opt && !p.rest ? `[${p.name}: ${typeLabel(p.type)}]` : `${p.name}${p.rest ? '...' : ''}: ${typeLabel(p.type)}`));

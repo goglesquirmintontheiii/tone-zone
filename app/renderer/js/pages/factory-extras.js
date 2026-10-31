@@ -6,8 +6,9 @@ import { el } from '../util.js';
 import { shapePoints, jackSpot, dotsOn, TRIM_LOOKS, DIP_LOOKS } from './factory-render.js';
 import { ENC_CAPS, STRIP_LOOKS, SLIDER_LOOKS, SEL_LOOKS, LED_LOOKS, LED_BEZELS, ARCADE_SHAPES, STEP_LOOKS, METER_LOOKS } from './factory-controls.js';
 import { NEW_KNOBS, DIALS, PEDAL_GRIPS } from './factory-parts.js';
-import { partName, XY_LOOKS, isStick } from './factory-kinds.js';
+import { partName, XY_LOOKS, isStick, encSteps } from './factory-kinds.js';
 import { partKey } from './factory-matparts.js';
+import { ringKeyOk, ringCount, ringEach } from './factory-ring.js';
 import { PARTS } from './factory-variants.js';
 
 export { partName, NEW_KNOBS, partKey, PARTS };
@@ -32,9 +33,20 @@ export function partInspector(s, c, multi, H, o = {}) {
         colors(s, 'Colour', c.ringColor || '#38f07a', ['#38f07a', ...LED_COLORS], (v) => (c.ringColor = v), 'ring');
         check(s, 'Gradient', !!c.ringColor2, (v) => (c.ringColor2 = v ? '#ff3fb4' : null), true);
         if (c.ringColor2) colors(s, 'Ends in', c.ringColor2, LED_COLORS, (v) => (c.ringColor2 = v), 'ring2');
+        // what the wiring diagram can drive: the whole ring, or each LED (factory-ring.js)
+        seg(s, 'Inputs', [['one', 'One input'], ['each', 'Each LED']], c.ringIn || 'each', (v) => {
+          c.ringIn = v;
+          pruneRing(c);
+        });
+        check(s, 'RGB LEDs', c.ringRgb, (v) => {
+          c.ringRgb = v;
+          pruneRing(c);
+        }, true);
+        if (!multi) note(s, ringNote(c));
       }
-      slider(s, 'Value', c.value ?? 0.5, 0, 1, 0.01, (v) => (c.value = v));
-      note(s, 'An endless encoder: turn it to change the value. The ring of LEDs lights to show it.');
+      slider(s, 'Steps', encSteps(c), 4, 64, 1, (v) => (c.encSteps = v));
+      slider(s, 'Value', c.value ?? 0.5, 0, 1, 1 / encSteps(c), (v) => (c.value = Math.round(v * encSteps(c)) / encSteps(c)));
+      note(s, `An endless encoder: it clicks round in ${encSteps(c)} steps a turn, and each step sends a CW or CCW pulse. The ring of LEDs lights to show it.`);
       return true;
     case 'meter':
       seg(s, 'Look', METER_LOOKS, c.look || 'vu', (v) => (c.look = v), true);
@@ -178,6 +190,17 @@ export function partInspector(s, c, multi, H, o = {}) {
   return false;
 }
 const note = (s, t) => (el('p', { class: 'fz-note' }, s).textContent = t);
+// ring inputs that no longer exist after a mode change go
+function pruneRing(c) {
+  if (!c.ringLeds) return;
+  for (const k of Object.keys(c.ringLeds)) if (!ringKeyOk(c, k)) delete c.ringLeds[k];
+  if (!Object.keys(c.ringLeds).length) delete c.ringLeds;
+}
+function ringNote(c) {
+  const n = ringCount(c);
+  if (ringEach(c)) return c.ringRgb ? `Each of the ${n} LEDs has red, green and blue inputs in the wiring diagram.` : `Each of the ${n} LEDs has its own input in the wiring diagram: analog sets its brightness, on / off lights it. LEDs with nothing wired follow the Ring input or the knob.`;
+  return c.ringRgb ? 'The ring has a Level input (how far it lights) and red, green and blue inputs for its colour.' : 'The ring has one analog input in the wiring diagram: how far it lights.';
+}
 
 // ------------------------------------------------------------------ inspector: the dial under a knob
 /** Sections after the control's own one: the knob dial. Materials are in factory-matparts.js. */

@@ -11,17 +11,24 @@
  "order": 304,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,8 +36,8 @@
   {
    "id": "b2",
    "type": "kly.compplus",
-   "x": -358,
-   "y": 46,
+   "x": -465,
+   "y": 61,
    "params": {
     "sustain": 0.55,
     "level": 0.55,
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "fender.santaana",
-   "x": -618,
-   "y": 23,
+   "x": -849,
+   "y": 38,
    "params": {
     "level": 0.6,
     "gain": 0.3
@@ -54,8 +61,8 @@
   {
    "id": "b4",
    "type": "tz.boost",
-   "x": -838,
-   "y": 41,
+   "x": -1189,
+   "y": 56,
    "params": {
     "gain": 0.35
    },
@@ -65,8 +72,8 @@
   {
    "id": "b5",
    "type": "amp.twin",
-   "x": -1328,
-   "y": 0,
+   "x": -724,
+   "y": -500,
    "params": {
     "gain": 0.32,
     "treble": 0.65,
@@ -81,8 +88,8 @@
   {
    "id": "b6",
    "type": "cab.2x12twin",
-   "x": -1798,
-   "y": 34,
+   "x": -1204,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -103,8 +110,8 @@
   {
    "id": "b7",
    "type": "fender.mirrorimage",
-   "x": -2058,
-   "y": 23,
+   "x": -369,
+   "y": 338,
    "params": {
     "time": 65.6017,
     "feedback": 0.15,
@@ -116,8 +123,8 @@
   {
    "id": "b8",
    "type": "fender.marinelayer",
-   "x": -2268,
-   "y": 23,
+   "x": -704,
+   "y": 338,
    "params": {
     "decay": 0.35,
     "mix": 0.18
@@ -128,8 +135,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2468,
-   "y": 30,
+   "x": -939,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -137,8 +144,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2708,
-   "y": 55,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

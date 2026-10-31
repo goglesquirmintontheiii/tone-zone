@@ -12,17 +12,24 @@
  "order": 244,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 40,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 101,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "bx.sd1",
-   "x": -362,
-   "y": 101,
+   "x": -467,
+   "y": 51,
    "params": {
     "level": 0.7,
     "tone": 0.55,
@@ -43,8 +50,8 @@
   {
    "id": "b3",
    "type": "tz.boost",
-   "x": -582,
-   "y": 106,
+   "x": -709,
+   "y": 56,
    "params": {
     "gain": 0.3
    },
@@ -54,8 +61,8 @@
   {
    "id": "b4",
    "type": "mesa.amp-markv",
-   "x": -1120,
-   "y": 0,
+   "x": -1228,
+   "y": -646,
    "params": {
     "gain": 0.6,
     "master": 0.5,
@@ -71,8 +78,8 @@
   {
    "id": "b5",
    "type": "mesa.cab-2x12recto",
-   "x": -1086,
-   "y": 214,
+   "x": -1194,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -93,8 +100,8 @@
   {
    "id": "b6",
    "type": "mx.m117",
-   "x": -1318,
-   "y": 119,
+   "x": -938,
+   "y": 69,
    "params": {
     "speed": 0.3,
     "regen": 0.4
@@ -105,8 +112,8 @@
   {
    "id": "b7",
    "type": "bx.dd8",
-   "x": -1534,
-   "y": 101,
+   "x": -1187,
+   "y": 51,
    "params": {
     "mix": 0.22,
     "feedback": 0.294,
@@ -118,8 +125,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1806,
-   "y": 80,
+   "x": -1575,
+   "y": 26,
    "params": {
     "decay": 0.35,
     "mix": 0.12
@@ -130,8 +137,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2006,
-   "y": 95,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -139,8 +146,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2246,
-   "y": 40,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

@@ -11,17 +11,24 @@
  "order": 282,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 19,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "fm.platpro",
-   "x": -252,
-   "y": 13,
+   "x": -400,
+   "y": 93,
    "params": {
     "mute": 0,
     "boost": 0,
@@ -34,8 +41,8 @@
   {
    "id": "b2",
    "type": "fm.bluechorus",
-   "x": -468,
-   "y": 0,
+   "x": -707,
+   "y": 51,
    "params": {
     "rate": 0.3,
     "depth": 0.3,
@@ -47,8 +54,8 @@
   {
    "id": "b3",
    "type": "fm.echoback",
-   "x": -684,
-   "y": 0,
+   "x": -947,
+   "y": 51,
    "params": {
     "time": 424,
     "feedback": 0.25,
@@ -60,8 +67,8 @@
   {
    "id": "b4",
    "type": "lrb.alignreverb",
-   "x": -882,
-   "y": 22,
+   "x": -1178,
+   "y": 73,
    "params": {
     "mix": 0.3,
     "decay": 0.45
@@ -72,8 +79,8 @@
   {
    "id": "b5",
    "type": "ut.gain",
-   "x": -1070,
-   "y": 52,
+   "x": -1413,
+   "y": 103,
    "params": {
     "level": -6.4
    },
@@ -83,8 +90,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -1310,
-   "y": 19,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

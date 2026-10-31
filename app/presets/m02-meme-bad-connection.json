@@ -10,17 +10,24 @@
  "order": 41,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.dialup",
-   "x": -244,
-   "y": 49,
+   "x": -396,
+   "y": 64,
    "params": {
     "cr.bits": 0.7,
     "cr.mix": 0.4,
@@ -32,8 +39,8 @@
   {
    "id": "b2",
    "type": "tz.lagspike",
-   "x": -538,
-   "y": 10,
+   "x": -866,
+   "y": 16,
    "params": {
     "net.loss": 0.4,
     "net.packets": 0.3,
@@ -45,8 +52,8 @@
   {
    "id": "b3",
    "type": "amp.ac30",
-   "x": -1028,
-   "y": 0,
+   "x": -964,
+   "y": -500,
    "params": {
     "gain": 0.35
    },
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "cab.2x12blue",
-   "x": -1498,
-   "y": 34,
+   "x": -1444,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -72,8 +79,8 @@
   {
    "id": "b5",
    "type": "tz.badwifi",
-   "x": -1798,
-   "y": 31,
+   "x": -1349,
+   "y": 46,
    "params": {
     "loss": 0.5,
     "packets": 0.3,
@@ -85,8 +92,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2038,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

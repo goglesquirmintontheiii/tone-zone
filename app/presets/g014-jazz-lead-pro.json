@@ -11,17 +11,24 @@
  "order": 114,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -29,8 +36,8 @@
   {
    "id": "b2",
    "type": "tz.featherweight",
-   "x": -366,
-   "y": 69.5,
+   "x": -469,
+   "y": 85,
    "params": {
     "sustain": 0.35,
     "level": 0.55,
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "tz.klone",
-   "x": -586,
-   "y": 43,
+   "x": -709,
+   "y": 58,
    "params": {
     "gain": 0.2,
     "tone": 0.42,
@@ -55,8 +62,8 @@
   {
    "id": "b4",
    "type": "amp.jc120",
-   "x": -1076,
-   "y": 0,
+   "x": -964,
+   "y": -500,
    "params": {
     "gain": 0.42,
     "treble": 0.38,
@@ -70,8 +77,8 @@
   {
    "id": "b5",
    "type": "cab.2x12jc",
-   "x": -1546,
-   "y": 34,
+   "x": -1444,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -92,8 +99,8 @@
   {
    "id": "b6",
    "type": "mx.m134",
-   "x": -1812,
-   "y": 54,
+   "x": -1092,
+   "y": 69,
    "params": {
     "rate": 0.2,
     "depth": 0.25,
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "sy.brig",
-   "x": -2010,
-   "y": 50,
+   "x": -1418,
+   "y": 76,
    "params": {
     "time": 713,
     "mix": 0.22,
@@ -121,8 +128,8 @@
   {
    "id": "b8",
    "type": "sy.bluesky",
-   "x": -2284,
-   "y": 50,
+   "x": -1696,
+   "y": 76,
    "params": {
     "decay": 0.4,
     "predelay": 125,
@@ -134,8 +141,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2484,
-   "y": 30,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -143,8 +150,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2724,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

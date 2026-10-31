@@ -1,165 +1,172 @@
 {
-  "version": 1,
-  "name": "Welcome · Brit Crunch",
-  "blocks": [
-    {
-      "id": "b1",
-      "type": "bx.tu3",
-      "x": -146,
-      "y": 120,
-      "params": {},
-      "bypass": true,
-      "variant": "mono"
-    },
-    {
-      "id": "b2",
-      "type": "ib.ts9",
-      "x": -386,
-      "y": 120,
-      "params": {
-        "gain": 0.3,
-        "tone": 0.55,
-        "level": 0.7
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b3",
-      "type": "amp.jcm800",
-      "x": -916,
-      "y": -120,
-      "params": {
-        "gain": 0.55,
-        "master": 0.5
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b4",
-      "type": "cab.4x12gb",
-      "x": -916,
-      "y": 94,
-      "params": {
-        "level": -5
-      },
-      "bypass": false,
-      "variant": "mono"
-    },
-    {
-      "id": "b5",
-      "type": "bx.rv6",
-      "x": -1152,
-      "y": 120,
-      "params": {
-        "mix": 0.3,
-        "decay": 0.45
-      },
-      "bypass": false,
-      "variant": "stereo"
-    },
-    {
-      "id": "__in",
-      "type": "__in",
-      "x": 120,
-      "y": 120,
-      "params": {}
-    },
-    {
-      "id": "__out",
-      "type": "__out",
-      "x": -1392,
-      "y": 120,
-      "params": {}
-    }
-  ],
-  "cables": [
-    {
-      "id": "c6",
-      "from": {
-        "node": "__in",
-        "port": 0
-      },
-      "to": {
-        "node": "b1",
-        "port": 0
-      },
-      "color": "#e8473d"
-    },
-    {
-      "id": "c7",
-      "from": {
-        "node": "b1",
-        "port": 0
-      },
-      "to": {
-        "node": "b2",
-        "port": 0
-      },
-      "color": "#f39c12"
-    },
-    {
-      "id": "c8",
-      "from": {
-        "node": "b2",
-        "port": 0
-      },
-      "to": {
-        "node": "b3",
-        "port": 0
-      },
-      "color": "#f1c40f"
-    },
-    {
-      "id": "c9",
-      "from": {
-        "node": "b3",
-        "port": 0
-      },
-      "to": {
-        "node": "b4",
-        "port": 0
-      },
-      "color": "#2ecc71"
-    },
-    {
-      "id": "c10",
-      "from": {
-        "node": "b4",
-        "port": 0
-      },
-      "to": {
-        "node": "b5",
-        "port": 0
-      },
-      "color": "#3498db"
-    },
-    {
-      "id": "c11",
-      "from": {
-        "node": "b5",
-        "port": 0
-      },
-      "to": {
-        "node": "__out",
-        "port": 0
-      },
-      "color": "#6c5ce7"
-    },
-    {
-      "id": "c12",
-      "from": {
-        "node": "b5",
-        "port": 1
-      },
-      "to": {
-        "node": "__out",
-        "port": 1
-      },
-      "color": "#6c5ce7"
-    }
-  ],
-  "view": null,
-  "factory": true
+ "version": 1,
+ "name": "Welcome · Brit Crunch",
+ "blocks": [
+  {
+   "id": "board1",
+   "type": "pb.tiny",
+   "x": -1028,
+   "y": 0,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bx.tu3",
+   "x": -227,
+   "y": 51,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "ib.ts9",
+   "x": -469,
+   "y": 55,
+   "params": {
+    "gain": 0.3,
+    "tone": 0.55,
+    "level": 0.7
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "amp.jcm800",
+   "x": -726,
+   "y": -804,
+   "params": {
+    "gain": 0.55,
+    "master": 0.5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "cab.4x12gb",
+   "x": -734,
+   "y": -590,
+   "params": {
+    "level": -5
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "bx.rv6",
+   "x": -707,
+   "y": 51,
+   "params": {
+    "mix": 0.3,
+    "decay": 0.45
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 90,
+   "y": 70,
+   "params": {}
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1288,
+   "y": 70,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c6",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c7",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c8",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c9",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c10",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c11",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c12",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  }
+ ],
+ "view": null,
+ "factory": true
 }

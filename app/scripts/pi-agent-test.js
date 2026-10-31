@@ -188,6 +188,19 @@ function piPreset(id, name, withNam) {
   ok(sEv && sEv.dsp > 0 && sEv.cpu >= 0 && sEv.running, `stats: DSP ${sEv && sEv.dsp}%, CPU ${sEv && sEv.cpu}%, ${sEv && sEv.temp} C, ${sEv && sEv.sr} Hz`);
   const devs = await call('GET', '/api/audio/devices');
   ok(devs.inputs.length === 1 && devs.outputs.length === 3 && devs.outputs.some((d) => d.kind === 'builtin'), 'ALSA devices listed (USB in, USB + 3.5 mm + HDMI out)');
+  // under PipeWire the devices are PipeWire's ports, and the agent connects the engine to the chosen ones
+  const aud0 = (await call('GET', '/api/config')).audio;
+  await call('PUT', '/api/config/audio', Object.assign({}, aud0, { server: 'pipewire', devices: undefined }));
+  const pw = await until(async () => { const d = await call('GET', '/api/audio/devices'); return d.inputs.some((x) => x.id === 'pw:system') && d; }, 15000);
+  ok(pw && pw.outputs.some((x) => x.id === 'pw:system' && x.ports.length === 2), 'PipeWire devices listed: ' + JSON.stringify(pw && { in: pw.inputs.map((x) => x.id), out: pw.outputs.map((x) => x.id) }));
+  const linked = await until(async () => {
+    const p = await call('GET', '/api/audio/ports');
+    const has = (n, c) => [...(p.sources || []), ...(p.sinks || [])].some((x) => x.name === n && (x.connections || []).includes(c));
+    return has('Tone Zone:in_1', 'system:capture_1') && has('Tone Zone:out_L', 'system:playback_1') && has('Tone Zone:out_R', 'system:playback_2');
+  }, 15000);
+  ok(linked, 'engine connected to the PipeWire input and output');
+  await call('PUT', '/api/config/audio', Object.assign({}, aud0, { devices: undefined }));
+  await until(async () => (await call('GET', '/api/audio/devices')).outputs.length === 3, 15000);
 
   // ---------------------------------------------------------------- LEDs
   const cfg = (await call('GET', '/api/config')).gpio;
@@ -246,6 +259,19 @@ function piPreset(id, name, withNam) {
         ok(r && typeof r.dsp === 'number', `pushed the editor preset from the tab (DSP ${r && r.dsp}%)`);
         const fromUi = await call('GET', '/api/presets/from-ui');
         ok(fromUi && fromUi.blocks.length > 0 && fromUi.blocks.some((b) => b.params.length), `converted preset has ${fromUi.blocks.length} blocks with editable params`);
+        // Audio: the Pi's real sound cards are listed, and picking one reaches the Pi
+        await win.click('.pi-navbtn[data-section="audio"]');
+        await win.waitForSelector('[data-ctl="audio-list"]', { timeout: 10000 });
+        const aud = await win.evaluate(() => ({
+          rows: [...document.querySelectorAll('[data-ctl="audio-list"] tr')].map((r) => r.textContent),
+          ins: [...document.querySelectorAll('[data-ctl="audio-in"] option')].map((o) => o.value),
+          outs: [...document.querySelectorAll('[data-ctl="audio-out"] option')].map((o) => o.value),
+        }));
+        ok(aud.rows.length === 3 && aud.rows.some((r) => /USB Audio Device/.test(r) && /in \+ out/.test(r)), 'audio page lists every sound card: ' + JSON.stringify(aud.rows));
+        ok(aud.ins.length === 1 && aud.outs.length === 3, `real inputs (${aud.ins.length}) and outputs (${aud.outs.length}) in the pickers`);
+        const hdmi = aud.outs.find((v) => /vc4hdmi/.test(v));
+        await win.selectOption('[data-ctl="audio-out"]', hdmi);
+        ok(await until(async () => (await call('GET', '/api/config')).audio.output === hdmi, 10000), 'picked output reaches the Pi: ' + hdmi);
         ok(!errs.length, 'no renderer errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
       } finally {
         await app.close().catch(() => {});

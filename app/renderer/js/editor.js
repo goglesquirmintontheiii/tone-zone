@@ -13,7 +13,7 @@ import { showMenu } from './menus.js';
 import { footCtrl } from './control.js';
 import { hooksFor } from './plugins.js';
 import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
-import { BOARD_SLOT } from './catalog/pedalboards.js';
+import { BOARD_SLOT, boardFootprint, slotSpan, slotPos, boardable, rowColsOf } from './catalog/pedalboards.js';
 
 
 export class Editor {
@@ -295,18 +295,68 @@ export class Editor {
       : { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1], front: [0, 1] }[p.side] || [1, 0];
     return { x: p.x, y: p.y, dx: dir[0], dy: dir[1], front: p.side === 'front', kind: p.kind || 'inst' };
   }
-  cablePath(a, b) {
+  cablePath(a, b, c) {
     // a, b: plug tips {x,y,dx,dy}. The cable starts at the end of each boot
     const plugLen = (j) => (j.front ? 6 : (JACK_TIP[j.kind] ?? 6) + (PLUG_LENS[j.kind] || 30) - (j.free ? 0 : SLEEVE[j.kind] || 0));
     const la = plugLen(a), lb = plugLen(b);
-    const ax = a.x + a.dx * la, ay = a.y + a.dy * la;
-    const bx = b.x + b.dx * lb, by = b.y + b.dy * lb;
-    const dist = Math.hypot(bx - ax, by - ay);
-    const L = clamp(dist * 0.42, 40, 220);
-    const sag = clamp(dist * 0.28, 22, 180);
-    const c1x = ax + a.dx * L, c1y = ay + a.dy * L + sag;
-    const c2x = bx + b.dx * L, c2y = by + b.dy * L + sag;
-    return `M${ax.toFixed(1)},${ay.toFixed(1)} C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)}`;
+    const A = { x: a.x + a.dx * la, y: a.y + a.dy * la, dx: a.dx, dy: a.dy, front: a.front };
+    const B = { x: b.x + b.dx * lb, y: b.y + b.dy * lb, dx: b.dx, dy: b.dy, front: b.front };
+    // on a pedalboard the cable runs along the gaps between rails instead of over the pedals
+    if (c) {
+      const d = this.boardRoute(c, A, B);
+      if (d) return d;
+    }
+    return 'M' + pt(A) + ' ' + looseCurve(A, B);
+  }
+  // ---- cable routing on pedalboards
+  // the board a block sits on (pedals only)
+  boardOf(id) {
+    const v = this.views.get(id);
+    if (!v || v.def.pedalboard || v.def.coupler || id.startsWith('__')) return null;
+    return this.boardAt(v.block.x + v.w / 2, v.block.y + v.h / 2);
+  }
+  // lanes: the free bands between rows of pedals (and along the top and bottom of the frame), plus the pedal
+  // rectangles cables should stay off. Cached while one batch of cables is drawn.
+  boardLanes(bv) {
+    const cache = this._laneCache;
+    if (cache && cache.has(bv.block.id)) return cache.get(bv.block.id);
+    const S = BOARD_SLOT, rows = bv.def.pedalboard.rows;
+    const bx = bv.block.x, by = bv.block.y, W = bv.w, H = bv.h;
+    const rects = this.boardMembers(bv.block.id).map((id) => { const v = this.views.get(id); return { id, x0: v.block.x, y0: v.block.y, x1: v.block.x + v.w, y1: v.block.y + v.h }; });
+    const lanes = [];
+    for (let k = 0; k <= rows; k++) {
+      const yb = by + S.padY + k * S.h;
+      let top = k === 0 ? by + S.padY - 12 : yb - S.h / 2, bot = k === rows ? by + H - S.padY + 12 : yb + S.h / 2;
+      for (const r of rects) {
+        if (r.y0 < yb - 2 && r.y1 > yb + 2) continue; // a tall pedal standing across the gap
+        if (r.y1 <= yb + 2) top = Math.max(top, r.y1);
+        else bot = Math.min(bot, r.y0);
+      }
+      lanes.push({ y: (top + bot) / 2, half: Math.max(0, (bot - top) / 2) });
+    }
+    const ctx = { bx, by, W, H, rects, lanes, rows, xl: bx + S.padX - 9, xr: bx + W - S.padX + 9, rowOf: (y) => clamp(Math.floor((y - by - S.padY) / S.h), 0, rows - 1) };
+    if (cache) cache.set(bv.block.id, ctx);
+    return ctx;
+  }
+  boardRoute(c, A, B) {
+    const ba = A.front ? null : this.boardOf(c.from.node), bb = B.front ? null : this.boardOf(c.to.node);
+    if (!ba && !bb) return null;
+    let h = 0;
+    for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    const off = (((h >>> 0) % 5) - 2) * 3; // neighbouring cables in a lane don't sit exactly on top of each other
+    const ca = ba && this.boardLanes(ba), cb = bb && (bb === ba ? ca : this.boardLanes(bb));
+    const ea = ba && laneEnd(A, ca, this.views.get(c.from.node)), eb = bb && laneEnd(B, cb, this.views.get(c.to.node));
+    if (ba && ba === bb) {
+      // neighbours: the short natural curve, as long as it doesn't cross a pedal
+      const nat = tightCurve(A, B);
+      if (!curveHits(A, nat, B, ca.rects)) return 'M' + pt(A) + ' C' + pt(nat[0]) + ' ' + pt(nat[1]) + ' ' + pt(B);
+      return roundPath(laneRoute(ca, ea, eb, off), true);
+    }
+    // leaving a board: along a lane (or the frame edge) to the side facing the other end, then the usual curve
+    let head = 'M' + pt(A), tail = '', EA = A, EB = B;
+    if (ba) { const r = exitRoute(ca, ea, bb ? { x: (cb.bx + cb.W / 2), y: cb.by + cb.H / 2 } : B, off); head = roundPath(r.pts, true); EA = r.exit; }
+    if (bb) { const r = exitRoute(cb, eb, EA, off); tail = ' ' + roundPath(r.pts.reverse(), false); EB = r.exit; }
+    return head + ' ' + looseCurve(EA, EB) + tail;
   }
   drawPlug(parent, j, color) {
     return drawPlugGfx(parent, j, color, j.kind);
@@ -316,7 +366,9 @@ export class Editor {
     this.layerShadows.innerHTML = '';
     this.layerPlugs.innerHTML = '';
     this.cableEls.clear();
+    this._laneCache = new Map();
     for (const c of state.preset.cables) this.drawCable(c);
+    this._laneCache = null;
   }
   drawCable(c) {
     if (c.direct) return; // coupler link: the plugs touch, so nothing to draw
@@ -327,7 +379,7 @@ export class Editor {
     let kind = a.kind !== 'any' ? a.kind : b.kind !== 'any' ? b.kind : 'inst';
     if (a.kind === 'any') a.kind = kind;
     if (b.kind === 'any') b.kind = kind;
-    const d = this.cablePath(a, b);
+    const d = this.cablePath(a, b, c);
     const col = c.color || '#e8473d';
     const cw = CABLE_WIDTH[kind] || 5.6;
     const sh = svg('g', { transform: 'translate(5,12)', 'pointer-events': 'none', fill: 'none', stroke: '#000', 'stroke-linecap': 'round' }, this.layerShadows);
@@ -346,6 +398,7 @@ export class Editor {
   }
   updateCablesFor(nodeIds) {
     const set = new Set(nodeIds);
+    this._laneCache = new Map();
     for (const c of state.preset.cables) {
       if (!set.has(c.from.node) && !set.has(c.to.node)) continue;
       const e = this.cableEls.get(c.id);
@@ -356,6 +409,7 @@ export class Editor {
       }
       this.drawCable(c);
     }
+    this._laneCache = null;
   }
 
   // ------------------------------------------------------------ interaction
@@ -440,34 +494,43 @@ export class Editor {
     }
     return out;
   }
-  // drop on a board: put the grabbed block in the nearest free slot and move the rest of the group with it
+  // how far a block's plugs reach past its body (its cabled control jacks count too)
+  boardFoot(v) {
+    const id = v.block.id, used = new Set();
+    for (const c of state.preset.cables) {
+      if (c.from.node === id) used.add('o' + c.from.port);
+      if (c.to.node === id) used.add('i' + c.to.port);
+    }
+    return boardFootprint(v.w, v.h, v.jacks, used);
+  }
+  // drop on a board: put the grabbed block in the nearest free slot and move the rest of the group with it.
+  // A block wider than a slot with its plugs takes two, and plugs never reach into a neighbour.
   boardSnap(ids, grab) {
     const gv = this.views.get(grab);
-    if (!gv || gv.def.pedalboard || gv.def.coupler || ids.some((i) => this.views.get(i)?.def.pedalboard)) return;
+    if (!gv || gv.def.pedalboard || gv.def.coupler || grab.startsWith('__') || ids.some((i) => this.views.get(i)?.def.pedalboard)) return;
     const bv = this.boardAt(gv.block.x + gv.w / 2, gv.block.y + gv.h / 2);
     if (!bv || !bv.slots) return;
-    const { cols, rows } = bv.def.pedalboard, S = BOARD_SLOT;
-    const rowCols = bv.def.pedalboard.rowCols || Array(rows).fill(cols);
-    const rowX = (r) => S.padX + ((cols - rowCols[r]) * S.w) / 2;
+    const pb = bv.def.pedalboard, rc = rowColsOf(pb);
     // floor units, amps and cabs don't go on boards: slide them off below the board
-    const base = gv.def.baseForm;
-    if (gv.w > S.w * 3 || gv.h > S.h * 1.35 || base === 'amp' || base === 'cab' || gv.def.cat === 'Pedalboard') {
+    if (!boardable(gv.def, gv.w, gv.h)) {
       const dy = bv.block.y + bv.h + 40 - gv.block.y;
       for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x, v.block.y + dy); }
       this.updateCablesFor(ids);
       toast(`${gv.def.name} is too big for a pedalboard`, 'info');
       return;
     }
-    // a pedal a little taller than a row (a level meter, say) stands on that row's two rails and sticks out above
-    const tall = gv.h + 6 > S.h;
-    const n = Math.min(cols, Math.ceil((gv.w + 6) / S.w)), m = 1;
-    const others = this.boardMembers(bv.block.id).filter((i) => !ids.includes(i)).map((i) => this.views.get(i));
-    const hits = (x, y) => others.some((o) => x < o.block.x + o.w - 4 && x + gv.w > o.block.x + 4 && y < o.block.y + o.h - 4 && y + gv.h > o.block.y + 4);
+    const f = this.boardFoot(gv);
+    const n = slotSpan(gv.w, f, pb.cols);
+    const others = this.boardMembers(bv.block.id).filter((i) => !ids.includes(i)).map((i) => {
+      const v = this.views.get(i), g = this.boardFoot(v);
+      return { x0: v.block.x - g.l, y0: v.block.y - g.t, x1: v.block.x + v.w + g.r, y1: v.block.y + v.h + g.b };
+    });
+    const hits = (x, y) => others.some((o) => x - f.l < o.x1 - 1 && x + gv.w + f.r > o.x0 + 1 && y - f.t < o.y1 - 1 && y + gv.h + f.b > o.y0 + 1);
     let best = null;
-    for (let r = 0; r <= rows - m; r++)
-      for (let c = 0; c <= rowCols[r] - n; c++) {
-        const x = Math.round(bv.block.x + rowX(r) + c * S.w + (n * S.w - gv.w) / 2);
-        const y = Math.round(bv.block.y + S.padY + r * S.h + (tall ? S.h - gv.h - 4 : (S.h - gv.h) / 2));
+    for (let r = 0; r < pb.rows; r++)
+      for (let c = 0; c <= rc[r] - n; c++) {
+        const p = slotPos(pb, r, c, n, gv.w, gv.h, f);
+        const x = bv.block.x + p.x, y = bv.block.y + p.y;
         const d = Math.hypot(x - gv.block.x, y - gv.block.y) + (hits(x, y) ? 1e6 : 0);
         if (!best || d < best.d) best = { d, x, y };
       }
@@ -898,7 +961,8 @@ export class Editor {
       const range = c.t === 'slider' ? (c.h || 46) * this.view.z * 1.6 : c.t === 'treadle' ? (c.h || 220) * this.view.z * 0.7 : 170;
       const raw = d.start - ((c.t === 'slider' && c.orient === 'h' ? -dx : dy) / range) * fine;
       // an endless encoder wraps around instead of stopping at the ends
-      const pos = c.endless ? ((raw % 1) + 1) % 1 : clamp(raw, 0, 1);
+      const q = c.steps ? Math.round(raw * c.steps) / c.steps : raw; // encoders click round in detent steps
+      const pos = c.endless ? ((q % 1) + 1) % 1 : clamp(q, 0, 1);
       const val = d.alt ? altVal(d.pName, pos) : knobValue(c, pos);
       this.setCtl(v, c, d.pName, val);
       this.showTip(e, c, val);
@@ -1509,6 +1573,123 @@ function wouldCycle(from, to) {
 }
 
 export { engineParamsFor };
+
+// ---- cable geometry
+const pt = (p) => p.x.toFixed(1) + ',' + p.y.toFixed(1);
+// the free hanging cable: out of each plug, sagging under its weight
+function looseCurve(A, B) {
+  const dist = Math.hypot(B.x - A.x, B.y - A.y);
+  const L = clamp(dist * 0.42, 40, 220);
+  const sag = clamp(dist * 0.28, 22, 180);
+  return `C${(A.x + A.dx * L).toFixed(1)},${(A.y + A.dy * L + sag).toFixed(1)} ${(B.x + B.dx * L).toFixed(1)},${(B.y + B.dy * L + sag).toFixed(1)} ${pt(B)}`;
+}
+// a short patch cable between neighbours on a board: shorter reach and less sag, so it stays in the gap
+function tightCurve(A, B) {
+  const dist = Math.hypot(B.x - A.x, B.y - A.y);
+  const L = clamp(dist * 0.4, 4, 40), sag = clamp(dist * 0.12, 2, 14);
+  return [{ x: A.x + A.dx * L, y: A.y + A.dy * L + sag }, { x: B.x + B.dx * L, y: B.y + B.dy * L + sag }];
+}
+function curveHits(A, [c1, c2], B, rects) {
+  for (let i = 1; i < 16; i++) {
+    const t = i / 16, u = 1 - t;
+    const x = u * u * u * A.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * B.x;
+    const y = u * u * u * A.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * B.y;
+    for (const r of rects) if (x > r.x0 - 2 && x < r.x1 + 2 && y > r.y0 - 2 && y < r.y1 + 2) return true;
+  }
+  return false;
+}
+// one end of a routed cable: the plug end, a short stub straight out of the plug, and the lanes it can reach
+// (above or below its row; a jack on top or bottom only has the one it faces)
+function laneEnd(P, ctx, v) {
+  const row = ctx.rowOf(v.block.y + v.h / 2);
+  const opts = P.dy < -0.5 ? [row] : P.dy > 0.5 ? [row + 1] : [row, row + 1];
+  return { p0: { x: P.x, y: P.y }, p1: { x: P.x + P.dx * 9, y: P.y + P.dy * 9 }, opts };
+}
+const laneY = (ctx, k, off) => { const l = ctx.lanes[k]; return l.y + clamp(off, -Math.max(0, l.half - 4), Math.max(0, l.half - 4)); };
+const polyLen = (pts) => { let n = 0; for (let i = 1; i < pts.length; i++) n += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y); return n; };
+// out of one jack, along a lane (changing lanes at the end of the board if they differ) and into the other
+function laneRoute(ctx, e1, e2, off) {
+  let best = null;
+  for (const k1 of e1.opts)
+    for (const k2 of e2.opts) {
+      const y1 = laneY(ctx, k1, off), y2 = laneY(ctx, k2, off);
+      const pts = [e1.p0, e1.p1, { x: e1.p1.x, y: y1 }];
+      if (k1 !== k2) {
+        const xe = Math.abs(e1.p1.x - ctx.xl) + Math.abs(e2.p1.x - ctx.xl) < Math.abs(e1.p1.x - ctx.xr) + Math.abs(e2.p1.x - ctx.xr) ? ctx.xl : ctx.xr;
+        pts.push({ x: xe, y: y1 }, { x: xe, y: y2 });
+      }
+      pts.push({ x: e2.p1.x, y: y2 }, e2.p1, e2.p0);
+      const n = polyLen(pts);
+      if (!best || n < best.n) best = { n, pts };
+    }
+  return best.pts;
+}
+// from a pedal to the edge of its board nearest the other end: out a side along a lane, or up or down the
+// frame edge, or out the top or bottom lane. Returns the points and where the cable leaves the board.
+function exitRoute(ctx, e, T, off) {
+  const cands = [];
+  const top = ctx.by, bot = ctx.by + ctx.H;
+  for (const k of e.opts) {
+    const y = laneY(ctx, k, off);
+    const base = [e.p0, e.p1, { x: e.p1.x, y }];
+    cands.push({ pts: [...base, { x: ctx.bx, y }], exit: { x: ctx.bx, y, dx: -1, dy: 0 } });
+    cands.push({ pts: [...base, { x: ctx.bx + ctx.W, y }], exit: { x: ctx.bx + ctx.W, y, dx: 1, dy: 0 } });
+    for (const xe of [ctx.xl, ctx.xr]) {
+      cands.push({ pts: [...base, { x: xe, y }, { x: xe, y: top }], exit: { x: xe, y: top, dx: 0, dy: -1 } });
+      cands.push({ pts: [...base, { x: xe, y }, { x: xe, y: bot }], exit: { x: xe, y: bot, dx: 0, dy: 1 } });
+    }
+  }
+  // straight out of the top or bottom lane above or below the other end
+  const xt = clamp(T.x, ctx.xl, ctx.xr);
+  for (const [k, ye, dy] of [[0, top, -1], [ctx.rows, bot, 1]]) {
+    const pts = laneRoute(ctx, e, { p0: { x: xt, y: laneY(ctx, k, off) }, p1: { x: xt, y: laneY(ctx, k, off) }, opts: [k] }, off);
+    pts.push({ x: xt, y: ye });
+    cands.push({ pts, exit: { x: xt, y: ye, dx: 0, dy } });
+  }
+  let best = null;
+  for (const c of cands) {
+    const ex = c.exit, vx = T.x - ex.x, vy = T.y - ex.y;
+    // leaving away from the other end costs a long loop back
+    const away = vx * ex.dx + vy * ex.dy < 0 ? 400 : 0;
+    const n = polyLen(c.pts) + Math.hypot(vx, vy) * 1.2 + away;
+    if (!best || n < best.n) best = { n, c };
+  }
+  return best.c;
+}
+// a polyline with rounded corners; long runs along a lane sag a little
+function roundPath(pts0, withM) {
+  const pts = [];
+  for (const p of pts0) {
+    const q = pts[pts.length - 1];
+    if (q && Math.abs(q.x - p.x) < 0.5 && Math.abs(q.y - p.y) < 0.5) continue;
+    // drop a point in the middle of a straight run
+    const o = pts[pts.length - 2];
+    if (o && q && Math.abs((q.x - o.x) * (p.y - q.y) - (q.y - o.y) * (p.x - q.x)) < 0.5 && (q.x - o.x) * (p.x - q.x) + (q.y - o.y) * (p.y - q.y) > 0) pts.pop();
+    pts.push(p);
+  }
+  let d = withM ? 'M' + pt(pts[0]) : '';
+  let cur = pts[0];
+  const seg = (to) => {
+    const len = Math.abs(to.x - cur.x);
+    if (Math.abs(to.y - cur.y) < 0.5 && len > 60) d += ` Q${((cur.x + to.x) / 2).toFixed(1)},${(cur.y + Math.min(7, len * 0.012) * 2).toFixed(1)} ${pt(to)}`;
+    else d += ' L' + pt(to);
+    cur = to;
+  };
+  const n = pts.length;
+  for (let i = 1; i < n; i++) {
+    const p = pts[i];
+    if (i === n - 1) { seg(p); break; }
+    const a = pts[i - 1], b = pts[i + 1];
+    const l1 = Math.hypot(p.x - a.x, p.y - a.y), l2 = Math.hypot(b.x - p.x, b.y - p.y);
+    const r = Math.min(16, i === 1 ? l1 : l1 / 2, i === n - 2 ? l2 : l2 / 2);
+    const s = { x: p.x - ((p.x - a.x) / l1) * r, y: p.y - ((p.y - a.y) / l1) * r };
+    const e = { x: p.x + ((b.x - p.x) / l2) * r, y: p.y + ((b.y - p.y) / l2) * r };
+    seg(s);
+    d += ` Q${pt(p)} ${pt(e)}`;
+    cur = e;
+  }
+  return d.trim();
+}
 
 // Cable look per type: 1/4" glossy, XLR thick matte rubber, headphone thin and coiled, control cables dotted.
 function cableBody(g, d, col, kind, cw) {

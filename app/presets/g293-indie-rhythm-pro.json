@@ -12,17 +12,24 @@
  "order": 393,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tc.polytune3",
-   "x": -144,
-   "y": 43,
+   "x": -226,
+   "y": 58,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "bx.cs3",
-   "x": -360,
-   "y": 36,
+   "x": -467,
+   "y": 51,
    "params": {
     "level": 0.55,
     "sustain": 0.35
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "eqd.westwood",
-   "x": -534,
-   "y": 65,
+   "x": -686,
+   "y": 80,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -51,8 +58,8 @@
   {
    "id": "b4",
    "type": "vox.amp-ac15",
-   "x": -1116,
-   "y": 0,
+   "x": -1085,
+   "y": -500,
    "params": {
     "a.gain": 0.45,
     "a.treble": 0.55,
@@ -69,8 +76,8 @@
   {
    "id": "b5",
    "type": "vox.cab-ac15",
-   "x": -1436,
-   "y": 47,
+   "x": -1415,
+   "y": -406,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -91,8 +98,8 @@
   {
    "id": "b6",
    "type": "ehx.nanoclone",
-   "x": -1646,
-   "y": 47,
+   "x": -944,
+   "y": 62,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -100,8 +107,8 @@
   {
    "id": "b7",
    "type": "ehx.holygrail",
-   "x": -1892,
-   "y": 47,
+   "x": -1322,
+   "y": 62,
    "params": {
     "mix": 0.25,
     "gmode": 0
@@ -112,8 +119,8 @@
   {
    "id": "b8",
    "type": "tz.meter",
-   "x": -2092,
-   "y": 30,
+   "x": -1659,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -121,8 +128,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2332,
-   "y": 55,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

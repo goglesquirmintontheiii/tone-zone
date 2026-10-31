@@ -3,6 +3,7 @@
 import { svg } from '../util.js';
 import { ScreenRuntime, SCREEN_PALETTE } from './runtime.js';
 import { makeHost, simIO } from './host.js';
+import { codeSig } from './files.js';
 
 export const DEFAULT_RES = 4; // canvas pixels per millimetre
 const MAX_W = 480, MAX_H = 320;
@@ -30,7 +31,7 @@ export function rememberCanvas(id, canvas, src) {
 function stillFor(c, design) {
   design = design || designs.get(c.id);
   const { W, H } = screenPixels(c);
-  const key = c.id + '|' + W + 'x' + H + '|' + (c.type || '') + '|' + (c.script || '');
+  const key = c.id + '|' + W + 'x' + H + '|' + (c.type || '') + '|' + codeSig(c, design);
   if (stills.has(key)) return stills.get(key);
   let url = null;
   try {
@@ -50,7 +51,7 @@ function stillFor(c, design) {
 }
 export function frameURL(c, design) {
   const L = live.get(c.id);
-  if (L && L.src === (c.script || '') && L.canvas.width) {
+  if (L && L.src === codeSig(c, design || designs.get(c.id)) && L.canvas.width) {
     const now = performance.now();
     if (!L.url || now - L.at > 400) {
       try {

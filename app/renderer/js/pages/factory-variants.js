@@ -39,7 +39,7 @@ export const CONTROL_TYPES = {
     name: 'Encoder', make: () => base({ id: uid('e'), kind: 'knob', part: 'encoder', r: 8, value: 0.5 }), sample: [{ kind: 'knob', part: 'encoder', r: 7.5, value: 0.6 }, 1.15],
     variants: [
       { name: 'Knurled', set: { cap: 'knurl', push: true } }, { name: 'Rubber', set: { cap: 'rubber', push: false } }, { name: 'Aluminium', set: { cap: 'alu', push: true } },
-      { name: 'LED ring', cap: 'LED ring encoder', set: { cap: 'rubber', push: false, r: 7, ring: true, ringN: 12, ringMode: 'arc', ringColor: '#38f07a' }, tile: { r: 6, value: 0.62 }, scale: 1.2 },
+      { name: 'LED ring', cap: 'LED ring encoder', set: { cap: 'rubber', push: false, r: 7, ring: true, ringN: 12, ringMode: 'arc', ringColor: '#38f07a', ringIn: 'one' }, tile: { r: 6, value: 0.62 }, scale: 1.2 },
     ],
   },
   trim: {

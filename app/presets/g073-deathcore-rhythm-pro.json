@@ -13,17 +13,24 @@
  "order": 173,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.small",
+   "x": -1988,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 100,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "tz.tuner",
-   "x": -150,
-   "y": 104,
+   "x": -229,
+   "y": 54,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "dt.drop",
-   "x": -366,
-   "y": 108,
+   "x": -467,
+   "y": 58,
    "params": {
     "dsel": 2
    },
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "tc.ironcurtain",
-   "x": -560,
-   "y": 122,
+   "x": -696,
+   "y": 76,
    "params": {
     "threshold": 0.5
    },
@@ -53,8 +60,8 @@
   {
    "id": "b4",
    "type": "ib.ts9",
-   "x": -780,
-   "y": 105,
+   "x": -949,
+   "y": 55,
    "params": {
     "gain": 0,
     "tone": 0.6,
@@ -66,8 +73,8 @@
   {
    "id": "b5",
    "type": "peavey.amp-6505plus",
-   "x": -1406,
-   "y": 0,
+   "x": -1272,
+   "y": -804,
    "params": {
     "gain": 0.62,
     "bass": 0.6,
@@ -84,8 +91,8 @@
   {
    "id": "b6",
    "type": "cab.4x12v30",
-   "x": -1348,
-   "y": 214,
+   "x": -1214,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "tz.ladder",
-   "x": -1682,
-   "y": 122.5,
+   "x": -1337,
+   "y": 73,
    "params": {
     "b0": 1.5,
     "b1": -1.5,
@@ -123,8 +130,8 @@
   {
    "id": "b8",
    "type": "bx.ns2",
-   "x": -1898,
-   "y": 101,
+   "x": -1667,
+   "y": 51,
    "params": {
     "threshold": 0.45,
     "decay": 0.3
@@ -135,8 +142,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2098,
-   "y": 95,
+   "x": -1899,
+   "y": 45,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -144,8 +151,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2338,
-   "y": 100,
+   "x": -2248,
+   "y": 70,
    "params": {}
   }
  ],

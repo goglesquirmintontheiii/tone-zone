@@ -5,6 +5,7 @@ import { originals3 } from './originals3.js';
 import { originals4 } from './originals4.js';
 import { originals5 } from './originals5.js';
 import { pedalboards } from './pedalboards.js';
+import { nautica } from './nautica.js';
 import { K, SEL, FOOT, LED, SCREEN, def, MONO, STEREO, db } from './helpers.js';
 
 export const CATEGORIES = ['Overdrive', 'Distortion', 'Fuzz', 'Boost', 'Amp', 'Bass Amp', 'Preamp', 'Cab', 'Bass Cab', 'Dynamics', 'EQ', 'Filter', 'Modulation', 'Pitch', 'Delay', 'Reverb', 'Synth', 'Acoustic', 'Looper', 'Volume', 'Wah', 'Multi-FX', 'Utility', 'Control', 'Device', 'NAM', 'IR'];
@@ -35,7 +36,7 @@ function finalize(d) {
   return d;
 }
 
-[...originals, ...originals2, ...originals3, ...originals4, ...originals5, ...pedalboards, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
+[...originals, ...originals2, ...originals3, ...originals4, ...originals5, ...nautica, ...pedalboards, ...coreGear, ...boxes, ...converters, ...ioDefs].forEach((d) => registry.set(d.id, finalize(d)));
 
 // ---- plugin registration
 export function registerPluginDefs(pluginId, defs, defaults = {}) {

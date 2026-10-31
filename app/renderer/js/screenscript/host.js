@@ -13,8 +13,57 @@
 //   screenPorts()          -> { ins: [{name, sig}], outs: [{name, sig}] }
 // New circuit signals plug in with addSignalSource() / addInputSink() below, without touching this file.
 // io.cid is the id of the screen the host runs (for its inputs and outputs).
+//   files                  -> the pedal's FileStore (files.js), shared by all its screens; null when there is none
+//   codeFile(path)         -> the text of a code file saved with the design (require), or null
+//   audio                  -> script audio, below
+//
+// ---- Script audio: the contract with the engine side
+// Lua runs in the renderer at the screen's frame rate (20 to 30 a second), so it never touches samples. It reads
+// analysis the engine reports and drives engine side generators, sample players and simple processors by id.
+// The engine side registers a backend with setAudioBackend(backend) (circuit code, not this folder). Without one
+// the board falls back to the level meters (gen, buffer and fx give false), and the code editor preview uses a
+// fake (audio.js) with a demo guitar and the script's own generators.
+//
+//   backend.analysis(ctx, jack, want) -> { rms, peak, bands, wave, pitch, onset } or null
+//       jack = { dir: 'in' | 'out', index, name, id } (index: the block's audio port, inputs and outputs counted
+//       apart, main output first, as jackList() in factory-circuit.js). want = { bands: 4..64, wave: 16..1024 }.
+//       rms and peak 0..1, bands 0..1 (log spaced centres from 40 Hz to 16 kHz, a dB scale from -72 to 0),
+//       wave the last samples (-1..1, newest last), pitch in Hz (0 = none), onset a counter that goes up at
+//       each note start. Called at most once per jack per frame; values from the last status are fine.
+//   backend.gen(ctx, id, params) -> true when taken. Start or update a generator. Sent only when params change.
+//       params = { type: sine | square | saw | tri | pulse | noise | sample, freq (Hz), amp (0..1), pw (0..1),
+//         attack, decay, release (seconds), sustain (0..1), gate (true starts the envelope, false releases it;
+//         with no envelope fields and no gate it just plays), trig (a counter: each new value restarts the
+//         note or the sample), buffer (a buffer id, for sample), loop (bool), rate (1 = as written), start (0..1),
+//         pan (-1..1), to: { dir: 'out', index } (added to that output after the circuit) | { dir: 'in', index }
+//         (added to that input before the circuit) | { circuit: name } (a circuit input part for script audio,
+//         by its name) }
+//   backend.stop(ctx, id)           -> stop and forget one generator or processor
+//   backend.buffer(ctx, id, samples, rate) -> true. samples: Float32Array (-1..1), up to 96000; rate in Hz
+//   backend.fx(ctx, id, params)     -> true when taken. A processor on a jack: { type: gain | lowpass | highpass
+//         | bandpass | drive, jack: { dir, index }, gain (linear), freq (Hz), q, amount (0..1), mix (0..1) }
+//   backend.reset(ctx)              -> drop everything one screen made (ctx.screen), when it starts again
+//   backend.jacks(ctx)              -> optional, the jacks as above (default: the design's audio jacks)
+//   ctx = { design, block, blockId, def, mode ('board' | 'test' | 'sim'), screen (the screen's id) }
+// Ids are unique per block: the bridge puts the screen id in front ("<screen>:<script id>"). Each screen has at
+// most 16 generators, 16 processors and 192000 samples of buffers. There is no per sample script code: a
+// script that wants its own sound writes it into a buffer (a wavetable or a short sample) and plays that.
+// Engine work should stay small: a handful of oscillators and one filter per jack. A block removed from the
+// board should drop what its scripts made.
 import { clamp } from '../util.js';
 import { circuitOutputs, outKey, readLink } from '../pages/factory-circuit.js';
+import { audioJacks, findJack, fakeAudio, levelAnalysis, GEN_TYPES, FX_TYPES, MAX_GENS, MAX_BUFFER, MAX_BUFFERS, MAX_BINS, MIN_BINS, MAX_WAVE } from './audio.js';
+import { sandboxStore, scratchStore, storedText, codeFiles } from './files.js';
+
+let backend = null;
+/** The engine side of script audio (see the contract above). Returns a function that removes it. */
+export function setAudioBackend(b) {
+  backend = b || null;
+  return () => {
+    if (backend === b) backend = null;
+  };
+}
+export const audioBackend = () => backend;
 
 const sources = [];
 const sinks = [];
@@ -48,7 +97,7 @@ export function controlList(D) {
     if (c.hidden) continue;
     const label = (c.label || '').trim();
     const base = { id: c.id, label, param: c.param || '', src: c };
-    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5, enc: c.part === 'encoder', wrap: c.part === 'encoder' && c.encMode !== 'clamp' });
+    if (KNOBLIKE.has(c.kind)) add({ ...base, kind: 'knob', p: 'u.' + c.id, def: c.value ?? 0.5, enc: c.part === 'encoder', wrap: c.part === 'encoder' && c.encMode !== 'clamp', steps: c.part === 'encoder' ? Math.max(4, Math.min(64, Math.round(c.encSteps || 24))) : 0 });
     else if (c.kind === 'toggle' || c.kind === 'sel') {
       const n = c.kind === 'toggle' ? c.ways || 2 : c.n || 4;
       const opts = (c.opts || []).slice(0, n);
@@ -333,6 +382,7 @@ export function makeHost(design, io) {
     // per frame: levels, envelope and a fresh param cache
     beginFrame(now) {
       paramCache = null;
+      if (host.audio) host.audio.frame();
       const dt = lastFrame ? clamp((now - lastFrame) / 1000, 0, 0.5) : 0.05;
       lastFrame = now;
       lv.t = now / 1000;
@@ -350,7 +400,19 @@ export function makeHost(design, io) {
     store: () => (io.storeGet ? io.storeGet() : null),
     saveStore: (o) => io.storeSet && io.storeSet(o),
     log: (m) => io.log && io.log(m),
+    // ---- files: the pedal's store (shared by its screens) and the design's code files
+    get files() {
+      return io.files || null;
+    },
+    codeFile(path) {
+      const F = design && design.files;
+      if (!F || !Object.prototype.hasOwnProperty.call(F, path)) return null;
+      return storedText(F[path]);
+    },
+    codeFiles: () => codeFiles(design).map((f) => f.path),
+    audio: null,
   };
+  host.audio = makeAudio(design, io, ctx);
   // the screen this host belongs to, and where circuit outputs sit in the status
   function screenCtl() {
     const id = io.cid;
@@ -375,6 +437,155 @@ export function makeHost(design, io) {
     return 0.5 + 0.5 * Math.sin(lv.t * Math.PI * 2 * hz);
   }
   return host;
+}
+
+// ------------------------------------------------------------------ script audio (the bridge side)
+const sameParams = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function makeAudio(design, io, hctx) {
+  const jacks = audioJacks(design);
+  const ctx = {
+    get design() { return design; },
+    get block() { return io.block; },
+    get blockId() { return io.blockId || (io.block && io.block.id) || null; },
+    get def() { return io.def; },
+    mode: io.mode,
+    get screen() { return io.cid || ''; },
+  };
+  const be = () => io.audio || backend; // the preview brings its own fake
+  const key = (id) => (io.cid || '') + ':' + String(id);
+  const sent = new Map(); // id -> params last sent (generators and processors)
+  const bufs = new Map(); // id -> samples
+  let cache = new Map();
+  const jackList = () => {
+    const b = be();
+    try {
+      const own = b && b.jacks && b.jacks(ctx);
+      if (Array.isArray(own) && own.length) return own;
+    } catch (_) {
+      /* the design's jacks */
+    }
+    return jacks;
+  };
+  const A = {
+    jacks: () => jackList().map((j) => ({ ...j })),
+    find: (name) => findJack(jackList(), name),
+    ready: () => !!be(),
+    frame() {
+      cache = new Map();
+    },
+    /** Analysis of a jack (by name, see findJack), cached for the frame. */
+    analysis(name, want = {}) {
+      const j = findJack(jackList(), name);
+      if (!j) return null;
+      const nb = Math.max(MIN_BINS, Math.min(MAX_BINS, Math.round(want.bands || 32)));
+      const nw = Math.max(16, Math.min(MAX_WAVE, Math.round(want.wave || 128)));
+      const k = j.dir + j.index + '|' + nb + '|' + nw;
+      if (cache.has(k)) return cache.get(k);
+      let r = null;
+      const b = be();
+      try {
+        r = b && b.analysis ? b.analysis(ctx, j, { bands: nb, wave: nw }) : null;
+      } catch (_) {
+        r = null;
+      }
+      if (!r) {
+        let L = null;
+        try {
+          L = io.levels ? io.levels() : null;
+        } catch (_) {
+          L = null;
+        }
+        r = levelAnalysis(L, j);
+      }
+      cache.set(k, r);
+      return r;
+    },
+    /** Resolve "to" (a jack name or "circuit:<name>") for the engine. */
+    target(to) {
+      if (to === undefined || to === null || to === '') return { dir: 'out', index: 0 };
+      const s = String(to);
+      if (/^circuit(:|$)/i.test(s)) return { circuit: s.slice(8).trim() };
+      const j = findJack(jackList(), s);
+      if (!j) throw new Error(`there is no audio jack "${s}" (jacks: ${jackList().map((x) => x.name).join(', ')})`);
+      return { dir: j.dir, index: j.index };
+    },
+    gen(id, params) {
+      const b = be();
+      if (!b || !b.gen) return false;
+      if (!GEN_TYPES.includes(params.type)) throw new Error(`audio: type is ${GEN_TYPES.join(', ')}`);
+      const k = key(id);
+      if (!sent.has('g' + k) && [...sent.keys()].filter((x) => x.startsWith('g')).length >= MAX_GENS) throw new Error(`audio: a screen can run ${MAX_GENS} generators at most (stop some with audio.stop)`);
+      const last = sent.get('g' + k);
+      if (last && sameParams(last, params)) return true;
+      let ok = false;
+      try {
+        ok = !!b.gen(ctx, k, params);
+      } catch (_) {
+        ok = false;
+      }
+      if (ok) sent.set('g' + k, params);
+      return ok;
+    },
+    fx(id, params) {
+      const b = be();
+      if (!b || !b.fx) return false;
+      if (!FX_TYPES.includes(params.type)) throw new Error(`audio.fx: type is ${FX_TYPES.join(', ')}`);
+      const k = key(id);
+      if (!sent.has('f' + k) && [...sent.keys()].filter((x) => x.startsWith('f')).length >= MAX_GENS) throw new Error(`audio.fx: a screen can have ${MAX_GENS} processors at most`);
+      const last = sent.get('f' + k);
+      if (last && sameParams(last, params)) return true;
+      let ok = false;
+      try {
+        ok = !!b.fx(ctx, k, params);
+      } catch (_) {
+        ok = false;
+      }
+      if (ok) sent.set('f' + k, params);
+      return ok;
+    },
+    stop(id) {
+      const k = key(id);
+      const had = sent.delete('g' + k) | sent.delete('f' + k);
+      const b = be();
+      try {
+        if (b && b.stop) b.stop(ctx, k);
+      } catch (_) {
+        /* gone already */
+      }
+      return !!had;
+    },
+    buffer(id, samples, rate) {
+      const b = be();
+      if (!b || !b.buffer) return false;
+      if (samples.length > MAX_BUFFER) throw new Error(`audio.buffer: ${samples.length} samples is too many (${MAX_BUFFER} at most, 2 seconds at 48 kHz)`);
+      const k = key(id);
+      let total = samples.length;
+      for (const [x, v] of bufs) if (x !== k) total += v.length;
+      if (total > MAX_BUFFERS) throw new Error(`audio.buffer: the screen's buffers would hold ${total} samples (${MAX_BUFFERS} at most)`);
+      let ok = false;
+      try {
+        ok = !!b.buffer(ctx, k, samples, rate);
+      } catch (_) {
+        ok = false;
+      }
+      if (ok) bufs.set(k, samples);
+      return ok;
+    },
+    bufferKey: key,
+    /** Forget everything this screen made (a restart). */
+    reset() {
+      sent.clear();
+      bufs.clear();
+      const b = be();
+      try {
+        if (b && b.reset) b.reset(ctx);
+      } catch (_) {
+        /* nothing to reset */
+      }
+    },
+    stats: () => ({ gens: [...sent.keys()].filter((x) => x.startsWith('g')).length, fx: [...sent.keys()].filter((x) => x.startsWith('f')).length, samples: [...bufs.values()].reduce((n, v) => n + v.length, 0) }),
+  };
+  return A;
 }
 
 // ------------------------------------------------------------------ a simulated pedal (editor, factory preview)
@@ -431,7 +642,11 @@ export function simIO(design, o = {}) {
     storeSet: (s) => (sim.store = s),
     screenIn: (i) => sim.ports.get(i), // simulated screen inputs (0 based)
     log: o.log,
+    // the pedal's files: a sandbox per design in memory (the code editor can keep them in the design)
+    files: o.files !== undefined ? o.files : o.readOnly ? scratchStore(design) : sandboxStore(design),
+    audio: null,
   };
+  sim.audio = io.audio = fakeAudio(sim);
   if (o.def) def = o.def;
   return { io, sim };
 }

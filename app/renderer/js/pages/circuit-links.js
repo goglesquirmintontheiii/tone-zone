@@ -12,11 +12,12 @@
 // ({ctl, sw: 'cw' | 'ccw'}, block params u.<id>.cw / .ccw that the control layer sets to 1 for a moment per detent
 // step, makePulser below) and count steps (u.<id>.n). c.encMode: 'wrap' (default, round and round), 'clamp'
 // (stops at the ends) or 'relative' (what it drives gets the step count). An encoder's LED ring follows the
-// encoder unless something is wired to it: c.ringFrom (analog, the arc or dot position) and c.ringLeds {i: ref}
-// (binary, one LED each).
+// encoder unless something is wired to it: c.ringFrom (analog, the arc or dot position) and c.ringLeds (one input
+// per LED, its brightness, or red / green / blue inputs: see factory-ring.js).
 // Values: a source reads as t (0..1; binary sources 0 or 1) and raw (circuit and screen outputs as they are).
 // A binary destination is on above 0.5; an analog one takes t (LED brightness, heel to toe, knob position).
 import { clamp } from '../util.js';
+import { ringOut, ringAnyWired } from './factory-ring.js';
 
 export const isRef = (r) => !!r && typeof r === 'object' && !!(r.n || r.ctl || r.jack || r.scr);
 /** Port key of a source in the wiring diagram. */
@@ -220,6 +221,7 @@ export function linkLedFn(X, c) {
     const v = readRef(X, r, ui, st, b);
     if (!v) return null;
     if (bin) return v.t > 0.5 ? true : null;
+    if (c.look === 'meter') return v.t >= 0.02 ? v.t : null; // a meter bar lights as far as the level
     if (v.t < 0.02) return null;
     return v.t > 0.98 ? true : dimmed(color, v.t);
   };
@@ -228,7 +230,7 @@ export function linkLedFn(X, c) {
 // ------------------------------------------------------------------ encoders
 export const ENC_STEPS = 24; // detent steps over the knob's 0..1
 /** Encoder state {last, acc} moved to position v: whole steps turned (CW positive). */
-export function encSteps(st, v, wrap) {
+export function encSteps(st, v, wrap, steps = ENC_STEPS) {
   if (st.last == null) {
     st.last = v;
     return 0;
@@ -239,7 +241,7 @@ export function encSteps(st, v, wrap) {
     else if (d < -0.5) d += 1;
   }
   st.last = v;
-  st.acc = (st.acc || 0) + d * ENC_STEPS;
+  st.acc = (st.acc || 0) + d * steps;
   const n = st.acc > 0 ? Math.floor(st.acc + 1e-6) : Math.ceil(st.acc - 1e-6);
   st.acc -= n;
   return n;
@@ -272,28 +274,11 @@ export function makePulser(set) {
     if (!s.busy) run(k, e);
   };
 }
-/** ledFn for an encoder's ring wired in the diagram: {v} and / or {leds}, null to follow the knob. */
+/** ledFn for an encoder's ring wired in the diagram: {v}, {leds} and / or {col} (factory-ring.js), null to follow the knob. */
 export function ringFn(X, c) {
-  const n = clamp(Math.round(c.ringN || 12), 2, 32);
-  const src = isRef(c.ringFrom) ? c.ringFrom : null;
-  const per = Object.entries(c.ringLeds || {}).filter(([i, r]) => isRef(r) && +i < n);
-  return (ui, b, st) => {
-    const o = {};
-    if (src) {
-      const v = readRef(X, src, ui, st, b);
-      o.v = v ? v.t : 0;
-    }
-    if (per.length) {
-      o.leds = new Array(n).fill(null);
-      for (const [i, r] of per) {
-        const v = readRef(X, r, ui, st, b);
-        o.leds[+i] = !!v && v.t > 0.5;
-      }
-    }
-    return o;
-  };
+  return (ui, b, st) => ringOut(c, (r) => readRef(X, r, ui, st, b), isRef);
 }
-export const ringWired = (c) => isEnc(c) && !!c.ring && (isRef(c.ringFrom) || Object.values(c.ringLeds || {}).some(isRef));
+export const ringWired = (c) => isEnc(c) && !!c.ring && ringAnyWired(c, isRef);
 
 // ------------------------------------------------------------------ where a design uses its sources
 /** Every direct link of design D: [{ref, dst: {led, ch} | {jout} | {screen, si} | {cin}}]. */

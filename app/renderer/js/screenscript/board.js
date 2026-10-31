@@ -1,21 +1,64 @@
 // Custom screens on the board: saved factory pedals run their screen scripts here. The board's status tick
 // (about 22 per second, only for blocks in view) draws a frame; pointer input comes through screenPointer.
 import { registerScreen } from '../screens.js';
-import { state, uiParams, setParam, setBypass, engineParamsFor, blockById } from '../state.js';
+import { state, uiParams, setParam, setBypass, engineParamsFor, blockById, markDirty } from '../state.js';
 import { getDef } from '../catalog/index.js';
 import { ScreenRuntime } from './runtime.js';
 import { makeHost } from './host.js';
 import { svg } from '../util.js';
 import { screenPixels, paletteOf, isCustom, rememberCanvas, rememberDesign } from './surface.js';
+import { FileStore, mainBytes, codeSig } from './files.js';
+
+// the files of each block on the board: the design's files with what its scripts wrote on top, saved in the
+// block's params (_fs, so with the preset) a moment after the last write. All screens of the block share it.
+const stores = new Map(); // blockId -> { store, raw, D }
+function parseFs(raw) {
+  try {
+    const o = raw ? JSON.parse(raw) : {};
+    return o && typeof o === 'object' ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+export function blockFiles(blockId, B, D) {
+  let e = stores.get(blockId);
+  if (!e) {
+    e = { raw: null, D };
+    e.store = new FileStore({
+      base: () => (e.D && e.D.files) || null,
+      fixed: () => mainBytes(e.D),
+      save: (over) => {
+        if (!blockById(blockId)) return;
+        const js = JSON.stringify(over);
+        e.raw = js;
+        setParam(blockId, '_fs', js, { silent: true });
+        markDirty(true);
+      },
+    });
+    stores.set(blockId, e);
+  }
+  if (D) e.D = D;
+  // a preset load or an undo brings other files
+  const raw = (B() && B().params && B().params._fs) || '';
+  if (e.raw !== raw) {
+    e.raw = raw;
+    e.store.dirty = false;
+    e.store.setOverlay(parseFs(raw));
+  }
+  return e.store;
+}
 
 const peaks = (a) => (Array.isArray(a) && a.length ? Math.max(0, ...a.slice(0, 2)) : 0);
 /** Raw access for a block on the board. */
-export function boardIO(blockId, fallback, cid) {
+export function boardIO(blockId, fallback, cid, design) {
   let ui = null, lastSet = 0;
   const B = () => blockById(blockId) || fallback;
+  const files = blockFiles(blockId, B, design);
   return {
     mode: 'board',
     cid, // the screen (its own inputs and outputs)
+    blockId,
+    files,
     get block() {
       return B();
     },
@@ -24,6 +67,7 @@ export function boardIO(blockId, fallback, cid) {
     },
     beginFrame() {
       ui = null;
+      blockFiles(blockId, B); // picks up files a preset load brought
     },
     get(p) {
       if (!ui) ui = uiParams(B());
@@ -89,7 +133,16 @@ function install() {
   );
   // forget runtimes of blocks that are gone
   setInterval(() => {
-    for (const [k, ent] of running) if (!(ent.img && ent.img.isConnected) && performance.now() - ent.seen > 20000) running.delete(k);
+    for (const [k, ent] of running) {
+      if (!(ent.img && ent.img.isConnected) && performance.now() - ent.seen > 20000) {
+        ent.rt.stop();
+        running.delete(k);
+      }
+    }
+    for (const [id, e] of stores) if (!blockById(id) && ![...running.keys()].some((k) => k.startsWith(id + '|'))) {
+      e.store.flush();
+      stores.delete(id);
+    }
   }, 10000);
 }
 /** The keyboard goes to this runtime until the next click elsewhere. */
@@ -104,7 +157,7 @@ function present(ent, now) {
   ent.shown = now;
   let h = 0;
   try {
-    const d = new Uint32Array(ent.rt.g.getImageData(0, 0, ent.W, ent.H).data.buffer);
+    const d = new Uint32Array(ent.rt.g.getImageData(0, 0, ent.canvas.width, ent.canvas.height).data.buffer);
     for (let i = 0; i < d.length; i += 1) h = (Math.imul(h, 31) + d[i]) | 0;
   } catch (_) {
     h = now;
@@ -117,6 +170,28 @@ function present(ent, now) {
     /* keep the last image */
   }
 }
+// Big screens are drawn at a lower resolution while they're small on screen: full detail when the mouse is over
+// one or the board is zoomed past 140%, and less the further out you zoom. Small screens always run at full size.
+const LOD_MIN_PX = 160 * 100; // screens with fewer canvas pixels than this are cheap enough as they are
+const LOD_STEPS = [1, 0.75, 0.55, 0.4, 0.3, 0.22, 0.16, 0.12];
+export function screenScale(ent, boardW, hovered) {
+  if (ent.W * ent.H < LOD_MIN_PX || hovered) return 1;
+  const z = (window.__tz && window.__tz.editor && window.__tz.editor.view && window.__tz.editor.view.z) || 1;
+  if (Math.round(z * 100) > 140) return 1;
+  // about as many backing pixels as the screen covers on the display, a bit under so it's always a saving
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const want = (0.8 * boardW * z * dpr) / ent.W; // boardW is in board units, which are CSS pixels at 100%
+  return LOD_STEPS.find((k) => k <= want) || LOD_STEPS[LOD_STEPS.length - 1];
+}
+function applyScale(s, ent) {
+  const k = screenScale(ent, s.ctl.w, !!(s.view.g && s.view.g._hover));
+  if (k === ent.rt.k) return;
+  // going down waits a little (zooming through levels shouldn't resize every frame); going up is instant
+  const now = performance.now();
+  if (k < ent.rt.k && now - (ent.scaleAt || 0) < 400) return;
+  ent.scaleAt = now;
+  if (ent.rt.setScale(k)) ent.shown = 0;
+}
 const IMPL = {
   override: true,
   build(s, g, w, h, nv) {
@@ -124,11 +199,12 @@ const IMPL = {
     const { W, H } = screenPixels(c);
     const key = nv.block.id + '|' + c.id;
     let ent = running.get(key);
-    if (!ent || ent.src !== (c.script || '') || ent.W !== W || ent.H !== H || ent.type !== c.type) {
+    const sig = codeSig(c, s.ctl.design);
+    if (!ent || ent.src !== sig || ent.W !== W || ent.H !== H || ent.type !== c.type) {
       const canvas = document.createElement('canvas');
-      const host = makeHost(s.ctl.design, boardIO(nv.block.id, nv.block, c.id));
+      const host = makeHost(s.ctl.design, boardIO(nv.block.id, nv.block, c.id, s.ctl.design));
       const rt = new ScreenRuntime({ src: c.script || '', w: W, h: H, host, canvas, readBack: true, palette: paletteOf(c), screen: { type: c.type, name: c.label || '' } });
-      ent = { rt, canvas, src: c.script || '', W, H, type: c.type, last: 0, shown: 0, hash: 0, seen: performance.now() };
+      ent = { rt, canvas, src: sig, W, H, type: c.type, last: 0, shown: 0, hash: 0, seen: performance.now() };
       running.set(key, ent);
     }
     ent.seen = performance.now();
@@ -149,6 +225,7 @@ const IMPL = {
     ent.seen = now;
     if (now - ent.last < 38) return;
     ent.last = now;
+    applyScale(s, ent);
     ent.rt.frame(now);
     present(ent, now);
   },
@@ -179,11 +256,14 @@ export function attachBoardScreens(ctx, D, S) {
     if (!grp) continue;
     grp.dataset.ctl = c.id;
     grp.classList.add('ctl', 'ss-board');
+    // full resolution while the mouse is over the screen
+    grp.addEventListener('pointerenter', () => (grp._hover = true));
+    grp.addEventListener('pointerleave', () => (grp._hover = false));
     const ctl = { cid: c.id, t: 'screen', kind: 'script', interactive: true, x: c.x * S, y: c.y * S, w: c.w * S, h: c.h * S, src: c, design: D, label: c.label || '' };
     ctx.views.set(c.id, { ctl, view: { g: grp, content: grp, w: c.w, h: c.h, set() {} } });
   }
 }
 /** Running board screens (tests). */
 export function boardScreens() {
-  return [...running.entries()].map(([k, e]) => ({ key: k, error: e.rt.error, frames: e.rt.frameN, connected: !!(e.img && e.img.isConnected) }));
+  return [...running.entries()].map(([k, e]) => ({ key: k, error: e.rt.error, frames: e.rt.frameN, connected: !!(e.img && e.img.isConnected), scale: e.rt.k, px: [e.canvas.width, e.canvas.height], W: e.W, H: e.H }));
 }

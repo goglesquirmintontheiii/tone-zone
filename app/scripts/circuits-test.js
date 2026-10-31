@@ -998,6 +998,147 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('#tabs [data-tab="factory"]');
   await win.waitForTimeout(300);
 
+  // 20. script audio: a screen output plays a Script osc, a sampler plays a buffer the script uploads, the engine
+  // reports jack analysis, and the bridge backend turns script calls into engine commands
+  {
+    const { findEngine } = require('../main/engine-host');
+    const quiet = path.join(data, 'quiet.wav');
+    {
+      // 2 s of silence, 48 kHz mono float
+      const n = 96000, b = Buffer.alloc(44 + n * 4);
+      b.write('RIFF', 0); b.writeUInt32LE(36 + n * 4, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(3, 20); b.writeUInt16LE(1, 22);
+      b.writeUInt32LE(48000, 24); b.writeUInt32LE(192000, 28); b.writeUInt16LE(4, 32); b.writeUInt16LE(32, 34); b.write('data', 36); b.writeUInt32LE(n * 4, 40);
+      fs.writeFileSync(quiet, b);
+    }
+    const sa = await win.evaluate(async () => {
+      const { P, F, pedal } = window.__ct;
+      const T = await import('./js/pages/circuit-templates.js');
+      const g1 = P.clone(T.builtinById('b.scriptsynth').graph), g2 = P.clone(T.builtinById('b.scriptsampler').graph);
+      const id = (G, name) => G.nodes.find((n) => n.name === name).id;
+      const io = (G, t) => G.nodes.find((n) => n.t === t).id;
+      const jacks = [{ id: 'jin', kind: 'in', edge: 'right', t: 0.3, label: 'IN' }, { id: 'jout', kind: 'out', edge: 'left', t: 0.3, label: 'OUT' }];
+      const ctls = [{ id: 'sc', kind: 'screen', x: 30, y: 45, w: 40, h: 16, type: 'oled', text: '', label: '', labelPos: 'none', shows: 'custom', script: 'function draw()\n  clear()\nend\n',
+        sio: { ins: [], outs: [{ id: 'o1', name: 'Note', sig: 'n', maps: [{ to: 'Y.' + id(g1, 'Note'), raw: true }] }, { id: 'o2', name: 'Gate', sig: 'b', maps: [{ to: 'Y.' + id(g1, 'Gate'), raw: true }] }, { id: 'o3', name: 'Hit', sig: 'b', maps: [{ to: 'Z.' + id(g2, 'Trigger'), raw: true }] }] } }];
+      const wires = [{ id: 'w1', a: { n: 'jack:jin', p: '' }, b: { n: 'Y', p: io(g1, 'in') } }, { id: 'w2', a: { n: 'Y', p: io(g1, 'out') }, b: { n: 'Z', p: io(g2, 'in') } }, { id: 'w3', a: { n: 'Z', p: io(g2, 'out') }, b: { n: 'jack:jout', p: '' } }];
+      const d = pedal('Script audio', [{ id: 'Y', name: 'Synth', graph: g1 }, { id: 'Z', name: 'Sampler', graph: g2 }], { jacks, ctls, wires });
+      const def = F.designToDef(d, { id: 'custom.scriptaudio' });
+      const noteP = def.opts.nodes.find((n) => n.k === 'param' && def.opts.params[n.pi].name === 'Y.' + id(g1, 'Note'));
+      const gateP = def.opts.nodes.find((n) => n.k === 'param' && def.opts.params[n.pi].name === 'Y.' + id(g1, 'Gate'));
+      return { d, trig: 'Z.' + id(g2, 'Trigger'), glide: noteP && noteP.sm, gateGlide: gateP && gateP.sm, jk: def.opts.nodes.filter((n) => n.jk).map((n) => n.k + ':' + n.jk), sa: def.scriptAudio, kinds: def.opts.nodes.map((n) => n.k) };
+    });
+    ok(sa.glide === 15 && !sa.gateGlide, `a circuit input a screen drives glides in the engine (${sa.glide} ms), a binary one does not`);
+    ok(sa.jk.join() === 'ain:jin,aout:jout' && sa.sa && sa.sa.jacks.length === 2 && sa.sa.samplers.length === 1 && sa.sa.gens.length === 2, 'jacks carry their ids for analysis and the block lists its script audio: ' + sa.jk.join());
+    ok(['osc', 'adsr', 'sampler'].every((k) => sa.kinds.includes(k)), 'the Script synth and Script sampler circuits compile to engine parts');
+    const renderSA = (params, timeline, input) => win.evaluate(async ([design, params, input, timeline]) => {
+      const cu = await import('./js/catalog/custom.js');
+      const id = await cu.saveCustomBlock(design, { asNew: true });
+      const preset = {
+        version: 1, name: 'script audio check',
+        blocks: [{ id: '__in', type: '__in', x: 0, y: 0, params: {} }, { id: '__out', type: '__out', x: 0, y: 0, params: {} }, { id: 'c1', type: id, x: 0, y: 0, params, variant: 'mono' }],
+        cables: [{ id: 'a', from: { node: '__in', port: 0 }, to: { node: 'c1', port: 0 } }, { id: 'b', from: { node: 'c1', port: 0 }, to: { node: '__out', port: 0 } }],
+      };
+      const g = window.__tz.buildGraph(preset);
+      const pid = g.nodes.find((n) => n.algo === 'patch').id;
+      g.timeline = timeline.map((x) => ({ t: x.t, cmd: { ...x.cmd, id: pid } }));
+      return { file: await window.tz.offline.render(g, input), g, pid };
+    }, [sa.d, params, input, timeline]);
+    const { readWav } = require('../main/offline');
+    const mono = (f) => { const w = readWav(f); fs.rmSync(f, { force: true }); return w.chans[0]; };
+    const seg = (x, t0, t1) => Array.from(x.slice(Math.floor(t0 * 48000), Math.floor(t1 * 48000)));
+    const rmsOf = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / Math.max(1, a.length));
+    const zc = (a) => { let n = 0; for (let i = 1; i < a.length; i++) if (a[i - 1] <= 0 && a[i] > 0) n++; return n / (a.length / 48000); };
+    const scr = (i, v) => ({ ['u.s.sc.' + i]: v });
+    const r1 = await renderSA({ ...scr(0, 69), ...scr(1, 1) }, [], quiet);
+    const y1 = mono(r1.file);
+    const f1 = zc(seg(y1, 0.3, 1.8));
+    ok(Math.abs(f1 - 440) < 4 && rmsOf(seg(y1, 0.3, 1.8)) > 0.15, `a screen output at 69 plays the Script osc at 440 Hz (${f1.toFixed(1)} Hz, rms ${rmsOf(seg(y1, 0.3, 1.8)).toFixed(3)})`);
+    const r2 = await renderSA({ ...scr(0, 76), ...scr(1, 1) }, [], quiet);
+    const f2 = zc(seg(mono(r2.file), 0.3, 1.8));
+    ok(Math.abs(f2 - 659.3) < 5, `and at 76 (E5) at 659 Hz (${f2.toFixed(1)} Hz)`);
+    const r3 = await renderSA({ ...scr(0, 69), ...scr(1, 0) }, [], quiet);
+    ok(rmsOf(seg(mono(r3.file), 0.3, 1.8)) < 1e-4, 'with the Gate output off it is quiet');
+    // the sampler: a 1 kHz buffer uploaded at the start, triggered at 0.5 s (as the screen's Hit output would)
+    const tone = Array.from({ length: 9600 }, (_, i) => Math.round(0.4 * Math.sin(2 * Math.PI * 1000 * i / 48000) * 1e4) / 1e4);
+    const r4 = await renderSA({}, [{ t: 0, cmd: { cmd: 'sample', slot: 1, sr: 48000, data: tone } }, { t: 0.5, cmd: { cmd: 'param', name: sa.trig, value: 1 } }], quiet);
+    const y4 = mono(r4.file);
+    const pre = rmsOf(seg(y4, 0.05, 0.48)), play = seg(y4, 0.52, 0.68), post = rmsOf(seg(y4, 0.8, 1.5));
+    ok(pre < 1e-4 && Math.abs(zc(play) - 1000) < 10 && rmsOf(play) > 0.2 && post < 1e-4, `the Script sampler plays the uploaded buffer when triggered (${zc(play).toFixed(0)} Hz at ${rmsOf(play).toFixed(3)}, quiet before and after)`);
+    // analysis: asked for by a command, reported in the block's status
+    const eng = findEngine(path.join(__dirname, '..'), false);
+    const gp = path.join(data, 'sa.json'), op = path.join(data, 'sa.wav');
+    const g5 = { ...r1.g, timeline: [{ t: 0, cmd: { cmd: 'scope', id: r1.pid, what: ['all'], bands: 16, wave: 64 } }] };
+    fs.writeFileSync(gp, JSON.stringify({ settings: { quality: 1 }, graph: g5 }));
+    const r5 = require('child_process').spawnSync(eng, ['--offline', gp, quiet, op], { encoding: 'utf8' });
+    const err = r5.status !== 0;
+    const line5 = (r5.stderr || '').split('\n').find((l) => l.startsWith('status: '));
+    const st = line5 ? JSON.parse(line5.slice(8))[r1.pid] : null;
+    const so = st && st.scope && st.scope.jout;
+    ok(!err && so && so.rms > 0.15 && so.spec.length === 16 && so.wave.length === 64 && Math.abs(so.hz - 440) < 3, `the engine reports the OUT jack's level, spectrum, waveform and pitch (${so && so.rms}, ${so && so.spec.length} bands, ${so && so.wave.length} points, ${so && so.hz} Hz)`);
+    ok(st && st.scope && st.scope.jin && st.scope.jin.rms === 0, 'and the IN jack (quiet)');
+    // the bridge backend: script calls become engine commands, analysis comes back in the contract's shape
+    const be = await win.evaluate(async (design) => {
+      const { _scriptAudio: A } = await import('./js/pages/circuit-audio.js');
+      const st = await import('./js/state.js');
+      const sent = [];
+      A.tap((c) => sent.push(JSON.parse(JSON.stringify(c))));
+      const ctx = { design, blockId: 'sa1', mode: 'board', screen: 'sc' };
+      try {
+        A.gen(ctx, 'sc:drone', { type: 'saw', freq: 110, amp: 0.3, attack: 0.05, release: 0.8, to: { dir: 'out', index: 0 } });
+        A.gen(ctx, 'sc:lead', { type: 'sine', freq: 440, to: { circuit: 'Synth' } });
+        A.fx(ctx, 'sc:lp', { type: 'lowpass', jack: { dir: 'in', index: 0 }, freq: 800 });
+        A.buffer(ctx, 'sc:table', new Float32Array([0, 0.5, -0.5, 1]), 24000);
+        A.gen(ctx, 'sc:pad', { type: 'sample', buffer: 'sc:table', loop: true, rate: 1, to: { dir: 'out', index: 0 } });
+        st.state.status.blocks.sa1 = { scope: { jin: { rms: 0.1, peak: 0.2, spec: Array.from({ length: 32 }, (_, i) => -72 + i * 2), wave: [0, 1, 0, -1], hz: 220, onset: 3 } } };
+        const an = A.analysis(ctx, { dir: 'in', index: 0, id: 'jin' }, { bands: 8, wave: 7 });
+        A.stop(ctx, 'sc:drone');
+        A.reset(ctx);
+        delete st.state.status.blocks.sa1;
+        return { sent, an };
+      } finally {
+        A.tap(null);
+      }
+    }, sa.d);
+    const cmds = be.sent.map((c) => c.cmd + (c.stop ? ':stop' : '')).join(',');
+    const v0 = be.sent.find((c) => c.cmd === 'voice' && c.type === 'saw');
+    const smpC = be.sent.find((c) => c.cmd === 'sample');
+    const pad = be.sent.find((c) => c.cmd === 'voice' && c.type === 'sample');
+    ok(v0 && v0.to.jack === 'jout' && v0.env && v0.gate && v0.attack === 0.05 && be.sent.find((c) => c.type === 'sine').to.part === 'Synth', 'generators go to a jack by id or a circuit by name, with their envelope');
+    ok(smpC && smpC.slot === 9 && smpC.fmt === 's16' && smpC.sr === 24000 && pad && pad.slot === 9 && pad.loop, 'a buffer gets a script slot and a sample voice plays it');
+    ok(be.sent.some((c) => c.cmd === 'fx' && c.jack === 'jin' && c.type === 'lowpass') && be.sent.some((c) => c.cmd === 'scope' && c.jacks.includes('jin')), 'a processor on the input jack, analysis asked for the jack read');
+    ok(be.an && be.an.bands.length === 8 && Math.abs(be.an.bands[0]) < 1e-9 && be.an.bands[7] > 0.8 && be.an.wave.length === 7 && be.an.pitch === 220 && be.an.onset === 3, 'analysis comes back as bands 0..1 and wave points of the asked size: ' + JSON.stringify(be.an.bands.map((x) => +x.toFixed(2))));
+    ok(cmds.split(',').filter((c) => c.endsWith(':stop')).length === 4 && be.sent.some((c) => c.cmd === 'sample' && c.clear), 'stop and reset end what the screen made: ' + cmds);
+    // and those commands, played by the engine: the saw drone and the sample loop on the OUT jack
+    const tl = be.sent.filter((c) => c.cmd === 'voice' && !c.stop && c.type === 'saw').map((c) => ({ t: 0, cmd: c }));
+    const r6 = await renderSA({}, tl, quiet);
+    const y6 = seg(mono(r6.file), 0.3, 1.8);
+    ok(Math.abs(zc(y6) - 110) < 3 && rmsOf(y6) > 0.1, `a script drone on the OUT jack plays in the engine (${zc(y6).toFixed(1)} Hz, ${rmsOf(y6).toFixed(3)})`);
+    // on the board: the pedal's screen script starts a drone and reads the OUT jack through the live engine
+    const bd = await win.evaluate(async (design) => {
+      const d = JSON.parse(JSON.stringify(design));
+      d.ctls[0].script = 'audio.gen("drone", {type = "saw", freq = 110, amp = 0.3, to = "out"})\nlv = 0\nfunction draw()\n  clear()\n  lv = audio.level("out")\n  output("Gate", 0)\nend\n';
+      const cu = await import('./js/catalog/custom.js');
+      const id = await cu.saveCustomBlock(d, { asNew: true });
+      const st = await import('./js/state.js');
+      const a = st.addBlock(id, 300, 160);
+      st.connect({ node: '__in', port: 0 }, { node: a.id, port: 0 });
+      st.connect({ node: a.id, port: 0 }, { node: '__out', port: 0 });
+      st.syncGraph();
+      return a.id;
+    }, sa.d);
+    await win.click('#tabs [data-tab="board"]');
+    let live = null;
+    for (let i = 0; i < 20 && !(live && live.scope && live.scope.jout && live.scope.jout.rms > 0.05); i++) {
+      await win.waitForTimeout(500);
+      live = await win.evaluate(async (id) => (await import('./js/state.js')).state.status.blocks[id] || null, bd);
+    }
+    const bk = await win.evaluate(async (id) => { const { _scriptAudio: A } = await import('./js/pages/circuit-audio.js'); const b = A.blocks.get(id); return b ? { voices: [...b.voices.keys()], scope: !!b.scope } : null; }, bd);
+    ok(bk && bk.voices.some((k) => /:drone$/.test(k)) && bk.scope, 'on the board the screen script\'s drone and analysis reach the backend: ' + JSON.stringify(bk));
+    ok(live && live.scope && live.scope.jout && live.scope.jout.rms > 0.05 && Math.abs(live.scope.jout.hz - 110) < 3, `and the live engine plays it: the OUT jack reads ${live && live.scope && live.scope.jout ? live.scope.jout.rms + ' rms, ' + live.scope.jout.hz + ' Hz' : 'nothing'}`);
+    await win.evaluate(async (id) => (await import('./js/state.js')).removeBlocks([id]), bd);
+    await win.click('#tabs [data-tab="factory"]');
+    await win.waitForTimeout(300);
+  }
+
   await win.evaluate(() => ['tz.factory.wd.v1', 'tz.circuits.filter.v1'].forEach((k) => localStorage.removeItem(k)));
   ok(errs.length === 0, 'no console errors');
   if (errs.length) console.log(errs.join('\n'));

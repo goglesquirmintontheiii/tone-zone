@@ -48,7 +48,7 @@ export function toPiPreset(preset, file) {
 }
 
 // ---- audio: real ALSA devices <-> the tab's device list
-function uiAudioId(d) {
+export function uiAudioId(d) {
   if (!d) return '';
   const n = `${d.name} ${d.driver || ''}`;
   if (d.kind === 'builtin') return 'jack35';
@@ -60,22 +60,25 @@ function audioIn(a) {
   const devs = a.devices || { inputs: [], outputs: [] };
   const act = a.active || {};
   const inId = act.input || a.input, outId = act.output || a.output;
-  return {
+  const r = {
     input: uiAudioId(devs.inputs.find((d) => d.id === inId)) || 'usb-aux',
     output: uiAudioId(devs.outputs.find((d) => d.id === outId)) || 'jack35',
     rate: a.rate, buffer: a.buffer, periods: a.periods, governor: a.governor, isolate: a.isolate,
     server: a.mode === 'pipewire' || a.server === 'pipewire' ? 'pipewire' : 'jack',
     alsa: { inputs: devs.inputs, outputs: devs.outputs, input: inId || '', output: outId || '' },
   };
+  // the tab edits this object in place, so keep what the Pi said to tell real changes apart
+  Object.defineProperty(r, 'was', { value: { input: r.input, output: r.output, alsaIn: r.alsa.input, alsaOut: r.alsa.output }, enumerable: false });
+  return r;
 }
 function audioOut(v, last) {
-  const al = (last && last.alsa) || { inputs: [], outputs: [] };
-  const pick = (list, uiId, explicit) => explicit || ((list.find((d) => uiAudioId(d) === uiId) || {}).id) || '';
+  const al = v.alsa || (last && last.alsa) || { inputs: [], outputs: [] };
+  const was = v.was || (last && last.was) || {};
+  const pick = (list, uiId) => (list.find((d) => uiAudioId(d) === uiId) || {}).id || '';
   const out = { rate: v.rate, buffer: v.buffer, periods: v.periods, governor: v.governor, isolate: v.isolate, server: v.server === 'pipewire' ? 'pipewire' : v.server === 'jack' ? 'jackd' : 'auto' };
-  out.input = pick(al.inputs, v.input, v.alsa && v.alsa.input !== al.input ? v.alsa.input : null) || al.input;
-  out.output = pick(al.outputs, v.output, v.alsa && v.alsa.output !== al.output ? v.alsa.output : null) || al.output;
-  if (v.input !== last.input) out.input = pick(al.inputs, v.input) || out.input;
-  if (v.output !== last.output) out.output = pick(al.outputs, v.output) || out.output;
+  // a real device picked in the list wins; else a changed device type picks the first card of that type
+  out.input = al.input !== was.alsaIn ? al.input : v.input !== was.input ? pick(al.inputs, v.input) || al.input : al.input;
+  out.output = al.output !== was.alsaOut ? al.output : v.output !== was.output ? pick(al.outputs, v.output) || al.output : al.output;
   return out;
 }
 

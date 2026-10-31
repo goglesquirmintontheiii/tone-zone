@@ -12,17 +12,24 @@
  "order": 214,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "dt.whammy5",
-   "x": -426,
-   "y": 13,
+   "x": -619,
+   "y": 22,
    "params": {
     "expr": 0
    },
@@ -41,8 +48,8 @@
   {
    "id": "b3",
    "type": "bee.octahive",
-   "x": -648,
-   "y": 47,
+   "x": -1070,
+   "y": 62,
    "params": {
     "f.gain": 0.6,
     "f.level": 0.55
@@ -53,8 +60,8 @@
   {
    "id": "b4",
    "type": "eqd.rainbow",
-   "x": -890,
-   "y": 49,
+   "x": -1440,
+   "y": 76,
    "params": {
     "c.mix": 0.4,
     "p.level1": 0.5
@@ -65,8 +72,8 @@
   {
    "id": "b5",
    "type": "amp.ac30",
-   "x": -1380,
-   "y": 0,
+   "x": -724,
+   "y": -500,
    "params": {
     "gain": 0.45
    },
@@ -76,8 +83,8 @@
   {
    "id": "b6",
    "type": "cab.2x12blue",
-   "x": -1850,
-   "y": 34,
+   "x": -1204,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -98,8 +105,8 @@
   {
    "id": "b7",
    "type": "ehx.superego",
-   "x": -2096,
-   "y": 47,
+   "x": -362,
+   "y": 362,
    "params": {
     "mix": 0.5
    },
@@ -109,8 +116,8 @@
   {
    "id": "b8",
    "type": "mrs.polymoon",
-   "x": -2372,
-   "y": 49,
+   "x": -737,
+   "y": 376,
    "params": {
     "d.mix": 0.35,
     "d.feedback": 0.525
@@ -121,8 +128,8 @@
   {
    "id": "b9",
    "type": "eqd.astral",
-   "x": -2650,
-   "y": 36,
+   "x": -978,
+   "y": 368,
    "params": {
     "mix": 0.4,
     "decay": 0.7
@@ -133,8 +140,8 @@
   {
    "id": "b10",
    "type": "tz.meter",
-   "x": -2850,
-   "y": 30,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -142,8 +149,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -3090,
-   "y": 55,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

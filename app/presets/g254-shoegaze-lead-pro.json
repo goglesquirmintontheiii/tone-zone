@@ -12,17 +12,24 @@
  "order": 354,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 55,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3",
-   "x": -146,
-   "y": 36,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -30,8 +37,8 @@
   {
    "id": "b2",
    "type": "dt.whammy5",
-   "x": -426,
-   "y": 13,
+   "x": -619,
+   "y": 22,
    "params": {
     "model": 13
    },
@@ -41,8 +48,8 @@
   {
    "id": "b3",
    "type": "ehx.greenmuff",
-   "x": -732,
-   "y": 5,
+   "x": -1112,
+   "y": 6,
    "params": {
     "level": 0.5,
     "tone": 0.5,
@@ -54,8 +61,8 @@
   {
    "id": "b4",
    "type": "jhs.unicorn",
-   "x": -934,
-   "y": 41,
+   "x": -1420,
+   "y": 76,
    "params": {
     "speed": 0.35,
     "intensity": 0.5
@@ -66,8 +73,8 @@
   {
    "id": "b5",
    "type": "amp.ac30",
-   "x": -1424,
-   "y": 0,
+   "x": -724,
+   "y": -500,
    "params": {
     "gain": 0.42,
     "treble": 0.5,
@@ -81,8 +88,8 @@
   {
    "id": "b6",
    "type": "cab.2x12blue",
-   "x": -1894,
-   "y": 34,
+   "x": -1204,
+   "y": -432,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -103,8 +110,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -2180,
-   "y": 30,
+   "x": -382,
+   "y": 345,
    "params": {
     "time": 306.3887,
     "feedback": 0.605,
@@ -117,8 +124,8 @@
   {
    "id": "b8",
    "type": "sy.bigsky",
-   "x": -2550,
-   "y": 46,
+   "x": -904,
+   "y": 376,
    "params": {
     "inf": 0,
     "machine": 6,
@@ -131,8 +138,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2750,
-   "y": 30,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -140,8 +147,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2990,
-   "y": 55,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],

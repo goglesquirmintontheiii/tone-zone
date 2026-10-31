@@ -13,17 +13,24 @@
  "order": 364,
  "blocks": [
   {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
    "id": "__in",
    "type": "__in",
-   "x": 130,
-   "y": 100,
+   "x": 90,
+   "y": 70,
    "params": {}
   },
   {
    "id": "b1",
    "type": "bx.tu3w",
-   "x": -146,
-   "y": 101,
+   "x": -227,
+   "y": 51,
    "params": {},
    "bypass": true,
    "variant": "mono"
@@ -31,8 +38,8 @@
   {
    "id": "b2",
    "type": "dt.drop",
-   "x": -362,
-   "y": 108,
+   "x": -467,
+   "y": 58,
    "params": {
     "dsel": 1
    },
@@ -42,8 +49,8 @@
   {
    "id": "b3",
    "type": "eqd.hoof",
-   "x": -556,
-   "y": 111,
+   "x": -696,
+   "y": 76,
    "params": {
     "gain": 0.75,
     "shift": 0.6,
@@ -56,8 +63,8 @@
   {
    "id": "b4",
    "type": "dn.gcb95",
-   "x": -778,
-   "y": 78,
+   "x": -1070,
+   "y": 22,
    "params": {
     "pos": 0.45
    },
@@ -67,8 +74,8 @@
   {
    "id": "b5",
    "type": "orange.amp-thunderverb",
-   "x": -1316,
-   "y": 0,
+   "x": -988,
+   "y": -804,
    "params": {
     "a.gain": 0.6,
     "a.master": 0.55,
@@ -84,8 +91,8 @@
   {
    "id": "b6",
    "type": "cab.4x12orange",
-   "x": -1302,
-   "y": 214,
+   "x": -974,
+   "y": -590,
    "params": {
     "m1on": 1,
     "m1type": 0,
@@ -106,8 +113,8 @@
   {
    "id": "b7",
    "type": "tz.delay",
-   "x": -1602,
-   "y": 95,
+   "x": -382,
+   "y": 345,
    "params": {
     "time": 173.2051,
     "feedback": 0.385,
@@ -119,8 +126,8 @@
   {
    "id": "b8",
    "type": "tz.reverb",
-   "x": -1874,
-   "y": 80,
+   "x": -855,
+   "y": 326,
    "params": {
     "decay": 0.5,
     "mix": 0.15
@@ -131,8 +138,8 @@
   {
    "id": "b9",
    "type": "tz.meter",
-   "x": -2074,
-   "y": 95,
+   "x": -1179,
+   "y": 345,
    "params": {},
    "bypass": false,
    "variant": "stereo"
@@ -140,8 +147,8 @@
   {
    "id": "__out",
    "type": "__out",
-   "x": -2314,
-   "y": 100,
+   "x": -1768,
+   "y": 370,
    "params": {}
   }
  ],
