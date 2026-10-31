@@ -338,6 +338,84 @@ const { makeDI, measure } = require('./loudness');
     });
     ok(r.gHi > r.gLo + 0.3 && r.oHi > r.oLo + 0.3 && r.sHi < r.oHi, `I/O LEDs follow levels: guitar ${r.gLo} -> ${r.gHi}, stereo 1 ${r.oLo} -> ${r.oHi}, send 1 ${r.sHi}`);
   }
+  // ---- 7b. JACK GUIDE page: lists all 30 jacks, IDENTIFY blinks that jack's LED (others keep their levels), times out
+  {
+    await win.evaluate(async () => { const st = await import('./js/state.js'); st.setParam(window.__nx, '_tuner', 0, { silent: true }); window.__tz.state.ui[window.__nx].nx.page = 'rig'; window.__tz.state.ui[window.__nx].nx.ident = null; });
+    await zoomTo(1.4, 0.07, 0.5); await wait(120);
+    { const p = await ctlPt('b_io'); await win.mouse.click(p.x, p.y); await wait(250); }
+    await zoomTo(1.7, 0.37, 0.35); await wait(350);
+    await tapScr('main', 142 + 31, 22 + 5.5); await wait(300);
+    ok((await nx()) === 'jck', 'I/O page JACK GUIDE chip opens the jack guide');
+    const rows = await win.evaluate(() => {
+      const v = window.__tz.editor.views.get(window.__nx), s = v.screens.find((q) => q.ctl.role === 'main'), io = v.screens.find((q) => q.ctl.role === 'io');
+      const keys = [...new Set([...s.view.content.querySelectorAll('[data-jack]')].map((e) => e.getAttribute('data-jack')))];
+      const leds = io.bars.map((x) => x.key);
+      return { keys, missing: leds.filter((k) => !keys.includes(k)), btns: s.view.content.querySelectorAll('[data-ident]').length };
+    });
+    ok(rows.keys.length === 30 && rows.missing.length === 0 && rows.btns === 30, `jack guide lists ${rows.keys.length} jacks with ${rows.btns} IDENTIFY buttons, every LED jack listed ${rows.missing.join(',')}`);
+    // readable: texts inside the screen and not overlapping
+    const tx = await win.evaluate(() => {
+      const v = window.__tz.editor.views.get(window.__nx), s = v.screens.find((q) => q.ctl.role === 'main');
+      const clip = s.view.content.parentNode.querySelector('rect').getBoundingClientRect();
+      const boxes = [...s.view.content.querySelectorAll('text')].filter((t) => t.textContent.trim()).map((t) => ({ t: t.textContent, r: t.getBoundingClientRect() })).filter((x) => x.r.width > 0);
+      const out = boxes.filter((b) => b.r.left < clip.left - 1 || b.r.right > clip.right + 1 || b.r.top < clip.top - 1 || b.r.bottom > clip.bottom + 1).map((b) => b.t), ov = [];
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i].r, c = boxes[j].r, w = Math.min(a.right, c.right) - Math.max(a.left, c.left), h = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+        if (w > 1 && h > Math.min(a.height, c.height) * 0.45) ov.push(boxes[i].t + ' / ' + boxes[j].t);
+      }
+      return { n: boxes.length, out, ov };
+    });
+    ok(tx.out.length === 0 && tx.ov.length === 0, `jack guide: ${tx.n} texts, none outside or overlapping ${tx.out.concat(tx.ov).slice(0, 6).join(' | ')}`);
+    await shotScreen('main', 'page-jacks.png'); pages.push('jck');
+    // fake levels: guitar and stereo 1 loud, the rest quiet
+    const setLv = () => win.evaluate(() => { const T = window.__tz; T.state.status.blocks[window.__nx] = Object.assign({}, T.state.status.blocks[window.__nx], { io: { in: [0.5, 0, 0, 0, 0, 0, 0], out: [0.4, 0.4].concat(new Array(17).fill(0.001)) } }); });
+    const tapIdent = async (key) => {
+      const p = await win.evaluate((key) => { const s = window.__tz.editor.views.get(window.__nx).screens.find((q) => q.ctl.role === 'main'); const r = s.view.content.querySelector(`[data-ident="${key}"]`).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, key);
+      await win.mouse.click(p.x, p.y); await wait(200);
+    };
+    // LED state of some jacks at a given time after IDENTIFY started
+    const probe = (dt) => win.evaluate((dt) => {
+      const T = window.__tz, v = T.editor.views.get(window.__nx), io = v.screens.find((q) => q.ctl.role === 'io'), n = T.state.ui[window.__nx].nx;
+      const t = n.ident && dt > 0 ? n.ident.t0 + dt : performance.now();
+      v.updateStatus(t);
+      const led = (k) => { const b = io.bars.find((x) => x.key === k); return { fill: b.rects[0].getAttribute('fill'), op: +b.rects[0].getAttribute('fill-opacity') }; };
+      const main = v.screens.find((q) => q.ctl.role === 'main').view.content;
+      const row = (k) => { const r = main.querySelector(`[data-jack="${k}"]`); return r ? +r.getAttribute('fill-opacity') : null; };
+      return { ident: n.ident ? n.ident.key : null, o12: led('o12'), i0: led('i0'), o0: led('o0'), o13: led('o13'), rowO12: row('o12'), rowI0: row('i0'), stop: [...main.querySelectorAll('text')].filter((x) => x.textContent === 'STOP').length };
+    }, dt);
+    await setLv();
+    await tapIdent('o12'); await setLv();
+    const a = await probe(10), b2 = await probe(140), c2 = await probe(260);
+    await probe(1); // back to a time close to now
+    ok(a.ident === 'o12' && a.o12.fill === '#ffffff' && a.o12.op === 1 && b2.o12.op < 0.1 && c2.o12.op === 1, `IDENTIFY SEND 1 blinks its LED: ${a.o12.op} -> ${b2.o12.op} -> ${c2.o12.op} (${a.o12.fill})`);
+    ok(a.i0.fill !== '#ffffff' && a.i0.op > 0.5 && a.o0.op > 0.5 && a.o13.op < 0.4 && a.o0.op === b2.o0.op, `other LEDs keep showing levels: guitar ${a.i0.op}, stereo 1 ${a.o0.op}, send 2 ${a.o13.op}`);
+    ok(a.rowO12 > 0 && a.rowO12 < 1 && a.stop === 1, 'the SEND 1 row is highlighted and its button reads STOP');
+    // rail shot while it blinks
+    {
+      const r = await win.evaluate(() => { const v = window.__tz.editor.views.get(window.__nx), io = v.screens.find((q) => q.ctl.role === 'io'); const b = io.bars.find((x) => x.key === 'o12').rects[0].getBoundingClientRect(); return { x: b.x, y: b.y }; });
+      await zoomTo(2.2, 0.42, 0.04); await wait(400);
+      const q = await win.evaluate(() => { const v = window.__tz.editor.views.get(window.__nx), io = v.screens.find((q) => q.ctl.role === 'io'); const b = io.bars.find((x) => x.key === 'o12').rects[0].getBoundingClientRect(); return { x: b.x, y: b.y }; });
+      void r;
+      // the LED blinks at 4 Hz: a few shots catch both phases
+      for (let k = 1; k <= 3; k++) { await win.screenshot({ path: path.join(out, 'rail-identify-' + k + '.png'), clip: { x: Math.max(0, q.x - 260), y: Math.max(0, q.y - 70), width: 520, height: 110 } }); await wait(70); }
+      await zoomTo(1.7, 0.37, 0.35); await wait(350);
+    }
+    // another IDENTIFY switches to that jack
+    await tapIdent('i0'); await setLv();
+    const d = await probe(10);
+    ok(d.ident === 'i0' && d.i0.fill === '#ffffff' && d.o12.fill !== '#ffffff' && d.rowI0 < 1 && d.rowO12 === 1, `IDENTIFY GUITAR IN takes over from SEND 1 (now ${d.ident}, send 1 LED ${d.o12.fill} ${d.o12.op})`);
+    await shotScreen('main', 'page-jacks-identify.png');
+    // times out: real time past IDENT_MS
+    await wait(3300); await setLv();
+    const e = await probe(0);
+    await wait(200);
+    const e2 = await win.evaluate(() => { const main = window.__tz.editor.views.get(window.__nx).screens.find((q) => q.ctl.role === 'main').view.content; return [...main.querySelectorAll('text')].filter((x) => x.textContent === 'STOP').length; });
+    ok(e.ident === null && e.i0.fill !== '#ffffff' && e.i0.op > 0.5 && e2 === 0, `IDENTIFY stops after 3 s: guitar LED back to level (${e.i0.fill} ${e.i0.op})`);
+    // the same button twice stops it
+    await tapIdent('o1'); await tapIdent('o1');
+    ok((await probe(0)).ident === null, 'tapping STOP ends IDENTIFY early');
+    await win.evaluate(() => { window.__tz.state.ui[window.__nx].nx.page = 'rig'; });
+  }
   // LOD bitmap
   {
     const lod = await win.evaluate(async () => { const v = window.__tz.editor.views.get(window.__nx); return await v.makeLOD(0.35); });

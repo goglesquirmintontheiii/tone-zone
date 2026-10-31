@@ -262,7 +262,7 @@ function openPage(b, pg) {
   n.page = pg;
 }
 // the hardware buttons and the side screen nav
-const BACK = { lib: 'rig', blk: 'rig', scn: 'rig', pre: 'rig', lpr: 'rig', tun: 'rig', asg: 'rig', asgl: 'asg', io: 'rig', glb: 'rig', rig: 'rig' };
+const BACK = { lib: 'rig', blk: 'rig', scn: 'rig', pre: 'rig', lpr: 'rig', tun: 'rig', asg: 'rig', asgl: 'asg', io: 'rig', jck: 'io', glb: 'rig', rig: 'rig' };
 function navKey(b, key) {
   const n = nav(b), st = getSt(b);
   if (key === 'home') { if (n.page === 'tun') toggleTuner(b, false); n.page = 'rig'; return; }
@@ -309,6 +309,7 @@ function navKey(b, key) {
       if (key === 'enter') { globalStep(st, GLOBAL_ROWS[n.gsel | 0], 1); put(b, st, true); return; }
       n.gsel = (((n.gsel | 0) + dir) % GLOBAL_ROWS.length + GLOBAL_ROWS.length) % GLOBAL_ROWS.length; return;
     }
+    case 'jck': if (key === 'enter') identify(b, NX_JACKS[n.jsel | 0].key); else n.jsel = (((n.jsel | 0) + dir) % NX_JACKS.length + NX_JACKS.length) % NX_JACKS.length; return;
     case 'io': {
       if (key === 'enter') { ioStep(b, st, IO_ROWS[n.isel | 0], 1); return; }
       n.isel = (((n.isel | 0) + dir) % IO_ROWS.length + IO_ROWS.length) % IO_ROWS.length; return;
@@ -556,10 +557,10 @@ function pointerOn(s, view, type, pt, e) {
 
 // ================================================================== MAIN SCREEN (560 x 250)
 const TW = 54, TH = 36, TX = (i) => 42 + i * 61, TY = (r) => (r === 'A' ? 50 : 104);
-const PAGE_NAMES = { rig: 'SIGNAL CHAIN', lib: 'BLOCK LIBRARY', blk: 'BLOCK', scn: 'SCENES', pre: 'PRESETS', lpr: 'LOOPER', tun: 'TUNER', asg: 'ASSIGN', asgl: 'ASSIGN', io: 'I/O ROUTING', glb: 'GLOBAL' };
-function structSig(st, n, ui, msgOn) {
+const PAGE_NAMES = { rig: 'SIGNAL CHAIN', lib: 'BLOCK LIBRARY', blk: 'BLOCK', scn: 'SCENES', pre: 'PRESETS', lpr: 'LOOPER', tun: 'TUNER', asg: 'ASSIGN', asgl: 'ASSIGN', io: 'I/O ROUTING', jck: 'JACK GUIDE', glb: 'GLOBAL' };
+function structSig(st, n, ui, msgOn, idKey) {
   const slots = N.NX_SLOTS.map((k) => (st.slots[k] ? st.slots[k].m + (st.slots[k].on ? '+' : '-') : '')).join(',');
-  return [n.page, n.cur, n.pp, n.focus && n.focus.s, n.focus && n.focus.i, n.lcat, n.lscr, n.lsel, n.bank, n.psel, n.ssel, n.asel, n.lscr2, n.lsel, n.gsel, n.isel, n.drag2 ? n.drag2.over : '',
+  return [n.page, n.cur, n.pp, n.focus && n.focus.s, n.focus && n.focus.i, n.lcat, n.lscr, n.lsel, n.bank, n.psel, n.ssel, n.asel, n.lscr2, n.lsel, n.gsel, n.isel, n.jsel, idKey, n.page === 'jck' ? JSON.stringify([st.g, st.fs, st.exp]) : '', n.drag2 ? n.drag2.over : '',
     slots, st.route, st.sc, st.pi, st.name, st.mode, st.g && st.g.theme, st.g && st.g.bpm, JSON.stringify(st.scn), msgOn ? n.msg : '', N.nxModelCount()].join('|');
 }
 registerScreen('nxl-main', {
@@ -587,7 +588,8 @@ registerScreen('nxl-main', {
     const kk = n.cur + '|' + n.pp + '|' + (st.slots[n.cur] ? st.slots[n.cur].m : '') + '|' + ui._st;
     if (kk !== n.knobKey) syncKnobs(b);
     const msgOn = !!n.msg && now < n.msgT;
-    const sigS = structSig(st, n, ui, msgOn);
+    const id = identOf(b, now);
+    const sigS = structSig(st, n, ui, msgOn, id ? id.key : '');
     if (sigS !== s.sigS) {
       s.sigS = sigS; s.sigV = '';
       s.page.innerHTML = ''; s.live.innerHTML = '';
@@ -1005,6 +1007,111 @@ PAGES.io = (s, g, st, n, th, b) => {
     }
   });
   T(g, 214, 246, 'LEVEL: TAP LEFT / RIGHT HALF OR WHEEL  ·  SOURCE: TAP TO CYCLE', { size: 4.8, weight: 700, fill: th.dim });
+  chip(s, g, 142, 22, 62, 11, 'JACK GUIDE', th, { size: 4.8, tap: () => openPage(b, 'jck') });
+};
+// ---- jack guide: every rear jack, what it does, where it is routed, its live level and an IDENTIFY button that
+// blinks the jack's bar LED for IDENT_MS
+export const IDENT_MS = 3000;
+const JK = (key, name, what, kind) => ({ key, name, what, kind });
+const OUT_OF = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7]; // engine output port -> logical output
+export const NX_JACKS = [
+  JK('i0', 'GUITAR IN', 'INSTRUMENT INPUT, HI-Z', 'in'),
+  JK('i1', 'AUX IN', 'STEREO LINE INPUT, TRS', 'in'),
+  JK('o0', 'STEREO OUT 1', 'STEREO OUTPUT, TRS', 'out'),
+  JK('o1', 'STEREO OUT 2', 'STEREO OUTPUT, TRS', 'out'),
+  ...[1, 2, 3, 4].flatMap((k) => [JK('o' + (2 * k), 'OUT ' + k + ' L', 'LINE OUTPUT, LEFT', 'out'), JK('o' + (2 * k + 1), 'OUT ' + k + ' R', 'LINE OUTPUT, RIGHT', 'out')]),
+  JK('o10', 'PHONES', 'HEADPHONES, STEREO', 'out'),
+  JK('o11', 'XLR OUT', 'BALANCED OUTPUT, MONO', 'out'),
+  ...[1, 2, 3, 4].flatMap((k) => [JK('o' + (11 + k), 'SEND ' + k, 'LOOP ' + k + ' OUT TO PEDALS', 'loop'), JK('i' + (1 + k), 'RETURN ' + k, 'LOOP ' + k + ' IN FROM PEDALS', 'loop')]),
+  ...[1, 2, 3, 4].map((k) => JK('ic' + (k - 1), 'EXT FS ' + k, 'FOOTSWITCH INPUT', 'ctl')),
+  JK('ic4', 'EXT EXP 1', 'EXPRESSION PEDAL INPUT', 'ctl'),
+  JK('ic5', 'EXT EXP 2', 'EXPRESSION PEDAL INPUT', 'ctl'),
+  JK('oc0', 'EXT FS OUT', 'SWITCH OUTPUT, TIP / RING', 'ctl'),
+  JK('oc1', 'EXT EXP OUT', 'EXPRESSION / CV OUTPUT', 'ctl'),
+];
+const JACK_COL = { in: '#2ee6d6', out: '#46d36f', loop: '#ffb340', ctl: '#b58bff' };
+function jackRoute(st, ui, b, j) {
+  const g = Object.assign({}, N.NX_GLOBAL, st.g || {});
+  const m = /^(i|o|ic|oc)(\d+)$/.exec(j.key), d = m[1], i = +m[2];
+  if (d === 'i' && i === 0) return 'GAIN ' + dbF(g.gtr || 0);
+  if (d === 'i' && i === 1) return (g.aux ?? 0) <= -60 || !(g.auxTo | 0) ? 'NOT ROUTED' : 'TO ' + ['', 'INPUT', 'PATH A', 'PATH B', 'MAIN OUT'][g.auxTo | 0];
+  const loop = d === 'i' ? i - 2 : d === 'o' && i >= 12 ? i - 12 : -1;
+  if (loop >= 0) {
+    const k = N.NX_SLOTS.find((x) => st.slots[x] && (N.nxModel(st.slots[x].m).loop || []).includes(loop));
+    return k ? k + ' ' + N.nxModel(st.slots[k].m).short + (st.slots[k].on ? '' : ' (OFF)') : 'NOT IN USE';
+  }
+  if (d === 'o') {
+    const lo = OUT_OF[i], o = N.nxOuts(g)[lo], src = N.NX_OUT_SRC[o.src | 0];
+    if ((o.src | 0) === 4) return 'OFF';
+    if (lo === 6) return src + ', OWN DIAL';
+    if (lo === 7) return src + (g.xlrLift ? ', LIFT' : '') + ', OWN DIAL';
+    return src + ' ' + dbF(o.lvl || 0);
+  }
+  if (d === 'ic') return i < 4 ? asgShort(st, ASG_ITEMS[16 + i], statusOf(b).lp && statusOf(b).lp.looper, ui) : asgShort(st, ASG_ITEMS[22 + (i - 4)], null, ui);
+  return (i === 0 ? N.NX_XFO[g.xfo | 0] : N.NX_XEO[g.xeo | 0]) || '-';
+}
+// 0..1 level of one channel of a jack (2 = clipping); control jacks show their value
+function jackLevel(io, ui, b, key, k = 0) {
+  const ch = JACK_CH(key);
+  if (ch) {
+    const pk = io && io[ch.dir] ? io[ch.dir][ch.chs[k]] || 0 : 0;
+    return pk > 0.98 ? 2 : clamp((20 * Math.log10(Math.max(1e-6, pk)) + 60) / 60, 0, 1);
+  }
+  const m = /^(ic|oc)(\d)$/.exec(key);
+  if (!m) return 0;
+  if (m[1] === 'ic') { const i = +m[2]; return clamp(i < 4 ? ui['_xfs' + (i + 1)] ?? 0 : ui['_xexp' + (i - 3)] ?? 0, 0, 1); }
+  return +m[2] === 0 ? (nav(b).xfoV ? 1 : 0) : clamp(ui._xeo ?? 0, 0, 1);
+}
+// the jack being identified (or null once its time is up)
+export function identOf(b, now) {
+  const n = nav(b);
+  if (n.ident && now >= n.ident.until) n.ident = null;
+  return n.ident;
+}
+function identify(b, key) {
+  const n = nav(b), t = performance.now();
+  n.jsel = Math.max(0, NX_JACKS.findIndex((j) => j.key === key));
+  if (n.ident && n.ident.key === key && t < n.ident.until) { n.ident = null; return; }
+  n.ident = { key, t0: t, until: t + IDENT_MS };
+}
+PAGES.jck = (s, g, st, n, th, b, ui) => {
+  const w = s.w, cw = (w - 16) / 2, rh = 14.4, y0 = 23;
+  const id = identOf(b, performance.now());
+  const meters = [];
+  NX_JACKS.forEach((j, idx) => {
+    const x = 6 + Math.floor(idx / 15) * (cw + 4), y = y0 + (idx % 15) * rh, hh = rh - 1.6;
+    const on = id && id.key === j.key, sel = (n.jsel | 0) === idx;
+    R(g, x, y, cw, hh, { rx: 3, fill: on ? th.acc : th.panel, 'fill-opacity': on ? 0.22 : 1, stroke: on ? th.acc : sel ? th.text : th.line, 'stroke-width': on || sel ? 1.2 : 0.6, 'data-jack': j.key });
+    svg('circle', { cx: x + 5.5, cy: y + hh / 2, r: 2.1, fill: JACK_COL[j.kind] }, g);
+    T(g, x + 11, y + hh / 2 + 0.3, j.name, { size: 5.3, weight: 800, fill: th.text });
+    T(g, x + 58, y + hh / 2 + 0.3, cut(j.what, 30), { size: 4.4, weight: 700, fill: th.dim });
+    T(g, x + 150, y + hh / 2 + 0.3, cut(jackRoute(st, ui, b, j), 21), { size: 4.4, weight: 800, fill: on ? th.text : th.acc });
+    R(g, x + 212, y + hh / 2 - 2, 20, 4, { rx: 1.5, fill: '#000', 'fill-opacity': 0.5 });
+    meters.push({ j, el: R(g, x + 212, y + hh / 2 - 2, 0, 4, { rx: 1.5, fill: JACK_COL[j.kind] }), q: -1 });
+    const bx = x + 236, bw = 33;
+    const btn = R(g, bx, y + 1.6, bw, hh - 3.2, { rx: 3, fill: on ? th.acc : th.panel2, stroke: on ? th.acc : th.line, 'stroke-width': 0.7, 'data-ident': j.key });
+    T(g, bx + bw / 2, y + hh / 2 + 0.3, on ? 'STOP' : 'IDENTIFY', { size: 4.2, weight: 800, anchor: 'middle', fill: on ? th.ink : th.text, ls: 0.3 });
+    if (on) meters.push({ blink: btn });
+    hit(s, bx, y, bw, hh, { tap: () => identify(b, j.key) });
+    hit(s, x, y, bx - x - 2, hh, { tap: () => { n.jsel = idx; } });
+  });
+  T(g, 8, 244, 'IDENTIFY BLINKS THE JACK\'S LED ON THE REAR RAIL FOR 3 S  ·  SELECT ENCODER: MOVE, PUSH TO IDENTIFY', { size: 4.6, weight: 700, fill: th.dim });
+  T(g, w - 8, 244, 'BACK: I/O ROUTING', { size: 4.6, weight: 800, anchor: 'end', fill: th.dim });
+  hit(s, w - 80, 238, 74, 12, { tap: () => { n.page = 'io'; } });
+  s.liveFn = (status, now) => {
+    const io = status && status.io, cur = identOf(b, now);
+    for (const m of meters) {
+      if (m.blink) { setA(m.blink, 'fill-opacity', cur && Math.floor((now - cur.t0) / 125) % 2 ? 0.35 : 1); continue; }
+      const ch = JACK_CH(m.j.key), nch = ch ? ch.chs.length : 1;
+      let lv = 0;
+      for (let k = 0; k < nch; k++) lv = Math.max(lv, jackLevel(io, s.ui, b, m.j.key, k));
+      const q = lv === 2 ? 99 : Math.round(lv * 20);
+      if (q === m.q) continue;
+      m.q = q;
+      setA(m.el, 'width', q === 99 ? 20 : q);
+      setA(m.el, 'fill', q === 99 ? '#ff3b30' : JACK_COL[m.j.kind]);
+    }
+  };
 };
 // ---- global settings
 PAGES.glb = (s, g, st, n, th, b) => {
@@ -1372,28 +1479,22 @@ registerScreen('nxl-io', {
       s.bars.push({ key: j.key, io, rects, col, q: [] });
     }
   },
-  update(s, status, view) {
-    const io = status && status.io, ui = s.ui;
-    const ctlVal = (key) => {
-      const m = /^(ic|oc)(\d)$/.exec(key);
-      if (!m) return 0;
-      if (m[1] === 'ic') { const i = +m[2]; return i < 4 ? ui['_xfs' + (i + 1)] ?? 0 : ui['_xexp' + (i - 3)] ?? 0; }
-      return +m[2] === 0 ? (nav(view.block).xfoV ? 1 : 0) : ui._xeo ?? 0;
-    };
+  update(s, status, view, now = performance.now()) {
+    const io = status && status.io, ui = s.ui, b = view.block;
+    // IDENTIFY (jack guide page): that jack's LED blinks white at 4 Hz, the others keep showing their level
+    const id = identOf(b, now);
     for (const bar of s.bars) {
+      const blink = id && id.key === bar.key;
       bar.rects.forEach((r, k) => {
-        let lv;
-        if (bar.io) {
-          const pk = io && io[bar.io.dir] ? io[bar.io.dir][bar.io.chs[k]] || 0 : 0;
-          const db = 20 * Math.log10(Math.max(1e-6, pk));
-          lv = pk > 0.98 ? 2 : clamp((db + 60) / 60, 0, 1);
-        } else lv = clamp(ctlVal(bar.key), 0, 1);
-        const q = lv === 2 ? 99 : Math.round(lv * 10);
+        let q;
+        if (blink) q = Math.floor((now - id.t0) / 125) % 2 ? 'off' : 'on';
+        else { const lv = jackLevel(io, ui, b, bar.key, k); q = lv === 2 ? 99 : Math.round(lv * 10); }
         if (bar.q[k] === q) return;
         bar.q[k] = q;
-        setA(r, 'fill', q === 99 ? '#ff3b30' : bar.col);
-        setA(r, 'fill-opacity', q === 99 ? 1 : (0.1 + 0.9 * Math.pow(q / 10, 1.4)).toFixed(2));
+        setA(r, 'fill', q === 'on' || q === 'off' ? '#ffffff' : q === 99 ? '#ff3b30' : bar.col);
+        setA(r, 'fill-opacity', q === 'on' || q === 99 ? 1 : q === 'off' ? 0.03 : (0.1 + 0.9 * Math.pow(q / 10, 1.4)).toFixed(2));
       });
+      bar.ident = blink ? bar.q[0] : null;
     }
   },
 });

@@ -6,7 +6,8 @@ const S = process.env.SHOTS || '/tmp';
   const win = await app.firstWindow();
   const errs = [];
   win.on('pageerror', (e) => errs.push('PAGEERROR ' + e.stack));
-  await win.waitForTimeout(2500);
+  await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
+  await win.waitForTimeout(500);
   // import the NAM test models as one pack via the IPC path (same as the dialog)
   const info = await win.evaluate(async (files) => window.tz.lib.inspectPaths(files, 'file'), process.argv.slice(2));
   console.log('inspect items', info.items.length, info.errors);
@@ -24,9 +25,11 @@ const S = process.env.SHOTS || '/tmp';
   await win.click('#tabs [data-tab="capture"]');
   await win.waitForTimeout(600);
   await win.screenshot({ path: S + '/t-capture.png' });
-  await win.click('#tabs [data-tab="tone3000"]');
-  await win.waitForTimeout(9000);
-  await win.screenshot({ path: S + '/t-tone3000.png' });
+  for (const t of ['presets', 'factory', 'pi', 'plugins']) {
+    await win.click(`#tabs [data-tab="${t}"]`);
+    await win.waitForTimeout(1200);
+    await win.screenshot({ path: S + '/t-' + t + '.png' });
+  }
   // add the pack to the board
   await win.click('#tabs [data-tab="board"]');
   await win.waitForTimeout(500);
