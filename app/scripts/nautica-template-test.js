@@ -283,13 +283,22 @@ const { makeDI, measure } = require('./loudness');
     const r = e.view.g.querySelector('image').getBoundingClientRect();
     return { x: r.left - 2, y: r.top - 2, width: r.width + 4, height: r.height + 4 };
   }, label);
-  // zoom in on the screens for sharper shots
-  await win.evaluate(() => {
-    const T = window.__tz, v = T.editor.views.get(window.__nxb), r = T.editor.svg.getBoundingClientRect(), vis = document.getElementById('board').getBoundingClientRect();
+  // zoom in on the screens for sharper shots (zoomOut shows the whole unit for the buttons)
+  const zoomIn = () => win.evaluate(() => {
+    const T = window.__tz, r = T.editor.svg.getBoundingClientRect(), vis = document.getElementById('board').getBoundingClientRect();
+    const b = T.state.preset.blocks.find((x) => x.id === window.__nxb);
     const z = (vis.width - 60) / 440;
-    T.editor.view = { z, x: (vis.left + vis.right) / 2 - r.left - 330 * z, y: (vis.top + vis.bottom) / 2 - r.top - 140 * z };
+    T.editor.view = { z, x: (vis.left + vis.right) / 2 - r.left - (b.x + 330) * z, y: (vis.top + vis.bottom) / 2 - r.top - (b.y + 140) * z };
     T.editor.applyView();
   });
+  const zoomOut = () => win.evaluate(() => {
+    const T = window.__tz, v = T.editor.views.get(window.__nxb), r = T.editor.svg.getBoundingClientRect(), vis = document.getElementById('board').getBoundingClientRect();
+    const b = T.state.preset.blocks.find((x) => x.id === window.__nxb);
+    const z = Math.min((vis.width - 40) / v.w, (vis.height - 80) / v.h);
+    T.editor.view = { z, x: (vis.left + vis.right) / 2 - r.left - (b.x + v.w / 2) * z, y: (vis.top + vis.bottom) / 2 - r.top - (b.y + v.h / 2) * z };
+    T.editor.applyView();
+  });
+  await zoomIn();
   await wait(1500);
   const shot = async (label, file) => { await wait(300); await win.screenshot({ path: path.join(out, file), clip: await clipOf(label) }); };
   const ctlClick = async (label) => {
@@ -311,10 +320,10 @@ const { makeDI, measure } = require('./loudness');
   await tapB('MAIN', 520, 9); await shot('MAIN', 'page-global.png'); pages.push('global');
   for (const [b, f] of [['ASSIGN', 'page-assign.png'], ['I/O', 'page-io.png'], ['TUNER', 'page-tuner.png']]) {
     await win.evaluate(() => (document.getElementById('layerCables').style.display = 'none'));
-    await ctlClick(b); await shot('MAIN', f); pages.push(b.toLowerCase());
+    await zoomOut(); await wait(300); await ctlClick(b); await zoomIn(); await wait(600); await shot('MAIN', f); pages.push(b.toLowerCase());
   }
   await tapB('SIDE', 69, 14);
-  await ctlClick('ASSIGN'); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
+  await zoomOut(); await wait(300); await ctlClick('ASSIGN'); await zoomIn(); await wait(600); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
   await shot('SIDE', 'side-screen.png');
   await tapB('STRIP 1', 548, 11); await shot('STRIP 1', 'strip-menu.png');
   await tapB('STRIP 1', 3 + 1 * ((560 - 30) / 6) + 30, 11); await shot('STRIP 1', 'strip-levels.png');
