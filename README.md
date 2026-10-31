@@ -29,6 +29,9 @@ the `fuse2` package.
   brand is one of 125 built-in **plugins** you can turn off. To write your own, see [docs/plugins.md](docs/plugins.md).
 - **Plugins tab**: a card for each plugin with its details and blocks. Open any block in a small sandbox to try it
   without touching your board.
+- **Nautica XL**: the flagship multi-FX: 14 assignable footswitches with their own screens, two treadles, a
+  HeadRush style touch screen with two strip screens and a side screen, two paths, 4 effects loops, 8 outputs plus
+  phones and XLR, and a level LED on every jack.
 - **Line 6 Helix**: connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
   expression, external switches, USB audio). You can also map its footswitches and expression pedal to the
   footswitches and treadles of other pedals on the board.
@@ -38,7 +41,8 @@ the `fuse2` package.
 - **DSP budget**: set how much of each audio cycle Tone Zone may use and see what each block costs. It can refuse
   blocks that would go over, or lower the quality for you (oversampling, IR length, A2 NAM size).
 - **Works with PipeWire patchbays**: Tone Zone shows up as *Tone Zone* in Helvum, qpwgraph, Carla and so on, with
-  2 guitar inputs, 2 returns, a stereo main out and 2 sends. There is also a routing panel built in.
+  2 guitar inputs, 2 returns, a stereo main out and 2 sends. There is also a routing panel built in. Connections are
+  remembered and come back the next time the app starts.
 - **NAM and IRs**: plays Neural Amp Modeler A1 and A2 (Full / Lite) models, LSTM and more, using
   NeuralAmpModelerCore 0.6. Import single files, many at once, folders or `.zip` packs. Several models become
   **one block with a model picker**, shown as an amp, pedal, preamp or cab. IRs (mono or stereo WAV, any sample
@@ -53,16 +57,18 @@ the `fuse2` package.
 - **Presets**: a Presets tab with board thumbnails, tags and favourites, about 180 factory presets (rhythm and lead
   rigs for many genres, artist and song tones, synth and meme rigs), undo / redo, import and export.
 - **Pedalboards**: six empty boards from Tiny (4 pedals) to XL Max (28). Pedals dropped on a board snap into
-  place, and dragging the board moves its pedals. Name them, pick how pedals are mounted (velcro, strips, screws),
-  and choose the frame, rail and screw materials, finishes, colours and wear.
+  place with room for their plugs, cables run neatly along the rails, and dragging the board moves its pedals. Name
+  them, pick how pedals are mounted (velcro, strips, screws) and choose the frame, rail and screw materials,
+  finishes, colours and wear. Presets with 3 or more pedals come on a board.
 - **Rotate blocks** in 90 degree steps (R, or right-click). Cables follow the jacks.
 - **Couplers**: tiny double male and double female 1/4" couplers. A male coupler turns to fit the jack you drop it
   on and joins two pedals with no cable.
 - **Pedal Factory tab**: build your own pedals. Design the enclosure (16 shapes, materials, finishes, wear and
   patterns) and every knob, switch, encoder, LED, screen and jack. Build circuits in a drag and drop circuit editor
   (35 built-in circuits to start from), wire controls and jacks to them in the wiring diagram, script custom screens
-  ([docs/screen-scripts.md](docs/screen-scripts.md)), try it with your guitar in Test mode, then save it as a block.
-  Saved pedals appear under **Custom** in the block list.
+  ([docs/screen-scripts.md](docs/screen-scripts.md)) across several files with a per-pedal file store and audio,
+  try it with your guitar in Test mode, then save it as a block. Saved pedals appear under **Custom** in the block
+  list, and every template (Advanced Command Center, Atlas Floor, Nautica XL and more) is under **Factory templates**.
 - **App themes**: Dark, White or Monochrome. Pedal graphics stay the same.
 - **Raspberry Pi pedal** (first version, not yet tested on real hardware): install Tone Zone on a Pi 3B/3B+, 4 or 5
   with one command, then find it from the Pi tab, push presets in banks, switch them with GPIO footswitches, light
