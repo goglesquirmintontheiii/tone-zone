@@ -106,6 +106,11 @@ function connectEngine(ev) {
     for (const p of mineOut) for (const c of p.connections || []) if (hw(c) && !(outDev && outDev.ports.includes(c))) send(p.name, c, false);
     route = r;
     log.info(`audio: input ${src || 'none'}, output ${outDev ? outDev.ports.slice(0, 2).join(' + ') : 'none'}`, 'engine');
+    // the Audio page shows the ports in use, so a silent input can be found by switching channels
+    if (audioInfo.status) {
+      audioInfo.status.route = `In: ${src || 'nothing (no input ports)'}${inDev ? ` (channel ${Math.min(ch, inDev.ports.length)} of ${inDev.ports.length})` : ''}. Out: ${outDev ? outDev.ports.slice(0, 2).join(' + ') : 'nothing'}.`;
+      setTimeout(() => broadcast({ t: 'config', config: configOut() }), 0);
+    }
     if (!src) log.warn('no input port to connect: check the input device on the Audio page', 'engine');
     if (!outDev) log.warn('no output port to connect: check the output device on the Audio page', 'engine');
   }

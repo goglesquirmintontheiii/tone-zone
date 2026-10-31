@@ -296,6 +296,8 @@ function piPreset(id, name, withNam) {
         ok(aud.ins.length === 1 && aud.outs.length === 3, `real inputs (${aud.ins.length}) and outputs (${aud.outs.length}) in the pickers`);
         const stTxt = await win.evaluate(() => document.querySelector('[data-ctl="audio-status"]')?.textContent || '');
         ok(/^Audio running: /.test(stTxt), 'the Audio page says whether audio is running: ' + stTxt);
+        const rtTxt = await win.evaluate(() => document.querySelector('[data-ctl="audio-route"]')?.textContent || '');
+        ok(/In: system:capture_1 \(channel 1 of 2\)\. Out: system:playback_1 \+ system:playback_2/.test(rtTxt), 'and which ports it uses: ' + rtTxt);
         ok(await win.evaluate(() => document.querySelectorAll('[data-ctl="audio-channel"] option').length) >= 2, 'the Audio page has an input channel picker');
         await win.click('[data-ctl="tone-kind"] [data-v="2"]');
         await win.click('[data-act="test-tone"]');

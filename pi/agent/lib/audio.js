@@ -136,18 +136,36 @@ class AudioServer {
     const want = cfg.buffer || 128;
     const frames = [...new Set([want, 256, 512, 1024].filter((f) => f >= want))];
     const periodsList = [...new Set([cfg.periods || (outDev.kind === 'usb' ? 3 : 2), 3, 2])];
-    let ok = null, lastErr = '';
+    let ok = null, half = null, lastErr = '';
     for (const f of frames) {
       for (const n of periodsList) {
         const args = ['-R', '-P', '80', '-t', '2000', '-d', 'alsa', '-r', String(cfg.rate || 48000), '-p', String(f), '-n', String(n)];
         if (same) args.push('-d', hwId(sel.output));
         else args.push('-P', hwId(sel.output));
         const r = await this.startJackd(args);
+        // one device for both: JACK may open only one direction ("falling back to playback-only") and keep going.
+        // Try larger buffers for a full duplex start, keep the half one as a last resort.
+        if (r.ok && same && r.half) {
+          if (!half) half = { f, n, args, half: r.half };
+          lastErr = `the ${r.half === 'playback' ? 'input' : 'output'} side of ${name(devs.outputs, sel.output)} did not open at ${f} frames`;
+          await this.kill(r.proc);
+          continue;
+        }
         if (r.ok) { ok = { f, n }; break; }
         lastErr = r.error;
         if (r.busy) return fail(`${name(devs.outputs, sel.output)} is in use by another program (PulseAudio, PipeWire or another audio app), so JACK can't open it. Close that program or stop its sound server, then restart audio.`);
       }
       if (ok) break;
+    }
+    let halfNote = '';
+    if (!ok && half) {
+      // nothing opened both ways: run the half that works, and say what's missing
+      const r = await this.startJackd(half.args);
+      if (r.ok) {
+        ok = { f: half.f, n: half.n };
+        halfNote = half.half === 'playback' ? 'output only' : 'input only';
+        log.warn(`${name(devs.outputs, sel.output)}: only the ${half.half} side opened, so there is ${halfNote}. Pick a separate ${half.half === 'playback' ? 'input' : 'output'} device or another buffer size.`, 'engine');
+      }
     }
     if (!ok) return fail(`JACK could not open ${name(devs.outputs, sel.output)}${lastErr ? ': ' + lastErr : ''}. Try another output device, or a larger buffer.`);
     if (ok.f !== want || ok.n !== (periodsList[0])) log.warn(`${name(devs.outputs, sel.output)} did not accept ${want} frames x ${periodsList[0]}: running at ${ok.f} frames x ${ok.n}`, 'engine');
@@ -161,8 +179,9 @@ class AudioServer {
       } else log.warn('input and output are different cards and zita-a2j is missing: no input (sudo apt install zita-ajbridge)', 'engine');
     }
     this.mode = 'jackd';
-    const text = `JACK on ${name(devs.outputs, sel.output)}${same ? ' (in + out)' : ''}, ${ok.f} frames x ${ok.n} at ${cfg.rate || 48000} Hz${bridgeNote}`;
+    const text = `JACK on ${name(devs.outputs, sel.output)}${same ? (halfNote ? ' (' + halfNote + ')' : ' (in + out)') : ''}, ${ok.f} frames x ${ok.n} at ${cfg.rate || 48000} Hz${bridgeNote}`;
     log.info(text, 'engine');
+    if (halfNote) return { mode: 'jackd', jackLib: 'libjack.so.0', bridge: this.bridge, sel, status: { ok: false, error: `${text}. The ${halfNote === 'output only' ? 'input' : 'output'} side of the device would not open: pick a separate ${halfNote === 'output only' ? 'input' : 'output'} device, or another buffer size.` } };
     return { mode: 'jackd', jackLib: 'libjack.so.0', bridge: this.bridge, sel, status: { ok: true, text } };
   }
   // start jackd and see whether it stays up: { ok } or { ok: false, error, busy }
@@ -181,10 +200,22 @@ class AudioServer {
       const tick = () => {
         if (done) return;
         const r = spawnSync('sh', ['-c', 'command -v jack_wait >/dev/null && jack_wait -c'], { encoding: 'utf8' });
-        if ((r.stdout || '').includes('running') || Date.now() - t0 > 2500) return finish({ ok: true });
+        if ((r.stdout || '').includes('running') || Date.now() - t0 > 2500) {
+          const fb = lines.map((l) => /falling back to (playback|capture)-only/i.exec(l)).find(Boolean);
+          return finish({ ok: true, proc: p, half: fb ? fb[1].toLowerCase() : null });
+        }
         setTimeout(tick, 250);
       };
       setTimeout(tick, 400);
+    });
+  }
+  // stop one process and wait for it to go (so the next jackd can open the device)
+  kill(p) {
+    return new Promise((resolve) => {
+      if (!p || p.exitCode !== null) return resolve();
+      const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch {} }, 1500);
+      p.once('exit', () => { clearTimeout(t); resolve(); });
+      try { p.kill('SIGTERM'); } catch { resolve(); }
     });
   }
   spawn(cmd, args, onLine) {

@@ -23,7 +23,11 @@ export function renderAudio(main, ctx) {
   const io = card(left, 'Input and output', 'They can be two different devices, like a USB adapter in and the headphone jack out.');
   // a real Pi says whether audio is actually running (and why not)
   const stt = ctx.live && a.alsa && a.alsa.status;
-  if (stt) el('div', { class: 'pi-audio-status ' + (stt.ok ? 'ok' : 'bad'), 'data-ctl': 'audio-status' }, io).textContent = stt.ok ? 'Audio running: ' + stt.text : 'No audio: ' + stt.error;
+  if (stt) {
+    const box = el('div', { class: 'pi-audio-status ' + (stt.ok ? 'ok' : 'bad'), 'data-ctl': 'audio-status' }, io);
+    el('div', {}, box).textContent = stt.ok ? 'Audio running: ' + stt.text : 'No audio: ' + stt.error;
+    if (stt.route) el('div', { class: 'pi-audio-route', 'data-ctl': 'audio-route' }, box).textContent = stt.route;
+  }
   // a real Pi lists the sound cards it actually has; the demo picks from the common ones
   const al = ctx.live && a.alsa ? a.alsa : null;
   const devRow = (label, dir, list, key) => {
@@ -53,7 +57,7 @@ export function renderAudio(main, ctx) {
   if (al && al.inputs.length) {
     // interfaces with several inputs (a Helix sends 8 over USB): pick which one the guitar comes in on
     const n = Math.max(al.inChannels || 0, al.inChannel || 1, 2);
-    field(io, 'Input channel', 'Which input of the device feeds the engine. On a Line 6 Helix, USB 7 is your dry guitar and USB 1/2 is the Helix\'s own sound.');
+    field(io, 'Input channel', 'Which input of the device feeds the engine. On a Line 6 Helix, USB 7 is your dry guitar and USB 1/2 is the Helix\'s own sound. Watch the Input bar under Levels while you play.');
     select(io.lastChild.lastChild, [...Array(n)].map((_, i) => [i + 1, 'Input ' + (i + 1)]), al.inChannel || 1, (v) => { (store.audio.alsa || al).inChannel = +v; savePi(); piLog(`Audio input channel: ${v}`, 'info', 'engine'); ctx.rerender(); }, { 'data-ctl': 'audio-channel' });
   }
   devRow('Output (amp, headphones, PA)', 'out', outs, 'output');
