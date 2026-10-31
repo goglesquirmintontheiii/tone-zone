@@ -89,75 +89,109 @@ class AudioServer {
     this.bridge = null; // jack client name of the input bridge, if any
     this.stopping = false;
   }
-  // returns { mode, jackLib, bridge }
+  // returns { mode, jackLib, bridge, sel, status } ; status = { ok, text, error } for the Audio page
   async start(cfg) {
     this.stop();
     this.stopping = false;
     const devs = listDevices();
     const sel = pickDefaults(cfg, devs);
     this.sel = sel;
-    if (hw.FAKE && cfg.server === 'pipewire') {
+    const name = (list, id) => (list.find((d) => d.id === id) || {}).name || id || 'none';
+    const realPath = process.env.TZ_TEST_REAL_AUDIO === '1'; // tests: the real start path with a fake jackd
+    if (hw.FAKE && !realPath && cfg.server === 'pipewire') {
       // tests: the fake JACK library stands in for PipeWire
       this.mode = 'pipewire';
       log.info('fake audio through the PipeWire path', 'engine');
-      return { mode: 'pipewire', jackLib: process.env.TZ_JACK_LIB || '', sel };
+      return { mode: 'pipewire', jackLib: process.env.TZ_JACK_LIB || '', sel, status: { ok: true, text: 'PipeWire (test)' } };
     }
-    if (hw.FAKE) {
+    if (hw.FAKE && !realPath) {
       this.mode = 'fake';
       log.info(`fake audio: input ${sel.input || 'none'}, output ${sel.output || 'none'}, ${cfg.rate} Hz, ${cfg.buffer} frames`, 'engine');
-      return { mode: 'fake', jackLib: process.env.TZ_JACK_LIB || '', sel };
+      return { mode: 'fake', jackLib: process.env.TZ_JACK_LIB || '', sel, status: { ok: true, text: `test audio, ${cfg.buffer} frames` } };
     }
-    const server = cfg.server === 'auto' ? (pipewireRunning() ? 'pipewire' : 'jackd') : cfg.server;
+    const pwUp = pipewireRunning();
+    let server = cfg.server === 'auto' ? (pwUp ? 'pipewire' : 'jackd') : cfg.server;
+    if (server === 'pipewire' && !pwUp) {
+      log.warn('PipeWire was picked but is not running on this Pi: using JACK instead', 'engine');
+      server = 'jackd';
+    }
+    const fail = (error) => { log.error(error, 'engine'); this.mode = 'none'; return { mode: 'none', jackLib: '', sel, status: { ok: false, error } }; };
     if (server === 'pipewire') {
       const lib = pwJackLib();
       const owner = pipewireOwner();
-      if (!lib) {
-        log.error("PipeWire is running but its JACK library is missing, so the engine can't join it. Run the installer again or: sudo apt install pipewire-jack", 'engine');
-        return { mode: 'none', jackLib: '', sel };
-      }
-      if (!owner) {
-        log.error('PipeWire is running but its user could not be found', 'engine');
-        return { mode: 'none', jackLib: '', sel };
-      }
+      if (!lib) return fail("PipeWire is running but its JACK library is missing, so the engine can't join it. Run the installer again or: sudo apt install pipewire-jack");
+      if (!owner) return fail('PipeWire is running but its user could not be found');
       this.mode = 'pipewire';
       log.info(`using PipeWire (the desktop's, user ${owner.uid}) through its JACK layer, ${cfg.buffer} frames at ${cfg.rate} Hz`, 'engine');
       // PIPEWIRE_LATENCY asks PipeWire for our buffer size instead of its large desktop default
-      return { mode: 'pipewire', jackLib: lib, sel, uid: owner.uid, env: { PIPEWIRE_RUNTIME_DIR: owner.dir, PIPEWIRE_LATENCY: `${cfg.buffer || 128}/${cfg.rate || 48000}` } };
+      return { mode: 'pipewire', jackLib: lib, sel, uid: owner.uid, env: { PIPEWIRE_RUNTIME_DIR: owner.dir, PIPEWIRE_LATENCY: `${cfg.buffer || 128}/${cfg.rate || 48000}` }, status: { ok: true, text: `PipeWire, ${cfg.buffer} frames` } };
     }
-    if (!have('jackd')) {
-      log.error('jackd is not installed (sudo apt install jackd2)', 'engine');
-      return { mode: 'none', jackLib: '', sel };
-    }
-    if (!sel.output) {
-      log.error('no audio output found: plug in a USB audio adapter or a HAT', 'engine');
-      return { mode: 'none', jackLib: '', sel };
-    }
-    const outCard = (devs.outputs.find((d) => d.id === sel.output) || {}).card;
+    if (!have('jackd')) return fail('jackd is not installed (sudo apt install jackd2)');
+    if (!sel.output) return fail('no audio output found: plug in a USB audio interface or add a HAT');
+    const outDev = devs.outputs.find((d) => d.id === sel.output) || {};
     const inDev = devs.inputs.find((d) => d.id === sel.input);
-    const same = inDev && inDev.card === outCard;
-    const usb = (devs.outputs.find((d) => d.id === sel.output) || {}).kind === 'usb';
-    const periods = String(cfg.periods || (usb ? 3 : 2));
-    const args = ['-R', '-P', '80', '-t', '2000', '-d', 'alsa', '-r', String(cfg.rate || 48000), '-p', String(cfg.buffer || 128), '-n', periods];
-    if (same) args.push('-d', sel.output.replace(/^hw:CARD=([^,]+),DEV=(\d+)$/, 'hw:$1,$2'));
-    else args.push('-P', sel.output.replace(/^hw:CARD=([^,]+),DEV=(\d+)$/, 'hw:$1,$2'));
-    this.spawn('jackd', args);
-    await waitJack(4000);
+    const same = inDev && inDev.card === outDev.card;
+    const hwId = (id) => id.replace(/^hw:CARD=([^,]+),DEV=(\d+)$/, 'hw:$1,$2');
+    // some devices refuse small buffers (the Pi's headphone jack, some USB interfaces): try larger ones before giving up
+    const want = cfg.buffer || 128;
+    const frames = [...new Set([want, 256, 512, 1024].filter((f) => f >= want))];
+    const periodsList = [...new Set([cfg.periods || (outDev.kind === 'usb' ? 3 : 2), 3, 2])];
+    let ok = null, lastErr = '';
+    for (const f of frames) {
+      for (const n of periodsList) {
+        const args = ['-R', '-P', '80', '-t', '2000', '-d', 'alsa', '-r', String(cfg.rate || 48000), '-p', String(f), '-n', String(n)];
+        if (same) args.push('-d', hwId(sel.output));
+        else args.push('-P', hwId(sel.output));
+        const r = await this.startJackd(args);
+        if (r.ok) { ok = { f, n }; break; }
+        lastErr = r.error;
+        if (r.busy) return fail(`${name(devs.outputs, sel.output)} is in use by another program (PulseAudio, PipeWire or another audio app), so JACK can't open it. Close that program or stop its sound server, then restart audio.`);
+      }
+      if (ok) break;
+    }
+    if (!ok) return fail(`JACK could not open ${name(devs.outputs, sel.output)}${lastErr ? ': ' + lastErr : ''}. Try another output device, or a larger buffer.`);
+    if (ok.f !== want || ok.n !== (periodsList[0])) log.warn(`${name(devs.outputs, sel.output)} did not accept ${want} frames x ${periodsList[0]}: running at ${ok.f} frames x ${ok.n}`, 'engine');
+    let bridgeNote = '';
     if (inDev && !same) {
       if (have('zita-a2j')) {
         this.bridge = 'tz-in';
-        this.spawn('zita-a2j', ['-j', 'tz-in', '-d', inDev.id.replace(/^hw:CARD=([^,]+),DEV=(\d+)$/, 'hw:$1,$2'), '-r', String(cfg.rate || 48000), '-p', String(cfg.buffer || 128), '-n', '3', '-c', '1']);
+        this.spawn('zita-a2j', ['-j', 'tz-in', '-d', hwId(inDev.id), '-r', String(cfg.rate || 48000), '-p', String(ok.f), '-n', '3', '-c', '1']);
         log.info(`input ${inDev.name} through zita-a2j (separate clock, resampled, about 2 ms extra)`, 'engine');
+        bridgeNote = ', input resampled from ' + inDev.name;
       } else log.warn('input and output are different cards and zita-a2j is missing: no input (sudo apt install zita-ajbridge)', 'engine');
     }
     this.mode = 'jackd';
-    log.info(`JACK: ${sel.output}${same ? ' (in + out)' : ''}, ${cfg.rate} Hz, ${cfg.buffer} frames x ${periods}`, 'engine');
-    return { mode: 'jackd', jackLib: 'libjack.so.0', bridge: this.bridge, sel };
+    const text = `JACK on ${name(devs.outputs, sel.output)}${same ? ' (in + out)' : ''}, ${ok.f} frames x ${ok.n} at ${cfg.rate || 48000} Hz${bridgeNote}`;
+    log.info(text, 'engine');
+    return { mode: 'jackd', jackLib: 'libjack.so.0', bridge: this.bridge, sel, status: { ok: true, text } };
   }
-  spawn(cmd, args) {
+  // start jackd and see whether it stays up: { ok } or { ok: false, error, busy }
+  startJackd(args) {
+    return new Promise((resolve) => {
+      const lines = [];
+      const p = this.spawn('jackd', args, (l) => lines.push(l));
+      let done = false;
+      const finish = (r) => { if (!done) { done = true; resolve(r); } };
+      p.on('exit', () => {
+        const err = lines.filter((l) => /cannot|failed|error|busy/i.test(l)).slice(-3).join('; ');
+        finish({ ok: false, error: err, busy: lines.some((l) => /busy/i.test(l)) });
+      });
+      // up when it has run for a moment (jack_wait, if installed, can confirm sooner)
+      const t0 = Date.now();
+      const tick = () => {
+        if (done) return;
+        const r = spawnSync('sh', ['-c', 'command -v jack_wait >/dev/null && jack_wait -c'], { encoding: 'utf8' });
+        if ((r.stdout || '').includes('running') || Date.now() - t0 > 2500) return finish({ ok: true });
+        setTimeout(tick, 250);
+      };
+      setTimeout(tick, 400);
+    });
+  }
+  spawn(cmd, args, onLine) {
     // headless: no D-Bus session, so skip JACK's device reservation
     const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { JACK_NO_AUDIO_RESERVATION: '1' }) });
     const tag = cmd;
-    const out = (b) => String(b).split('\n').filter((l) => l.trim() && !/^(jackdmp|Copyright|This is free|JACK server starting|creating alsa driver|configuring for)/.test(l)).forEach((l) => log.info(`${tag}: ${l.trim()}`, 'engine'));
+    const out = (b) => String(b).split('\n').filter((l) => l.trim() && !/^(jackdmp|Copyright|This is free|JACK server starting|creating alsa driver|configuring for)/.test(l)).forEach((l) => { log.info(`${tag}: ${l.trim()}`, 'engine'); if (onLine) onLine(l.trim()); });
     p.stdout.on('data', out);
     p.stderr.on('data', out);
     p.on('exit', (code) => {
@@ -173,18 +207,6 @@ class AudioServer {
     this.procs = [];
     this.bridge = null;
   }
-}
-
-function waitJack(ms) {
-  return new Promise((resolve) => {
-    const t0 = Date.now();
-    const tick = () => {
-      const r = spawnSync('sh', ['-c', 'command -v jack_wait >/dev/null && jack_wait -c'], { encoding: 'utf8' });
-      if ((r.stdout || '').includes('running') || Date.now() - t0 > ms) return resolve();
-      setTimeout(tick, 200);
-    };
-    setTimeout(tick, 300);
-  });
 }
 
 module.exports = { listDevices, pwDevices, pickDefaults, AudioServer };

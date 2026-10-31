@@ -65,7 +65,7 @@ function audioIn(a) {
     output: uiAudioId(devs.outputs.find((d) => d.id === outId)) || 'jack35',
     rate: a.rate, buffer: a.buffer, periods: a.periods, governor: a.governor, isolate: a.isolate,
     server: a.mode === 'pipewire' || a.server === 'pipewire' ? 'pipewire' : 'jack',
-    alsa: { inputs: devs.inputs, outputs: devs.outputs, input: inId || '', output: outId || '', inChannel: a.inChannel || 1, inChannels: a.inChannels || 0, mode: a.mode || '' },
+    alsa: { inputs: devs.inputs, outputs: devs.outputs, input: inId || '', output: outId || '', inChannel: a.inChannel || 1, inChannels: a.inChannels || 0, mode: a.mode || '', status: a.status || null },
   };
   // the tab edits this object in place, so keep what the Pi said to tell real changes apart
   Object.defineProperty(r, 'was', { value: { input: r.input, output: r.output, alsaIn: r.alsa.input, alsaOut: r.alsa.output }, enumerable: false });

@@ -1,7 +1,7 @@
 {
   "name": "tone-zone",
   "productName": "Tone Zone",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Tone Zone - guitar and bass effects for PipeWire",
   "main": "main/main.js",
   "author": "goglesquirmintontheiii <goglesquirmintontheiii@gmail.com>",
