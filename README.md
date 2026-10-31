@@ -19,7 +19,7 @@ the `fuse2` package.
 - **Board editor**: drag blocks in from the browser, move them around and patch them by dragging between the
   1/4" jacks. Cables sag like real ones and can be recoloured (right-click). An input takes one cable; drag a
   plugged input to move or unplug it, or Shift-drag an output to pick up its cable.
-- **1600 built-in blocks**: 921 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
+- **1620 built-in blocks** (including the 22 Pedal Factory templates): 921 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
   170 preamps, 73 cabinets with up to four draggable mics each, 249 Tone Zone originals and 6 pedalboards. That covers wahs,
   volume and whammy pedals, loopers, synths, acoustic preamps, DIs, splitters, mergers and other utilities. Pedals
   that can be stereo come in **mono and stereo versions**.
@@ -31,7 +31,7 @@ the `fuse2` package.
   without touching your board.
 - **Nautica XL**: the flagship multi-FX: 14 assignable footswitches with their own screens, two treadles, a
   HeadRush style touch screen with two strip screens and a side screen, two paths, 4 effects loops, 8 outputs plus
-  phones and XLR, and a level LED on every jack.
+  phones and XLR, a level LED on every jack and a jack guide that blinks the LED of the jack you pick.
 - **Line 6 Helix**: connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
   expression, external switches, USB audio). You can also map its footswitches and expression pedal to the
   footswitches and treadles of other pedals on the board.
