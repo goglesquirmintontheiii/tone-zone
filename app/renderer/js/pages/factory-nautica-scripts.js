@@ -79,6 +79,10 @@ function M.readKV(path)
 end
 function M.parts(s) return (s or ""):split("|") end
 -- a command for MAIN (the side screen and the strips)
+function M.lvl(v)
+  if v <= 0.004 then return 0 end
+  return M.clamp((20 * math.log(v) / math.log(10) + 48) / 48, 0, 1)
+end
 function M.cmd(s) fs.append("nx/cmd.txt", s .. "\\n") end
 
 -- assignments are short texts: "auto", "blk:5", "scn:3", "par:5:2" ...
@@ -1309,7 +1313,7 @@ function draw()
   -- live contents: levels, tempo and tuner, pedals
   if kind == 2 then
     local k = {}
-    for i = 1, 6 do k[i] = math.floor(input(i) * 12 + 0.5) end
+    for i = 1, 6 do k[i] = math.floor(N.lvl(input(i)) * 12 + 0.5) end
     local s = table.concat(k, ",")
     if s ~= lv.s then lv.s = s; dirty = true end
   elseif kind == 4 then
@@ -1363,7 +1367,7 @@ function stripDraw(kind)
     for i, l in ipairs(items) do
       local x = 4 + (i - 1) * iw
       text(l, x, H / 2 - 2.5, D, 4.8, "left", "sans")
-      local lit = math.floor(input(i) * 12 + 0.5)
+      local lit = math.floor(N.lvl(input(i)) * 12 + 0.5)
       local bx, bw = x + 30, iw - 36
       for k = 1, 12 do
         local col = k > 10 and "#ff4d5e" or (k > 8 and "#ffc24b" or "#37d6c2")
@@ -1488,7 +1492,10 @@ local last = ""
 function draw()
   sendSlice()
   local q = {}
-  for i, b in ipairs(BARS) do q[i] = b[2] > 0 and math.floor(math.min(1, input(b[2]) * 2.5) * 10 + 0.5) or 0 end
+  for i, b in ipairs(BARS) do
+    local v = b[2] > 0 and input(b[2]) or 0
+    q[i] = v >= 0.98 and 11 or math.floor(N.lvl(v) * 10 + 0.5)
+  end
   local key = table.concat(q, ",")
   if key == last then return end
   last = key
@@ -1496,12 +1503,12 @@ function draw()
   push()
   scale(SC)
   for i, b in ipairs(BARS) do
-    local lv = q[i] / 10
+    local lv = math.min(q[i], 11) / 10
     local bw = b[4] > 1 and 6 or 12
     for k = 0, b[4] - 1 do
       local x = b[1] - (b[4] * bw + (b[4] - 1) * 1.5) / 2 + k * (bw + 1.5)
       fillRoundRect(x - 0.5, 1, bw + 1, H - 2, 1.5, fade("#000000", 0.6))
-      fillRoundRect(x, 1.5, bw, H - 3, 1.2, fade(lv >= 1 and "#ff3b30" or b[3], 0.1 + 0.9 * lv ^ 1.4))
+      fillRoundRect(x, 1.5, bw, H - 3, 1.2, fade(lv > 1 and "#ff3b30" or b[3], 0.1 + 0.9 * math.min(1, lv) ^ 1.4))
     end
   end
   pop()

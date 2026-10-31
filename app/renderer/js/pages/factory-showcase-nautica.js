@@ -81,7 +81,7 @@ export function nauticaTemplates(h) {
       ['vs1', 'vs2', 'vs3', 'vs4'].forEach((k, i) => c.wire(P[k], 'out', oSend[i], 'in'));
       // levels for the screens (envelope followers -> circuit outputs)
       const lvl = (name, src) => {
-        const e = c.part('env', 1800, 1500 + Object.keys(P).length * 10, { sens: 0.6, attack: 2, release: 160 });
+        const e = c.part('env', 1800, 1500 + Object.keys(P).length * 10, { sens: 0, attack: 2, release: 160 });
         c.wire(src, 'out', e, 'in');
         return c.out(name, e);
       };
