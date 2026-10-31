@@ -35,7 +35,7 @@
 //       setConfig  { id, part, value }                part: 'gpio' | 'display' | 'audio' | 'updates' | 'switching'
 //       testPin    { id, pin, kind }                  kind 'foot' (fake a press) or 'led' (blink)
 //       calibrate  { id, ch }                         -> { heel, toe }  (percent)
-//       testTone   { id }
+//       testTone   { id, on, tone, level, side }    tone 0..3 (440 Hz, 1 kHz, pink noise, sweep), level dBFS, side 0 both 1 L 2 R
 //       checkUpdate { id, channel }                   -> { latest, notes: string[] }
 //       update     { id, channel, via }               emit progress job 'update', then a 'device' patch
 //       rollback   { id }

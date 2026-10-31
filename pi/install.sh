@@ -70,6 +70,10 @@ export DEBIAN_FRONTEND=noninteractive
 echo "jackd2 jackd/tweak_rt_limits boolean true" | debconf-set-selections
 apt-get update -qq
 PKGS="jackd2 zita-ajbridge alsa-utils avahi-daemon libnss-mdns gpiod curl ca-certificates openssl tar"
+# a Pi with a desktop runs PipeWire: the engine joins it through PipeWire's JACK library (acl lets it reach the
+# desktop user's PipeWire socket)
+PKGS="$PKGS acl"
+if pgrep -x pipewire >/dev/null 2>&1 || dpkg -s pipewire >/dev/null 2>&1; then PKGS="$PKGS pipewire-jack"; fi
 [ $SCREEN = 1 ] && PKGS="$PKGS cage"
 # shellcheck disable=SC2086
 apt-get install -y -qq --no-install-recommends $PKGS

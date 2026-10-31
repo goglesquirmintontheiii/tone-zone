@@ -19,5 +19,15 @@ case "$1" in
       [ -f "$b/max_brightness" ] || continue
       m=$(cat "$b/max_brightness"); echo $(( m * $2 / 100 )) > "$b/brightness"
     done ;;
-  *) echo "usage: tonezone-root reboot | governor <name> | kiosk on|off [rotation] | backlight <0..100>" >&2; exit 2 ;;
+  pw-access)
+    # let the tonezone user reach a desktop user's PipeWire (its runtime dir is private to that user)
+    case "$2" in ''|*[!0-9]*) exit 2 ;; esac
+    [ "$2" -ge 1000 ] || exit 2
+    d="/run/user/$2"
+    [ -d "$d" ] || exit 3
+    command -v setfacl >/dev/null || exit 4
+    setfacl -m u:tonezone:x "$d"
+    for s in "$d/pipewire-0" "$d/pipewire-0-manager"; do [ -S "$s" ] && setfacl -m u:tonezone:rw "$s"; done
+    exit 0 ;;
+  *) echo "usage: tonezone-root reboot | governor <name> | kiosk on|off [rotation] | backlight <0..100> | pw-access <uid>" >&2; exit 2 ;;
 esac
