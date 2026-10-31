@@ -12,6 +12,16 @@ const u = (v) => Math.round(v * K * 100) / 100;
 const RES = 3.5; // screen pixels per mm: the scripts keep the native unit's coordinates
 const btn = (x, y, label, o = {}) => ({ id: uid('b'), kind: 'button', x, y, r: 4, shape: 'rect', w: 11.4, h: 3.4, color: '#2a2f37', led: false, ledColor: '#2ee6d6', on: false, label, labelPos: 'below', ...o });
 const tread = (x, y, w, h, label, o = {}) => ({ id: uid('p'), kind: 'pedal', x, y, w, h, value: 0.5, color: '#15181d', logo: label, logoColor: '#7c8697', label, labelPos: 'none', ...o });
+// the jack guide on MAIN: every rear jack (the key matches its bar LED on the I/O rail), its name and what it is
+const JACK_GUIDE = [
+  ['gtr', 'GUITAR IN', 'INSTRUMENT INPUT, HI-Z'], ['aux', 'AUX IN', 'LINE INPUT'],
+  ...[1, 2, 3, 4].flatMap((k) => [['o' + k + 'l', 'OUT ' + k + ' L', 'LINE OUTPUT, LEFT'], ['o' + k + 'r', 'OUT ' + k + ' R', 'LINE OUTPUT, RIGHT']]),
+  ['phones', 'PHONES', 'HEADPHONES, STEREO'], ['xlr', 'XLR OUT', 'BALANCED OUTPUT, MONO'],
+  ...[1, 2, 3, 4].flatMap((k) => [['s' + k, 'SEND ' + k, 'LOOP ' + k + ' OUT TO PEDALS'], ['r' + k, 'RETURN ' + k, 'LOOP ' + k + ' IN FROM PEDALS']]),
+  ...[1, 2, 3, 4].map((k) => ['xf' + k, 'EXT FS ' + k, 'FOOTSWITCH INPUT']),
+  ['xe1', 'EXT EXP 1', 'EXPRESSION PEDAL INPUT'], ['xe2', 'EXT EXP 2', 'EXPRESSION PEDAL INPUT'],
+  ['xfo', 'EXT FS OUT', 'SWITCH OUTPUT, TIP / RING'], ['xeo', 'EXT EXP OUT', 'EXPRESSION / CV OUTPUT'],
+];
 const lua = (v) => (typeof v === 'string' ? JSON.stringify(v) : typeof v === 'boolean' ? String(v) : Array.isArray(v) ? '{' + v.map(lua).join(', ') + '}' : v && typeof v === 'object'
   ? '{' + Object.entries(v).map(([k, x]) => (/^[a-z_][a-z0-9_]*$/i.test(k) ? k : '[' + (/^\d+$/.test(k) ? k : JSON.stringify(k)) + ']') + ' = ' + lua(x)).join(', ') + '}'
   : String(Math.round(v * 10000) / 10000));
@@ -207,6 +217,8 @@ export function nauticaTemplates(h) {
         'M.OUTDEF = ' + lua(OUTDEF),
         'M.PAGE_LEDS = ' + lua([['LIBRARY', 'lib'], ['AMP', 'blk'], ['PRESETS', 'pre'], ['SCENES', 'scn'], ['TUNER', 'tun'], ['ASSIGN', 'asg'], ['I/O', 'io'], ['GLOBAL', 'glb']]),
         'M.PRESETS = ' + lua(PRE),
+        // the jack guide (MAIN): key (as on the I/O rail), name, what it is
+        'M.JACKS = ' + lua(JACK_GUIDE),
       ].join('\n');
 
       // ---------------------------------------------------------------- jacks along the rear edge (native order)
@@ -261,13 +273,13 @@ export function nauticaTemplates(h) {
       };
       const rail = (half, a, b, base) => {
         const ins = [], bars = [];
-        const colOf = (k) => (/^x/.test(k) ? '#b58bff' : /^[sr]\d/.test(k) ? '#ffb340' : k === 'gtr' || k === 'aux' ? '#2ee6d6' : '#46d36f');
+        const colOf = (k) => (/^x(?!lr)/.test(k) ? '#b58bff' : /^[sr]\d/.test(k) ? '#ffb340' : k === 'gtr' || k === 'aux' ? '#2ee6d6' : '#46d36f');
         ioIns[half].forEach(([name, ref, keys], i) => {
           if (typeof ref === 'string') ins.push(fromJack(name, ref, ref.startsWith('xf') ? 'b' : 'n'));
           else ins.push(fromCv(name, ref));
-          for (const k of keys) bars.push({ x: (jxs[k] - a) * K * RES, input: i + 1, col: colOf(k), n: 1 });
+          for (const k of keys) bars.push({ x: (jxs[k] - a) * K * RES, input: i + 1, col: colOf(k), n: 1, key: k });
         });
-        return screen(u((a + b) / 2), 5.4, u(b - a), u(9), 'tft', ioScript(base, bars, (b - a) * K * RES), { res: RES, label: 'I/O ' + half, sio: sio(ins, slice(base, 16)) });
+        return screen(u((a + b) / 2), 5.4, u(b - a), u(9), 'tft', ioScript(base, bars, (b - a) * K * RES, half === 'L' ? 1 : 2), { res: RES, label: 'I/O ' + half, sio: sio(ins, slice(base, 16)) });
       };
       const ioL = rail('L', railL, railMid, 61), ioR = rail('R', railMid + 16, railR, 77);
       J.xfo.dir = 'out'; J.xfo.from = { scr: main.id, o: 14 };

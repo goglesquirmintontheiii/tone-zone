@@ -43,6 +43,7 @@ const { makeDI, measure } = require('./loudness');
     const { ScreenRuntime } = await import('./js/screenscript/runtime.js');
     const { makeHost, simIO } = await import('./js/screenscript/host.js');
     const { screenPixels } = await import('./js/screenscript/surface.js');
+    const { controlList } = await import('./js/screenscript/host.js');
     const D = window.__tzFactory.template('nautica');
     const rts = [];
     for (const c of D.ctls.filter((x) => x.kind === 'screen' && x.shows === 'custom')) {
@@ -50,7 +51,7 @@ const { makeDI, measure } = require('./loudness');
       const { io } = simIO(D);
       io.cid = c.id;
       const rt = new ScreenRuntime({ src: c.script, w: W, h: H, host: makeHost(D, io), palette: c.type });
-      rts.push({ c, rt, W, H, steps: 0, ms: 0 });
+      rts.push({ c, rt, W, H, io, steps: 0, ms: 0 });
     }
     let t = performance.now();
     const frame = () => {
@@ -82,11 +83,62 @@ const { makeDI, measure } = require('./loudness');
     tapAt(main, 100, 50); pages.push('loaded');
     for (const r of rts) for (const [fx, fy] of [[0.2, 0.4], [0.5, 0.6], [0.85, 0.5], [0.97, 0.5], [0.3, 0.85]]) tapAt(r, fx * r.W, fy * r.H);
     for (let i = 0; i < 10; i++) frame();
+    // jack guide: I/O button, JACK GUIDE chip; the rails write their levels, IDENTIFY blinks one bar LED
+    const jg = {};
+    {
+      const txt = (p) => { const b = main.io.files.read(p); return b ? new TextDecoder().decode(b) : null; };
+      const k = main.W / 560;
+      const ioBtn = controlList(D).find((e) => e.label === 'I/O');
+      main.io.set(ioBtn.p, main.io.get(ioBtn.p) ? 0 : 1); frame(); frame();
+      tapAt(main, (206 + 33) * k, (21 + 5.5) * k);
+      frame(); frame();
+      jg.id0 = txt('nx/id.txt');
+      const lib = txt('nx.lua') || '';
+      const m = /M\.JACKS = \{(.*)\}\s*$/m.exec(lib);
+      jg.jacks = m ? [...m[1].matchAll(/\{"([a-z0-9]+)", "/g)].map((x) => x[1]) : [];
+      const railKeys = rts.filter((r) => /^I\/O/.test(r.c.label)).flatMap((r) => [...r.c.script.matchAll(/, "([a-z0-9]+)"\}/g)].map((x) => x[1]));
+      jg.railKeys = railKeys;
+      const lv = (txt('nx/lv1.txt') || '') + '\n' + (txt('nx/lv2.txt') || '');
+      jg.lvKeys = lv.split('\n').filter(Boolean).map((l) => l.split('=')[0]);
+      // pixel of a bar LED on a rail canvas
+      const rail = rts.find((r) => r.c.label === 'I/O L');
+      const scl = +/local SC = W \/ ([\d.]+)/.exec(rail.c.script)[1];
+      const barX = (key) => +new RegExp('\\{([\\d.]+), \\d+, "[^"]+", \\d+, "' + key + '"\\}').exec(rail.c.script)[1];
+      const px = (key) => { const d = rail.rt.g.getImageData(Math.round(barX(key) * rail.W / scl), Math.round(rail.H / 2), 1, 1).data; return [d[0], d[1], d[2]]; };
+      const white = (c) => c[0] > 200 && c[1] > 200 && c[2] > 200;
+      const watch = (n) => { const o = { s1: [], o1l: [] }; for (let i = 0; i < n; i++) { frame(); o.s1.push(px('s1')); o.o1l.push(px('o1l')); } return o; };
+      jg.before = watch(6);
+      const idx = jg.jacks.indexOf('s1'); // first tab
+      tapAt(main, (6 + 470 + 36) * k, (36 + (idx % 14) * 14.6 + 6.5) * k);
+      jg.id1 = txt('nx/id.txt');
+      const on = watch(10);
+      jg.blinkWhite = on.s1.filter(white).length; jg.blinkDark = on.s1.filter((c) => c[0] + c[1] + c[2] < 120).length;
+      jg.otherWhite = on.o1l.filter(white).length + jg.before.s1.filter(white).length;
+      for (let i = 0; i < 80; i++) frame();
+      const after = watch(8);
+      jg.afterWhite = after.s1.filter(white).length;
+      jg.id2 = txt('nx/id.txt');
+      // the same button twice: IDENTIFY then STOP
+      tapAt(main, (6 + 470 + 36) * k, (36 + (idx % 14) * 14.6 + 6.5) * k);
+      tapAt(main, (6 + 470 + 36) * k, (36 + (idx % 14) * 14.6 + 6.5) * k);
+      jg.id3 = txt('nx/id.txt');
+      main.io.set(ioBtn.p, main.io.get(ioBtn.p) ? 0 : 1); frame(); frame();
+    }
+    window.__jg = jg;
     return rts.map((r) => ({ label: r.c.label, err: r.rt.error ? String(r.rt.error.message || r.rt.error) : null, frames: r.rt.frameN, steps: r.steps, ms: +r.ms.toFixed(2) }));
   });
   const bad = run.filter((r) => r.err || r.frames < 20 || r.steps > 150000);
   ok(!bad.length, `all ${run.length} screen scripts run within budget ${bad.map((r) => r.label + ': ' + (r.err || r.steps)).join(' | ')}`);
   console.log('     max steps per frame: ' + run.map((r) => r.label + ' ' + r.steps).join(', '));
+  {
+    const jg = await win.evaluate(() => window.__jg);
+    const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+    ok(/^\d+,,1$/.test(jg.id0 || ''), 'I/O page JACK GUIDE chip opens the jack guide (nx/id.txt ' + jg.id0 + ')');
+    ok(jg.jacks.length === 28 && same(jg.jacks, jg.railKeys) && same(jg.lvKeys, jg.jacks), `jack guide lists all ${jg.jacks.length} jacks, the same as the ${jg.railKeys.length} rail LEDs; the rails report ${jg.lvKeys.length} levels`);
+    ok(/,s1,1$/.test(jg.id1 || '') && jg.blinkWhite >= 2 && jg.blinkDark >= 2 && jg.otherWhite === 0, `IDENTIFY SEND 1 blinks its LED (white ${jg.blinkWhite}, dark ${jg.blinkDark} of 10 frames), other LEDs never blink (${jg.otherWhite})`);
+    ok(jg.afterWhite === 0 && /^\d+,,1$/.test(jg.id2 || ''), 'IDENTIFY stops after 3 s (' + jg.id2 + ')');
+    ok(/^\d+,,1$/.test(jg.id3 || ''), 'tapping STOP ends IDENTIFY early (' + jg.id3 + ')');
+  }
   if (process.argv.includes('--quick')) { console.log(errs.join('\n')); await app.close(); process.exit(fails ? 1 : 0); }
 
   // ---- 3. the factory: load it, layout check, big shot
@@ -309,12 +361,26 @@ const { makeDI, measure } = require('./loudness');
   }
   await tapB('SIDE', 69, 14);
   await zoomOut(); await wait(300); await ctlClick('ASSIGN'); await zoomIn(); await wait(1500); await tapB('MAIN', 38, 44); await shot('MAIN', 'page-assign-list.png'); pages.push('assign list');
+  // jack guide on the board: I/O -> JACK GUIDE, IDENTIFY SEND 1, the rail blinks
+  {
+    await zoomOut(); await wait(300); await ctlClick('I/O'); await zoomIn(); await wait(1200);
+    await tapB('MAIN', 206 + 33, 21 + 5.5); await wait(900);
+    await shot('MAIN', 'page-jacks.png'); pages.push('jacks');
+    await tapB('MAIN', 124 + 56, 22 + 5.5); await wait(500); // LOOPS & CONTROL tab
+    await shot('MAIN', 'page-jacks-2.png');
+    await tapB('MAIN', 6 + 470 + 36, 36 + 0 * 14.6 + 6.5); await wait(500); // SEND 2: first row of the second tab
+    const idf = await win.evaluate(async () => { const B = await import('./js/screenscript/board.js'); const b = () => window.__tz.state.preset.blocks.find((x) => x.id === window.__nxb); const v = B.blockFiles(window.__nxb, b).read('nx/id.txt'); return v ? new TextDecoder().decode(v) : null; });
+    ok(/,s2,1$/.test(idf || ''), 'on the board IDENTIFY SEND 2 writes nx/id.txt: ' + idf);
+    await shot('MAIN', 'page-jacks-identify.png');
+    { const c = await clipOf('I/O L'); const clip = { x: c.x + c.width * 0.45, y: Math.max(0, c.y - 60), width: c.width * 0.55, height: c.height + 64 }; for (let k = 1; k <= 3; k++) { await win.screenshot({ path: path.join(out, 'rail-identify-' + k + '.png'), clip }); await wait(90); } }
+    await wait(3500);
+  }
   await shot('SIDE', 'side-screen.png');
   await tapB('STRIP 1', 548, 11); await shot('STRIP 1', 'strip-menu.png');
   await tapB('STRIP 1', 3 + 1 * ((560 - 30) / 6) + 30, 11); await shot('STRIP 1', 'strip-levels.png');
   await shot('STRIP 2', 'strip-2.png');
   await shot('I/O L', 'io-left.png');
-  ok(pages.length === 10, 'screen pages shot: ' + pages.join(', '));
+  ok(pages.length === 11, 'screen pages shot: ' + pages.join(', '));
 
   ok(errs.length === 0, 'no console errors\n' + errs.join('\n'));
   console.log(fails ? `${fails} FAILED` : 'all passed');

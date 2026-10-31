@@ -54,7 +54,7 @@ the `fuse2` package.
   latency options and no warble on chords.
 - **Accurate tuners**: under a cent of error, down to low B on 5 and 6-string bass and F# on 8-string guitar. The
   PolyTune-style tuner also has a strum mode that shows every string at once.
-- **Presets**: a Presets tab with board thumbnails, tags and favourites, about 180 factory presets (rhythm and lead
+- **Presets**: a Presets tab with board thumbnails, tags and favourites, about 186 factory presets (rhythm and lead
   rigs for many genres, artist and song tones, synth and meme rigs), undo / redo, import and export.
 - **Pedalboards**: six empty boards from Tiny (4 pedals) to XL Max (28). Pedals dropped on a board snap into
   place with room for their plugs, cables run neatly along the rails, and dragging the board moves its pedals. Name

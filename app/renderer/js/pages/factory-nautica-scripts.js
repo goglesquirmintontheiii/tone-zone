@@ -672,8 +672,47 @@ local function ioStep(r, d)
   changed()
 end
 
+-- jack guide: IDENTIFY blinks a jack's bar LED. MAIN writes nx/id.txt (seq,key,guide open); the I/O rail
+-- screens blink that jack for 3 s from the moment the seq changes, and write their levels to nx/lv1.txt and
+-- nx/lv2.txt while the guide is open
+local jsel, idKey, idUntil, idSeq, lastIdS = 1, "", 0, 0, ""
+local function writeId()
+  local s = idSeq .. "," .. idKey .. "," .. (page == "jck" and 1 or 0)
+  if s ~= lastIdS then lastIdS = s; pcall(fs.write, "nx/id.txt", s) end
+end
+local function identify(k)
+  for i, j in ipairs(N.JACKS) do if j[1] == k then jsel = i end end
+  if idKey == k and time() < idUntil then idKey = "" else idSeq = idSeq + 1; idKey = k; idUntil = time() + 3 end
+  writeId()
+  dirty = true
+end
+local LOOP_SLOT = {16, 8, 14, 15}
+local function jackRoute(k)
+  local g = st.g
+  if k == "gtr" then return "GAIN " .. dbF(g.gtr) end
+  if k == "aux" then return "GAIN " .. dbF(g.aux) end
+  if k == "phones" then return "MAIN, PHONES DIAL" end
+  if k == "xlr" then return "MAIN, XLR DIAL" end
+  if k == "xfo" then return N.XFO[g.xfo] or "" end
+  if k == "xeo" then return N.XEO[g.xeo] or "" end
+  if k:sub(1, 2) == "xf" then return shortOf(ASG[16 + tonumber(k:sub(3, 3))]) end
+  if k:sub(1, 2) == "xe" then return shortOf(ASG[22 + tonumber(k:sub(3, 3))]) end
+  local c, n = k:sub(1, 1), tonumber(k:sub(2, 2))
+  if (c == "s" or c == "r") and n then
+    local sl = LOOP_SLOT[n]
+    local on = st.slots[sl].on
+    return SLOTS[sl].id .. " " .. N.model(st, sl).s .. ((on == 1 or on == true) and "" or " (OFF)")
+  end
+  if c == "o" and n then
+    if n <= 2 then return "MAIN, MASTER DIAL" end
+    if n == 3 then return g.o3 == 0 and "PATH A" or "DRY DI" end
+    return g.o4 == 0 and "PATH B" or "DRY DI"
+  end
+  return ""
+end
+
 -- the side screen nav (HOME BACK SAVE UP DOWN, the select encoder: up / down / enter)
-local BACK = {lib = "rig", blk = "rig", scn = "rig", pre = "rig", tun = "rig", asg = "rig", asgl = "asg", io = "rig", glb = "rig", rig = "rig"}
+local BACK = {lib = "rig", blk = "rig", scn = "rig", pre = "rig", tun = "rig", asg = "rig", asgl = "asg", io = "rig", jck = "io", glb = "rig", rig = "rig"}
 nav = function(key)
   dirty = true
   if key == "home" then if tuner then setTuner(false) end page = "rig" return end
@@ -699,7 +738,8 @@ nav = function(key)
     local list = choices(ASG[asel])
     if key == "enter" then pick(ASG[asel], list[gsel][2]) else gsel = clamp(gsel + d, 1, #list); lscr2 = clamp(gsel - 7, 0, math.max(0, #list - 28)) end
   elseif page == "glb" then if key == "enter" then gStep(GLOBAL[gsel], 1) else gsel = (gsel - 1 + d) % #GLOBAL + 1 end
-  elseif page == "io" then if key == "enter" then ioStep(IO[isel], 1) else isel = (isel - 1 + d) % #IO + 1 end end
+  elseif page == "io" then if key == "enter" then ioStep(IO[isel], 1) else isel = (isel - 1 + d) % #IO + 1 end
+  elseif page == "jck" then if key == "enter" then identify(N.JACKS[jsel][1]) else jsel = (jsel - 1 + d) % #N.JACKS + 1 end end
 end
 
 -- ---------------------------------------------------------------- drawing
@@ -719,7 +759,7 @@ local function chip(x, y, w, h, label, on, col, f, size)
   Tm(cut(label, math.floor(w / ((size or 5.6) * 0.62))), x + w / 2, y + h / 2, on and th.ink or th.text, size or 5.6)
   if f then hit(x, y, w, h, f) end
 end
-local PAGE_NAMES = {rig = "SIGNAL CHAIN", lib = "BLOCK LIBRARY", blk = "BLOCK", scn = "SCENES", pre = "PRESETS", tun = "TUNER", asg = "ASSIGN", asgl = "ASSIGN", io = "I/O ROUTING", glb = "GLOBAL"}
+local PAGE_NAMES = {rig = "SIGNAL CHAIN", lib = "BLOCK LIBRARY", blk = "BLOCK", scn = "SCENES", pre = "PRESETS", tun = "TUNER", asg = "ASSIGN", asgl = "ASSIGN", io = "I/O ROUTING", jck = "JACK GUIDE", glb = "GLOBAL"}
 local function header()
   fillRect(0, 0, W, 19, th.head)
   fillRect(0, 19, W, 1, th.line)
@@ -992,20 +1032,51 @@ local function io()
     T(r[1], x0 + 6, y + 6, th.text, 6)
     T(r[2], W - 12, y + 6.5, th.dim, 5.4, "right")
   end
+  chip(206, 21, 66, 11, "JACK GUIDE", false, nil, function() page = "jck"; dirty = true end, 4.8)
 end
-local function glb()
-  for i, r in ipairs(GLOBAL) do
-    local y = 23 + (i - 1) * 20
-    local sel = gsel == i
-    fillRoundRect(6, y, W - 12, 17, 3, sel and th.acc or th.panel)
-    T(r[1], 14, y + 4.5, sel and th.ink or th.text, 6.4)
-    Tm(cut(gValue(r), 24), W - 96, y + 8.5, sel and th.ink or th.dim, 6.2)
-    Tm("<", W - 170, y + 8.5, sel and th.ink or th.dim, 6.4)
-    Tm(">", W - 22, y + 8.5, sel and th.ink or th.dim, 6.4)
-    hit(6, y, W - 12, 17, function(x) gsel = i; gStep(r, (x >= W - 184 and x < W - 140) and -1 or 1) end)
+local JCOL = {i = "#2ee6d6", o = "#46d36f", l = "#ffb340", c = "#b58bff"}
+local function jkind(k)
+  if k == "gtr" or k == "aux" then return "i" end
+  if k:sub(1, 1) == "x" and k ~= "xlr" then return "c" end
+  if (k:sub(1, 1) == "s" or k:sub(1, 1) == "r") and tonumber(k:sub(2, 2)) then return "l" end
+  return "o"
+end
+local function jck()
+  local lv1 = N.readKV("nx/lv1.txt") or {}
+  local lv2 = N.readKV("nx/lv2.txt") or {}
+  -- two tabs of 14 jacks (the canvas is 480 px wide: one wide column keeps the text readable)
+  local pg = jsel <= 14 and 1 or 2
+  chip(8, 22, 112, 11, "INPUTS & OUTPUTS", pg == 1, nil, function() jsel = 1; dirty = true end, 5.2)
+  chip(124, 22, 112, 11, "LOOPS & CONTROL", pg == 2, nil, function() jsel = 15; dirty = true end, 5.2)
+  T("IDENTIFY BLINKS THE JACK'S LED FOR 3 S", W - 8, 25, th.dim, 5, "right")
+  local active = idKey ~= "" and time() < idUntil
+  local blinkOn = math.floor((idUntil - time()) / 0.125) % 2 == 0
+  local x, cw, rh = 6, W - 12, 14.6
+  for i = (pg - 1) * 14 + 1, math.min(#N.JACKS, pg * 14) do
+    local j = N.JACKS[i]
+    local y = 36 + ((i - 1) % 14) * rh
+    local hh, k = rh - 1.6, j[1]
+    local yc = y + hh / 2
+    local on = active and idKey == k
+    local col = JCOL[jkind(k)]
+    fillRoundRect(x, y, cw, hh, 3, on and fade(th.acc, 0.22) or th.panel)
+    roundRect(x, y, cw, hh, 3, on and th.acc or (jsel == i and th.text or th.line), (on or jsel == i) and 1.2 or 0.6)
+    fillCircle(x + 6, yc, 2.3, col)
+    T(j[2], x + 13, yc - 3.4, th.text, 5.8)
+    T(cut(j[3], 32), x + 92, yc - 3, th.dim, 5.2)
+    T(cut(jackRoute(k), 28), x + 250, yc - 3, on and th.text or th.acc, 5.2)
+    local q = tonumber(lv1[k] or lv2[k] or "0") or 0
+    fillRoundRect(x + 400, yc - 2.2, 50, 4.4, 1.6, fade("#000000", 0.5))
+    if q > 0 then fillRoundRect(x + 400, yc - 2.2, math.min(50, q * 5), 4.4, 1.6, q > 10 and "#ff3b30" or col) end
+    local bx, bw = x + 470, 72
+    fillRoundRect(bx, y + 1.4, bw, hh - 2.8, 3, on and fade(th.acc, blinkOn and 1 or 0.35) or th.panel2)
+    roundRect(bx, y + 1.4, bw, hh - 2.8, 3, on and th.acc or th.line, 0.7)
+    Tm(on and "STOP" or "IDENTIFY", bx + bw / 2, yc, on and th.ink or th.text, 5.4)
+    hit(x, y, bx - x - 2, hh, function() jsel = i; dirty = true end)
+    hit(bx, y, bw, hh, function() identify(k) end)
   end
 end
-local PAGES = {rig = rig, blk = blk, lib = lib, scn = scn, pre = pre, tun = tun, asg = asg, asgl = asgl, io = io, glb = glb}
+local PAGES = {rig = rig, blk = blk, lib = lib, scn = scn, pre = pre, tun = tun, asg = asg, asgl = asgl, io = io, jck = jck, glb = glb}
 
 -- ---------------------------------------------------------------- pointer
 on("touch", function(e)
@@ -1104,11 +1175,18 @@ function update(dt)
   end
   output("EXP out", N.r3(xe))
   if outDirty and time() >= outT then outT = time() + 0.05; outDirty = false; writeBus(); writeUi() end
+  if idKey ~= "" and time() >= idUntil then idKey = ""; dirty = true end
+  writeId()
 end
 
 local saveT = 0
 function draw(dt)
   if page == "tun" or tuner then dirty = true end
+  if page == "jck" then
+    local _, c1 = N.readKV("nx/lv1.txt")
+    local _, c2 = N.readKV("nx/lv2.txt")
+    if c1 or c2 or idKey ~= "" then dirty = true end
+  end
   if time() < msgT + 0.05 and time() > msgT - 0.05 then dirty = true end
   if not dirty then return end
   dirty = false
@@ -1481,20 +1559,44 @@ end
 
 // ------------------------------------------------------------------ I/O bar LEDs (two halves of the rear rail)
 // bars: [{x, input, col, n}] in screen pixels; input = the screen input number (levels 0..1 from envelope followers)
-export const ioScript = (base, bars, lw) => `-- Nautica XL: the bar LEDs under the jacks. Brightness follows the level at each jack
+export const ioScript = (base, bars, lw, half = 1) => `-- Nautica XL: the bar LEDs under the jacks. Brightness follows the level at each jack
 -- (envelope followers in the circuit, or the value of a control jack). Sends values ${base + 1} to ${base + 16}.
 local N = require("nx")
 local SC = W / ${lw.toFixed(1)}
 local W, H = ${lw.toFixed(1)}, 9
-local BARS = {${bars.map((b) => `{${b.x.toFixed(1)}, ${b.input}, "${b.col}", ${b.n}}`).join(', ')}}
+local BARS = {${bars.map((b) => `{${b.x.toFixed(1)}, ${b.input}, "${b.col}", ${b.n}, "${b.key}"}`).join(', ')}}
+local LVF = "nx/lv${half}.txt"
 ` + busSlice(base) + `
 local last = ""
+-- IDENTIFY (MAIN's jack guide): nx/id.txt = seq,key,guide open
+local lastId, idSeq, idKey, idT, idPg, lastLv = nil, nil, "", -1, false, ""
+local function idPoll()
+  local s = fs.read("nx/id.txt") or ""
+  if s == lastId then return end
+  lastId = s
+  local p = s:split(",")
+  idPg = p[3] == "1"
+  if not idPg then lastLv = "" end
+  local k = p[2] or ""
+  if p[1] ~= idSeq or k ~= idKey then idSeq = p[1]; idKey = k; idT = time() + 3 end
+end
 function draw()
   sendSlice()
-  local q = {}
+  idPoll()
+  local q, lv = {}, {}
+  local blink = idKey ~= "" and time() < idT
   for i, b in ipairs(BARS) do
     local v = b[2] > 0 and input(b[2]) or 0
-    q[i] = v >= 0.98 and 11 or math.floor(N.lvl(v) * 10 + 0.5)
+    if b[3] == "#b58bff" then lv[i] = math.floor(math.min(1, v) * 10 + 0.5) -- a control jack: its value, never clipping
+    else lv[i] = v >= 0.98 and 11 or math.floor(N.lvl(v) * 10 + 0.5) end
+    q[i] = lv[i]
+    if blink and b[5] == idKey then q[i] = math.floor((idT - time()) / 0.125) % 2 == 0 and 20 or 21 end
+  end
+  if idPg then
+    local L = {}
+    for i, b in ipairs(BARS) do L[i] = b[5] .. "=" .. lv[i] end
+    local s = table.concat(L, "\\n")
+    if s ~= lastLv then lastLv = s; pcall(fs.write, LVF, s) end
   end
   local key = table.concat(q, ",")
   if key == last then return end
@@ -1505,10 +1607,12 @@ function draw()
   for i, b in ipairs(BARS) do
     local lv = math.min(q[i], 11) / 10
     local bw = b[4] > 1 and 6 or 12
+    local c = fade(lv > 1 and "#ff3b30" or b[3], 0.1 + 0.9 * math.min(1, lv) ^ 1.4)
+    if q[i] == 20 then c = "#ffffff" elseif q[i] == 21 then c = fade("#ffffff", 0.03) end
     for k = 0, b[4] - 1 do
       local x = b[1] - (b[4] * bw + (b[4] - 1) * 1.5) / 2 + k * (bw + 1.5)
       fillRoundRect(x - 0.5, 1, bw + 1, H - 2, 1.5, fade("#000000", 0.6))
-      fillRoundRect(x, 1.5, bw, H - 3, 1.2, fade(lv > 1 and "#ff3b30" or b[3], 0.1 + 0.9 * math.min(1, lv) ^ 1.4))
+      fillRoundRect(x, 1.5, bw, H - 3, 1.2, c)
     end
   end
   pop()

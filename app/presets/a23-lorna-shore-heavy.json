@@ -1,0 +1,537 @@
+{
+ "version": 1,
+ "name": "Artist · Lorna Shore Heavy",
+ "tags": [
+  "artist",
+  "deathcore",
+  "metal",
+  "high-gain",
+  "lead",
+  "drop-tuning",
+  "extended-range"
+ ],
+ "desc": "A heavier, more articulate Lorna Shore rig for 8-string (low D1, upper strings in drop G): a fast gate and a tight TS boost into a 5150III lead channel and a VH4, mud cut before the amps and a tight low shelf plus upper-mid bite after, then a big ping-pong delay and hall. Built for fast picking and leads; the low string stays full and clear.",
+ "factory": true,
+ "order": 323,
+ "blocks": [
+  {
+   "id": "board1",
+   "type": "pb.medium",
+   "x": -1508,
+   "y": 0,
+   "params": {}
+  },
+  {
+   "id": "__in",
+   "type": "__in",
+   "x": 90,
+   "y": 70,
+   "params": {}
+  },
+  {
+   "id": "b1",
+   "type": "bh.tm300",
+   "x": -224,
+   "y": 54,
+   "params": {},
+   "bypass": true,
+   "variant": "mono"
+  },
+  {
+   "id": "b2",
+   "type": "tz.hush",
+   "x": -469,
+   "y": 69,
+   "params": {
+    "threshold": 0.52,
+    "decay": 0.12,
+    "range": 0.85
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b3",
+   "type": "ib.ts9",
+   "x": -709,
+   "y": 55,
+   "params": {
+    "gain": 0,
+    "tone": 0.68,
+    "level": 0.92
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b4",
+   "type": "tz.paraeq",
+   "x": -540,
+   "y": -510,
+   "params": {
+    "hpon": 1,
+    "hpf": 26,
+    "hps": 1,
+    "lpon": 0,
+    "lpf": 9000,
+    "lps": 1,
+    "listen": 0,
+    "listenf": 1000,
+    "listenq": 2,
+    "spectrum": 0,
+    "specpost": 1,
+    "b1on": 0,
+    "b1type": 1,
+    "b1f": 80,
+    "b1g": 0,
+    "b1q": 0.9,
+    "b2on": 1,
+    "b2type": 0,
+    "b2f": 220,
+    "b2g": -3,
+    "b2q": 0.9,
+    "b3on": 1,
+    "b3type": 0,
+    "b3f": 750,
+    "b3g": 1.5,
+    "b3q": 0.7,
+    "b4on": 0,
+    "b4type": 0,
+    "b4f": 2500,
+    "b4g": 0,
+    "b4q": 0.9,
+    "b5on": 0,
+    "b5type": 0,
+    "b5f": 6000,
+    "b5g": 0,
+    "b5q": 0.9,
+    "b6on": 0,
+    "b6type": 2,
+    "b6f": 12000,
+    "b6g": 0,
+    "b6q": 0.9
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b5",
+   "type": "box.split2",
+   "x": -922,
+   "y": 122,
+   "params": {},
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b6",
+   "type": "evh.amp-stripe50",
+   "x": -1132,
+   "y": -804,
+   "params": {
+    "channel": 2,
+    "gain": 0.8,
+    "bass": 0.56,
+    "mid": 0.58,
+    "treble": 0.64,
+    "master": 0.5,
+    "presence": 0.62,
+    "depth": 0.42
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b7",
+   "type": "evh.cab-stripe412",
+   "x": -1096,
+   "y": -590,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "m2lvl": -3,
+    "level": -10.1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b8",
+   "type": "amp.vh4",
+   "x": -1680,
+   "y": -804,
+   "params": {
+    "gain": 0.76,
+    "bass": 0.55,
+    "mid": 0.6,
+    "treble": 0.6,
+    "master": 0.5,
+    "presence": 0.58,
+    "depth": 0.4
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b9",
+   "type": "fryette.cab-d412",
+   "x": -1666,
+   "y": -590,
+   "params": {
+    "m1on": 1,
+    "m1type": 0,
+    "m1dist": 0.15,
+    "_m1x": 0.2999009900990099,
+    "_m1y": 0.25,
+    "m1lvl": 0,
+    "m2on": 1,
+    "m2type": 2,
+    "m2dist": 0.2,
+    "m2lvl": -3,
+    "_m2x": 0.6501980198019802,
+    "_m2y": 0.25,
+    "level": -10.1
+   },
+   "bypass": false,
+   "variant": "mono"
+  },
+  {
+   "id": "b10",
+   "type": "tz.paraeq",
+   "x": -2300,
+   "y": -510,
+   "params": {
+    "hpon": 1,
+    "hpf": 30,
+    "hps": 1,
+    "lpon": 1,
+    "lpf": 11500,
+    "lps": 1,
+    "listen": 0,
+    "listenf": 1000,
+    "listenq": 2,
+    "spectrum": 0,
+    "specpost": 1,
+    "b1on": 1,
+    "b1type": 1,
+    "b1f": 100,
+    "b1g": 4,
+    "b1q": 0.7,
+    "b2on": 1,
+    "b2type": 0,
+    "b2f": 320,
+    "b2g": -3,
+    "b2q": 1.1,
+    "b3on": 1,
+    "b3type": 0,
+    "b3f": 1400,
+    "b3g": 0.5,
+    "b3q": 0.9,
+    "b4on": 1,
+    "b4type": 0,
+    "b4f": 3300,
+    "b4g": 3,
+    "b4q": 1.3,
+    "b5on": 1,
+    "b5type": 0,
+    "b5f": 6500,
+    "b5g": -1.5,
+    "b5q": 1.2,
+    "b6on": 0,
+    "b6type": 2,
+    "b6f": 12000,
+    "b6g": 0,
+    "b6q": 0.9
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b11",
+   "type": "tz.delay",
+   "x": -1342,
+   "y": 45,
+   "params": {
+    "time": 410,
+    "feedback": 0.495,
+    "mix": 0.3,
+    "tone": 0.42,
+    "mode": 7
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b12",
+   "type": "tz.reverb",
+   "x": -375,
+   "y": 326,
+   "params": {
+    "mode": 1,
+    "decay": 0.78,
+    "mix": 0.3,
+    "predelay": 200,
+    "lowcut": 0.6,
+    "tone": 0.5,
+    "size": 0.75
+   },
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "b13",
+   "type": "tz.meter",
+   "x": -699,
+   "y": 345,
+   "params": {},
+   "bypass": false,
+   "variant": "stereo"
+  },
+  {
+   "id": "__out",
+   "type": "__out",
+   "x": -1768,
+   "y": 370,
+   "params": {}
+  }
+ ],
+ "cables": [
+  {
+   "id": "c14",
+   "from": {
+    "node": "__in",
+    "port": 0
+   },
+   "to": {
+    "node": "b1",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c15",
+   "from": {
+    "node": "b1",
+    "port": 0
+   },
+   "to": {
+    "node": "b2",
+    "port": 0
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c16",
+   "from": {
+    "node": "b2",
+    "port": 0
+   },
+   "to": {
+    "node": "b3",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c17",
+   "from": {
+    "node": "b3",
+    "port": 0
+   },
+   "to": {
+    "node": "b4",
+    "port": 0
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c18",
+   "from": {
+    "node": "b4",
+    "port": 0
+   },
+   "to": {
+    "node": "b5",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c19",
+   "from": {
+    "node": "b5",
+    "port": 0
+   },
+   "to": {
+    "node": "b6",
+    "port": 0
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c20",
+   "from": {
+    "node": "b6",
+    "port": 0
+   },
+   "to": {
+    "node": "b7",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c21",
+   "from": {
+    "node": "b5",
+    "port": 1
+   },
+   "to": {
+    "node": "b8",
+    "port": 0
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c22",
+   "from": {
+    "node": "b8",
+    "port": 0
+   },
+   "to": {
+    "node": "b9",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c23",
+   "from": {
+    "node": "b7",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 0
+   },
+   "color": "#e8473d"
+  },
+  {
+   "id": "c24",
+   "from": {
+    "node": "b9",
+    "port": 0
+   },
+   "to": {
+    "node": "b10",
+    "port": 1
+   },
+   "color": "#f39c12"
+  },
+  {
+   "id": "c25",
+   "from": {
+    "node": "b10",
+    "port": 0
+   },
+   "to": {
+    "node": "b11",
+    "port": 0
+   },
+   "color": "#f1c40f"
+  },
+  {
+   "id": "c26",
+   "from": {
+    "node": "b10",
+    "port": 1
+   },
+   "to": {
+    "node": "b11",
+    "port": 1
+   },
+   "color": "#2ecc71"
+  },
+  {
+   "id": "c27",
+   "from": {
+    "node": "b11",
+    "port": 0
+   },
+   "to": {
+    "node": "b12",
+    "port": 0
+   },
+   "color": "#3498db"
+  },
+  {
+   "id": "c28",
+   "from": {
+    "node": "b11",
+    "port": 1
+   },
+   "to": {
+    "node": "b12",
+    "port": 1
+   },
+   "color": "#6c5ce7"
+  },
+  {
+   "id": "c29",
+   "from": {
+    "node": "b12",
+    "port": 0
+   },
+   "to": {
+    "node": "b13",
+    "port": 0
+   },
+   "color": "#e84393"
+  },
+  {
+   "id": "c30",
+   "from": {
+    "node": "b12",
+    "port": 1
+   },
+   "to": {
+    "node": "b13",
+    "port": 1
+   },
+   "color": "#1abc9c"
+  },
+  {
+   "id": "c31",
+   "from": {
+    "node": "b13",
+    "port": 0
+   },
+   "to": {
+    "node": "__out",
+    "port": 0
+   },
+   "color": "#ecf0f1"
+  },
+  {
+   "id": "c32",
+   "from": {
+    "node": "b13",
+    "port": 1
+   },
+   "to": {
+    "node": "__out",
+    "port": 1
+   },
+   "color": "#e8473d"
+  }
+ ],
+ "view": null
+}

@@ -1479,4 +1479,53 @@ artist(22, 'rage-against-the-machine', 'Rage Against The Machine', ['rock', 'alt
       ['tz.pulsegrid', { '=time': 70, '=pattern': 1, depth: 1, smooth: 0.05, mix: 1, '=steps': 2 }, { bypass: true }], meter],
   });
 
+// 8-string extended range (low D1, upper seven in drop G): tight front end, mud cut before the amps, the low end put
+// back after the cabs (shelf, not boom), and an upper-mid bite so the high strings stay crisp
+const lsEqPre = (cut) => ['tz.paraeq', { hpon: 1, hpf: 26, hps: 1, b1on: 0, b2on: 1, b2type: 0, b2f: 220, b2g: -cut, b2q: 0.9, b3on: 1, b3type: 0, b3f: 750, b3g: 1.5, b3q: 0.7, b4on: 0, b5on: 0, b6on: 0 }];
+const lsEqPost = (shelf, bite, fizz) => ['tz.paraeq', { hpon: 1, hpf: 30, hps: 1, lpon: 1, lpf: 11500, lps: 1, b1on: 1, b1type: 1, b1f: 100, b1g: shelf, b1q: 0.7, b2on: 1, b2type: 0, b2f: 320, b2g: -3, b2q: 1.1, b3on: 1, b3type: 0, b3f: 1400, b3g: 0.5, b3q: 0.9, b4on: 1, b4type: 0, b4f: 3300, b4g: bite, b4q: 1.3, b5on: 1, b5type: 0, b5f: 6500, b5g: fizz, b5q: 1.2, b6on: 0 }, { variant: 'stereo' }];
+
+artist(23, 'lorna-shore-heavy', 'Lorna Shore Heavy', ['deathcore', 'metal', 'high-gain', 'lead', 'drop-tuning', 'extended-range'],
+  'A heavier, more articulate Lorna Shore rig for 8-string (low D1, upper strings in drop G): a fast gate and a tight TS boost into a 5150III lead channel and a VH4, mud cut before the amps and a tight low shelf plus upper-mid bite after, then a big ping-pong delay and hall. Built for fast picking and leads; the low string stays full and clear.',
+  {
+    nodes: {
+      tun: tuner(),
+      gate: ['tz.hush', { threshold: 0.52, decay: 0.12, range: 0.85 }],
+      ts: ['ib.ts9', { gain: 0, tone: 0.68, level: 0.92 }],
+      pre: lsEqPre(3),
+      split: ['box.split2'],
+      a1: ['evh.amp-stripe50', { channel: 2, gain: 0.8, bass: 0.56, mid: 0.58, treble: 0.64, master: 0.5, presence: 0.62, depth: 0.42 }],
+      a2: ['evh.cab-stripe412', { mic1: 0, mic2: 2 }],
+      b1: ['amp.vh4', { gain: 0.76, bass: 0.55, mid: 0.6, treble: 0.6, master: 0.5, presence: 0.58, depth: 0.4 }],
+      b2: ['fryette.cab-d412', { mic2: 2 }],
+      eq: lsEqPost(4, 3, -1.5),
+      dly: ['tz.delay', { '=time': 410, feedback: 0.45, mix: 0.3, tone: 0.42, mode: 7 }, { variant: 'stereo' }],
+      rev: ['tz.reverb', { mode: 1, decay: 0.78, mix: 0.3, predelay: 0.4, lowcut: 0.6, tone: 0.5, size: 0.75 }, { variant: 'stereo' }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'gate', 'ts', 'pre', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'eq'), ...tail('eq', 'dly', 'rev', 'met')],
+    rows: [['tun', 'gate', 'ts', 'pre', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'eq', 'dly', 'rev', 'met']],
+  });
+
+artist(24, 'lorna-shore-heavy-rhythm', 'Lorna Shore Heavy Rhythm', ['deathcore', 'metal', 'high-gain', 'rhythm', 'drop-tuning', 'extended-range'],
+  'The rhythm side of Lorna Shore Heavy for 8-string (low D1, upper strings in drop G): a tighter gate and boost into a Revv Generator red channel and a Diezel Herbert on two different 4x12s, a stronger mud cut before the amps and a tight low shelf after, so fast chugs on the D1 string stay defined. Delay is off and the hall is short; turn the delay on for big sections.',
+  {
+    nodes: {
+      tun: tuner(),
+      gate: ['tz.hush', { threshold: 0.56, decay: 0.08, range: 0.9 }],
+      ts: ['ib.ts9', { gain: 0, tone: 0.62, level: 0.92 }],
+      pre: lsEqPre(4.5),
+      split: ['box.split2'],
+      a1: ['revv.amp-generator', { channel: 2, gain: 0.74, bass: 0.5, mid: 0.52, treble: 0.66, master: 0.5, presence: 0.66 }],
+      a2: ['engl.cab-pro4x12', { mic1: 0, mic2: 2 }],
+      b1: ['diezel.amp-herbert', { channel: 2, gain: 0.72, bass: 0.48, mid: 0.55, treble: 0.65, master: 0.5, presence: 0.64, depth: 0.42 }],
+      b2: ['randall.cab-ra412', { mic2: 2 }],
+      eq: lsEqPost(2, 5.5, 0),
+      dly: ['tz.delay', { '=time': 410, feedback: 0.4, mix: 0.24, tone: 0.42, mode: 7 }, { bypass: true, variant: 'stereo' }],
+      rev: ['tz.reverb', { mode: 0, decay: 0.3, mix: 0.12, predelay: 0.2, lowcut: 0.65, tone: 0.5 }, { variant: 'stereo' }],
+      met: meter,
+    },
+    edges: [...ser('in', 'tun', 'gate', 'ts', 'pre', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'eq'), ...tail('eq', 'dly', 'rev', 'met')],
+    rows: [['tun', 'gate', 'ts', 'pre', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'eq', 'dly', 'rev', 'met']],
+  });
+
 module.exports = [...G.flat(), ...SPECIAL, ...SONGS, ...ARTISTS];

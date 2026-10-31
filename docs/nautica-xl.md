@@ -107,11 +107,19 @@ Each LCD shows the switch number, a sub line (slot and type, scene number...) an
 * Main (touch): header (preset, scene, page, mode, tempo; tap to jump). Pages: SIGNAL CHAIN (2 x 8 grid, tap =
   select, tap again = open, drag onto another slot = move, ROUTE chip, 10 parameter cells), BLOCK (10 touch dials,
   drag / wheel, ON, MODEL, TO EXP 1 / 2, pages), LIBRARY (types + models), SCENES, PRESETS (banks, SAVE HERE, LOAD),
-  LOOPER, TUNER, ASSIGN (+ picker), I/O ROUTING, GLOBAL. Swipe left / right changes parameter pages, library types
-  and banks.
+  LOOPER, TUNER, ASSIGN (+ picker), I/O ROUTING (+ JACK GUIDE), GLOBAL. Swipe left / right changes parameter pages,
+  library types and banks.
+* JACK GUIDE (the JACK GUIDE chip on the I/O ROUTING page; BACK returns there): all 30 rear jacks in two columns of 15,
+  each with a colour dot (input, output, loop, control), its name, what it is (for example LOOP 2 OUT TO PEDALS), where
+  it is routed now (input gain, output source and level, the slot that uses a loop, the EXT FS / EXP assignment, the
+  control output source), a live level meter and an IDENTIFY button. IDENTIFY blinks that jack's bar LED white at 4 Hz
+  for 3 s (`IDENT_MS`) while every other LED keeps showing its level; the row is highlighted and its button reads STOP
+  (tap it to stop early). IDENTIFY on another jack moves the blink there. The select encoder moves the row cursor and
+  its push identifies. The blink lives in the screen state (`nav.ident`), so nothing is saved with the preset.
 * Strips: PRESET & SCENE, LEVELS, FOCUSED BLOCK, TEMPO & TUNER, PEDALS, SIGNAL PATH; the menu button on the right end
   picks the content.
-* I/O bars: brightness from the jack's level (audio peak, or the control value for control jacks), red on clipping.
+* I/O bars: brightness from the jack's level (audio peak, or the control value for control jacks), red on clipping;
+  the jack being identified blinks white.
 
 ## Pedal Factory template (template id `nautica`, block `custom.template.nautica`)
 
@@ -139,5 +147,11 @@ the pedal list stays the native `tz.nautica`.
 * **Footswitch modes**: STOMP, SCENE, PRESET (the looper of the native unit has no factory part; FREEZE takes its
   place on the HOLD button and as a footswitch function). EXT FS 1-4 and EXT EXP 1-2 are screen inputs of MAIN; EXT
   FS OUT and EXT EXP OUT are driven by MAIN's outputs.
+* **Jack guide**: the JACK GUIDE chip on MAIN's I/O page opens it. The template has 28 jacks (no STEREO OUT 1 / 2), so
+  the guide has two tabs of 14 (INPUTS & OUTPUTS, LOOPS & CONTROL): one wide column keeps the text readable on the
+  480 pixel canvas. Each row has the name, what it is, the routing, a level meter and IDENTIFY. MAIN writes
+  `nx/id.txt` (`seq,key,guide open`); the two I/O rail screens blink that jack's bar LED white for 3 s from when the
+  sequence number changes (each screen has its own clock), and while the guide is open they write their levels to
+  `nx/lv1.txt` / `nx/lv2.txt` for its meters. The table of jacks is `M.JACKS` in `nx.lua`; its keys match the rail LEDs.
 * **Frame cost**: every screen skips its frame when nothing it shows changed (only MAIN on the tuner page, the strip
   showing levels or tempo and the I/O rail redraw while sound plays).
