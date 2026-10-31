@@ -381,3 +381,4 @@
 .pi-audio-status { font-size: 12px; padding: 7px 10px; border-radius: 6px; margin: 2px 0 10px; line-height: 1.4; }
 .pi-audio-status.ok { color: var(--good-text); background: rgba(var(--good-rgb), 0.1); border: 1px solid rgba(var(--good-rgb), 0.3); }
 .pi-audio-status.bad { color: var(--text); background: rgba(var(--bad-rgb), 0.12); border: 1px solid rgba(var(--bad-rgb), 0.45); }
+.pi-audio-route { opacity: 0.8; margin-top: 3px; font-size: 11px; }

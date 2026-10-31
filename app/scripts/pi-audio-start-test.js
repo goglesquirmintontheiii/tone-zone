@@ -12,6 +12,7 @@ p=0; prev=""
 for a in "$@"; do [ "$prev" = "-p" ] && p=$a; prev=$a; done
 echo "$@" >> "${T}/jackd-args"
 if [ "$FAKE_JACKD_BUSY" = 1 ]; then echo "ALSA: Cannot open PCM device alsa_pcm for playback. Falling back to capture-only mode"; echo "ALSA: Device or resource busy" >&2; exit 255; fi
+if [ "$p" -lt "\${FAKE_JACKD_DUPLEX_MIN:-0}" ]; then echo "ALSA: Cannot open PCM device alsa_pcm for capture. Falling back to playback-only mode"; exec sleep 30; fi
 if [ "$p" -lt "\${FAKE_JACKD_MIN:-0}" ]; then echo "ALSA: cannot set period size to $p frames for playback" >&2; echo "Cannot initialize driver" >&2; exit 255; fi
 exec sleep 30
 `, { mode: 0o755 });
@@ -55,6 +56,17 @@ const base = { input: '', output: '', rate: 48000, buffer: 128, periods: 3, serv
   ok(!r.status.ok && /in use by another program/.test(r.status.error) && busyTries === 1, `a busy device is reported after one try: ${r.status.error}`);
   srv.stop();
   delete process.env.FAKE_JACKD_BUSY;
+  // one device, but its input side only opens at 256 frames: the start goes up until both sides open
+  process.env.FAKE_JACKD_DUPLEX_MIN = '256';
+  r = await srv.start(Object.assign({}, base, { input: 'hw:CARD=Device,DEV=0', output: 'hw:CARD=Device,DEV=0' }));
+  ok(r.status.ok && /\(in \+ out\), 256 frames/.test(r.status.text), 'input that only opens at 256 frames: both sides at 256: ' + r.status.text);
+  srv.stop();
+  // the input side never opens: output keeps working and the status says the input is missing
+  process.env.FAKE_JACKD_DUPLEX_MIN = '99999';
+  r = await srv.start(Object.assign({}, base, { input: 'hw:CARD=Device,DEV=0', output: 'hw:CARD=Device,DEV=0' }));
+  ok(r.mode === 'jackd' && !r.status.ok && /output only/.test(r.status.error) && /input side of the device would not open/.test(r.status.error), 'input that never opens: output only, and the status says so: ' + r.status.error);
+  srv.stop();
+  delete process.env.FAKE_JACKD_DUPLEX_MIN;
   // PipeWire picked but not running: falls back to JACK
   r = await srv.start(Object.assign({}, base, { server: 'pipewire', input: 'hw:CARD=Device,DEV=0', output: 'hw:CARD=Device,DEV=0' }));
   ok(r.mode === 'jackd' && r.status.ok, 'PipeWire picked but not running: JACK is used instead');
