@@ -55,7 +55,7 @@ const fs = require('fs');
     const C = await import('./js/catalog/index.js');
     const { sizeOf } = await import('./js/pages/presets.js');
     const { knobValue } = await import('./js/nodeview.js');
-    const { defaultMicXY } = await import('./js/gfx/cabgeom.js');
+    const CM = await import('./js/catalog/cabmics.js');
     const { renderForm } = await import('./js/gfx/forms.js');
     const { svg } = await import('./js/util.js');
     const PB = await import('./js/catalog/pedalboards.js');
@@ -189,14 +189,11 @@ const fs = require('fs');
         if (!d || d.missing) problems.push(`${spec.file}: unknown block ${type}`);
         const b = { id: 'b' + ++n, type, x: 0, y: 0, params: {}, bypass: !!o.bypass, variant: 'mono' };
         if (d && d.initParams) Object.assign(b.params, JSON.parse(JSON.stringify(d.initParams)));
-        // cabs: mic1 / mic2 = mic type index (2nd mic placed on the next speaker, blended in mono)
+        // cabs: mics: [{ model, at, spk, dist, axis, lvl, phase, pan }] or the old mic1 / mic2 type numbers
+        // (catalog/cabmics.js applyMicSpec, docs/mic-blocks.md "Presets")
         if (d && d.cabMics) {
-          if (params.mic1 !== undefined) b.params.m1type = params.mic1;
-          if (params.mic2 !== undefined) {
-            const xy = defaultMicXY(d.cabSize || '4x12', 2);
-            Object.assign(b.params, { m2on: 1, m2type: params.mic2, m2dist: 0.2, _m2x: xy.x, _m2y: xy.y, m2lvl: params.mic2lvl ?? -3 });
-          }
-          params = Object.fromEntries(Object.entries(params).filter(([k]) => !/^mic\d/.test(k)));
+          CM.applyMicSpec(b, d, params);
+          params = Object.fromEntries(Object.entries(params).filter(([k]) => !/^mic(s|\d)/.test(k)));
         }
         for (const [k0, v] of Object.entries(params)) {
           const raw = k0.startsWith('=');

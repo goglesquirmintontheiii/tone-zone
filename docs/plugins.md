@@ -169,6 +169,7 @@ tz.addForm('acme-wedge', (ctx, def) => {
 | `app.setParam(blockId, param, value)` | change a block's UI param (engine, inspector and screens update; undoable) |
 | `app.pressFoot(blockId, cid, down)`, `app.setControl(blockId, cid, pos 0..1)` | drive another block's footswitch / knob / treadle like the user would |
 | `app.syncGraph()`, `app.markDirty()` | push graph changes to the engine / mark the preset as modified |
+| `app.commit()` | take an undo snapshot now, before you change a block's own data (e.g. a list stored in its params), so the change can be undone |
 | `midi(opts)` | Web MIDI access (`navigator.requestMIDIAccess`) |
 | `sys.usbDevices()` | list USB devices (vendor / product ids, names) |
 | `asset(rel)` | URL of a file in the plugin folder |

@@ -1,8 +1,13 @@
 // Mics on a speaker cab (docs/mic-blocks.md): which slots hold a mic, which model each one is, the cab's output
 // jacks (a blend first, then one per mic) and the mic data the engine gets with the graph.
-// Pure helpers: the cab def (builders.js CAB) and the UI (mic-edit.js) use them.
-import { getDef } from './index.js';
-import { MIC_COLORS } from '../gfx/cabgeom.js';
+// Pure helpers: the cab def (builders.js CAB), the cab graphic and the UI (mic-edit.js) use them.
+
+// the catalog lookup, handed over by catalog/index.js (a static import would make builders.js -> index.js a cycle)
+let getDef = () => undefined;
+export function setDefLookup(fn) {
+  getDef = fn;
+}
+import { MIC_COLORS, cabGeom, defaultMicXY } from '../gfx/cabgeom.js';
 
 export const MAX_MICS = 8;
 export const DEFAULT_MIC = 'mics.dyn57';
@@ -103,4 +108,44 @@ export function cabEngineOpts(b, d, base) {
   const mics = [];
   for (let i = 1; i <= MAX_MICS; i++) mics.push(slots.includes(i) ? micEngineData(modelOf(b, d, i)) : null);
   return Object.assign({}, base, { mics, layout: { mix: stereo ? 2 : 1, mics: stereo || slots.length > 1 ? slots.map((i) => i - 1) : [] } });
+}
+
+// Preset specs (scripts/build-presets.js): put mics on a fresh cab block from a readable list.
+//   mics: [{ model: 'mics.dyn57', at: 'cap' | 'cap-edge' | 'cone' | 'edge' | 'off' | {x, y}, spk: 0, dist: 0.15,
+//            axis: 0, lvl: 0, phase: 0, pan: 0 }, ...]
+// The old keys still work: mic1 / mic2 = v0.10 type numbers (mic2 on the next speaker, mic2lvl its level).
+export const MIC_SPOTS = { cap: 0.05, 'cap-edge': 0.3, cone: 0.6, edge: 0.95, off: 1.15 };
+export function applyMicSpec(b, d, spec) {
+  const P = b.params;
+  const size = d.cabSize || '4x12';
+  const g = cabGeom(size);
+  const place = (i, at = 'cap-edge', spk = i - 1) => {
+    if (at && typeof at === 'object') return { x: at.x, y: at.y };
+    const s = Math.min(g.centers.length - 1, Math.max(0, spk | 0));
+    const [cx, cy] = g.centers[s];
+    const r = (MIC_SPOTS[at] ?? (typeof at === 'number' ? at : 0.3)) * g.sr;
+    const dir = i % 2 ? 1 : -1; // alternate sides so two mics on one speaker don't sit on each other
+    return { x: (cx + dir * r - g.gx) / g.gw, y: (cy - g.gy) / g.gh };
+  };
+  if (Array.isArray(spec.mics)) {
+    for (let i = 1; i <= MAX_MICS; i++) for (const k of ['on', 'type', 'model', 'dist', 'axis', 'lvl', 'phase', 'pan']) delete P[`m${i}${k}`];
+    spec.mics.slice(0, MAX_MICS).forEach((m, k) => {
+      const i = k + 1, xy = place(i, m.at, m.spk ?? (m.at && typeof m.at === 'object' ? 0 : k));
+      Object.assign(P, { [`m${i}on`]: 1, [`m${i}model`]: m.model || DEFAULT_MIC, [`m${i}dist`]: m.dist ?? 0.15, [`_m${i}x`]: xy.x, [`_m${i}y`]: xy.y });
+      for (const f of ['axis', 'lvl', 'phase', 'pan']) if (m[f] !== undefined) P[`m${i}${f}`] = m[f];
+    });
+    return;
+  }
+  if (spec.mic1 !== undefined) { P.m1type = spec.mic1; P.m1model = LEGACY_MODELS[spec.mic1 | 0]; }
+  if (spec.mic2 !== undefined) {
+    const xy = defaultMicXY(size, 2);
+    Object.assign(P, { m2on: 1, m2type: spec.mic2, m2model: LEGACY_MODELS[spec.mic2 | 0], m2dist: 0.2, _m2x: xy.x, _m2y: xy.y, m2lvl: spec.mic2lvl ?? -3 });
+  }
+}
+
+// what the cab graphic needs to draw mic i: model def, number on the cab (by order), angle and short name
+export function cabMicInfo(b, d, i) {
+  const slots = activeSlots(b, d);
+  const id = modelOf(b, d, i);
+  return { def: micDef(id), id, n: Math.max(1, slots.indexOf(i) + 1), axis: b.params?.[`m${i}axis`] ?? 0, short: micShort(id) };
 }

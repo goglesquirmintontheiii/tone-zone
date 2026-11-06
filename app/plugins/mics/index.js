@@ -24,7 +24,7 @@ export function micDefs(tz) {
     Object.defineProperty(mic, 'draw', { value: draw, enumerable: false });
     Object.defineProperty(mic, 'size', { value: () => micSize(mic.look), enumerable: false });
     const d = def({
-      id: 'mics.' + m.id, name: m.name, brand: m.original ? 'Tone Zone' : m.brand, ref: m.original ? 'Tone Zone original' : m.ref,
+      id: 'smic.' + m.id, name: m.name, brand: m.original ? 'Tone Zone' : m.brand, ref: m.original ? 'Tone Zone original' : m.ref,
       cat: 'Mic', form: 'tzmic', baseForm: 'mic', algo: 'none', cost: 0, ports: { ins: [], outs: [] }, controls: [],
       color: m.color, typeName: `${TYPE_NAMES[m.type]}, ${PATTERN_NAMES[m.pattern]}`, desc: m.desc,
       tags: ['mic', 'microphone', m.type, PATTERN_NAMES[m.pattern]], mic,

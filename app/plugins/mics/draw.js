@@ -180,10 +180,12 @@ const SHAPES = {
   // Sennheiser e906 / e609 style: flat paddle with a mesh window
   flat(g, L) {
     const c = L.color, h = L.short ? 62 : 72;
-    const body = `M-15 8 Q-15 0 -7 0 H7 Q15 0 15 8 V${h - 26} L11 ${h - 3} Q10.5 ${h} 7.5 ${h} H-7.5 Q-10.5 ${h} -11 ${h - 3} L-15 ${h - 26} Z`;
+    const tr = L.vintage ? 13 : 8;
+    const body = `M-15 ${tr} Q-15 0 ${-15 + tr} 0 H${15 - tr} Q15 0 15 ${tr} V${h - 26} L11 ${h - 3} Q10.5 ${h} 7.5 ${h} H-7.5 Q-10.5 ${h} -11 ${h - 3} L-15 ${h - 26} Z`;
     part(g, body, c, { finish: L.finish, flat: true });
     P(g, body, { fill: 'url(#tzm-cyl)', opacity: 0.6 });
-    const win = rr(-11.5, 3.5, 23, L.short ? 30 : 30, 5, 3);
+    const win = L.vintage ? rr(-12, 3, 24, 33, 10, 3) : rr(-11.5, 3.5, 23, 30, 5, 3);
+    if (L.trim) part(g, L.vintage ? rr(-13.4, 1.6, 26.8, 35.8, 11, 4) : rr(-12.9, 2.1, 25.8, 32.8, 6, 4), L.trim, { finish: 'chrome', sw: 0.4 });
     grille(g, win, L.mesh || '#141416', 'mesh');
     svg('rect', { x: -11.5, y: 3.5, width: 23, height: 3, rx: 2, fill: '#fff', opacity: 0.1 }, g);
     text(g, 0, 39, L.badge || '', { size: 4, fill: ink(c) });
@@ -282,6 +284,36 @@ const SHAPES = {
     text(g, 0, y0 + bl * 0.45, L.badge || '', { size: L.stubby ? 5 : 3.8, fill: ink(c), transform: L.stubby ? undefined : `rotate(-90 0 ${y0 + bl * 0.45})` });
     xlr(g, y0 + bl - 5, bw1 - 1, c);
     return { w: Math.max(hw, bw0) + 2, h: y0 + bl, headH: hh };
+  },
+  // EV N/D468 style: head on a pivot, tilted forward over a short body
+  pivot(g, L) {
+    const c = L.color;
+    part(g, taper(44, 22, 96, 18, 3), c, {});
+    part(g, rr(-9, 92, 18, 6, 0, 2), shade(c, -0.2), { sw: 0.4 });
+    // hinge plates
+    part(g, rr(-14, 34, 28, 14, 4, 4), L.hinge, { finish: 'chrome', sw: 0.5 });
+    const head = svg('g', { transform: 'translate(0,40) rotate(-24) translate(0,-40)' }, g);
+    part(head, rr(-13, 4, 26, 38, 3, 6), c, {});
+    grille(head, rr(-12, 0, 24, 22, 11, 1.5), L.mesh, 'mesh');
+    band(head, 20.5, 26.6, 3, L.hinge, true);
+    knobSide(g, 0, 41, 4, '#2a2b2e');
+    text(g, 0, 70, L.badge || '', { size: 3.8, fill: '#ccc', transform: 'rotate(-90 0 70)' });
+    return { w: 40, h: 98, headH: 40 };
+  },
+  // clip-on drum mic (e604 style): short body, grille cap, a rim clamp with a thumb screw
+  clip(g, L) {
+    const c = L.color;
+    // clamp: a bent bar from the body down and out, with the screw
+    const cl = 'M8 30 H22 V56 Q22 60 18 60 H6 V55 H16 V36 H8 Z';
+    part(g, cl, L.clip, { finish: 'chrome', sw: 0.5 });
+    part(g, rr(13, 46, 12, 4, 1.5, 1.5), '#2a2b2e', { sw: 0.4 });
+    knobSide(g, 28, 48, 3.6, '#2a2b2e');
+    part(g, rr(-13, 14, 26, 26, 2, 4), c, {});
+    grille(g, rr(-11, 0, 22, 16, 9, 1), L.mesh, 'mesh');
+    band(g, 14, 26.6, 2.6, '#7d8086', true);
+    text(g, 0, 28, L.badge || '', { size: 4, fill: '#ccc' });
+    part(g, rr(-8, 40, 16, 6, 0, 2), shade(c, -0.25), { sw: 0.4 });
+    return { w: 62, h: 62, headH: 16 };
   },
   // large-diaphragm side-address condenser: basket head (round, square, flat or faceted) over a body
   ldc(g, L) {

@@ -95,10 +95,10 @@ const path = require('path');
   if (!(hR < hD - 2 && hD < hC)) fail('ribbons should be darker than dynamics, dynamics darker than condensers');
   const sm57 = info.core57 || [[20, -14], [50, -8], [100, -3], [200, 0], [1000, 0], [3000, 2], [5500, 6], [8000, 2], [12000, -6], [16000, -12], [20000, -20]];
   const rms = (a, b) => { let s = 0, n = 0; for (let f = 40; f <= 16000; f *= 1.05) { s += (at(a, f) - at(b, f)) ** 2; n++; } return Math.sqrt(s / n); };
-  const md = defs.find((d) => d.id === 'mics.md421');
-  const d57 = rms(md.mic.resp, sm57);
-  console.log(`MD 421 vs SM57 (${info.core57id || 'contract example'}): ${d57.toFixed(1)} dB rms`);
-  if (d57 < 1.5) fail('MD 421 too close to the 57');
+  // none of the plugin mics is just another 57
+  const near = defs.map((d) => [d.id, rms(d.mic.resp, sm57)]).sort((a, b) => a[1] - b[1]);
+  console.log(`closest to the 57 (${info.core57id || 'contract example'}): ${near.slice(0, 3).map(([i, v]) => `${i} ${v.toFixed(1)} dB`).join(', ')}`);
+  for (const [i, v] of near) if (v < 1) fail(`${i} is nearly the same as the 57`);
   // every pair of mics of the same type and pattern should differ somewhere (no copy-paste curves)
   for (let i = 0; i < defs.length; i++) for (let j = i + 1; j < defs.length; j++) {
     const a = defs[i].mic, b = defs[j].mic;
@@ -178,7 +178,7 @@ const path = require('path');
     const T = window.__tz;
     const hook = T.mics || (await import('./js/catalog/mics.js').catch(() => null));
     if (!hook || !hook.testSpectrum) return { skipped: 'no cab mic system yet (window.__tz.mics.testSpectrum)' };
-    const ids = ['mics.md421', 'mics.r121', 'mics.u87', 'mics.rca44', 'mics.c414', 'mics.e906', 'mics.sm7b', 'mics.beta52'];
+    const ids = ['smic.r10', 'smic.tlm103', 'smic.rca44', 'smic.c800g', 'smic.e609', 'smic.re20', 'smic.d112', 'smic.sm7b'];
     const out = {};
     for (const id of ids) out[id] = await hook.testSpectrum(id);
     return { out };
@@ -187,9 +187,9 @@ const path = require('path');
   else {
     const sp = audio.out, hiE = (s) => band(s, 5000, 12000) - band(s, 300, 1500);
     for (const [id, s] of Object.entries(sp)) console.log(`  ${id}: tilt ${hiE(s).toFixed(1)} dB`);
-    if (!(hiE(sp['mics.r121']) < hiE(sp['mics.u87']) - 3)) fail('R-121 should sound darker than the U 87 on a cab');
-    if (!(hiE(sp['mics.rca44']) < hiE(sp['mics.c414']) - 4)) fail('the 44 should sound darker than the 414 on a cab');
-    if (rms(sp['mics.md421'], sp['mics.e906']) < 0.8) fail('MD 421 and e906 sound the same on a cab');
+    if (!(hiE(sp['smic.r10']) < hiE(sp['smic.tlm103']) - 3)) fail('the R-10 should sound darker than the TLM 103 on a cab');
+    if (!(hiE(sp['smic.rca44']) < hiE(sp['smic.c800g']) - 4)) fail('the 44 should sound darker than the C-800G on a cab');
+    if (rms(sp['smic.e609'], sp['smic.re20']) < 0.8) fail('the e609 and RE20 sound the same on a cab');
   }
 
   if (logs.length) { console.log(logs.join('\n')); fail('console errors'); }

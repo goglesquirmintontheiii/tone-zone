@@ -9,30 +9,9 @@ const D = 'dynamic', C = 'condenser', R = 'ribbon';
 export const MODELS = [
   // ------------------------------------------------------------------ dynamics
   {
-    id: 'md421', name: 'Hanover 42', brand: 'Sennheiser', ref: 'Sennheiser MD 421 II', type: D, pattern: 'cardioid',
-    desc: 'Punchy mids, a big but tight low end and a bright top: the classic partner to a 57 on a 4x12.',
-    resp: [[20, -14], [40, -7], [60, -3.5], [100, -1], [150, 0.5], [250, 1], [500, 0.3], [1000, 0], [1600, -1], [2500, 0.5], [3500, 2.5], [4500, 4], [5500, 3.5], [7000, 2.5], [9000, 3], [11000, 2], [13000, -2], [15000, -6], [17000, -11], [20000, -20]],
-    prox: 9, offAxis: -8, sens: 2, color: '#1d1d1f',
-    look: { shape: 'md421', color: '#1d1d1f', badge: 'HNV 42' },
-  },
-  {
-    id: 'md441', name: 'Hanover 44', brand: 'Sennheiser', ref: 'Sennheiser MD 441-U', type: D, pattern: 'supercardioid',
-    desc: 'A dynamic that behaves like a condenser: flat, detailed and wide, with a tight pattern for close work.',
-    resp: [[20, -11], [30, -6], [50, -2.5], [80, -0.5], [150, 0], [500, 0], [1000, 0], [2000, 0.5], [3500, 1.5], [5000, 2.5], [7000, 2.5], [9000, 2], [12000, 1], [15000, -1], [18000, -4], [20000, -7]],
-    prox: 7, offAxis: -9, sens: 1, color: '#c7c1b0',
-    look: { shape: 'md441', color: '#c7c1b0', slot: '#2a2824', badge: 'HNV 44' },
-  },
-  {
-    id: 'e906', name: 'Hanover Flat 96', brand: 'Sennheiser', ref: 'Sennheiser e906', type: D, pattern: 'supercardioid',
-    desc: 'Hangs flat over the grille: focused upper mids and a smooth top, great on a single cone.',
-    resp: [[20, -18], [40, -10], [70, -4], [120, -1], [200, 0], [500, 0], [1000, 0], [1700, 1], [2500, 2.5], [3500, 4], [4500, 5], [6000, 3.5], [8000, 1.5], [10000, 1], [12500, -2], [15000, -7], [18000, -14], [20000, -22]],
-    prox: 8, offAxis: -7, sens: 3, color: '#26272a',
-    look: { shape: 'flat', color: '#26272a', mesh: '#141416', switch: true, badge: 'HNV 96' },
-  },
-  {
     id: 'e609', name: 'Hanover Flat 69', brand: 'Sennheiser', ref: 'Sennheiser e609 Silver', type: D, pattern: 'supercardioid',
     desc: 'The silver flat one: bright, forward upper mids that cut through a busy mix.',
-    resp: [[20, -20], [40, -12], [70, -6], [120, -2], [250, 0], [1000, 0], [2000, 2], [3000, 4.5], [4000, 6], [5000, 5], [7000, 2.5], [9000, 0], [11000, -3], [13000, -7], [15000, -12], [18000, -20], [20000, -26]],
+    resp: [[20, -22], [40, -14], [70, -8], [120, -3.5], [250, -1], [500, 0], [1000, 0], [2000, 2], [3000, 4.5], [4000, 6.5], [5000, 5], [7000, 2], [9000, -0.5], [11000, -3], [13000, -7], [15000, -12], [18000, -20], [20000, -26]],
     prox: 8, offAxis: -7, sens: -0.5, color: '#b4b7bc',
     look: { shape: 'flat', color: '#b4b7bc', mesh: '#1b1c1f', finish: 'satin', badge: 'HNV 69', short: true },
   },
@@ -67,7 +46,7 @@ export const MODELS = [
   {
     id: 'i5', name: 'Wilson Five', brand: 'Audix', ref: 'Audix i5', type: D, pattern: 'cardioid',
     desc: 'Like a 57 with a bit more upper-mid bite and a tighter low end.',
-    resp: [[20, -16], [50, -8], [80, -4], [150, -1], [300, 0], [1000, 0], [2000, 1], [3000, 2.5], [4000, 4.5], [5000, 5.5], [6500, 4], [8000, 2], [10000, 0], [12500, -4], [15000, -10], [17000, -15], [20000, -24]],
+    resp: [[20, -12], [50, -5], [80, -2], [150, 0], [300, 0], [1000, 0], [2000, 1], [2500, 2.5], [4000, 4], [5000, 5], [6500, 4.5], [8000, 3.5], [10000, 1.5], [12500, -2], [15000, -8], [17000, -13], [20000, -22]],
     prox: 9, offAxis: -6, sens: 0, color: '#2d2e31',
     look: { shape: 'stick', head: 'flat', hw: 24, hh: 22, mesh: '#1d1d1f', color: '#2d2e31', bw0: 21, bw1: 17, bl: 72, ring: '#8a8d92', badge: 'W5' },
   },
@@ -107,14 +86,43 @@ export const MODELS = [
     look: { shape: 'egg', color: '#2b2c2f', mesh: '#6b6e73', badge: 'V112' },
   },
 
-  // ------------------------------------------------------------------ condensers
   {
-    id: 'u87', name: 'Berlin 87', brand: 'Neumann', ref: 'Neumann U 87 Ai', type: C, pattern: 'cardioid',
-    desc: 'The studio standard: even, full and polished with a gentle lift up top. Back it off for room.',
-    resp: [[20, -4], [30, -2], [40, -1], [60, -0.3], [100, 0], [300, 0], [1000, 0], [2000, 0.3], [4000, 1], [6000, 2], [8000, 2.5], [10000, 2], [12000, 1], [15000, -0.5], [18000, -3], [20000, -6]],
-    prox: 10, offAxis: -5, sens: 12, color: '#c6c7c3',
-    look: { shape: 'ldc', w: 34, h: 112, hh: 46, head: 'round', bw1: 27, color: '#c6c7c3', finish: 'satin', grille: '#a5a8ab', badge: 'circle', badgeColor: '#1b1b1b' },
+    id: 'md409', name: 'Hanover Flat 49', brand: 'Sennheiser', ref: 'Sennheiser MD 409 U3', type: D, pattern: 'supercardioid',
+    desc: 'The vintage flat one: a broad upper-mid push and a soft top, the old-school British rock sound.',
+    resp: [[20, -18], [40, -11], [60, -6], [100, -2.5], [200, 0], [500, 0.5], [1000, 0], [1500, 1.5], [2500, 3], [3500, 4], [4500, 4], [6000, 2.5], [8000, 0], [10000, -4], [12500, -9], [15000, -14], [20000, -26]],
+    prox: 8, offAxis: -8, sens: 1, color: '#2e2f31',
+    look: { shape: 'flat', color: '#2e2f31', mesh: '#2a2b2d', vintage: true, trim: '#b9bcc0', badge: 'HNV 49' },
   },
+  {
+    id: 'nd468', name: 'Buchanan Pivot 68', brand: 'Electro-Voice', ref: 'Electro-Voice N/D468', type: D, pattern: 'supercardioid',
+    desc: 'Pivoting head that hangs neatly over the speaker: crisp, extended highs and a tight low end.',
+    resp: [[20, -16], [40, -8], [70, -3], [120, -1], [250, 0], [1000, 0], [2000, 1], [3500, 3], [5000, 4.5], [7000, 4], [9000, 3.5], [11000, 2], [14000, -1], [17000, -5], [20000, -10]],
+    prox: 8, offAxis: -7, sens: 3, color: '#1b1b1c',
+    look: { shape: 'pivot', color: '#1b1b1c', mesh: '#3d3e41', hinge: '#b9bcc0', badge: 'BCN 68' },
+  },
+  {
+    id: 'm80', name: 'Elektro Stick 80', brand: 'Telefunken', ref: 'Telefunken M80', type: D, pattern: 'supercardioid',
+    desc: 'A bright, open dynamic with a condenser-like top end: articulate and sparkly on clean amps.',
+    resp: [[20, -14], [40, -7], [70, -3], [120, -1], [250, 0], [1000, 0], [2000, 0.5], [3500, 2], [5000, 3], [7000, 4], [9000, 4.5], [11000, 4], [13000, 2], [16000, -2], [20000, -8]],
+    prox: 8, offAxis: -6, sens: 3, color: '#1a1a1b',
+    look: { shape: 'stick', head: 'dome', hw: 27, hh: 28, mesh: '#c3c6ca', color: '#1a1a1b', bw0: 24, bw1: 19, bl: 66, ring: '#c4262e', badge: 'E 80' },
+  },
+  {
+    id: 'e604', name: 'Hanover Clip 64', brand: 'Sennheiser', ref: 'Sennheiser e604', type: D, pattern: 'cardioid',
+    desc: 'Tiny clip-on drum mic that clamps to the cab: bright and punchy upper mids, lean lows.',
+    resp: [[20, -18], [40, -10], [70, -5], [120, -2], [250, 0], [1000, 0], [2000, 1.5], [3000, 3], [4500, 4], [6000, 4.5], [8000, 4], [10000, 2.5], [12500, -1], [15000, -5], [18000, -10], [20000, -16]],
+    prox: 9, offAxis: -6, sens: 1, color: '#1d1e20',
+    look: { shape: 'clip', color: '#1d1e20', mesh: '#2a2b2e', clip: '#a9acb0', badge: 'HNV 64' },
+  },
+  {
+    id: 'pr31', name: 'Fairview 31', brand: 'Heil Sound', ref: 'Heil PR 31 BW', type: D, pattern: 'cardioid',
+    desc: 'Short and wide with a tight low end and a forward 3 to 5 kHz bite: made to sit on a speaker.',
+    resp: [[20, -18], [40, -10], [70, -5], [120, -2], [250, 0], [1000, 0], [2000, 1.5], [3000, 3], [4000, 4], [5500, 4], [7000, 3], [9000, 2], [11000, 0.5], [14000, -3], [17000, -7], [20000, -13]],
+    prox: 8, offAxis: -6, sens: -2, color: '#b9bcc0',
+    look: { shape: 'stick', head: 'flat', hw: 32, hh: 26, mesh: '#1d1d1f', color: '#b9bcc0', finish: 'satin', bw0: 30, bw1: 22, bl: 50, ring: '#1d1d1f', badge: 'FV 31', stubby: true },
+  },
+
+  // ------------------------------------------------------------------ condensers
   {
     id: 'u47', name: 'Berlin 47 Tube', brand: 'Neumann', ref: 'Neumann U 47 (tube)', type: C, pattern: 'cardioid',
     desc: 'Vintage tube warmth: thick low mids and a round, sweet top end.',
@@ -132,16 +140,9 @@ export const MODELS = [
   {
     id: 'km184', name: 'Berlin Pencil 84', brand: 'Neumann', ref: 'Neumann KM 184', type: C, pattern: 'cardioid',
     desc: 'Small-diaphragm pencil: fast, airy and honest. Lovely on open-back cabs and as a room pair.',
-    resp: [[20, -4], [30, -2], [50, -0.7], [100, 0], [1000, 0], [3000, 0.5], [6000, 1.5], [8000, 2.5], [10000, 3.5], [12000, 3.5], [15000, 2], [18000, -0.5], [20000, -3]],
+    resp: [[20, -2.5], [40, -0.8], [100, 0], [1000, 0], [3000, 0], [5000, 0.5], [7000, 1.5], [9000, 3], [11000, 2.5], [13000, 3], [15000, 1.5], [18000, -1], [20000, -4]],
     prox: 9, offAxis: -2, sens: 9, color: '#1c1c1d',
     look: { shape: 'sdc', w: 13, h: 92, gh: 20, color: '#1c1c1d', grille: '#2c2c2e', ring: '#555', badge: 'dot' },
-  },
-  {
-    id: 'c414', name: 'Vienna 414 Gold', brand: 'AKG', ref: 'AKG C414 XLII', type: C, pattern: 'cardioid',
-    desc: 'Gold grille, lifted presence and air: bright, modern and very detailed.',
-    resp: [[20, -3], [40, -1], [80, 0], [1000, 0], [2000, 0.5], [3500, 1.5], [5000, 3], [7000, 4], [9000, 4], [11000, 3.5], [13000, 2.5], [16000, 0], [18000, -2], [20000, -4]],
-    prox: 10, offAxis: -5, sens: 10, color: '#1f2022',
-    look: { shape: 'ldc', w: 38, h: 106, hh: 44, head: 'square', bw1: 36, color: '#1f2022', grille: '#b89c5a', switches: true, badge: 'text', badgeText: 'V414' },
   },
   {
     id: 'c451', name: 'Vienna Pencil 451', brand: 'AKG', ref: 'AKG C451 B', type: C, pattern: 'cardioid',
@@ -188,7 +189,7 @@ export const MODELS = [
   {
     id: 'nt1', name: 'Sydney One', brand: 'RODE', ref: 'RODE NT1 (black)', type: C, pattern: 'cardioid',
     desc: 'Very quiet and clean with a smooth high lift: modern, polished clean tones.',
-    resp: [[20, -2], [40, -0.5], [80, 0], [1000, 0], [2000, 0], [4000, 0.5], [6000, 1.5], [8000, 2], [10000, 3], [12000, 3.5], [15000, 2], [18000, -0.5], [20000, -3]],
+    resp: [[20, -1.5], [40, 0], [100, 0.3], [300, 0.3], [1000, 0], [3000, 0], [5000, 0.3], [7000, 0.8], [10000, 1.5], [13000, 2.5], [16000, 2.5], [18000, 1], [20000, -2]],
     prox: 10, offAxis: -5, sens: 11, color: '#1d1d1f',
     look: { shape: 'ldc', w: 30, h: 118, hh: 42, head: 'round', bw1: 30, color: '#1d1d1f', grille: '#2c2c2f', badge: 'golddot' },
   },
@@ -200,14 +201,15 @@ export const MODELS = [
     look: { shape: 'sdc', w: 12, h: 76, gh: 24, color: '#cfc7b5', finish: 'satin', grille: '#8a877f', ring: '#7d786c' },
   },
 
-  // ------------------------------------------------------------------ ribbons
   {
-    id: 'r121', name: 'Burbank 121', brand: 'Royer', ref: 'Royer R-121', type: R, pattern: 'figure8',
-    desc: 'The guitar ribbon: thick, warm mids and a soft, natural top. Blend with a 57 for the classic pair.',
-    resp: [[20, -6], [30, -3], [50, -1], [100, 0], [1000, 0], [2000, -0.5], [4000, -1.5], [6000, -3], [8000, -5], [10000, -7], [12000, -9], [14000, -12], [16000, -16], [20000, -25]],
-    prox: 15, offAxis: -10, sens: -2, color: '#b9bbbd',
-    look: { shape: 'pill', w: 28, h: 106, gTop: 6, gBot: 72, color: '#b9bbbd', finish: 'satin', grille: '#6e7175', badge: 'BB 121' },
+    id: 'u47fet', name: 'Berlin 47 Solid', brand: 'Neumann', ref: 'Neumann U 47 fet', type: C, pattern: 'cardioid',
+    desc: 'Fat, solid-state big brother of the 47: handles huge levels, deep lows and a smooth lift. A bass cab favourite.',
+    resp: [[20, -4], [30, -2], [50, -0.5], [100, 0], [200, 0.5], [1000, 0], [2000, 0.5], [4000, 1.5], [6000, 2.5], [8000, 3], [10000, 2.5], [12000, 1], [15000, -1.5], [18000, -4.5], [20000, -8]],
+    prox: 10, offAxis: -5, sens: 7, color: '#c3c0b6',
+    look: { shape: 'ldc', w: 42, h: 98, hh: 42, head: 'round', bw1: 42, color: '#c3c0b6', finish: 'satin', grille: '#a19d93', badge: 'circle', badgeColor: '#2a2a2a', badgeOnGrille: true, base: '#7a776f' },
   },
+
+  // ------------------------------------------------------------------ ribbons
   {
     id: 'r10', name: 'Burbank 10', brand: 'Royer', ref: 'Royer R-10', type: R, pattern: 'figure8',
     desc: 'The stage-proof little brother: warm and smooth with a hint more edge.',
@@ -237,13 +239,6 @@ export const MODELS = [
     look: { shape: 'capsule', color: '#b8babd', grille: '#2b2c2f' },
   },
   {
-    id: 'm160', name: 'Heilbronn Ribbon 160', brand: 'Beyerdynamic', ref: 'Beyerdynamic M 160', type: R, pattern: 'hypercardioid',
-    desc: 'Directional double ribbon: ribbon warmth with more focus and bite than a figure 8.',
-    resp: [[20, -12], [40, -5], [70, -1.5], [120, 0], [1000, 0], [2000, 0.5], [3500, 1], [5000, 1], [7000, 0], [9000, -1.5], [11000, -3], [13000, -5], [16000, -9], [18000, -12], [20000, -16]],
-    prox: 9, offAxis: -8, sens: -6, color: '#19191a',
-    look: { shape: 'stick', head: 'dome', hw: 21, hh: 38, mesh: '#8c8f94', color: '#19191a', bw0: 21, bw1: 17, bl: 66, ring: '#c3c6ca', badge: 'HB 160' },
-  },
-  {
     id: 'm130', name: 'Heilbronn Ribbon 130', brand: 'Beyerdynamic', ref: 'Beyerdynamic M 130', type: R, pattern: 'figure8',
     desc: 'Tiny figure 8 double ribbon: open and detailed for a ribbon, with a round low end.',
     resp: [[20, -10], [40, -4], [70, -1], [120, 0], [1000, 0], [2000, 0.5], [4000, 1], [6000, 0.5], [8000, -1], [10000, -3], [12000, -5], [15000, -9], [18000, -13], [20000, -17]],
@@ -263,6 +258,14 @@ export const MODELS = [
     resp: [[20, -5], [30, -2], [60, 0], [150, 0.5], [1000, 0], [2000, -0.5], [4000, -2], [6000, -3.5], [8000, -5.5], [10000, -8], [12000, -10.5], [15000, -15], [20000, -24]],
     prox: 14, offAxis: -10, sens: -6, color: '#202022',
     look: { shape: 'pill', w: 34, h: 96, gTop: 8, gBot: 62, color: '#202022', grille: '#8d9095', badge: 'NR 313', front: '#c4262e', square: true },
+  },
+
+  {
+    id: 'fathead', name: 'Cascadia Fat Ribbon', brand: 'Cascade', ref: 'Cascade Fat Head', type: R, pattern: 'figure8',
+    desc: 'The budget ribbon with the brass grille: warm, a little woolly, smooths out any harsh amp.',
+    resp: [[20, -6], [40, -2], [80, 0], [1000, 0], [2000, -0.5], [3500, -1], [5000, -2], [7000, -4], [9000, -6.5], [11000, -9], [14000, -13], [17000, -18], [20000, -24]],
+    prox: 15, offAxis: -10, sens: -6, color: '#1a1a1b',
+    look: { shape: 'pill', w: 30, h: 100, gTop: 6, gBot: 70, color: '#1a1a1b', grille: '#b08a3e', band: '#b08a3e', badge: 'CFR' },
   },
 
   // ------------------------------------------------------------------ Tone Zone originals
