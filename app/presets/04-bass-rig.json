@@ -1,6 +1,6 @@
 {
  "version": 1,
- "name": "Bass · Grind & Fridge",
+ "name": "Bass \u00b7 Grind & Fridge",
  "blocks": [
   {
    "id": "board1",
@@ -81,7 +81,7 @@
    "x": -649,
    "y": -650,
    "params": {
-    "level": -3.2,
+    "level": 0.6,
     "_m1x": 0.25996153846153847,
     "_m1y": 0.125,
     "_m2x": 0.6304615384615384,
@@ -200,6 +200,5 @@
   }
  ],
  "view": null,
- "factory": true,
- "_trim": -3.8
+ "factory": true
 }

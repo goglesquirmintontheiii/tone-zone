@@ -51,7 +51,20 @@ const fs = require('fs');
   const known = new Set(require('./preset-specs.js').map((s) => s.file));
   const extra = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !known.has(f.slice(0, -5)) && (!only || f.startsWith(only)))
     .map((f) => ({ file: f.slice(0, -5), preset: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) }));
-  for (const e of extra) e.trimDb = trims[e.file] || 0;
+  // hand-made presets keep their own levels: their trim is what's been applied (_trim) plus what the measurement
+  // asks for now, never the shared trims file
+  for (const e of extra) {
+    const lv = measured[e.file];
+    let t = e.preset._trim || 0;
+    if (lv !== undefined) {
+      const plr = detail[e.file] ? detail[e.file].tp - detail[e.file].lufs + (detail[e.file].peak > -0.01 ? 2 : 0) : 0;
+      const goal = Math.max(TARGET - 1.5, Math.min(TARGET, -1 - plr));
+      t = Math.max(-30, Math.min(24, Math.round((t + (goal - lv)) * 10) / 10));
+    }
+    e.trimDb = t;
+    delete trims[e.file];
+  }
+  if (lvPath) fs.writeFileSync(path.join(__dirname, 'preset-trims.json'), JSON.stringify(Object.fromEntries(Object.entries(trims).sort()), null, 1));
   const out = await win.evaluate(async ([specs, extra]) => {
     const C = await import('./js/catalog/index.js');
     const { sizeOf } = await import('./js/pages/presets.js');
