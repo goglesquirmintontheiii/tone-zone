@@ -17,7 +17,31 @@
    "type": "pb.tiny",
    "x": -1028,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "metal",
+    "frameSub": "iron",
+    "frameFin": "bare",
+    "frameCol": "",
+    "frameT": "",
+    "frameWear": "scratch:0.6,rust:0.45,dent:0.4",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "steel",
+    "railFin": "hammertone",
+    "railCol": "#1b1c20",
+    "railT": "",
+    "railWear": "scratch:0.4",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "iron",
+    "screwFin": "patina",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 3,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -36,7 +60,8 @@
     "dry": 0
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -47,7 +72,8 @@
     "threshold": 0.5
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -61,7 +87,8 @@
     "bass": 0.35
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",

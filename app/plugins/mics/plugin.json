@@ -1,0 +1,11 @@
+{
+  "id": "mics",
+  "name": "Studio Mics",
+  "version": "1.0.0",
+  "author": "Tone Zone",
+  "description": "40 microphones for your cabs: dynamics, condensers and ribbons inspired by the studio classics (Sennheiser, Electro-Voice, Shure, Neumann, AKG, Royer, RCA, Coles, Beyerdynamic and more), plus four Tone Zone originals.",
+  "kind": "brand",
+  "main": "index.js",
+  "api": 1,
+  "color": "#8d9094"
+}

@@ -16,7 +16,31 @@
    "type": "pb.small",
    "x": -1988,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "glass",
+    "frameSub": "",
+    "frameFin": "frosted",
+    "frameCol": "#eef3f7",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "chrome",
+    "railFin": "polished",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "chrome",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 1,
+    "velcro": 2
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 54,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -46,7 +71,8 @@
     "voice": 2
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -57,7 +83,8 @@
     "gain": 0.25
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -96,7 +123,8 @@
     "mix": 0.25
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b7",
@@ -105,7 +133,8 @@
    "y": 45,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

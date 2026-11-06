@@ -59,6 +59,122 @@ const fs = require('fs');
     const { renderForm } = await import('./js/gfx/forms.js');
     const { svg } = await import('./js/util.js');
     const PB = await import('./js/catalog/pedalboards.js');
+    const M = await import('./js/gfx/materials.js');
+    // ---- board looks that suit the music: first matching tag wins, a couple of variants per style picked by
+    // file name so neighbouring presets differ. frame / rail / screw are material specs (gfx/materials.js);
+    // rail null = rails match the frame. style: 0 full velcro, 1 strips, 2 screws, 3 messy screws, 4 blank.
+    // velcro: 0 black, 1 white, 2 semi-clear.
+    const metal = (s, f, c, w) => ({ m: 'metal', s, f, c, w });
+    const wood = (s, f, c, w) => ({ m: 'wood', s, f, c, w });
+    const LOOKS = [
+      [['meme'], [
+        { frame: { m: 'acrylic', f: 'candy', c: '#e870aa' }, rail: { m: 'plastic', f: 'gloss', c: '#f1f0ec' }, screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+        { frame: { m: 'glow', f: 'glowing', c: '#7dff6a' }, rail: { m: 'plastic', f: 'gloss', c: '#6b45c4' }, screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+        { frame: { m: 'plastic', f: 'sparkle', c: '#6b45c4', mc: { mode: 'rainbow', angle: 30, stops: [] } }, rail: { m: 'plastic', f: 'gloss', c: '#f5cb2f' }, screw: metal('gold', 'polished'), style: 1, velcro: 2 },
+      ]],
+      [['deathcore'], [
+        { frame: { m: 'carbon', f: 'forged', c: '#3a3d44' }, rail: metal('iron', 'powder', '#1b1c20', { scratch: 0.5, chip: 0.3 }), screw: metal('iron', 'bare'), style: 3, velcro: 0 },
+        { frame: metal('iron', 'bare', '', { rust: 0.45, scratch: 0.6, dent: 0.4 }), rail: metal('steel', 'hammertone', '#1b1c20', { scratch: 0.4 }), screw: metal('iron', 'patina'), style: 3, velcro: 0 },
+      ]],
+      [['djent'], [
+        { frame: { m: 'carbon', f: 'gloss', c: '#3a3d44' }, rail: metal('aluminium', 'anodized', '#3d4249'), screw: metal('titanium', 'bare'), style: 2, velcro: 0 },
+        { frame: { m: 'carbon', f: 'matte', c: '#2a5fb0' }, rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('stainless', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['doom', 'stoner'], [
+        { frame: metal('bronze', 'patina', '', { scratch: 0.3 }), rail: metal('iron', 'bare', '', { rust: 0.5 }), screw: metal('brass', 'patina'), style: 3, velcro: 0 },
+      ]],
+      [['metalcore', 'nu-metal'], [
+        { frame: metal('steel', 'powder', '#1b1c20', { scratch: 0.45 }), rail: metal('aluminium', 'anodized', '#b3202a'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+        { frame: { m: 'carbon', f: 'flake', c: '#b02a2a' }, rail: metal('steel', 'powder', '#1b1c20'), screw: metal('stainless', 'polished'), style: 2, velcro: 0 },
+      ]],
+      [['thrash', 'heavy-metal', 'classic-metal', 'metal', 'high-gain'], [
+        { frame: metal('steel', 'hammertone', '#1b1c20', { scratch: 0.35 }), rail: metal('steel', 'brushed'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+        { frame: metal('stainless', 'polished', '', { scratch: 0.25 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('iron', 'bare'), style: 2, velcro: 0 },
+        { frame: metal('aluminium', 'anodized', '#3d4249', { scratch: 0.3, chip: 0.2 }), rail: null, screw: metal('chrome', 'polished'), style: 3, velcro: 0 },
+      ]],
+      [['grunge'], [
+        { frame: metal('steel', 'bare', '', { scratch: 0.6, rust: 0.25, dent: 0.3 }), rail: metal('steel', 'powder', '#5d6337', { chip: 0.4 }), screw: metal('iron', 'bare'), style: 3, velcro: 0 },
+      ]],
+      [['punk', 'pop-punk'], [
+        { frame: metal('steel', 'powder', '#1b1c20', { chip: 0.5, scratch: 0.5 }), rail: metal('aluminium', 'anodized', '#d0508a'), screw: metal('chrome', 'bare'), style: 3, velcro: 0 },
+        { frame: { m: 'rubber', f: 'grip', c: '#1f2023' }, rail: metal('aluminium', 'powder', '#f2c230', { chip: 0.3 }), screw: metal('steel', 'bare'), style: 1, velcro: 0 },
+      ]],
+      [['worship', 'gospel', 'contemporary-worship'], [
+        { frame: { m: 'pearl', s: 'white', f: 'polished' }, rail: metal('aluminium', 'powder', '#efede7'), screw: metal('chrome', 'polished'), style: 0, velcro: 1 },
+        { frame: { m: 'glass', f: 'frosted', c: '#eef3f7' }, rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 1, velcro: 2 },
+        { frame: metal('aluminium', 'powder', '#efede7'), rail: metal('gold', 'brushed'), screw: metal('gold', 'polished'), style: 1, velcro: 1 },
+      ]],
+      [['acoustic', 'folk'], [
+        { frame: wood('walnut', 'oil'), rail: wood('maple', 'satin'), screw: metal('brass', 'polished'), style: 1, velcro: 0 },
+        { frame: wood('koa', 'nitro'), rail: wood('mahogany', 'satin'), screw: metal('brass', 'polished'), style: 2, velcro: 0 },
+        { frame: wood('maple', 'satin'), rail: wood('rosewood', 'oil'), screw: metal('bronze', 'polished'), style: 1, velcro: 2 },
+      ]],
+      [['jazz', 'jazz-fusion'], [
+        { frame: wood('mahogany', 'nitro'), rail: metal('brass', 'brushed'), screw: metal('gold', 'polished'), style: 0, velcro: 0 },
+        { frame: wood('rosewood', 'poly'), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('gold', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['country', 'country-rock'], [
+        { frame: wood('oak', 'stained', '#e8b25a'), rail: metal('copper', 'brushed'), screw: metal('copper', 'polished'), style: 2, velcro: 0 },
+        { frame: wood('pine', 'satin', '', { scratch: 0.3 }), rail: { m: 'tolex', s: 'leather', f: 'worn', c: '#5a3a24' }, screw: metal('brass', 'patina'), style: 2, velcro: 0 },
+      ]],
+      [['blues'], [
+        { frame: { m: 'tolex', s: 'tweed', f: 'worn' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+        { frame: { m: 'tolex', s: 'tolex', f: 'worn', c: '#5a3a24' }, rail: metal('brass', 'brushed'), screw: metal('brass', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['surf'], [
+        { frame: metal('steel', 'powder', '#1f8a8a'), rail: { m: 'plastic', f: 'gloss', c: '#ece2c6' }, screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+      ]],
+      [['funk'], [
+        { frame: metal('steel', 'flake', '#5a3fb0'), rail: metal('gold', 'polished'), screw: metal('gold', 'polished'), style: 0, velcro: 0 },
+        { frame: metal('steel', 'flake', '#e56b1f'), rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['edm', 'synth'], [
+        { frame: { m: 'acrylic', f: 'clear', c: '#3b78d8' }, rail: { m: 'glow', f: 'glowing', c: '#4ff5e0' }, screw: metal('chrome', 'polished'), style: 1, velcro: 2 },
+        { frame: { m: 'acrylic', f: 'frosted', c: '#8e5bd8' }, rail: metal('aluminium', 'anodized', '#d0508a'), screw: metal('chrome', 'polished'), style: 0, velcro: 2 },
+      ]],
+      [['shoegaze'], [
+        { frame: { m: 'pearl', s: 'abalone', f: 'polished' }, rail: metal('aluminium', 'anodized', '#5b2b9a'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['ambient', 'experimental', 'noise'], [
+        { frame: { m: 'glass', f: 'frosted', c: '#8e5bd8' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 2 },
+        { frame: { m: 'concrete', f: 'terrazzo', c: '#4e4f50' }, rail: metal('copper', 'patina'), screw: metal('iron', 'bare'), style: 2, velcro: 0 },
+      ]],
+      [['classic-rock', 'hard-rock'], [
+        { frame: { m: 'tolex', s: 'tolex', f: 'new', c: '#18181a' }, rail: metal('gold', 'brushed'), screw: metal('gold', 'polished'), style: 2, velcro: 0 },
+        { frame: { m: 'tolex', s: 'tolex', f: 'worn', c: '#5a1a1e' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['prog', 'instrumental'], [
+        { frame: { m: 'carbon', f: 'gloss', c: '#6a3fb0' }, rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+      ]],
+      [['indie'], [
+        { frame: wood('plywood', 'matte'), rail: metal('steel', 'powder', '#2b7bd6'), screw: metal('steel', 'bare'), style: 1, velcro: 1 },
+      ]],
+      [['alt-rock'], [
+        { frame: metal('aluminium', 'anodized', '#1f5fbf', { scratch: 0.25 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+        { frame: { m: 'concrete', f: 'smooth', c: '#4e4f50' }, rail: metal('aluminium', 'brushed'), screw: metal('steel', 'bare'), style: 2, velcro: 0 },
+      ]],
+      [['pop'], [
+        { frame: { m: 'plastic', f: 'gloss', c: '#f1f0ec' }, rail: metal('aluminium', 'powder', '#d6487e'), screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+        { frame: metal('aluminium', 'anodized', '#d0508a'), rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 1 },
+      ]],
+      [['rock', 'crunch'], [
+        { frame: metal('aluminium', 'anodized', '#b3202a', { scratch: 0.2 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+        { frame: metal('steel', 'hammertone', '#1f2d55'), rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+      ]],
+    ];
+    // the hand-made presets have no tags
+    const LOOK_TAGS = { '02-clean-ambient': ['ambient'], '04-bass-rig': ['funk'], '06-looper-jam': ['rock'], '08-boutique': ['jazz'], '09-wah-fuzz': ['classic-rock'] };
+    const hashOf = (str) => { let h = 7; for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+    const boardLook = (file, tags) => {
+      const hit = LOOKS.find(([keys]) => keys.some((k) => tags.includes(k)));
+      if (!hit) return {}; // the plain default board
+      const v = hit[1][hashOf(file) % hit[1].length];
+      const out = Object.assign({}, M.toParams(v.frame, 'frame'), v.rail ? M.toParams(v.rail, 'rail') : { railMat: 'frame' }, M.toParams(v.screw, 'screw'));
+      // glass takes no screws
+      out.style = v.frame.m === 'glass' && (v.style === 2 || v.style === 3) ? 0 : v.style;
+      out.velcro = v.velcro;
+      return out;
+    };
     const problems = [];
     const COLORS = ['#e8473d', '#f39c12', '#f1c40f', '#2ecc71', '#3498db', '#6c5ce7', '#e84393', '#1abc9c', '#ecf0f1'];
     const AUX = /^(EXP|CTL|CTRL|MIDI|USB|SEND|RETURN|TUNER|BYPASS|DI OUT|XLR|THRU|DIRECT|LINE OUT|PHONES|B OUT)/i;
@@ -255,7 +371,9 @@ const fs = require('fs');
         if (b.type === '__in') { b.x = 90; b.y = by + S.padY + S.h / 2 - 110; }
         if (b.type === '__out') { b.x = bx - 260; b.y = by + S.padY + endRow * S.h + S.h / 2 - 110; }
       }
-      p.blocks.unshift({ id: 'board1', type: 'pb.' + plan.key, x: bx, y: by, params: {} });
+      // the pedals remember their board, so a board moved over this one can't take them
+      for (const it of on) it.b.board = 'board1';
+      p.blocks.unshift({ id: 'board1', type: 'pb.' + plan.key, x: bx, y: by, params: boardLook(file, [...(p.tags || []), ...(LOOK_TAGS[file] || [])]) });
       return p;
     };
     const res = specs.map((s) => ({ file: s.file, preset: boardify(s.file, build(s)) }));

@@ -16,7 +16,31 @@
    "type": "pb.medium",
    "x": -1508,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "metal",
+    "frameSub": "steel",
+    "frameFin": "bare",
+    "frameCol": "",
+    "frameT": "",
+    "frameWear": "scratch:0.6,rust:0.25,dent:0.3",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "steel",
+    "railFin": "powder",
+    "railCol": "#5d6337",
+    "railT": "",
+    "railWear": "chip:0.4",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "iron",
+    "screwFin": "bare",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 3,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 54,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -45,7 +70,8 @@
     "mode": 0
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -57,7 +83,8 @@
     "deep": 0
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -108,7 +135,8 @@
     "gain": 0.75
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b7",
@@ -117,7 +145,8 @@
    "y": 122,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b8",
@@ -197,7 +226,8 @@
    "y": 392,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b13",
@@ -210,7 +240,8 @@
     "mix": 0.1
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b14",
@@ -219,7 +250,8 @@
    "y": 345,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

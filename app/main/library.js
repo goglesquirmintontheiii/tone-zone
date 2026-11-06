@@ -282,7 +282,6 @@ function listPresets() {
         const j = JSON.parse(fs.readFileSync(p, 'utf8'));
         name = j.name || name;
         const bl = (j.blocks || []).filter((b) => !String(b.id).startsWith('__'));
-        const idx = new Map(bl.map((b, i) => [b.id, i]));
         meta = {
           tags: j.tags || [],
           blocks: bl.length,
@@ -291,8 +290,8 @@ function listPresets() {
           factory: !!j.factory,
           saved: j.saved || 0,
           desc: j.desc || '',
-          // compact layout for preset thumbnails
-          layout: { b: bl.map((b) => [b.type, Math.round(b.x), Math.round(b.y), b.bypass ? 1 : 0, b.rot || 0]), c: (j.cables || []).map((c) => [idx.has(c.from.node) ? idx.get(c.from.node) : -1, idx.has(c.to.node) ? idx.get(c.to.node) : -1]) },
+          // compact layout for preset thumbnails (input and output blocks included)
+          layout: thumbLayout(j),
           types: [...new Set(bl.map((b) => b.type))],
         };
       } catch (_) {}
@@ -353,6 +352,15 @@ function readFactoryMarker() {
 }
 function writeFactoryMarker(files) {
   fs.writeFileSync(FACTORY_MARKER(), JSON.stringify({ v: 2, files }));
+}
+// blocks [type, x, y, bypassed, rotation, board look] and cables [from index, to index] for a preset thumbnail
+function thumbLayout(j) {
+  const bl = (j.blocks || []).filter((b) => b && b.type);
+  const idx = new Map(bl.map((b, i) => [b.id, i]));
+  const at = (id) => (idx.has(id) ? idx.get(id) : -1);
+  // pedalboards bring their look (materials, mounting), so the thumbnail shows the right board
+  const look = (b) => (String(b.type).startsWith('pb.') && b.params ? Object.fromEntries(Object.entries(b.params).filter(([k]) => /^(frame|rail|screw|style|velcro|jacket|screwCol)/.test(k))) : 0);
+  return { b: bl.map((b) => [b.type, Math.round(b.x), Math.round(b.y), b.bypass ? 1 : 0, b.rot || 0, look(b)]), c: (j.cables || []).map((c) => [at(c.from.node), at(c.to.node)]) };
 }
 function installFactoryPresets(srcDir, { restore = false } = {}) {
   const d = presetDir();

@@ -14,7 +14,31 @@
    "type": "pb.small",
    "x": -1988,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "glow",
+    "frameSub": "",
+    "frameFin": "glowing",
+    "frameCol": "#7dff6a",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "plastic",
+    "railSub": "",
+    "railFin": "gloss",
+    "railCol": "#6b45c4",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "chrome",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 1,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -34,7 +58,8 @@
     "rm.mix": 0.15
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -47,7 +72,8 @@
     "net.mix": 0.8
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -87,7 +113,8 @@
     "mix": 0.8
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "__out",

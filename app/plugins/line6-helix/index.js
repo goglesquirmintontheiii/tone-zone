@@ -365,6 +365,93 @@ export default function register(tz) {
     },
   });
 
+  // ------------------------------------------------------------------ board links (drag a Helix control onto a pedal)
+  // A link is a normal binding (same storage, same hardware path) made by dragging on the board. Its message is
+  // prefilled with the factory CC of that switch (FS 1 = CC 49 ...) or EXP pedal, and Learn can still change it.
+  const EXP_COLOR = '#64d2ff';
+  const fsIndex = (blk, fsn) => FS_LAYOUT[effModel(blk)].indexOf(fsn);
+  const expSrc = (blk) => ((tz.app.ui(blk).expSel | 0) ? 'EXP 2' : 'EXP 1');
+  function srcInfo(blk, src) {
+    const m = /^FS (\d+)$/.exec(src || '');
+    if (m) {
+      const i = fsIndex(blk, +m[1]);
+      if (i < 0) return null;
+      const lab = tz.storage.get('labels_' + effModel(blk), {})[i];
+      return { src, kind: 'foot', short: 'FS' + m[1], name: lab ? `${src} (${lab})` : src, color: FS_COLORS[i], cid: def0().controls.filter((c) => c.t === 'foot')[i].cid };
+    }
+    if (/^EXP \d$/.test(src || '')) {
+      const tre = def0().controls.find((c) => c.t === 'treadle');
+      return { src, kind: 'pedal', short: src.replace(' ', ''), name: src, color: EXP_COLOR, cid: MODELS[effModel(blk)].exp ? tre.cid : null };
+    }
+    return null;
+  }
+  const linkHooks = {
+    // which Helix control can start a link: numbered footswitches and the EXP treadle
+    source(view, ctl) {
+      const blk = view.block;
+      if (ctl.t === 'foot' && ctl.action === 'helix') {
+        const fsn = FS_LAYOUT[effModel(blk)][ctl.idx];
+        return typeof fsn === 'number' ? srcInfo(blk, 'FS ' + fsn) : null;
+      }
+      if (ctl.t === 'treadle' && ctl.p === 'exp') return srcInfo(blk, expSrc(blk));
+      return null;
+    },
+    // every binding that drives a control on the board
+    list(blk) {
+      return (blk.bindings || []).filter((bd) => bd.target && bd.target.block).map((bd) => ({ bd, target: bd.target, msg: msgText(bd.msg), ...(srcInfo(blk, bd.src) || { src: bd.src, kind: 'foot', short: bd.src, name: bd.src, color: '#d21f26', cid: null }) }));
+    },
+    add(blk, source, target) {
+      blk.bindings = blk.bindings || [];
+      if (blk.bindings.some((bd) => bd.src === source.src && bd.target && bd.target.block === target.block && bd.target.cid === target.cid)) return null;
+      let msg;
+      const fs = /^FS (\d+)$/.exec(source.src), ex = /^EXP (\d)$/.exec(source.src);
+      if (fs && map.fs[+fs[1]] != null) msg = { t: 'cc', n: map.fs[+fs[1]], ch: ch(blk) };
+      else if (ex) msg = { t: 'cc', n: map.exp[+ex[1] - 1], ch: ch(blk) };
+      const bd = { src: source.src, msg: msg || null, target: { block: target.block, cid: target.cid }, mode: 'press', link: true };
+      blk.bindings.push(bd);
+      tz.app.markDirty();
+      return bd;
+    },
+    remove(blk, bd) {
+      const i = (blk.bindings || []).indexOf(bd);
+      if (i < 0) return false;
+      blk.bindings.splice(i, 1);
+      tz.app.markDirty();
+      return true;
+    },
+  };
+  // press the pedals linked to a Helix footswitch (on-screen click). Returns true if any were driven.
+  const driving = new Set(); // a Helix linked to another Helix must not loop
+  function driveLinks(blk, src, down) {
+    if (driving.has(blk.id)) return false;
+    driving.add(blk.id);
+    let hit = false;
+    try {
+      for (const bd of blk.bindings || []) {
+        if (bd.src !== src || !bd.target) continue;
+        const tgt = tz.app.blocks().find((x) => x.id === bd.target.block);
+        const c = tgt && tz.app.getDef(tgt.type)?.controls.find((x) => x.cid === bd.target.cid);
+        if (!c || c.t !== 'foot') continue;
+        hit = true;
+        if (bd.mode === 'momentary') tz.app.pressFoot(tgt.id, c.cid, down);
+        else if (down) { tz.app.pressFoot(tgt.id, c.cid, true); setTimeout(() => tz.app.pressFoot(tgt.id, c.cid, false), 40); }
+      }
+    } finally {
+      driving.delete(blk.id);
+    }
+    return hit;
+  }
+  // the on-screen EXP treadle sweeps the pedals linked to it
+  function sweepLinks(blk, v) {
+    const src = expSrc(blk);
+    for (const bd of blk.bindings || []) {
+      if (bd.src !== src || !bd.target) continue;
+      const tgt = tz.app.blocks().find((x) => x.id === bd.target.block);
+      const c = tgt && tz.app.getDef(tgt.type)?.controls.find((x) => x.cid === bd.target.cid);
+      if (c && c.t !== 'foot') tz.app.setControl(tgt.id, c.cid, v);
+    }
+  }
+
   // ------------------------------------------------------------------ behaviour
   const fsCC = (blk, fsn) => (typeof fsn === 'number' ? map.fs[fsn] : null);
   tz.blockHooks('l6x.helix', {
@@ -384,10 +471,13 @@ export default function register(tz) {
         const n = fsCC(blk, fsn);
         if (n != null) cc(blk, n, down ? 127 : 0);
         if (down) tz.app.setParam(blk.id, key, (tz.app.ui(blk)[key] ?? 0) > 0.5 ? 0 : 1);
+        // linked pedals follow the on-screen press, so links can be tried without the unit
+        if (typeof fsn === 'number' && driveLinks(blk, 'FS ' + fsn, down)) return true;
       }
       if (!dev.midiOut && down) tz.ui.toast('No Helix MIDI port found. Plug the unit in over USB.', 'warn', 2200);
       return true;
     },
+    link: linkHooks,
     ctrl(blk, idx, value, kind, inp) {
       if (inp.role === 'exp2' || inp.role === 'exp3') {
         if (kind === 'cont') cc(blk, map.exp[inp.role === 'exp2' ? 1 : 2], value * 127);
@@ -436,7 +526,7 @@ export default function register(tz) {
   function bindingsUI(sec, blk) {
     const { el, toast } = tz.ui;
     el('h5', { style: { marginTop: '12px' } }, sec).textContent = 'Control other pedals';
-    el('p', { class: 'hint' }, sec).textContent = 'Use the Helix footswitches and expression pedal to switch / sweep pedals on this board. On the Helix, set each footswitch (and EXP pedal) to send a MIDI CC in Command Center, then press Learn here and move it.';
+    el('p', { class: 'hint' }, sec).textContent = 'Use the Helix footswitches and expression pedal to switch / sweep pedals on this board. Drag a Helix footswitch onto a pedal\'s footswitch (or the EXP pedal onto a treadle or knob) to link them, or add one here. On the Helix, set each footswitch (and EXP pedal) to send that MIDI CC in Command Center, or press Learn and move it.';
     const list = el('div', { class: 'hx-binds' }, sec);
     const mk = effModel(blk);
     const sources = [...FS_LAYOUT[mk].filter((f) => typeof f === 'number').map((f) => 'FS ' + f), 'EXP 1', 'EXP 2', 'EXP 3'];
@@ -446,7 +536,7 @@ export default function register(tz) {
       (blk.bindings || []).forEach((bd, i) => {
         const row = el('div', { class: 'hx-bind' }, list);
         const src = el('select', {}, row, sources.map((x) => `<option${x === bd.src ? ' selected' : ''}>${x}</option>`).join(''));
-        src.onchange = () => { bd.src = src.value; tz.app.markDirty(); };
+        src.onchange = () => { bd.src = src.value; tz.app.markDirty(); tz.bus.emit('links:changed'); };
         const tb = el('select', {}, row, '<option value="">Pick a pedal</option>' + others.map((b) => `<option value="${b.id}"${bd.target && bd.target.block === b.id ? ' selected' : ''}>${tz.ui.esc((tz.app.getDef(b.type) || {}).name || b.type)}</option>`).join(''));
         const tc = el('select', {}, row);
         const fillCtl = () => {
@@ -456,8 +546,8 @@ export default function register(tz) {
           tc.innerHTML = ctls.map((c, k) => `<option value="${c.cid}"${bd.target && bd.target.cid === c.cid ? ' selected' : ''}>${c.t === 'foot' ? 'Footswitch' + (c.label ? ' ' + tz.ui.esc(c.label) : ' ' + (k + 1)) : (c.t === 'treadle' ? 'Treadle' : tz.ui.esc(c.label || c.p))}</option>`).join('');
           if (b && ctls.length) bd.target = { block: b.id, cid: tc.value };
         };
-        tb.onchange = () => { fillCtl(); tz.app.markDirty(); };
-        tc.onchange = () => { bd.target = { block: tb.value, cid: tc.value }; tz.app.markDirty(); };
+        tb.onchange = () => { fillCtl(); tz.app.markDirty(); tz.bus.emit('links:changed'); };
+        tc.onchange = () => { bd.target = { block: tb.value, cid: tc.value }; tz.app.markDirty(); tz.bus.emit('links:changed'); };
         fillCtl();
         const mode = el('select', { title: 'Momentary: pressed while the Helix switch is held. Press: every message is one click (for latching switches).' }, row, `<option value="press"${bd.mode !== 'momentary' ? ' selected' : ''}>Press</option><option value="momentary"${bd.mode === 'momentary' ? ' selected' : ''}>Momentary</option>`);
         mode.onchange = () => { bd.mode = mode.value; tz.app.markDirty(); };
@@ -471,7 +561,7 @@ export default function register(tz) {
           lb.textContent = 'Move it…';
         };
         const x = el('button', { class: 'btn small btn-ghost', title: 'Remove' }, lr, '×');
-        x.onclick = () => { blk.bindings.splice(i, 1); tz.app.markDirty(); draw(); };
+        x.onclick = () => { tz.app.commit && tz.app.commit(); blk.bindings.splice(i, 1); tz.app.markDirty(); tz.bus.emit('links:changed'); draw(); };
       });
       const add = el('button', { class: 'btn small' }, list, '+ Add binding');
       add.onclick = () => {
@@ -491,10 +581,15 @@ export default function register(tz) {
   tz.bus.on('param', ({ id, p, v }) => {
     if (p !== 'exp') return;
     const blk = helixBlocks().find((b) => b.id === id);
-    if (blk) cc(blk, map.exp[(tz.app.ui(blk).expSel | 0) ? 1 : 0], (v ?? 0) * 127);
+    if (blk) { cc(blk, map.exp[(tz.app.ui(blk).expSel | 0) ? 1 : 0], (v ?? 0) * 127); sweepLinks(blk, v ?? 0); }
   });
+  // links stay with the original: a duplicated or pasted Helix starts without bindings (they would fire twice)
+  tz.bus.on('block:added', (b) => { if (b && b.type === 'l6x.helix' && b.bindings && b.bindings.length) b.bindings = []; });
   // every Tone Zone preset load recalls the Helix preset / snapshot stored in it
   tz.bus.on('preset:changed', ({ keepView } = {}) => {
+    // a deleted pedal takes its links with it
+    const ids = new Set(tz.app.blocks().map((b) => b.id));
+    for (const b of helixBlocks()) if (b.bindings) b.bindings = b.bindings.filter((bd) => !bd.target || !bd.target.block || ids.has(bd.target.block));
     if (keepView) return; // undo / redo / board rebuilds don't re-send
     for (const b of helixBlocks()) if ((tz.app.ui(b).hxSend ?? 1) > 0.5) setTimeout(() => recall(b), 50);
   });

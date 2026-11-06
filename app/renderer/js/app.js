@@ -10,6 +10,7 @@ import './screens-tz5.js';
 import './screens-nautica.js';
 import { initInspector } from './inspector.js';
 import { buildGraph } from './state.js';
+import { copyBoards, pasteBoards } from './board-copy.js';
 import { state, loadPreset, newPreset, undo, redo, canUndo, canRedo, removeBlocks, duplicateBlocks, setBypass, setVariant, blockById, commitNow, markDirty, setParam, CABLE_COLORS } from './state.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { showMenu, prompt } from './menus.js';
@@ -283,7 +284,8 @@ function initGlobalKeys() {
       e.preventDefault();
       redo();
     } else if ((e.ctrlKey || e.metaKey) && k === 'c' && state.selection.size) {
-      clipboard = [...state.selection].map((id) => blockById(id)).filter((b) => b && !b.id.startsWith('__')).map((b) => JSON.parse(JSON.stringify(b)));
+      // a board brings its pedals and their cables (board-copy.js)
+      clipboard = copyBoards([...state.selection]) || [...state.selection].map((id) => blockById(id)).filter((b) => b && !b.id.startsWith('__')).map((b) => JSON.parse(JSON.stringify(b)));
     } else if ((e.ctrlKey || e.metaKey) && k === 'v' && clipboard) {
       paste();
     }
@@ -291,6 +293,7 @@ function initGlobalKeys() {
   bus.on('paste', paste);
 }
 function paste() {
+  if (clipboard && clipboard.boards) return editor.select(pasteBoards(clipboard));
   if (!clipboard || !clipboard.length) return;
   commitNow();
   const ids = [];

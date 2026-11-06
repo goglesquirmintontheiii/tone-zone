@@ -12,6 +12,7 @@ import {
 import { showMenu } from './menus.js';
 import { footCtrl } from './control.js';
 import { hooksFor } from './plugins.js';
+import { installHelixLinks } from './helix-links.js';
 import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
 import { BOARD_SLOT, boardFootprint, slotSpan, slotPos, boardable, rowColsOf } from './catalog/pedalboards.js';
 
@@ -55,6 +56,7 @@ export class Editor {
     this.board.addEventListener('pointerleave', dropTip);
     // a timer, not rAF: a rAF loop that never stops forces a BeginMainFrame every vsync
     setInterval(() => this.frame(), 45); // ~22 Hz, so LEDs, screens and meters repaint in the same frame
+    installHelixLinks(this); // drag a Helix footswitch onto a pedal to link them (helix-links.js)
   }
 
   // ------------------------------------------------------------ view
@@ -312,8 +314,8 @@ export class Editor {
   // the board a block sits on (pedals only)
   boardOf(id) {
     const v = this.views.get(id);
-    if (!v || v.def.pedalboard || v.def.coupler || id.startsWith('__')) return null;
-    return this.boardAt(v.block.x + v.w / 2, v.block.y + v.h / 2);
+    if (!v || v.def.coupler) return null;
+    return this.memberBoard(v);
   }
   // lanes: the free bands between rows of pedals (and along the top and bottom of the frame), plus the pedal
   // rectangles cables should stay off. Cached while one batch of cables is drawn.
@@ -482,17 +484,31 @@ export class Editor {
     }
     return best;
   }
-  // blocks whose centre is on this board
+  // The board a pedal belongs to: the one it was dropped on (block.board) while its centre is still over it,
+  // else the top board under its centre. Remembering it keeps overlapping boards from taking each other's pedals.
+  memberBoard(v) {
+    if (!v || v.def.pedalboard || v.block.id.startsWith('__')) return null;
+    const cx = v.block.x + v.w / 2, cy = v.block.y + v.h / 2;
+    const own = v.block.board && this.views.get(v.block.board);
+    if (own && own.def.pedalboard && cx >= own.block.x && cx <= own.block.x + own.w && cy >= own.block.y && cy <= own.block.y + own.h) return own;
+    return this.boardAt(cx, cy);
+  }
+  // blocks sitting on this board
   boardMembers(id) {
     const bv = this.views.get(id);
     if (!bv || !bv.def.pedalboard) return [];
     const out = [];
-    for (const v of this.views.values()) {
-      if (v === bv || v.def.pedalboard || v.block.id.startsWith('__')) continue;
-      const cx = v.block.x + v.w / 2, cy = v.block.y + v.h / 2;
-      if (this.boardAt(cx, cy) === bv) out.push(v.block.id);
-    }
+    for (const v of this.views.values()) if (this.memberBoard(v) === bv) out.push(v.block.id);
     return out;
+  }
+  // write down which board every pedal is on now (before a board moves over another one)
+  boardFreeze() {
+    for (const v of this.views.values()) {
+      if (v.def.pedalboard || v.block.id.startsWith('__')) continue;
+      const b = this.memberBoard(v);
+      if (b) v.block.board = b.block.id;
+      else delete v.block.board;
+    }
   }
   // how far a block's plugs reach past its body (its cabled control jacks count too)
   boardFoot(v) {
@@ -509,7 +525,19 @@ export class Editor {
     const gv = this.views.get(grab);
     if (!gv || gv.def.pedalboard || gv.def.coupler || grab.startsWith('__') || ids.some((i) => this.views.get(i)?.def.pedalboard)) return;
     const bv = this.boardAt(gv.block.x + gv.w / 2, gv.block.y + gv.h / 2);
-    if (!bv || !bv.slots) return;
+    // dropped pedals belong to the top board under them (or to none)
+    const own = () => {
+      for (const i of ids) {
+        const v = this.views.get(i);
+        if (!v || i.startsWith('__')) continue;
+        const cx = v.block.x + v.w / 2, cy = v.block.y + v.h / 2;
+        const onBv = bv && cx >= bv.block.x && cx <= bv.block.x + bv.w && cy >= bv.block.y && cy <= bv.block.y + bv.h;
+        const b = onBv ? bv : this.boardAt(cx, cy);
+        if (b) v.block.board = b.block.id;
+        else delete v.block.board;
+      }
+    };
+    if (!bv || !bv.slots) return own();
     const pb = bv.def.pedalboard, rc = rowColsOf(pb);
     // floor units, amps and cabs don't go on boards: slide them off below the board
     if (!boardable(gv.def, gv.w, gv.h)) {
@@ -517,7 +545,7 @@ export class Editor {
       for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x, v.block.y + dy); }
       this.updateCablesFor(ids);
       toast(`${gv.def.name} is too big for a pedalboard`, 'info');
-      return;
+      return own();
     }
     const f = this.boardFoot(gv);
     const n = slotSpan(gv.w, f, pb.cols);
@@ -534,11 +562,13 @@ export class Editor {
         const d = Math.hypot(x - gv.block.x, y - gv.block.y) + (hits(x, y) ? 1e6 : 0);
         if (!best || d < best.d) best = { d, x, y };
       }
-    if (!best) return;
+    if (!best) return own();
     const dx = best.x - gv.block.x, dy = best.y - gv.block.y;
-    if (!dx && !dy) return;
-    for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x + dx, v.block.y + dy); }
-    this.updateCablesFor(ids);
+    if (dx || dy) {
+      for (const i of ids) { const v = this.views.get(i); if (v) v.setPosition(v.block.x + dx, v.block.y + dy); }
+      this.updateCablesFor(ids);
+    }
+    own();
   }
 
   // ------------------------------------------------------------ male couplers
@@ -707,7 +737,8 @@ export class Editor {
       const id = nodeEl.dataset.node;
       if (!state.selection.has(id)) this.select([id], e.shiftKey || e.ctrlKey);
       const ids = [...state.selection];
-      // a pedalboard takes the pedals sitting on it along
+      // a pedalboard takes the pedals sitting on it along (and only those, even where boards overlap)
+      if (ids.some((i) => this.views.get(i)?.def.pedalboard)) this.boardFreeze();
       for (const i of [...ids]) for (const m of this.boardMembers(i)) if (!ids.includes(m)) ids.push(m);
       const starts = ids.map((i) => ({ id: i, x: blockById(i).x, y: blockById(i).y }));
       this.drag = { kind: 'node', sx: w.x, sy: w.y, starts, moved: false, grab: id };

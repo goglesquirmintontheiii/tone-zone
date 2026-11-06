@@ -297,7 +297,12 @@ export function removeBlocks(ids) {
   bus.emit('preset:changed', { keepView: true });
   syncGraphSoon();
 }
+// pedalboards copy their pedals and inner cables too (board-copy.js sets the hook)
+let duplicateHook = null;
+export function setDuplicateHook(fn) { duplicateHook = fn; }
 export function duplicateBlocks(ids) {
+  const hooked = duplicateHook && duplicateHook(ids);
+  if (hooked) return hooked;
   const out = [];
   commitNow();
   for (const id of ids) {

@@ -3,7 +3,7 @@ import { el, svg, esc, bus, toast } from '../util.js';
 import { state, loadPreset, newPreset, markDirty, serialize } from '../state.js';
 import { getDef, portsFor, defaultVariant } from '../catalog/index.js';
 import { renderForm } from '../gfx/forms.js';
-import { thumbURL, cacheGet, cacheSet } from '../gfx/raster.js';
+import { thumbURL, cacheGet, cacheSet, svgElementToURL } from '../gfx/raster.js';
 import { openPreset, savePreset, refreshPresetList, updateTitle } from '../presets.js';
 import { prompt, confirmDlg, showMenu, modal } from '../menus.js';
 
@@ -29,11 +29,11 @@ async function thumbPNG(layout) {
     cx.fillText('empty board', W / 2, H / 2);
     return c.toDataURL('image/png');
   }
-  const boxes = bl.map(([type, x, y, byp, rot]) => {
+  const boxes = bl.map(([type, x, y, byp, rot, look]) => {
     const d = getDef(type);
     const sz = d ? sizeOf(d) : [120, 200];
     const r = (((rot || 0) % 360) + 360) % 360, sw = r === 90 || r === 270;
-    return { d, x, y, w: sw ? sz[1] : sz[0], h: sw ? sz[0] : sz[1], fw: sz[0], fh: sz[1], byp, r };
+    return { d, x, y, w: sw ? sz[1] : sz[0], h: sw ? sz[0] : sz[1], fw: sz[0], fh: sz[1], byp, r, look };
   });
   const minX = Math.min(...boxes.map((b) => b.x)) - 30, minY = Math.min(...boxes.map((b) => b.y)) - 30;
   const maxX = Math.max(...boxes.map((b) => b.x + b.w)) + 30, maxY = Math.max(...boxes.map((b) => b.y + b.h)) + 30;
@@ -65,7 +65,7 @@ async function thumbPNG(layout) {
       cx.setLineDash([]);
       continue;
     }
-    const url = await thumbURL(b.d, px);
+    const url = b.d.pedalboard && b.look ? await boardThumb(b.d, b.look, Math.max(b.w, b.h) * sc * dpr) : await thumbURL(b.d, px);
     const im = url && (await loadImg(url));
     if (im && b.r) {
       // draw around the block's centre, rotated
@@ -80,10 +80,32 @@ async function thumbPNG(layout) {
   cx.globalAlpha = 1;
   return c.toDataURL('image/png');
 }
+// a pedalboard in its own materials and mounting (the shared block images only have the default look)
+const boardThumbs = new Map();
+function boardThumb(d, look, size) {
+  const px = size < 200 ? 192 : 384;
+  const key = d.id + '|' + px + '|' + JSON.stringify(look);
+  if (!boardThumbs.has(key))
+    boardThumbs.set(key, (async () => {
+      try {
+        const s = svg('svg');
+        const g = svg('g', {}, s);
+        const res = renderForm({ g, views: new Map(), flip: false, thumb: true, block: { id: 'thumb-' + d.id, params: look } }, d);
+        const w = res.w + 20, h = res.h + 20;
+        s.setAttribute('viewBox', `-10 -10 ${w} ${h}`);
+        s.setAttribute('width', w);
+        s.setAttribute('height', h);
+        return await svgElementToURL(s, w, h, px / Math.max(w, h));
+      } catch (e) {
+        return thumbURL(d, 128);
+      }
+    })());
+  return boardThumbs.get(key);
+}
 // which of its blocks are missing (plugins off) is part of the key, so turning plugins back on redraws it
 function thumbKey(p) {
   const missing = (p.layout?.b || []).filter(([t]) => { const d = getDef(t); return !d || d.missing; }).map(([t]) => t).sort().join(',');
-  return p.file + '|' + (p.mtime || 0) + '|' + (p.layout?.b || []).length + (missing ? '|m:' + missing : '');
+  return 'v2|' + p.file + '|' + (p.mtime || 0) + '|' + (p.layout?.b || []).length + (missing ? '|m:' + missing : '');
 }
 function loadThumb(im, p) {
   const key = thumbKey(p);
