@@ -36,6 +36,22 @@ function boxIn(el, ref) {
   return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, w: Math.abs(p2.x - p1.x), h: Math.abs(p2.y - p1.y) };
 }
 
+// an outline that hugs a control: a circle for round switches, a rounded box for pads and treadles.
+// `corner` is where a tag sits (top right).
+function hug(box, pad) {
+  const m = Math.max(box.w, box.h);
+  if (m < 60 && Math.abs(box.w - box.h) < 0.25 * m) {
+    const r = m / 2 + pad;
+    return { tag: 'circle', attrs: { cx: box.x, cy: box.y, r }, corner: { x: box.x + r * 0.72, y: box.y - r * 0.72 } };
+  }
+  const w = box.w + pad * 2, h = box.h + pad * 2;
+  return { tag: 'rect', attrs: { x: box.x - w / 2, y: box.y - h / 2, width: w, height: h, rx: Math.min(10, Math.min(w, h) / 4) }, corner: { x: box.x + w / 2 - 4, y: box.y - h / 2 + 4 }, inside: true };
+}
+function setShape(el, sh) {
+  for (const k of ['cx', 'cy', 'r', 'x', 'y', 'width', 'height', 'rx']) el.removeAttribute(k);
+  for (const [k, v] of Object.entries(sh.attrs)) el.setAttribute(k, v);
+}
+
 export function installHelixLinks(editor) {
   ed = editor;
   const board = ed.board;
@@ -128,9 +144,10 @@ function startDrag(e) {
   const g = svg('g', {}, ed.layerDrag);
   const z = ed.view.z || 1;
   drag = { ...p, a, g, world, col: p.src.color };
-  drag.hot = svg('circle', { class: 'hxl-hot', r: 0, fill: p.src.color, 'fill-opacity': 0.16, stroke: p.src.color, 'stroke-width': 2 / z, display: 'none' }, g);
-  drag.bad = svg('circle', { class: 'hxl-bad', r: 0, 'stroke-width': 2 / z, display: 'none' }, g);
-  svg('circle', { cx: a.x, cy: a.y, r: Math.max(a.w, a.h) / 2 + 4, fill: 'none', stroke: p.src.color, 'stroke-width': 2 / z, opacity: 0.9 }, g);
+  drag.hot = svg('rect', { class: 'hxl-hot', fill: p.src.color, 'fill-opacity': 0.16, stroke: p.src.color, 'stroke-width': 2 / z, display: 'none' }, g);
+  drag.bad = svg('rect', { class: 'hxl-bad', 'stroke-width': 2 / z, display: 'none' }, g);
+  const sh = hug(a, 4);
+  svg(sh.tag, { ...sh.attrs, fill: 'none', stroke: p.src.color, 'stroke-width': 2 / z, opacity: 0.9 }, g);
   drag.glow = svg('path', { class: 'hxl-line', stroke: '#000', 'stroke-opacity': 0.45, 'stroke-width': 5.5 / z }, g);
   drag.line = svg('path', { class: 'hxl-line', stroke: p.src.color, 'stroke-width': 2.6 / z, 'stroke-dasharray': `${8 / z} ${5 / z}` }, g);
   drag.tip = svg('circle', { r: 4.5 / z, fill: p.src.color, stroke: '#000', 'stroke-opacity': 0.5, 'stroke-width': 1 / z }, g);
@@ -173,9 +190,10 @@ function moveDrag(e) {
   if (d.target) {
     const box = boxIn(ctlEl(t.v, t.c.cid), d.world);
     if (box) {
-      const r = Math.max(box.w, box.h) / 2 + 6;
       const ring = t.ok ? d.hot : d.bad;
-      ring.setAttribute('cx', box.x); ring.setAttribute('cy', box.y); ring.setAttribute('r', r);
+      const sh = hug(box, 5);
+      // a circle drawn as a fully rounded box, so one element does both shapes
+      setShape(ring, sh.tag === 'rect' ? sh : { attrs: { x: box.x - sh.attrs.r, y: box.y - sh.attrs.r, width: sh.attrs.r * 2, height: sh.attrs.r * 2, rx: sh.attrs.r } });
       ring.setAttribute('display', 'inline');
       if (t.ok) b = { x: box.x, y: box.y };
     }
@@ -268,28 +286,28 @@ export function refresh(force = false) {
 function drawOne(v, g, x) {
   const box = boxIn(ctlEl(v, x.cid), v.content);
   if (!box) return false;
-  const R = Math.max(box.w, box.h) / 2;
+  const sh = hug(box, 3);
   if (x.side === 't') {
     const col = x.items[0].l.color;
     const names = x.items.map((i) => `${i.l.name} on ${blockName(i.helix)} (${i.l.msg})`).join('\n');
     const tip = `Controlled by ${names}\nRight-click to remove`;
-    const ring = svg('circle', { class: 'hxl-ring', cx: box.x, cy: box.y, r: R + 3, fill: col, 'fill-opacity': 0.1, stroke: col, 'stroke-width': 1.5, 'stroke-opacity': 0.85, 'stroke-dasharray': '3.5 2.2' }, g);
+    const ring = svg(sh.tag, { class: 'hxl-ring', ...sh.attrs, fill: col, 'fill-opacity': 0.1, stroke: col, 'stroke-width': 1.5, 'stroke-opacity': 0.85, 'stroke-dasharray': '3.5 2.2' }, g);
     svg('title', {}, ring, tip);
     ring.dataset.hxlTarget = x.cid;
     // one small tag per Helix control, stacked up the right side of the switch
     x.items.forEach((i, k) => {
       const txt = i.l.short;
-      const w = 7 + txt.length * 4.4, h = 10;
-      const bx = box.x + R * 0.62, by = box.y - R * 0.62 - h / 2 - k * (h + 2);
+      const w = 8 + txt.length * 5, h = 11.5;
+      const bx = sh.inside ? sh.corner.x - w : sh.corner.x - w / 2, by = (sh.inside ? sh.corner.y : sh.corner.y - h / 2) + k * (h + 2);
       const bg = svg('g', { class: 'hxl-badge', transform: `translate(${bx.toFixed(1)},${by.toFixed(1)})` }, g);
       bg.dataset.hxlTarget = x.cid;
       svg('title', {}, bg, `Controlled by ${i.l.name} on ${blockName(i.helix)} (${i.l.msg})\nRight-click to remove`);
       svg('rect', { x: 0, y: 0, width: w, height: h, rx: 3, fill: '#0b0c10', 'fill-opacity': 0.88, stroke: i.l.color, 'stroke-width': 0.9 }, bg);
-      svg('text', { x: w / 2, y: h / 2 + 2.3, 'text-anchor': 'middle', 'font-size': 6.4, fill: i.l.color }, bg, txt);
+      svg('text', { x: w / 2, y: h / 2 + 2.6, 'text-anchor': 'middle', 'font-size': 7.3, fill: i.l.color }, bg, txt);
     });
   } else {
     const col = x.items[0].l.color;
-    const mk = svg('g', { class: 'hxl-mark hxl-badge', transform: `translate(${(box.x + R * 0.78).toFixed(1)},${(box.y + R * 0.78).toFixed(1)})` }, g);
+    const mk = svg('g', { class: 'hxl-mark hxl-badge', transform: `translate(${(sh.corner.x - (sh.inside ? 6 : 0)).toFixed(1)},${(sh.corner.y + (sh.inside ? 6 : 0)).toFixed(1)})` }, g);
     mk.dataset.hxlSource = x.cid;
     svg('title', {}, mk, `${x.items[0].l.name} controls ${x.items.map((i) => blockName(i.tb) + ' ' + ctlName(i.tc)).join(', ')}\nRight-click to remove`);
     svg('circle', { r: 5.6, fill: '#0b0c10', stroke: col, 'stroke-width': 1.1 }, mk);

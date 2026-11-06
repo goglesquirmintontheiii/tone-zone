@@ -125,14 +125,14 @@ export const MODELS = [
   {
     id: 'tlm103', name: 'Berlin 103', brand: 'Neumann', ref: 'Neumann TLM 103', type: C, pattern: 'cardioid',
     desc: 'Stubby and bright with a clear 8 to 10 kHz lift: sparkle and detail on clean tones.',
-    resp: [[20, -5], [30, -2.5], [50, -0.8], [100, 0], [1000, 0], [2000, 0.5], [4000, 1.5], [6000, 3], [8000, 4], [10000, 4], [12000, 3], [14000, 1], [17000, -2], [20000, -5]],
+    resp: [[20, -5], [30, -2.5], [50, -0.8], [100, 0], [1000, 0], [2000, 0.3], [4000, 1], [6000, 2], [8000, 3.5], [10000, 4.5], [12000, 3.5], [14000, 1.5], [17000, -2], [20000, -5]],
     prox: 10, offAxis: -5, sens: 13, color: '#c3c4c0',
     look: { shape: 'ldc', w: 36, h: 80, hh: 38, head: 'round', bw1: 34, color: '#c3c4c0', finish: 'satin', grille: '#a2a5a8', badge: 'circle', badgeColor: '#1b1b1b' },
   },
   {
     id: 'km184', name: 'Berlin Pencil 84', brand: 'Neumann', ref: 'Neumann KM 184', type: C, pattern: 'cardioid',
     desc: 'Small-diaphragm pencil: fast, airy and honest. Lovely on open-back cabs and as a room pair.',
-    resp: [[20, -4], [30, -2], [50, -0.7], [100, 0], [1000, 0], [3000, 0.3], [6000, 1], [9000, 2], [12000, 2.5], [15000, 2], [18000, 0], [20000, -2]],
+    resp: [[20, -4], [30, -2], [50, -0.7], [100, 0], [1000, 0], [3000, 0.5], [6000, 1.5], [8000, 2.5], [10000, 3.5], [12000, 3.5], [15000, 2], [18000, -0.5], [20000, -3]],
     prox: 9, offAxis: -2, sens: 9, color: '#1c1c1d',
     look: { shape: 'sdc', w: 13, h: 92, gh: 20, color: '#1c1c1d', grille: '#2c2c2e', ring: '#555', badge: 'dot' },
   },
@@ -167,14 +167,14 @@ export const MODELS = [
   {
     id: 'ela251', name: 'Elektro 251 Tube', brand: 'Telefunken', ref: 'Telefunken ELA M 251', type: C, pattern: 'cardioid',
     desc: 'Tall tube classic: silky, open highs over a full, rich midrange.',
-    resp: [[20, -3], [40, -0.5], [80, 0.5], [200, 0.5], [1000, 0], [2000, 0], [4000, 1], [6000, 2], [8000, 3], [10000, 3.5], [12000, 3.5], [14000, 2], [17000, -1], [20000, -5]],
+    resp: [[20, -3], [40, -0.5], [80, 0.5], [200, 1], [400, 0.7], [1000, 0], [2500, -0.7], [4000, 0], [6000, 1.5], [8000, 3], [10000, 4], [12000, 4], [14000, 2.5], [17000, -1], [20000, -5]],
     prox: 11, offAxis: -5, sens: 10, color: '#bab3a2',
     look: { shape: 'ldc', w: 34, h: 134, hh: 52, head: 'square', bw1: 34, color: '#bab3a2', finish: 'satin', grille: '#9e988a', knob: true, badge: 'plate', badgeColor: '#1e1e1e' },
   },
   {
     id: 'at4050', name: 'Machida 4050', brand: 'Audio-Technica', ref: 'Audio-Technica AT4050', type: C, pattern: 'cardioid',
     desc: 'Clean, flat and dependable with a slight top lift: the workhorse condenser.',
-    resp: [[20, -4], [40, -1.5], [80, -0.3], [150, 0], [1000, 0], [3000, 0.5], [5000, 1.2], [7000, 2], [9000, 2.5], [12000, 2], [15000, 0.5], [18000, -2], [20000, -5]],
+    resp: [[20, -4], [40, -1.5], [80, -0.3], [150, 0], [1000, 0], [3000, 0], [5000, 0.5], [7000, 1], [9000, 1.5], [12000, 1.5], [15000, 0], [18000, -2.5], [20000, -5]],
     prox: 10, offAxis: -5, sens: 10, color: '#2d2e30',
     look: { shape: 'ldc', w: 38, h: 112, hh: 46, head: 'square', bw1: 33, color: '#2d2e30', grille: '#46484b', trim: '#c8cbcf', badge: 'text', badgeText: 'MC 4050' },
   },
@@ -188,14 +188,14 @@ export const MODELS = [
   {
     id: 'nt1', name: 'Sydney One', brand: 'RODE', ref: 'RODE NT1 (black)', type: C, pattern: 'cardioid',
     desc: 'Very quiet and clean with a smooth high lift: modern, polished clean tones.',
-    resp: [[20, -3], [40, -1], [80, 0], [1000, 0], [2000, 0.3], [4000, 1], [6000, 2], [8000, 2.5], [10000, 3], [12000, 2.5], [15000, 1], [18000, -1.5], [20000, -4]],
+    resp: [[20, -2], [40, -0.5], [80, 0], [1000, 0], [2000, 0], [4000, 0.5], [6000, 1.5], [8000, 2], [10000, 3], [12000, 3.5], [15000, 2], [18000, -0.5], [20000, -3]],
     prox: 10, offAxis: -5, sens: 11, color: '#1d1d1f',
     look: { shape: 'ldc', w: 30, h: 118, hh: 42, head: 'round', bw1: 30, color: '#1d1d1f', grille: '#2c2c2f', badge: 'golddot' },
   },
   {
     id: 'nt5', name: 'Sydney Pencil 5', brand: 'RODE', ref: 'RODE NT5', type: C, pattern: 'cardioid',
     desc: 'Affordable pencil condenser: bright and crisp, best a little back from the cone.',
-    resp: [[20, -6], [40, -2.5], [70, -1], [120, 0], [1000, 0], [3000, 0.5], [5000, 1.5], [8000, 3], [10000, 4], [12000, 4], [15000, 2.5], [18000, 0], [20000, -3]],
+    resp: [[20, -6], [40, -2.5], [70, -1], [120, 0], [1000, 0], [3000, 0.8], [5000, 2], [8000, 3.5], [10000, 3.5], [12000, 2.5], [15000, 1], [18000, -1], [20000, -4]],
     prox: 9, offAxis: -2, sens: 8, color: '#cfc7b5',
     look: { shape: 'sdc', w: 12, h: 76, gh: 24, color: '#cfc7b5', finish: 'satin', grille: '#8a877f', ring: '#7d786c' },
   },
@@ -216,7 +216,7 @@ export const MODELS = [
     look: { shape: 'pill', w: 30, h: 86, gTop: 5, gBot: 54, color: '#1f2022', grille: '#3b3c3f', badge: 'BB 10', band: '#8a8d92' },
   },
   {
-    id: 'c4038', name: 'London 4038', brand: 'Coles', ref: 'Coles 4038', type: R, pattern: 'figure8',
+    id: 'c4038', name: 'London Ribbon 38', brand: 'Coles', ref: 'Coles 4038', type: R, pattern: 'figure8',
     desc: 'Broadcast ribbon from the 50s: big, natural lows and a gently fading top. Vintage and smooth.',
     resp: [[20, -4], [30, -2], [50, 0], [100, 0.5], [1000, 0], [3000, -0.5], [6000, -1.5], [8000, -3], [10000, -5], [12000, -9], [14000, -14], [16000, -20], [20000, -30]],
     prox: 16, offAxis: -10, sens: -8, color: '#8d9094',
@@ -290,8 +290,8 @@ export const MODELS = [
   {
     id: 'tz-orb', name: 'TZ Room Orb', original: true, type: C, pattern: 'omni',
     desc: 'A Tone Zone original omni ball: no proximity, even all round. Pull it back for room sound.',
-    resp: [[20, -2], [40, -0.5], [80, 0], [1000, 0], [3000, 0.5], [6000, 1.5], [9000, 2], [12000, 1.5], [15000, 0], [18000, -2], [20000, -4]],
+    resp: [[20, 0], [40, 0], [80, 0], [1000, 0], [3000, 0], [6000, 0.5], [9000, 1], [12000, 1.5], [15000, 2], [18000, 0.5], [20000, -1.5]],
     prox: 0, offAxis: -1.5, sens: 8, color: '#e8742a',
-    look: { shape: 'orb', color: '#e8742a', stalk: '#2c2d30' },
+    look: { shape: 'orb', color: '#e8742a', mesh: '#b9bcc0', stalk: '#2c2d30' },
   },
 ];

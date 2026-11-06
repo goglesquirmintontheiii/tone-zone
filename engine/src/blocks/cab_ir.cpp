@@ -270,8 +270,16 @@ std::vector<float> synthCabIR(const CabModel& m0, const MicModel* mic, int micTy
     std::vector<float> add(ir.size(), 0.f);
     for (size_t i = 0; i < ir.size(); ++i)
     {
-      if (i + d1 < ir.size()) add[i + d1] += ir[i] * 0.35f * dist * room;
-      if (i + d2 < ir.size()) add[i + d2] -= ir[i] * 0.22f * dist * room;
+      if (!modern)
+      {
+        if (i + d1 < ir.size()) add[i + d1] += ir[i] * 0.35f * dist;
+        if (i + d2 < ir.size()) add[i + d2] -= ir[i] * 0.22f * dist;
+      }
+      else
+      {
+        if (i + d1 < ir.size()) add[i + d1] += ir[i] * (0.35f * dist * room);
+        if (i + d2 < ir.size()) add[i + d2] -= ir[i] * (0.22f * dist * room);
+      }
     }
     for (size_t i = 0; i < ir.size(); ++i) ir[i] += add[i];
   }

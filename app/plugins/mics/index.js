@@ -3,7 +3,7 @@
 // Names and badges are Tone Zone originals; shapes, colours and frequency responses follow the real mics
 // (see each model's `ref`). Data in models.js, drawings in draw.js.
 import { MODELS } from './models.js';
-import { initDraw, drawMic, fitMic, micSize } from './draw.js';
+import { initDraw, drawMic, fitMic, micSize, drawOnCab } from './draw.js';
 
 const TYPE_NAMES = { dynamic: 'Dynamic mic', condenser: 'Condenser mic', ribbon: 'Ribbon mic' };
 const PATTERN_NAMES = { cardioid: 'cardioid', supercardioid: 'supercardioid', hypercardioid: 'hypercardioid', figure8: 'figure 8', omni: 'omni', wide: 'wide cardioid' };
@@ -18,7 +18,10 @@ export function micDefs(tz) {
       color: m.color, look: Object.assign({}, m.look),
     };
     // drawing hooks for the core (not enumerable, so they never travel with the data)
-    Object.defineProperty(mic, 'draw', { value: (g, o = {}) => (o.w ? fitMic(g, mic.look, o.w, o.h, o) : drawMic(g, mic.look)), enumerable: false });
+    // draw(g, { view: 'side' | 'cab', w, h, len, angle, head }): side view (natural size, or fitted into w x h),
+    // or the on-cab view centred on the capsule
+    const draw = (g, o = {}) => (o.view === 'cab' ? drawOnCab(g, mic.look, o) : o.w ? fitMic(g, mic.look, o.w, o.h, o) : drawMic(g, mic.look));
+    Object.defineProperty(mic, 'draw', { value: draw, enumerable: false });
     Object.defineProperty(mic, 'size', { value: () => micSize(mic.look), enumerable: false });
     const d = def({
       id: 'mics.' + m.id, name: m.name, brand: m.original ? 'Tone Zone' : m.brand, ref: m.original ? 'Tone Zone original' : m.ref,

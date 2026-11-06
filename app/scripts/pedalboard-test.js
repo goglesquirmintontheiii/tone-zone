@@ -376,7 +376,8 @@ const S = process.argv[2] || '/tmp';
   });
   ok(th.io === 2 && th.cablesToIo === th.cables, `thumbnail layout has the input and output blocks (${th.io}) and every cable end (${th.cablesToIo} of ${th.cables})`);
   await win.click('#tabs [data-tab="presets"]');
-  await win.waitForTimeout(4000);
+  // the first row of cards gets drawn (boards in their own materials take a moment the first time)
+  await win.waitForFunction(() => [...document.querySelectorAll('#view-presets .pc-thumb')].slice(0, 5).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 60000 }).catch(() => {});
   const thPix = await win.evaluate(async () => {
     const im = [...document.querySelectorAll('#view-presets .pc-thumb')].find((i) => i._preset && i._preset.file === '01-welcome.json') || document.querySelector('#view-presets .pc-thumb');
     return { src: !!(im && im.src && im.complete && im.naturalWidth > 0), n: document.querySelectorAll('#view-presets .pc-thumb').length };

@@ -80,27 +80,36 @@ async function thumbPNG(layout) {
   cx.globalAlpha = 1;
   return c.toDataURL('image/png');
 }
-// a pedalboard in its own materials and mounting (the shared block images only have the default look)
+// a pedalboard in its own materials and mounting (the shared block images only have the default look).
+// Drawing a new material can take a moment, so boards are drawn one at a time with breaks in between and kept in
+// the thumbnail cache.
 const boardThumbs = new Map();
+let boardQueue = Promise.resolve();
 function boardThumb(d, look, size) {
   const px = size < 200 ? 192 : 384;
-  const key = d.id + '|' + px + '|' + JSON.stringify(look);
-  if (!boardThumbs.has(key))
-    boardThumbs.set(key, (async () => {
-      try {
-        const s = svg('svg');
-        const g = svg('g', {}, s);
-        const res = renderForm({ g, views: new Map(), flip: false, thumb: true, block: { id: 'thumb-' + d.id, params: look } }, d);
-        const w = res.w + 20, h = res.h + 20;
-        s.setAttribute('viewBox', `-10 -10 ${w} ${h}`);
-        s.setAttribute('width', w);
-        s.setAttribute('height', h);
-        return await svgElementToURL(s, w, h, px / Math.max(w, h));
-      } catch (e) {
-        return thumbURL(d, 128);
-      }
-    })());
-  return boardThumbs.get(key);
+  const key = 'board|' + d.id + '|' + px + '|' + JSON.stringify(look);
+  if (boardThumbs.has(key)) return boardThumbs.get(key);
+  const job = boardQueue.then(() => new Promise((r) => setTimeout(r, 16))).then(async () => {
+    const hit = await cacheGet(key);
+    if (hit) return hit;
+    try {
+      const s = svg('svg');
+      const g = svg('g', {}, s);
+      const res = renderForm({ g, views: new Map(), flip: false, thumb: true, block: { id: 'thumb-' + d.id, params: look } }, d);
+      const w = res.w + 20, h = res.h + 20;
+      s.setAttribute('viewBox', `-10 -10 ${w} ${h}`);
+      s.setAttribute('width', w);
+      s.setAttribute('height', h);
+      const url = await svgElementToURL(s, w, h, px / Math.max(w, h));
+      cacheSet(key, url);
+      return url;
+    } catch (e) {
+      return thumbURL(d, 128);
+    }
+  });
+  boardQueue = job.catch(() => {});
+  boardThumbs.set(key, job);
+  return job;
 }
 // which of its blocks are missing (plugins off) is part of the key, so turning plugins back on redraws it
 function thumbKey(p) {
@@ -123,15 +132,23 @@ let catalogT = 0;
 bus.on('catalog', () => {
   clearTimeout(catalogT);
   catalogT = setTimeout(() => {
-    for (const im of document.querySelectorAll('#view-presets .pc-thumb')) if (im._preset && thumbKey(im._preset) !== im._key) loadThumb(im, im._preset);
+    for (const im of document.querySelectorAll('#view-presets .pc-thumb')) if (im._preset && im._key && thumbKey(im._preset) !== im._key) loadThumb(im, im._preset);
   }, 400);
 });
+// thumbnails are drawn when their card scrolls near the view, so the ones on screen come first
+let thumbIO = null;
 function thumb(p) {
   const im = document.createElement('img');
   im.className = 'pc-thumb';
   im.alt = '';
   im.draggable = false;
-  loadThumb(im, p);
+  im._preset = p;
+  if (!thumbIO && typeof IntersectionObserver === 'function')
+    thumbIO = new IntersectionObserver((ents) => {
+      for (const e of ents) if (e.isIntersecting) { thumbIO.unobserve(e.target); loadThumb(e.target, e.target._preset); }
+    }, { rootMargin: '400px' });
+  if (thumbIO) thumbIO.observe(im);
+  else loadThumb(im, p);
   return im;
 }
 const sizeCache = new Map();

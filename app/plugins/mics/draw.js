@@ -138,16 +138,17 @@ const SHAPES = {
   md421(g, L) {
     const c = L.color;
     // side clip (behind)
-    part(g, rr(-19, 56, 9, 22, 2, 2), '#2c2d30', { sw: 0.5 });
-    svg('rect', { x: -18, y: 60, width: 3, height: 14, rx: 1, fill: '#000', opacity: 0.35 }, g);
-    part(g, taper(38, 25, 98, 19, 0), c, { finish: 'matte' });
-    part(g, rr(-14, 0, 28, 41, 8, 3), shade(c, 0.04), {});
-    // the slotted front grille
-    const gd = rr(-11.5, 3, 23, 34, 6, 2);
+    part(g, rr(-21, 58, 9, 22, 2, 2), '#2c2d30', { sw: 0.5 });
+    svg('rect', { x: -20, y: 62, width: 3, height: 14, rx: 1, fill: '#000', opacity: 0.35 }, g);
+    part(g, taper(40, 26, 98, 18, 0), c, { finish: 'matte' });
+    // broad head, wider than the body, with the slotted front grille
+    const hd = `M-17 9 Q-17 0 -8 0 H8 Q17 0 17 9 V34 Q17 40 12 43 H-12 Q-17 40 -17 34 Z`;
+    part(g, hd, shade(c, 0.04), {});
+    const gd = rr(-14, 3, 28, 35, 7, 4);
     P(g, gd, { fill: '#0b0b0c' });
-    for (let y = 6; y < 35; y += 3.1) {
-      svg('rect', { x: -10.5, y, width: 21, height: 1.5, rx: 0.7, fill: shade(c, 0.1) }, g);
-      svg('rect', { x: -10.5, y, width: 21, height: 0.5, rx: 0.25, fill: '#fff', opacity: 0.12 }, g);
+    for (let y = 6; y < 36; y += 3) {
+      svg('rect', { x: -13, y, width: 26, height: 1.5, rx: 0.7, fill: shade(c, 0.12) }, g);
+      svg('rect', { x: -13, y, width: 26, height: 0.5, rx: 0.25, fill: '#fff', opacity: 0.14 }, g);
     }
     P(g, gd, { fill: 'url(#tzm-cyl)' });
     // bass roll-off ring with ticks
@@ -155,8 +156,8 @@ const SHAPES = {
     for (let i = 0; i < 5; i++) svg('rect', { x: -6 + i * 3, y: 99.5, width: 0.6, height: 2.2, fill: '#e8e8e8', opacity: 0.75 }, g);
     text(g, 0, 104, 'M  .  .  .  S', { size: 2.2, fill: '#ddd', opacity: 0.6 });
     xlr(g, 106, 17, c);
-    text(g, 0, 48, L.badge || '', { size: 4.2, fill: '#cfd2d6' });
-    return { w: 38, h: 111, headH: 41 };
+    text(g, 0, 52, L.badge || '', { size: 4.2, fill: '#cfd2d6' });
+    return { w: 40, h: 111, headH: 43 };
   },
   // Sennheiser MD 441 style: long champagne bar with slotted front and switch rings
   md441(g, L) {
@@ -236,9 +237,9 @@ const SHAPES = {
     knobSide(g, 24, r + 28, 4.6, '#2a2b2e');
     const ring = rr(-15, r + 9, 30, 6, 1, 1);
     part(g, ring, shade(c, 0.08), {});
-    const bd = `M${-r} ${r} A${r} ${r} 0 1 1 ${r} ${r} A${r} ${r * 0.5} 0 0 1 ${-r} ${r} Z`;
+    const bd = `M${-r} ${r} A${r} ${r} 0 1 1 ${r} ${r} A${r} ${r * 0.8} 0 0 1 ${-r} ${r} Z`;
     grille(g, bd, L.mesh, 'mesh', { sphere: true });
-    svg('path', { d: `M${-r + 1} ${r} A${r - 1} ${r * 0.35} 0 0 0 ${r - 1} ${r}`, fill: 'none', stroke: '#000', 'stroke-opacity': 0.35, 'stroke-width': 1 }, g);
+    svg('path', { d: `M${-r + 1} ${r - 2} A${r - 1} ${r * 0.3} 0 0 0 ${r - 1} ${r - 2}`, fill: 'none', stroke: '#000', 'stroke-opacity': 0.35, 'stroke-width': 1 }, g);
     text(g, 0, r + 34, L.badge || '', { size: 4, fill: '#ccc' });
     stub(g, r + 50, 8);
     return { w: d + 12, h: r + 63, headH: d };
@@ -420,10 +421,10 @@ const SHAPES = {
   orb(g, L) {
     const r = 15, c = L.color;
     part(g, taper(2 * r - 4, 9, 2 * r + 58, 8, 2), L.stalk, {});
-    band(g, 2 * r - 3, 11, 4, '#c8cbcf', true);
+    band(g, 2 * r - 3, 11, 4, c, true);
     const d = `M${-r} ${r} A${r} ${r} 0 1 1 ${r} ${r} A${r} ${r} 0 1 1 ${-r} ${r} Z`;
-    grille(g, d, c, 'mesh', { sphere: true });
-    svg('ellipse', { cx: 0, cy: r, rx: r, ry: 2.5, fill: 'none', stroke: '#000', 'stroke-opacity': 0.3, 'stroke-width': 0.8 }, g);
+    grille(g, d, L.mesh || '#b9bcc0', 'mesh', { sphere: true });
+    svg('path', { d: `M${-r} ${r} A${r} ${r * 0.3} 0 0 0 ${r} ${r}`, fill: 'none', stroke: c, 'stroke-width': 2.2 }, g);
     text(g, 0, 2 * r + 30, 'TZ', { size: 3.6, fill: '#ddd', transform: `rotate(-90 0 ${2 * r + 30})` });
     xlr(g, 2 * r + 53, 8, L.stalk);
     return { w: 2 * r + 2, h: 2 * r + 58, headH: 2 * r };
@@ -457,4 +458,27 @@ export function fitMic(g, look, w, h, o = {}) {
   const inner = svg('g', { transform: `translate(${f1(w / 2)},${f1(h - size.h * s)}) scale(${f1(s * 1000) / 1000})` }, g);
   drawMic(inner, look);
   return inner;
+}
+
+/**
+ * On-cab view: the mic seen from the front of the cab, leaning in on its stand with the capsule over the aim point.
+ * The aim point (centre of the head) lands on 0,0. o.len = drawn length in px of a 110 unit mic (a U 87 sized
+ * condenser, default 46), so mics keep their real relative sizes; o.scale overrides it (px per mic unit).
+ * o.angle = lean in degrees (default 28, body going down and to the right), o.head = true draws the head only.
+ */
+export function drawOnCab(g, look, o = {}) {
+  const size = micSize(look);
+  const s = o.scale ?? (o.len ?? 46) / 110, ang = o.angle ?? 28;
+  const ay = Math.min(size.headH * 0.45, size.h * 0.4);
+  const outer = svg('g', { transform: `rotate(${-ang})` }, g);
+  // soft shadow on the grille cloth
+  svg('ellipse', { cx: 3, cy: (size.h * 0.5 - ay) * s + 4, rx: (size.w * s) / 2 + 1, ry: (size.h * s) / 2, fill: '#000', opacity: 0.28 }, outer);
+  const inner = svg('g', { transform: `scale(${f1(s * 1000) / 1000}) translate(0,${f1(-ay)})` }, outer);
+  if (o.head) {
+    const id = 'tzmc' + Math.random().toString(36).slice(2, 8);
+    const cp = svg('clipPath', { id }, inner);
+    svg('rect', { x: -size.w, y: -4, width: size.w * 2, height: size.headH + 6 }, cp);
+    drawMic(svg('g', { 'clip-path': `url(#${id})` }, inner), look);
+  } else drawMic(inner, look);
+  return { w: size.w * s, h: size.h * s, scale: s };
 }
