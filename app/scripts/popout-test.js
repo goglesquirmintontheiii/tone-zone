@@ -9,6 +9,7 @@ const path = require('path');
   win.on('pageerror', (e) => errs.push(e.stack));
   await win.setViewportSize({ width: 1600, height: 950 }).catch(() => {});
   await win.waitForFunction(() => window.__tz && window.__tz.ready, null, { timeout: 120000 });
+  await win.waitForFunction(() => window.__tz.state.preset.blocks.some((x) => x.type === 'ib.ts9'), null, { timeout: 60000 });
   await win.waitForTimeout(500);
   await win.evaluate(() => { const T = window.__tz; const b = T.state.preset.blocks.find((x) => x.type === 'ib.ts9'); T.editor.select([b.id]); });
   await win.waitForTimeout(400);
