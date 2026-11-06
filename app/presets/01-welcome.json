@@ -1,6 +1,6 @@
 {
  "version": 1,
- "name": "Welcome \u00b7 Brit Crunch",
+ "name": "Welcome · Brit Crunch",
  "blocks": [
   {
    "id": "board1",
@@ -51,7 +51,7 @@
    "x": -734,
    "y": -590,
    "params": {
-    "level": -5.0,
+    "level": -7.2,
     "_m1x": 0.3098811881188119,
     "_m1y": 0.25,
     "_m2x": 0.6302376237623762,
@@ -182,5 +182,6 @@
   }
  ],
  "view": null,
- "factory": true
+ "factory": true,
+ "_trim": -2.2
 }
