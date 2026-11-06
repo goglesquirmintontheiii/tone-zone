@@ -175,12 +175,77 @@ const fs = require('fs');
       out.velcro = v.velcro;
       return out;
     };
+    // ---- v0.11: every cab is re-miked with the new mic models, by style. First matching tag wins; presets that
+    // share a style get one of a few variants (by file name) so they don't all sound alike. A spec can still give
+    // its own `mics` list. Plugin models (smic.*) fall back to the core 57 if the Studio Mics plugin is off.
+    const M57 = (at = 'cap-edge', dist = 0.06, spk = 0) => ({ model: 'mics.dyn57', at, dist, spk });
+    const MIC = (model, at, dist, spk, lvl = 0, axis) => Object.assign({ model, at, dist, spk, lvl }, axis !== undefined ? { axis } : {});
+    const MIC_RECIPES = [
+      [['bass'], [
+        [MIC('smic.re20', 'cap', 0.08, 0), MIC('mics.md421', 'cone', 0.1, 1, -5)],
+        [MIC('smic.d112', 'cap-edge', 0.06, 0), MIC('mics.md421', 'cone', 0.1, 1, -6)],
+      ]],
+      [['deathcore', 'djent'], [
+        [M57('cap-edge', 0.04), MIC('smic.tz-hornet', 'cone', 0.06, 1, -4)],
+        [M57('cap-edge', 0.04), MIC('mics.md421', 'cap-edge', 0.05, 1, -3)],
+      ]],
+      [['metal', 'high-gain', 'thrash', 'doom'], [
+        [M57('cap-edge', 0.05), MIC('mics.md421', 'cone', 0.08, 1, -4)],
+        [M57('cap-edge', 0.05), MIC('mics.r121', 'cone', 0.12, 1, -5)],
+        [MIC('mics.beta57a', 'cap-edge', 0.04, 0), MIC('smic.m88', 'cone', 0.08, 1, -4)],
+        [MIC('mics.e906', 'cap-edge', 0.03, 0), MIC('mics.r121', 'cone', 0.12, 1, -6)],
+      ]],
+      [['meme'], [
+        [MIC('mics.dyn58', 'cap', 0.1, 0)],
+        [MIC('smic.tz-prism', 'cone', 0.3, 0), MIC('smic.tz-orb', 'off', 0.9, 1, -8)],
+        [MIC('smic.e609', 'cap-edge', 0.02, 0)],
+      ]],
+      [['acoustic', 'folk'], [
+        [MIC('mics.c414', 'cone', 0.5, 0)],
+        [MIC('smic.km184', 'cap', 0.45, 0)],
+      ]],
+      [['edm', 'synth', 'synthwave', 'pop'], [
+        [MIC('mics.e906', 'cap-edge', 0.05, 0), MIC('mics.c414', 'cone', 0.4, 1, -5)],
+        [M57('cap-edge', 0.06), MIC('smic.tlm103', 'cone', 0.35, 1, -5)],
+      ]],
+      [['clean', 'ambient', 'worship', 'shoegaze', 'post-rock', 'experimental'], [
+        [MIC('mics.u87', 'cone', 0.35, 0), MIC('mics.r121', 'cone', 0.2, 1, -3)],
+        [MIC('mics.c414', 'cone', 0.3, 0), M57('cap-edge', 0.08, 1)],
+        [MIC('smic.u47', 'cone', 0.4, 0), MIC('smic.r10', 'cone', 0.2, 1, -3)],
+        [MIC('smic.c800g', 'cone', 0.35, 0), MIC('smic.rca44', 'cone', 0.25, 1, -4)],
+      ]],
+      [['blues', 'jazz', 'soul', 'r&b'], [
+        [MIC('mics.r121', 'cone', 0.2, 0), M57('cap-edge', 0.1, 1)],
+        [MIC('smic.c4038', 'cone', 0.3, 0)],
+        [MIC('smic.rca44', 'cone', 0.35, 0), M57('cap-edge', 0.1, 1)],
+        [MIC('mics.m160', 'cap-edge', 0.1, 0), MIC('smic.u47fet', 'cone', 0.4, 1, -4)],
+      ]],
+      [['country', 'funk', 'indie', 'surf'], [
+        [M57('cap-edge', 0.08), MIC('mics.md441', 'cone', 0.12, 1, -3)],
+        [M57('cap-edge', 0.08), MIC('smic.km184', 'cone', 0.35, 1, -4)],
+        [MIC('mics.md441', 'cap-edge', 0.08, 0), MIC('smic.r92', 'cone', 0.2, 1, -4)],
+      ]],
+      [['grunge', 'punk', 'hard-rock', 'classic-rock', 'rock', 'crunch', 'lead', 'rhythm'], [
+        [M57('cap-edge', 0.08), MIC('mics.r121', 'cone', 0.15, 1, -3)],
+        [M57('cap-edge', 0.08), MIC('mics.md421', 'cone', 0.1, 1, -4)],
+        [MIC('mics.m160', 'cone', 0.1, 0), M57('cap-edge', 0.08, 1, -2)],
+        [M57('cap-edge', 0.06), MIC('smic.re20', 'cone', 0.12, 1, -4)],
+      ]],
+    ];
+    const MIC_DEFAULT = [[M57('cap-edge', 0.08), MIC('mics.md421', 'cone', 0.1, 1, -4)], [M57('cap-edge', 0.08), MIC('mics.r121', 'cone', 0.15, 1, -3)]];
+    const micsFor = (file, tags, d, nth) => {
+      const isBass = d.cat === 'Bass Cab';
+      const hit = MIC_RECIPES.find(([keys]) => (isBass && keys[0] === 'bass') || keys.some((k) => tags.includes(k)));
+      const set = hit ? hit[1] : MIC_DEFAULT;
+      // the n-th cab in a preset takes the next variant, so dual-cab rigs get two different pairs
+      return set[(hashOf(file) + nth) % set.length].map((m) => Object.assign({}, m));
+    };
     const problems = [];
     const COLORS = ['#e8473d', '#f39c12', '#f1c40f', '#2ecc71', '#3498db', '#6c5ce7', '#e84393', '#1abc9c', '#ecf0f1'];
     const AUX = /^(EXP|CTL|CTRL|MIDI|USB|SEND|RETURN|TUNER|BYPASS|DI OUT|XLR|THRU|DIRECT|LINE OUT|PHONES|B OUT)/i;
     const audioPorts = (N, dir) => (N.d ? (C.portsFor(N.d, N.b.variant)[dir] || []).filter((l) => !AUX.test(l)).length : 1);
     const build = (spec) => {
-      let n = 0;
+      let n = 0, cabN = 0;
       const nodes = {};
       const order = [];
       const add = (key, item) => {
@@ -192,7 +257,8 @@ const fs = require('fs');
         // cabs: mics: [{ model, at, spk, dist, axis, lvl, phase, pan }] or the old mic1 / mic2 type numbers
         // (catalog/cabmics.js applyMicSpec, docs/mic-blocks.md "Presets")
         if (d && d.cabMics) {
-          CM.applyMicSpec(b, d, params);
+          const tags = spec.tags || LOOK_TAGS[spec.file] || [];
+          CM.applyMicSpec(b, d, { mics: params.mics || micsFor(spec.file, tags, d, cabN++) });
           params = Object.fromEntries(Object.entries(params).filter(([k]) => !/^mic(s|\d)/.test(k)));
         }
         for (const [k0, v] of Object.entries(params)) {
@@ -374,7 +440,15 @@ const fs = require('fs');
       return p;
     };
     const res = specs.map((s) => ({ file: s.file, preset: boardify(s.file, build(s)) }));
-    for (const e of extra) res.push({ file: e.file, preset: boardify(e.file, e.preset) });
+    // hand-made presets: re-mike their cabs the same way
+    for (const e of extra) {
+      let nth = 0;
+      for (const b of e.preset.blocks) {
+        const d = C.getDef(b.type);
+        if (d && d.cabMics) CM.applyMicSpec(b, d, { mics: micsFor(e.file, e.preset.tags && e.preset.tags.length ? e.preset.tags : LOOK_TAGS[e.file] || [], d, nth++) });
+      }
+      res.push({ file: e.file, preset: boardify(e.file, e.preset) });
+    }
     // validate: load each into the engine graph builder
     for (const r of res) {
       try {

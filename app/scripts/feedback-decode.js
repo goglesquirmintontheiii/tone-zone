@@ -63,12 +63,27 @@ if (require.main === module) {
     process.exit(1);
   }
   const text = !arg.startsWith('TZFB') && fs.existsSync(arg) ? fs.readFileSync(arg, 'utf8') : arg;
-  const p = decode(text);
+  let p;
+  try {
+    p = decode(text);
+  } catch (e) {
+    console.error('could not decode: ' + e.message);
+    process.exit(1);
+  }
   const imgs = extractImages(p);
   const dir = process.argv[3] || os.tmpdir();
   fs.mkdirSync(dir, { recursive: true });
   const stamp = (p.t || new Date().toISOString()).replace(/[:.]/g, '-');
-  console.log(JSON.stringify(p, null, 1));
+  // one line per key, one line per element: easy to read, easy to grep
+  const { els, ...top } = p;
+  console.log('{');
+  for (const [k, v] of Object.entries(top)) console.log(`  "${k}": ${JSON.stringify(v)},`);
+  if (els) {
+    console.log('  "els": [');
+    for (const e of els) console.log('    ' + JSON.stringify(e) + ',');
+    console.log('  ]');
+  }
+  console.log('}');
   for (const im of imgs) {
     const f = path.join(dir, `tzfb-${stamp}-${im.name}.${im.img.f === 'jpg' ? 'jpg' : 'webp'}`);
     fs.writeFileSync(f, im.buf);

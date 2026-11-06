@@ -354,7 +354,7 @@ export function micForm(ctx, def) {
   // list thumbnails: upright and cropped to the head and upper body, so the mic fills the little square
   if (ctx.thumb) {
     const s = 1, pad = 4;
-    const h = Math.min(ext.bottom - ext.top, Math.max(70, ext.w * 1.9));
+    const h = Math.min(ext.bottom - ext.top, Math.max(52, ext.w * 1.45));
     const w = Math.ceil(ext.w * s + pad * 2), hh = Math.ceil(h * s + pad);
     const id = 'micclip' + ++clipSeq;
     const cp = svg('clipPath', { id }, ctx.g);

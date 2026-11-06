@@ -78,11 +78,12 @@
    "x": -1444,
    "y": -432,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.31299999999999994,
     "_m1y": 0.5,
+    "m1on": 1,
+    "m1model": "smic.e609",
+    "m1dist": 0.02,
+    "m1lvl": 0,
     "level": 2.1
    },
    "bypass": false,

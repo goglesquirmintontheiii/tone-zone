@@ -19,7 +19,7 @@
 //     ph placeholder, hr href, tx visible text, v value, ck checked, dis disabled, ic icon class, lbl label of a
 //     form field, d data-* attributes, r [x,y,w,h], p css-like path, cs computed styles,
 //     blk {id,ty,nm,br,byp} (b = id only in area mode), ctl {cid,t,lb,p,val}, jack {key,lb,dir,to},
-//     cable {id,from,to}, ins {sec,row} inspector section / row, mod modal title, menu, pan panel, win window.
+//     cable {id,from,to}, ins {sec,row,shown} inspector section / row / shown value, mod modal title, menu, pan panel, win window.
 //   images: {f 'webp'|'jpg', w, h, d base64}.
 
 export const DEV_FEEDBACK = true;
@@ -177,6 +177,7 @@ function onPtr(e) {
       return;
     }
     if (c.down) return;
+    c.ui.querySelector('.dfb-hint')?.classList.toggle('low', y < 90);
     hover(x, y);
     return;
   }
@@ -241,7 +242,10 @@ function labelOf(e) {
   if (c.ctl) s += ` ${c.ctl.t || 'ctl'} ${c.ctl.lb || c.ctl.p || ''}`;
   else if (c.jack) s += ` jack ${c.jack.lb || c.jack.key}`;
   else if (c.blk && e.dataset.node) s += ` ${c.blk.nm || c.blk.ty}`;
-  else {
+  else if (/^(input|select|textarea)$/i.test(e.tagName)) {
+    const f = describe(e, false, 0, 0);
+    s += `${f.ty ? '[' + f.ty + ']' : ''} ${f.lbl || ''} = ${f.ck ?? f.v ?? ''}`;
+  } else {
     const t = textOf(e, 40);
     if (t) s += ` "${t}"`;
   }
@@ -297,7 +301,8 @@ function openNote(pick) {
   });
   // keep app shortcuts and drags out of the dialog
   for (const t of ['pointerdown', 'mousedown', 'click', 'keyup', 'wheel']) dlg.addEventListener(t, (e) => e.stopPropagation());
-  setTimeout(() => ta.focus(), 0);
+  ta.focus();
+  setTimeout(() => cur && cur.dlg === dlg && c.doc.activeElement !== ta && ta.focus(), 0);
 }
 
 async function submit(note) {
@@ -407,17 +412,19 @@ function appCtx(e, short) {
     } catch {}
     if (!short && st.preset) {
       const to = [];
+      const idx = key.slice(1);
       for (const c of st.preset.cables || []) {
-        if (c.from.node === b?.id && String(c.from.port) === key) to.push(c.to.node + ':' + c.to.port);
-        if (c.to.node === b?.id && String(c.to.port) === key) to.push(c.from.node + ':' + c.from.port);
+        if (key[0] === 'o' && c.from.node === n.dataset.node && String(c.from.port) === idx) to.push(c.to.node + ':i' + c.to.port);
+        if (key[0] === 'i' && c.to.node === n.dataset.node && String(c.to.port) === idx) to.push(c.from.node + ':o' + c.from.port);
       }
       if (to.length) o.jack.to = to;
+      o.jack.key = key;
     }
   }
   const ca = e.closest('[data-cable]');
   if (ca && st.preset) {
     const c = (st.preset.cables || []).find((x) => x.id === ca.dataset.cable);
-    o.cable = c ? { id: c.id, from: c.from.node + ':' + c.from.port, to: c.to.node + ':' + c.to.port } : { id: ca.dataset.cable };
+    o.cable = c ? { id: c.id, from: c.from.node + ':o' + c.from.port, to: c.to.node + ':i' + c.to.port } : { id: ca.dataset.cable };
   }
   if (short) return o;
   if (e.closest('#inspector')) {
@@ -427,6 +434,8 @@ function appCtx(e, short) {
     o.ins = {};
     if (h) o.ins.sec = trim(h.textContent, 60);
     if (row) o.ins.row = trim(row.querySelector('label')?.textContent, 60);
+    const pv = row && row.querySelector('.pv');
+    if (pv && pv.textContent.trim()) o.ins.shown = trim(pv.textContent, 30);
     if (!sec && e.closest('.insp-title')) o.ins.sec = 'title';
   }
   const mo = e.closest('.modal');
@@ -445,7 +454,10 @@ function ownText(e) {
   return s;
 }
 function textOf(e, n = 200) {
-  if (isSvg(e)) return trim(e.textContent, n);
+  if (isSvg(e)) {
+    const ts = e.tagName.toLowerCase() === 'text' ? [e] : [...e.querySelectorAll('text')];
+    return trim(ts.map((t) => t.textContent).join(' '), n);
+  }
   return trim(e.innerText ?? e.textContent, n);
 }
 
@@ -478,7 +490,7 @@ function describe(e, full, ox, oy) {
     if (lt) o.lbl = lt;
   }
   if (e.disabled || e.getAttribute('aria-disabled') === 'true') o.dis = 1;
-  const icon = e.querySelector && e.querySelector('i.ic');
+  const icon = e.matches(INTERACTIVE) && e.querySelector('i.ic');
   if (icon) o.ic = [...icon.classList].find((x) => x.startsWith('ic-'));
   const ds = e.dataset ? Object.entries(e.dataset) : [];
   if (ds.length) {
@@ -616,6 +628,8 @@ function collect(doc, ar) {
     if (r.width <= 0 || r.height <= 0) continue;
     let L = Math.max(r.left, ar.x), T = Math.max(r.top, ar.y), R = Math.min(r.right, ar.x + ar.w), B = Math.min(r.bottom, ar.y + ar.h);
     if (R <= L || B <= T) continue;
+    // a container holding the whole area says nothing about it (unless it is a block)
+    if (!ds.node && r.left <= ar.x && r.top <= ar.y && r.right >= ar.x + ar.w && r.bottom >= ar.y + ar.h) continue;
     // clipped away by a scrolling or clipping parent?
     let hidden = false;
     for (let a = e.parentElement; a && a !== doc.body; a = a.parentElement) {

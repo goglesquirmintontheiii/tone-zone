@@ -1,0 +1,18 @@
+/* Plugin sandbox: hardware I/O, cables and the live banner (pages/sandbox-io.js) */
+.sb-io-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(var(--fg-rgb), 0.03); }
+.sb-io-bar .btn { margin-left: auto; flex: none; }
+.sb-io-hint { color: var(--text2); font-size: 12.5px; }
+.sb-io-bar.live { border-color: rgba(var(--teal-rgb), 0.55); background: rgba(var(--teal-rgb), 0.1); }
+.sb-live-msg { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.sb-live-msg b { color: var(--teal); }
+.sb-live-dot, .board-paused-pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); flex: none; animation: sb-pulse 1.4s ease-in-out infinite; }
+@keyframes sb-pulse { 50% { opacity: 0.35; } }
+.sb-svg .sb-hwblock .jack { cursor: crosshair; }
+.sb-svg .jack { cursor: crosshair; }
+.sb-svg .cable { pointer-events: stroke; cursor: pointer; }
+.sb-svg .cable.selected .cable-main { stroke-width: 6.6; }
+.sb-svg .cable:hover .cable-main { filter: brightness(1.2); }
+/* context menus (cable colour) go above the pop-up */
+body.sb-open #menuLayer { z-index: 70; }
+/* main window: the board is paused (sits over the preset name in the top bar, above the pop-up's backdrop) */
+.board-paused-pill { position: fixed; z-index: 66; display: flex; align-items: center; justify-content: center; gap: 9px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; background: var(--bg2); border: 1px solid rgba(var(--teal-rgb), 0.6); color: var(--text); font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 0 0 3px rgba(var(--teal-rgb), 0.12), var(--shadow); pointer-events: none; }

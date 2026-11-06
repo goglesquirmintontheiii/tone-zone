@@ -142,6 +142,7 @@ const check = (ok, what) => {
   check(p3.els.length <= 150, 'element cap');
   check(moved === (await win.evaluate(() => JSON.stringify(window.__tz.state.preset.blocks.map((b) => [b.x, b.y])))), 'drag did not move blocks');
   fs.writeFileSync(S + '/area-payload.json', JSON.stringify(p3, null, 1));
+  fs.writeFileSync(S + '/area-string.txt', s3);
 
   // ---- 4. Esc cancels (pick mode and note dialog), Ctrl+Shift+K toggles off
   await setClip('keep');
@@ -151,15 +152,59 @@ const check = (ok, what) => {
   check(!(await overlay()), 'Esc leaves pick mode');
   await win.keyboard.press('Control+Shift+K');
   await win.mouse.click(sx, sy);
+  await win.waitForTimeout(150);
+  console.log('dialog state', await win.evaluate(() => [!!document.querySelector('.dfb-dialog'), document.activeElement && document.activeElement.tagName]));
   await win.keyboard.type('nope');
   await win.keyboard.press('Escape');
-  check(!(await win.evaluate(() => !!document.querySelector('.dfb-ui'))), 'Esc closes the note dialog');
+  await win.waitForTimeout(100);
+  check(!(await win.evaluate(() => !!document.querySelector('.dfb-dialog, .dfb-overlay'))), 'Esc closes the note dialog');
   await win.keyboard.press('Control+Shift+K');
   await win.keyboard.press('Control+Shift+K');
   check(!(await overlay()), 'Ctrl+Shift+K again toggles off');
   await win.waitForTimeout(300);
   check((await clip()) === 'keep', 'cancel copies nothing');
   check((await win.evaluate(() => window.__saveClicks)) === 0, 'Save never clicked');
+
+  // ---- 5. jack context, then the inspector popped out into its own window
+  const jk = await win.evaluate(() => { const j = document.querySelector('#layerNodes [data-node="' + window.__tz.state.preset.cables[1].to.node + '"] [data-jack="i0"]'); if (!j) return null; const b = j.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  if (jk) {
+    await setClip('none');
+    await win.keyboard.press('Control+Shift+K');
+    await win.mouse.move(jk.x, jk.y, { steps: 2 });
+    await win.mouse.click(jk.x, jk.y);
+    await win.keyboard.type('jack');
+    await win.keyboard.press('Control+Enter');
+    const pj = decode(await waitClip('none'));
+    check(pj.n === 'jack', 'note typed right after the pick lands in the dialog');
+    check(pj.el.jack && pj.el.jack.key === 'i0' && pj.el.jack.to && pj.el.jack.to.length, 'jack pick knows its cable ' + JSON.stringify(pj.el.jack));
+  }
+  await win.evaluate((id) => window.__tz.editor.select([id]), knob ? knob.id : nodes[0].id);
+  await win.waitForTimeout(400);
+  const [pop] = await Promise.all([app.waitForEvent('window'), win.click('#inspector > .panel-pop')]);
+  await pop.waitForTimeout(800);
+  await pop.bringToFront();
+  await setClip('none');
+  await pop.keyboard.press('Control+Shift+K');
+  await pop.waitForTimeout(200);
+  check(await pop.evaluate(() => !!document.querySelector('.dfb-overlay')), 'pick mode opens in the pop-out window');
+  const row = await pop.$('.prow');
+  if (row) {
+    const rb = await row.boundingBox();
+    await pop.mouse.move(rb.x + rb.width * 0.7, rb.y + rb.height / 2, { steps: 3 });
+    await pop.waitForTimeout(100);
+    await pop.screenshot({ path: S + '/7-popout-hover.png' });
+    await pop.mouse.click(rb.x + rb.width * 0.7, rb.y + rb.height / 2);
+    await pop.keyboard.type('Popout row');
+    await pop.keyboard.press('Control+Enter');
+    const sp = await waitClip('none');
+    const pp = sp && decode(sp);
+    check(pp && /Block settings/.test(pp.doc) && pp.el && pp.el.ins && pp.el.win, 'pop-out pick has window + inspector context ' + JSON.stringify(pp && { doc: pp.doc, tg: pp.el.tg, ins: pp.el.ins }));
+    const tp = pp ? extractImages(pp) : [];
+    check(tp.length === 1 && tp[0].size, 'pop-out thumbnail captured from the pop-out window');
+    if (tp[0]) fs.writeFileSync(S + '/popout-thumb.' + tp[0].img.f, tp[0].buf);
+  }
+  await pop.click('.panel-pop').catch(() => {});
+  await win.waitForTimeout(300);
 
   console.log(errs.length ? errs.join('\n') : 'no errors');
   console.log(fails ? `${fails} FAILED` : 'ALL OK');
