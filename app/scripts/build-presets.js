@@ -51,6 +51,7 @@ const fs = require('fs');
   const known = new Set(require('./preset-specs.js').map((s) => s.file));
   const extra = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !known.has(f.slice(0, -5)) && (!only || f.startsWith(only)))
     .map((f) => ({ file: f.slice(0, -5), preset: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+  for (const e of extra) e.trimDb = trims[e.file] || 0;
   const out = await win.evaluate(async ([specs, extra]) => {
     const C = await import('./js/catalog/index.js');
     const { sizeOf } = await import('./js/pages/presets.js');
@@ -443,10 +444,16 @@ const fs = require('fs');
     // hand-made presets: re-mike their cabs the same way
     for (const e of extra) {
       let nth = 0;
+      // their output trim goes on the cab levels too; _trim remembers what's applied so rebuilding doesn't stack it
+      const dt = +((e.trimDb || 0) - (e.preset._trim || 0)).toFixed(1);
       for (const b of e.preset.blocks) {
         const d = C.getDef(b.type);
-        if (d && d.cabMics) CM.applyMicSpec(b, d, { mics: micsFor(e.file, e.preset.tags && e.preset.tags.length ? e.preset.tags : LOOK_TAGS[e.file] || [], d, nth++) });
+        if (!d || !d.cabMics) continue;
+        CM.applyMicSpec(b, d, { mics: micsFor(e.file, e.preset.tags && e.preset.tags.length ? e.preset.tags : LOOK_TAGS[e.file] || [], d, nth++) });
+        if (dt) b.params.level = Math.max(-24, Math.min(12, +((b.params.level || 0) + dt).toFixed(1)));
       }
+      if (e.trimDb) e.preset._trim = e.trimDb;
+      else delete e.preset._trim;
       res.push({ file: e.file, preset: boardify(e.file, e.preset) });
     }
     // validate: load each into the engine graph builder

@@ -106,5 +106,6 @@
   }
  ],
  "view": null,
- "factory": true
+ "factory": true,
+ "_trim": -5.3
 }
