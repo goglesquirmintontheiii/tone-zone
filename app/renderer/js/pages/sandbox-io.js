@@ -292,19 +292,36 @@ export function sandboxIO(ctx) {
     changed();
   }
 
-  // the obvious wiring: IN 1 into the pedal, its output(s) to L and R
+  // the obvious wiring: IN 1 into the pedal's main input, its main output (or stereo pair) to L and R
   function suggestion() {
     const b = ctx.block(), def = getDef(b.type), S = def.loopSplit;
     const ports = nodePorts(b);
+    const aux = /PHONES|SEND|RETURN|THRU|TUNER|DRY|BYPASS|DIRECT|PARALLEL|INVERTED|SIDECHAIN|EXP|USB/i;
+    const pick = (list, labels) => list.find((i) => !aux.test(labels[i]) && !/XLR|DI\b/i.test(labels[i])) ?? list.find((i) => !aux.test(labels[i])) ?? list[0];
     const ins = ports.ins.map((_, i) => i).filter((i) => (!S || S.inA[i] !== undefined) && !(def.loopReturns || []).includes(i) && kindsCompatible(jackKindOf(def, 'i' + i), 'any'));
     const outs = ports.outs.map((_, i) => i).filter((i) => (!S || !S.outA[i]) && kindsCompatible(jackKindOf(def, 'o' + i), 'any'));
     const list = [];
-    if (ins.length) list.push([{ node: 'hwin', port: 0 }, { node: 'pedal', port: ins[0] }]);
-    if (outs.length) {
-      const o0 = outs[0], o1 = outs[1];
-      const pair = o1 !== undefined && /(^|\W)(R|RIGHT|B|2)(\W|$)/i.test(ports.outs[o1]) && jackChannels(def, 'o' + o0) === 1;
-      list.push([{ node: 'pedal', port: o0 }, { node: 'hwout', port: 0 }]);
-      list.push([{ node: 'pedal', port: pair ? o1 : o0 }, { node: 'hwout', port: 1 }]);
+    const inP = ins.find((i) => /GUITAR|INST|^IN(PUT)?\b/i.test(ports.ins[i]) && !aux.test(ports.ins[i])) ?? pick(ins, ports.ins);
+    if (inP !== undefined) list.push([{ node: 'hwin', port: 0 }, { node: 'pedal', port: inP }]);
+    // a stereo pair: two labels the same but for L / R, A / B or 1 / 2 ("OUT L/MONO" and "OUT R")
+    const words = (l) => l.toUpperCase().replace(/\(MONO\)|\/MONO/g, '').trim().split(/\s+/);
+    const SIDES = { L: 'R', LEFT: 'RIGHT', A: 'B', 1: '2' };
+    const pairOf = (i, j) => {
+      const a = words(ports.outs[i]), z = words(ports.outs[j]);
+      if (a.length !== z.length) return false;
+      const diff = a.map((w, k) => (w === z[k] ? null : [w, z[k]])).filter(Boolean);
+      return diff.length === 1 && SIDES[diff[0][0]] === diff[0][1];
+    };
+    let L, R;
+    for (const i of outs) {
+      if (aux.test(ports.outs[i]) || jackChannels(def, 'o' + i) !== 1) continue;
+      const j = outs.find((k) => k > i && pairOf(i, k));
+      if (j !== undefined) { L = i; R = j; break; }
+    }
+    if (L === undefined) L = R = pick(outs, ports.outs); // mono (or one stereo jack): to both sides
+    if (L !== undefined) {
+      list.push([{ node: 'pedal', port: L }, { node: 'hwout', port: 0 }]);
+      list.push([{ node: 'pedal', port: R }, { node: 'hwout', port: 1 }]);
     }
     return list;
   }

@@ -67,7 +67,7 @@
     "m1model": "smic.e609",
     "m1dist": 0.02,
     "m1lvl": 0,
-    "level": 0.4
+    "level": -0.4
    },
    "bypass": false,
    "variant": "mono"

@@ -71,17 +71,17 @@
    "y": -432,
    "params": {
     "level": -10.7,
+    "_m1x": 0.376,
+    "_m1y": 0.5,
+    "_m2x": 0.6869999999999999,
+    "_m2y": 0.5,
     "m1on": 1,
     "m1model": "mics.m160",
     "m1dist": 0.1,
-    "_m1x": 0.376,
-    "_m1y": 0.5,
     "m1lvl": 0,
     "m2on": 1,
     "m2model": "mics.dyn57",
-    "m2dist": 0.08,
-    "_m2x": 0.6869999999999999,
-    "_m2y": 0.5
+    "m2dist": 0.08
    },
    "bypass": false,
    "variant": "mono"

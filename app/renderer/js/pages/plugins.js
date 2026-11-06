@@ -1,5 +1,5 @@
 // Plugins tab: one card per plugin. A card opens details and its blocks; a block opens
-// a small sandbox to play with that isn't connected to anything.
+// a small sandbox to play with, which can be cabled to the audio interface for a listen (sandbox-io.js).
 import { el, esc, bus, toast, svg, clamp } from '../util.js';
 import { pluginInfo, setPluginEnabled, reloadPlugins, hooksFor } from '../plugins.js';
 import { pluginDefIds, getDef, kindOf, defaultVariant } from '../catalog/index.js';

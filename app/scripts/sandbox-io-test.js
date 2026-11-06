@@ -11,6 +11,8 @@ fs.mkdirSync(S, { recursive: true });
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const PEDAL = 'bx.sd1', PLUGIN = 'boss';
+// for turning a plugin off: one with nothing on the default board
+const PEDAL2 = 'ampeg.scrambler', PLUGIN2 = 'ampeg';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
@@ -50,14 +52,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok((await waitStatus(ids0)).join() === ids0.join(), 'engine runs the board at start: ' + ids0.join(','));
 
   // ---- open the pedal's sandbox from the Plugins page
-  const openPedal = async () => {
-    if (!(await win.locator('.pl-overlay.detail').count())) {
+  const openPedal = async (pedal = PEDAL, plugin = PLUGIN) => {
+    const det = win.locator('.pl-overlay.detail');
+    if ((await det.count()) && (await win.evaluate(() => document.querySelector('.pl-overlay.detail').dataset.for)) !== plugin) await ev(() => document.querySelectorAll('.pl-overlay').forEach((o) => o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))));
+    if (!(await det.count())) {
       await win.click('#tabs [data-tab="plugins"]');
       await win.waitForTimeout(1500);
-      await win.locator(`[data-plugin="${PLUGIN}"]`).first().click();
+      await win.locator(`[data-plugin="${plugin}"]`).first().click();
       await win.waitForTimeout(1200);
+      await ev((p) => { document.querySelector('.pl-overlay.detail').dataset.for = p; }, plugin);
     }
-    const name = await ev((id) => import('./js/catalog/index.js').then((c) => c.getDef(id).name), PEDAL);
+    const name = await ev((id) => import('./js/catalog/index.js').then((c) => c.getDef(id).name), pedal);
     await win.locator('.pd-block', { hasText: name }).first().click();
     await win.waitForSelector('.pl-overlay.sandbox .sb-hwblock');
     await win.waitForTimeout(400);
@@ -210,6 +215,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const hc = s.cables.map((c) => `${c.from.node}:${c.from.port}>${c.to.node}:${c.to.port}`).sort().join(' ');
   ok(s.live && hc === 'hwin:0>pedal:0 pedal:0>hwout:0 pedal:0>hwout:1', 'Hook up: IN 1 to the input, the mono output to L and R: ' + hc);
   ok((await waitStatus([sbId])).join() === sbId, 'Hook up: engine runs the pedal');
+  // Reset makes a fresh block: the cables stay and the engine swaps to it
+  await win.click('.pl-overlay.sandbox .sb-reset');
+  await win.waitForTimeout(300);
+  const rid = await ev(() => [...document.querySelectorAll('.sb-svg')].pop()._sandbox.block.id);
+  s = await io();
+  ok(rid !== sbId && s.live && s.cables.length === 3 && (await waitStatus([rid])).join() === rid, 'Reset keeps the cables and the engine plays the fresh block');
   await win.keyboard.press('Escape');
   await win.waitForTimeout(300);
   ok(!(await win.locator('.pl-overlay.sandbox').count()), 'Escape closes the pop-up');
@@ -242,14 +253,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await ev(() => document.querySelectorAll('.pl-overlay').forEach((o) => o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))));
 
   // ---- the plugin is turned off while live
-  id2 = await openPedal();
+  id2 = await openPedal(PEDAL2, PLUGIN2);
   await win.click('.pl-overlay.sandbox .sb-io-bar .btn');
   ok((await waitStatus([id2])).join() === id2, 'live again');
-  await ev(() => import('./js/plugins.js').then((p) => p.setPluginEnabled('boss', false)));
+  await ev(() => import('./js/plugins.js').then((p) => p.setPluginEnabled('ampeg', false)));
   await win.waitForTimeout(600);
   ok(!(await win.locator('.pl-overlay.sandbox').count()), 'turning the plugin off closes the pop-up');
   await checkRestored('plugin off');
-  await ev(() => import('./js/plugins.js').then((p) => p.setPluginEnabled('boss', true)));
+  await ev(() => import('./js/plugins.js').then((p) => p.setPluginEnabled('ampeg', true)));
   await win.waitForTimeout(1500);
   await ev(() => document.querySelectorAll('.pl-overlay').forEach((o) => o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))));
   ok((await board()).graph === b0.graph && (await waitStatus(ids0)).join() === ids0.join(), 'plugin back on: board unchanged and playing');
