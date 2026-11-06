@@ -20,14 +20,14 @@ export const MODELS = [
     desc: 'Smooth, flat and polite with almost no proximity boom, so it stays even as you move it in.',
     resp: [[20, -16], [45, -5], [70, -1.5], [120, 0], [500, 0], [1000, 0], [2000, 0.5], [3500, 1], [5000, 1.5], [7000, 1], [9000, 0.5], [11000, -1], [14000, -4], [16000, -7], [18000, -11], [20000, -16]],
     prox: 2, offAxis: -3, sens: -0.5, color: '#bfb8a6',
-    look: { shape: 'longcyl', w: 30, h: 128, gh: 64, color: '#bfb8a6', grille: '#a8a394', kind: 'perf', band: '#3a3a3a', badge: 'BCN 20' },
+    look: { shape: 'longcyl', w: 30, h: 128, gh: 64, color: '#bfb8a6', grille: '#a8a394', gk: 'perf', band: '#3a3a3a', badge: 'BCN 20' },
   },
   {
     id: 're320', name: 'Buchanan 32', brand: 'Electro-Voice', ref: 'Electro-Voice RE320', type: D, pattern: 'cardioid',
     desc: 'The black long-body: even and full like its beige big brother, with a touch more presence.',
     resp: [[20, -12], [30, -6], [50, -2], [100, 0], [500, 0], [1000, 0], [2000, 1], [3500, 2.5], [5000, 3], [7000, 2], [9000, 1.5], [12000, 0], [15000, -4], [18000, -9], [20000, -14]],
     prox: 3, offAxis: -4, sens: 4, color: '#1e1e20',
-    look: { shape: 'longcyl', w: 30, h: 122, gh: 60, color: '#1e1e20', grille: '#38393c', kind: 'perf', band: '#b9bcc0', bandChrome: true, badge: 'BCN 32' },
+    look: { shape: 'longcyl', w: 30, h: 122, gh: 60, color: '#1e1e20', grille: '#38393c', gk: 'perf', band: '#b9bcc0', bandChrome: true, badge: 'BCN 32' },
   },
   {
     id: 'sm7b', name: 'Niles Broadcast 7', brand: 'Shure', ref: 'Shure SM7B', type: D, pattern: 'cardioid',
@@ -62,7 +62,7 @@ export const MODELS = [
     desc: 'Big-diaphragm dynamic with an extended, open top: a brighter, fuller alternative to the 57.',
     resp: [[20, -16], [40, -6], [70, -2], [120, 0], [300, 0], [1000, 0], [2000, 1], [3000, 2.5], [4500, 3.5], [6000, 3], [8000, 2.5], [10000, 2], [12500, 0], [15000, -3], [18000, -7], [20000, -12]],
     prox: 9, offAxis: -5, sens: -2.5, color: '#c9b385',
-    look: { shape: 'longcyl', w: 34, h: 116, gh: 50, color: '#c9b385', grille: '#9a8a62', kind: 'ribs', band: '#1d1d1d', badge: 'FV 30', finish: 'satin' },
+    look: { shape: 'longcyl', w: 34, h: 116, gh: 50, color: '#c9b385', grille: '#9a8a62', gk: 'ribs', band: '#1d1d1d', badge: 'FV 30', finish: 'satin' },
   },
   {
     id: 'm88', name: 'Heilbronn 88', brand: 'Beyerdynamic', ref: 'Beyerdynamic M 88 TG', type: D, pattern: 'hypercardioid',
@@ -76,7 +76,7 @@ export const MODELS = [
     desc: 'Slim and accurate with crisp, airy highs: a tight, detailed cab mic.',
     resp: [[20, -18], [40, -9], [70, -4], [120, -1.5], [250, 0], [1000, 0], [2000, 0.5], [3000, 1], [5000, 2], [7000, 3], [9000, 2.5], [11000, 1], [14000, -2], [17000, -7], [20000, -14]],
     prox: 7, offAxis: -6, sens: 0, color: '#3b3c40',
-    look: { shape: 'stick', head: 'flat', hw: 20, hh: 24, mesh: '#2a2b2e', kind: 'perf', color: '#3b3c40', bw0: 20, bw1: 19, bl: 84, ring: '#b9bcc0', badge: 'HB 21' },
+    look: { shape: 'stick', head: 'flat', hw: 20, hh: 24, mesh: '#2a2b2e', gk: 'perf', color: '#3b3c40', bw0: 20, bw1: 19, bl: 84, ring: '#b9bcc0', badge: 'HB 21' },
   },
   {
     id: 'd112', name: 'Vienna Egg 12', brand: 'AKG', ref: 'AKG D112', type: D, pattern: 'cardioid',
@@ -124,7 +124,7 @@ export const MODELS = [
 
   // ------------------------------------------------------------------ condensers
   {
-    id: 'u47', name: 'Berlin 47 Tube', brand: 'Neumann', ref: 'Neumann U 47 (tube)', type: C, pattern: 'cardioid',
+    id: 'u47', name: 'Berlin 47 Tube', brand: 'Neumann', ref: 'Neumann U 47', type: C, pattern: 'cardioid',
     desc: 'Vintage tube warmth: thick low mids and a round, sweet top end.',
     resp: [[20, -5], [40, -1.5], [80, 0.5], [150, 1], [300, 0.5], [1000, 0], [2000, 0.5], [3500, 1.5], [5000, 3], [7000, 3.5], [9000, 2.5], [11000, 1], [13000, -1.5], [16000, -5], [20000, -11]],
     prox: 11, offAxis: -6, sens: 10, color: '#b2aa97',
@@ -159,7 +159,7 @@ export const MODELS = [
     look: { shape: 'ldc', w: 38, h: 134, hh: 44, head: 'round', bw1: 38, color: '#c9cbce', finish: 'chrome', grille: '#9b9ea2', fins: true, badge: 'text', badgeText: 'TK 800' },
   },
   {
-    id: 'ksm32', name: 'Niles Studio 32', brand: 'Shure', ref: 'Shure KSM32 (charcoal)', type: C, pattern: 'cardioid',
+    id: 'ksm32', name: 'Niles Studio 32', brand: 'Shure', ref: 'Shure KSM32', type: C, pattern: 'cardioid',
     desc: 'Smooth, neutral studio condenser with a soft presence lift: a safe room or second mic.',
     resp: [[20, -6], [40, -2.5], [80, -0.5], [150, 0], [1000, 0], [2000, 0.5], [4000, 1.5], [6000, 2.5], [8000, 2.5], [10000, 1.5], [12000, 1], [15000, 0], [18000, -2.5], [20000, -5]],
     prox: 10, offAxis: -5, sens: 9, color: '#47484b',
@@ -187,14 +187,14 @@ export const MODELS = [
     look: { shape: 'ldc', w: 28, h: 88, hh: 30, head: 'flat', bw1: 26, color: '#232325', grille: '#3a3a3d', trim: '#a9acb0', badge: 'text', badgeText: 'MC 20' },
   },
   {
-    id: 'nt1', name: 'Sydney One', brand: 'RODE', ref: 'RODE NT1 (black)', type: C, pattern: 'cardioid',
+    id: 'nt1', name: 'Sydney One', brand: 'Rode', ref: 'Rode NT1', type: C, pattern: 'cardioid',
     desc: 'Very quiet and clean with a smooth high lift: modern, polished clean tones.',
     resp: [[20, -1.5], [40, 0], [100, 0.3], [300, 0.3], [1000, 0], [3000, 0], [5000, 0.3], [7000, 0.8], [10000, 1.5], [13000, 2.5], [16000, 2.5], [18000, 1], [20000, -2]],
     prox: 10, offAxis: -5, sens: 11, color: '#1d1d1f',
     look: { shape: 'ldc', w: 30, h: 118, hh: 42, head: 'round', bw1: 30, color: '#1d1d1f', grille: '#2c2c2f', badge: 'golddot' },
   },
   {
-    id: 'nt5', name: 'Sydney Pencil 5', brand: 'RODE', ref: 'RODE NT5', type: C, pattern: 'cardioid',
+    id: 'nt5', name: 'Sydney Pencil 5', brand: 'Rode', ref: 'Rode NT5', type: C, pattern: 'cardioid',
     desc: 'Affordable pencil condenser: bright and crisp, best a little back from the cone.',
     resp: [[20, -6], [40, -2.5], [70, -1], [120, 0], [1000, 0], [3000, 0.8], [5000, 2], [8000, 3.5], [10000, 3.5], [12000, 2.5], [15000, 1], [18000, -1], [20000, -4]],
     prox: 9, offAxis: -2, sens: 8, color: '#cfc7b5',

@@ -13,7 +13,8 @@ import { showMenu } from './menus.js';
 import { footCtrl } from './control.js';
 import { hooksFor } from './plugins.js';
 import { installHelixLinks } from './helix-links.js';
-import { MIC_TYPES, micToSpeaker } from './gfx/cabgeom.js';
+import { micToSpeaker } from './gfx/cabgeom.js';
+import { initMicEdit, micDrop, cycleMicModel } from './mic-edit.js';
 import { BOARD_SLOT, boardFootprint, slotSpan, slotPos, boardable, rowColsOf } from './catalog/pedalboards.js';
 
 
@@ -42,6 +43,7 @@ export class Editor {
     window.addEventListener('blur', () => this.hideTip());
     document.addEventListener('visibilitychange', () => this.hideTip());
     this.bind();
+    initMicEdit(this); // mics on cabs: select, remove, swap (mic-edit.js)
     bus.on('preset:changed', ({ keepView }) => this.rebuild(keepView));
     bus.on('block:added', (b) => this.addView(b, true));
     bus.on('cables', () => this.drawCables());
@@ -452,6 +454,7 @@ export class Editor {
   addAt(type, x, y, centered) {
     const d = getDef(type);
     if (!d) return;
+    if (d.cat === 'Mic') return micDrop(this, type, x, y); // mics go on a cab, not on the board
     const budget = (state.settings.budget ?? 0.75) * 100;
     const est = estimatedLoad(d.cost || 0.5);
     if (est > budget) {
@@ -670,6 +673,7 @@ export class Editor {
     this.coupleLinks(moved);
   }
   addNear(type) {
+    if (getDef(type)?.cat === 'Mic') return micDrop(this, type, null, null); // double-click a mic: onto the selected cab
     // find a free spot near the centre of the view so the new block doesn't land on top of another
     const r = this.board.getBoundingClientRect();
     const c = this.toWorld(r.left + r.width / 2, r.top + r.height / 2);
@@ -1047,11 +1051,8 @@ export class Editor {
     } else if (c.t === 'mic') {
       // click selects the mic (the inspector shows it), shift-click cycles the mic model
       const sui = (state.ui[b.id] = state.ui[b.id] || {});
-      if (e.shiftKey) {
-        const cur = uiParams(b)[`m${c.idx}type`] ?? 0;
-        setParam(b.id, `m${c.idx}type`, ((cur | 0) + 1) % MIC_TYPES.length);
-        toast(`Mic ${c.idx}: ${MIC_TYPES[((cur | 0) + 1) % MIC_TYPES.length]}`, 'info', 1300);
-      } else {
+      if (e.shiftKey) cycleMicModel(b, c.idx);
+      else {
         sui.selMic = c.idx;
         this.select([b.id]);
         v.updateControls();

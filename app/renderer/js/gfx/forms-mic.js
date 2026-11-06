@@ -170,19 +170,22 @@ const KINDS = {
   },
   // flat side-address (906 / 609 style) that hangs over the cab by its cable
   sideflat(g, L) {
-    const len = L.len ?? 135, w = L.w ?? 54, win = L.window ?? 38;
-    const top = -win / 2 - 6;
-    rect(g, -w / 2, top, w, len, L.body, { rx: 9 });
-    rect(g, -w / 2, top, w, len, 'url(#g-shadeH)', { rx: 9 });
-    rect(g, -w / 2, top, w, len, 'url(#g-shadeV)', { rx: 9, opacity: 0.5 });
-    rect(g, -w / 2 + 4, -win / 2, w - 8, win, meshFill(L.grille || '#2e3034', 1.4), { rx: 5 });
-    rect(g, -w / 2 + 4, -win / 2, w - 8, win, 'none', { rx: 5, stroke: shade(L.body, 0.3), 'stroke-width': 0.8 });
+    const len = L.len ?? 135, w = L.w ?? 54, win = L.window ?? 44;
+    const top = -win / 2 - 3;
+    rect(g, -w / 2, top, w, len, L.body, { rx: 11 });
+    rect(g, -w / 2, top, w, len, 'url(#g-shadeH)', { rx: 11 });
+    rect(g, -w / 2, top, w, len, 'url(#g-shadeV)', { rx: 11, opacity: 0.5 });
+    // the grille wraps over the top end
+    rect(g, -w / 2 + 3, -win / 2, w - 6, win, meshFill(L.grille || '#3a3c41', 1.3), { rx: 9 });
+    rect(g, -w / 2 + 3, -win / 2, w - 6, win, 'url(#g-shadeV)', { rx: 9, opacity: 0.6 });
+    rect(g, -w / 2 + 3, win / 2 - 2, w - 6, 2, '#000', { opacity: 0.5 });
     if (L.switch) {
-      rect(g, -7, win / 2 + 14, 14, 6, '#0b0b0c', { rx: 2 });
-      rect(g, -2, win / 2 + 14.6, 4, 4.8, '#9aa0a8', { rx: 1 });
+      rect(g, -8, win / 2 + 12, 16, 7, '#0b0b0c', { rx: 2.5 });
+      rect(g, -2.4, win / 2 + 12.8, 4.8, 5.4, '#9aa0a8', { rx: 1 });
+      for (const k of [-1, 0, 1]) svg('circle', { cx: k * 5, cy: win / 2 + 23, r: 0.9, fill: '#9aa0a8', opacity: 0.7 }, g);
     }
-    print(g, 0, win / 2 + 34, L.text, L.textColor, 5);
-    rect(g, -w / 2, top, w, len, 'none', { rx: 9, stroke: '#000', 'stroke-opacity': 0.6, 'stroke-width': 0.8 });
+    print(g, 0, win / 2 + 36, L.text, L.textColor, 5);
+    rect(g, -w / 2, top, w, len, 'none', { rx: 11, stroke: '#000', 'stroke-opacity': 0.6, 'stroke-width': 0.8 });
     return { top, bottom: top + len, w };
   },
   // large-diaphragm condenser: 'square' (414 style framed box) or 'pill' (87 style) head on a cylindrical body

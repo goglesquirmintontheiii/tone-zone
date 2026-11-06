@@ -201,10 +201,10 @@ const SHAPES = {
     const w = L.w, h = L.h, gh = L.gh, c = L.color;
     part(g, rr(-w / 2, gh - 2, w, h - gh + 2, 0, 3), c, { finish: L.finish });
     const gd = rr(-w / 2, 0, w, gh, w * 0.3, 0);
-    if (L.kind === 'ribs') {
+    if (L.gk === 'ribs') {
       grille(g, gd, L.grille, 'mesh');
       for (let y = 7; y < gh - 3; y += 6.5) part(g, rr(-w / 2 - 0.6, y, w + 1.2, 2.2, 1, 1), shade(L.grille, 0.25), { sw: 0.3 });
-    } else grille(g, gd, L.grille, L.kind || 'perf');
+    } else grille(g, gd, L.grille, L.gk || 'perf');
     // dome highlight
     svg('ellipse', { cx: -w * 0.12, cy: 4, rx: w * 0.25, ry: 2, fill: '#fff', opacity: 0.18 }, g);
     band(g, gh - 1.5, w + 1, 4, L.band, L.bandChrome);
@@ -276,8 +276,8 @@ const SHAPES = {
     if (L.head === 'ball') {
       const r = hw / 2;
       gd = `M${-r} ${r} A${r} ${r} 0 1 1 ${r} ${r} A${r} ${r} 0 1 1 ${-r} ${r} Z`;
-      grille(g, gd, L.mesh, L.kind || 'mesh', { sphere: true });
-    } else grille(g, gd, L.mesh, L.kind || 'mesh');
+      grille(g, gd, L.mesh, L.gk || 'mesh', { sphere: true });
+    } else grille(g, gd, L.mesh, L.gk || 'mesh');
     if (L.head === 'flat') svg('rect', { x: -hw / 2 + 1, y: 0.5, width: hw - 2, height: 2, rx: 1, fill: '#fff', opacity: 0.12 }, g);
     if (L.head === 'hex') for (let i = -1; i <= 1; i++) svg('line', { x1: i * hw * 0.22, y1: 1, x2: i * hw * 0.22, y2: hh - 1, stroke: '#000', 'stroke-opacity': 0.4, 'stroke-width': 0.6 }, g);
     band(g, y0 - 1.5, Math.max(bw0, L.head === 'ball' ? bw0 : hw) + 0.6, 3.2, L.ring || '#888', true);
@@ -406,7 +406,7 @@ const SHAPES = {
   },
   // RCA 44 style: lozenge body with fine slats, chrome centre band and a yoke
   lozenge(g, L) {
-    const W = 46, H = 82, c = L.color;
+    const W = 50, H = 108, c = L.color;
     yoke(g, W / 2 + 1, H * 0.5, H + 6, '#2b2c2f');
     const d = `M0 0 C${W * 0.42} 0 ${W / 2} ${H * 0.2} ${W / 2} ${H * 0.36} V${H * 0.64} C${W / 2} ${H * 0.8} ${W * 0.42} ${H} 0 ${H} C${-W * 0.42} ${H} ${-W / 2} ${H * 0.8} ${-W / 2} ${H * 0.64} V${H * 0.36} C${-W / 2} ${H * 0.2} ${-W * 0.42} 0 0 0 Z`;
     grille(g, d, c, 'slats');
@@ -419,7 +419,7 @@ const SHAPES = {
   },
   // RCA 77-DX style: rounded capsule with horizontal ribs, a top pattern screw and a stem
   capsule(g, L) {
-    const W = 32, H = 80, c = L.color;
+    const W = 36, H = 96, c = L.color;
     part(g, rr(-3.5, H - 4, 7, 20, 0, 1), '#3a3b3e', { sw: 0.4 });
     const d = rr(-W / 2, 0, W, H, W / 2, W / 2);
     grille(g, d, L.grille, 'mesh');
@@ -438,7 +438,7 @@ const SHAPES = {
   },
   // AEA R84 / R92 style: big rounded black body, long vertical grille, gold band, yoke
   aea(g, L) {
-    const W = 40, H = 92, c = L.color;
+    const W = 42, H = 104, c = L.color;
     yoke(g, W / 2 + 1, H * 0.55, H + 4, '#2b2c2f');
     const d = rr(-W / 2, 0, W, H, W * 0.45, W * 0.45);
     part(g, d, c, {});
@@ -483,34 +483,30 @@ export function drawMic(g, look) {
   return fn(g, look);
 }
 
-/** Draw a mic scaled to fit a w x h box (centred, standing on the bottom edge). Returns the inner group. */
-export function fitMic(g, look, w, h, o = {}) {
-  const size = micSize(look);
-  const s = Math.min(w / size.w, h / size.h) * (o.zoom ?? 1);
-  const inner = svg('g', { transform: `translate(${f1(w / 2)},${f1(h - size.h * s)}) scale(${f1(s * 1000) / 1000})` }, g);
-  drawMic(inner, look);
-  return inner;
+// where the sound goes in, in mic units from the top: the front of an end-address mic, the diaphragm or ribbon
+// centre of a side-address one
+function pickup(look, size) {
+  switch (look.shape) {
+    case 'ldc': return look.hh * 0.5;
+    case 'flat': return 19.5;
+    case 'pill': return (look.gTop + look.gBot) / 2;
+    case 'coles': return 24;
+    case 'lozenge': case 'capsule': case 'aea': return size.headH / 2;
+    case 'orb': return 15;
+    default: return 0;
+  }
 }
+// mic units to millimetres (a U 87 sized condenser is 112 units, 200 mm)
+export const MM = 1.8;
 
 /**
- * On-cab view: the mic seen from the front of the cab, leaning in on its stand with the capsule over the aim point.
- * The aim point (centre of the head) lands on 0,0. o.len = drawn length in px of a 110 unit mic (a U 87 sized
- * condenser, default 46), so mics keep their real relative sizes; o.scale overrides it (px per mic unit).
- * o.angle = lean in degrees (default 28, body going down and to the right), o.head = true draws the head only.
+ * Draw for the core mic graphics (tz.builders.micLook): millimetres, pickup point at 0,0, body running down.
+ * Returns the extent { top, bottom, w } in mm.
  */
-export function drawOnCab(g, look, o = {}) {
-  const size = micSize(look);
-  const s = o.scale ?? (o.len ?? 46) / 110, ang = o.angle ?? 28;
-  const ay = Math.min(size.headH * 0.45, size.h * 0.4);
-  const outer = svg('g', { transform: `rotate(${-ang})` }, g);
-  // soft shadow on the grille cloth
-  svg('ellipse', { cx: 3, cy: (size.h * 0.5 - ay) * s + 4, rx: (size.w * s) / 2 + 1, ry: (size.h * s) / 2, fill: '#000', opacity: 0.28 }, outer);
-  const inner = svg('g', { transform: `scale(${f1(s * 1000) / 1000}) translate(0,${f1(-ay)})` }, outer);
-  if (o.head) {
-    const id = 'tzmc' + Math.random().toString(36).slice(2, 8);
-    const cp = svg('clipPath', { id }, inner);
-    svg('rect', { x: -size.w, y: -4, width: size.w * 2, height: size.headH + 6 }, cp);
-    drawMic(svg('g', { 'clip-path': `url(#${id})` }, inner), look);
-  } else drawMic(inner, look);
-  return { w: size.w * s, h: size.h * s, scale: s };
+export function drawMicMM(g, look) {
+  const size = micSize(look), py = pickup(look, size);
+  const inner = svg('g', { transform: `scale(${MM}) translate(0,${f1(-py)})` }, g);
+  drawMic(inner, look);
+  return { top: -py * MM, bottom: (size.h - py) * MM, w: size.w * MM };
 }
+
