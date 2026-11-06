@@ -105,4 +105,5 @@ contextBridge.exposeInMainWorld('tz', {
     info: () => ipcRenderer.invoke('app:info'),
     openExternal: (u) => ipcRenderer.invoke('app:openExternal', u),
   },
+  devfeedback: (req) => ipcRenderer.invoke('devfeedback', req), // dev feedback picker (temporary)
 });

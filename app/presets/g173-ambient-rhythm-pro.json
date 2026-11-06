@@ -16,7 +16,31 @@
    "type": "pb.medium",
    "x": -1508,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "concrete",
+    "frameSub": "",
+    "frameFin": "terrazzo",
+    "frameCol": "#4e4f50",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "copper",
+    "railFin": "patina",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "iron",
+    "screwFin": "bare",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 2,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 58,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -45,7 +70,8 @@
     "level": -2.4
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -64,18 +90,19 @@
    "x": -1204,
    "y": -432,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
-    "_m1x": 0.31299999999999994,
+    "_m1x": 0.376,
     "_m1y": 0.5,
+    "m1on": 1,
+    "m1model": "smic.c800g",
+    "m1dist": 0.35,
+    "m1lvl": 0,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.645,
+    "m2model": "smic.rca44",
+    "m2dist": 0.25,
+    "_m2x": 0.624,
     "_m2y": 0.5,
-    "m2lvl": -3,
-    "level": -0.8
+    "m2lvl": -4,
+    "level": -0.1
    },
    "bypass": false,
    "variant": "mono"
@@ -89,7 +116,8 @@
     "mix": 0.4
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b6",
@@ -101,7 +129,8 @@
     "r.mix": 0.4
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b7",
@@ -114,7 +143,8 @@
     "r.mix": 0.5
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b8",
@@ -125,7 +155,8 @@
     "mix": 0.5
    },
    "bypass": true,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b9",
@@ -134,7 +165,8 @@
    "y": 345,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

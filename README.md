@@ -19,8 +19,8 @@ the `fuse2` package.
 - **Board editor**: drag blocks in from the browser, move them around and patch them by dragging between the
   1/4" jacks. Cables sag like real ones and can be recoloured (right-click). An input takes one cable; drag a
   plugged input to move or unplug it, or Shift-drag an output to pick up its cable.
-- **1620 built-in blocks** (including the 22 Pedal Factory templates): 921 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
-  170 preamps, 73 cabinets with up to four draggable mics each, 249 Tone Zone originals and 6 pedalboards. That covers wahs,
+- **1670 built-in blocks** (including the 22 Pedal Factory templates and 50 mics): 921 pedals and 43 multi-FX units inspired by real gear, 114 guitar &amp; bass amps,
+  170 preamps, 73 cabinets, 50 mics, 249 Tone Zone originals and 6 pedalboards. That covers wahs,
   volume and whammy pedals, loopers, synths, acoustic preamps, DIs, splitters, mergers and other utilities. Pedals
   that can be stereo come in **mono and stereo versions**.
 - **Real pedal layouts, as plugins**: blocks inspired by the units you know (BOSS, Ibanez, MXR, Dunlop, EHX, JHS,
@@ -28,13 +28,17 @@ the `fuse2` package.
   brands) with the same knobs, switches, footswitches and screens in the same places, and similar colours. Each
   brand is one of 125 built-in **plugins** you can turn off. To write your own, see [docs/plugins.md](docs/plugins.md).
 - **Plugins tab**: a card for each plugin with its details and blocks. Open any block in a small sandbox to try it
-  without touching your board.
+  without touching your board, and cable it to your hardware inputs and outputs to play through it (your board
+  pauses until you close it).
+- **Mics**: drop mics from the library onto any cab and drag them into place on the speakers. Each mic has its own
+  output jack (plus a MIX of all of them), and 50 models (dynamics, condensers and ribbons inspired by the studio
+  classics, plus Tone Zone originals) each have their own response, proximity effect and look.
 - **Nautica XL**: the flagship multi-FX: 14 assignable footswitches with their own screens, two treadles, a
   HeadRush style touch screen with two strip screens and a side screen, two paths, 4 effects loops, 8 outputs plus
   phones and XLR, a level LED on every jack and a jack guide that blinks the LED of the jack you pick.
 - **Line 6 Helix**: connect a Helix over USB and control it from the board (presets, snapshots, footswitches,
   expression, external switches, USB audio). You can also map its footswitches and expression pedal to the
-  footswitches and treadles of other pedals on the board.
+  footswitches and treadles of other pedals on the board: drag a Helix footswitch or its EXP pedal onto them.
 - **Low latency**: a native C++ engine that runs as a PipeWire (JACK API) client. The board adds no latency
   (except pitch blocks), so the round trip is whatever your PipeWire quantum gives you (64 frames at 48 kHz is
   about 2.7 ms).

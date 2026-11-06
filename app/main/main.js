@@ -147,6 +147,7 @@ function setupIpc() {
   // ---- Pedal Factory designs saved as blocks
   require('./custom-blocks').setup(ipcMain, lib.dataRoot());
   require('./circuits').setup(ipcMain, lib.dataRoot());
+  require('./devfeedback').setup(ipcMain); // dev feedback picker (temporary)
   // ---- Raspberry Pi pedals (pi.js)
   require('./pi').setup(ipcMain, { dataRoot: lib.dataRoot(), send, dialog, getWin: () => win });
   // ---- capture (NAM models from presets)

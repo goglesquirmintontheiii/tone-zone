@@ -16,7 +16,31 @@
    "type": "pb.large",
    "x": -2228,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "metal",
+    "frameSub": "aluminium",
+    "frameFin": "powder",
+    "frameCol": "#efede7",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "gold",
+    "railFin": "brushed",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "gold",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 1,
+    "velcro": 1
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 85,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -45,7 +70,8 @@
     "level": -2.4
    },
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -60,7 +86,8 @@
     "c.level": 0.55
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -73,7 +100,8 @@
     "level": 0.6
    },
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b5",
@@ -88,7 +116,8 @@
     "treble": 0.55
    },
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b6",
@@ -111,18 +140,19 @@
    "x": -1489,
    "y": -406,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
-    "_m1x": 0.6177570093457944,
+    "_m1x": 0.7355140186915888,
     "_m1y": 0.5,
+    "m1on": 1,
+    "m1model": "smic.u47",
+    "m1dist": 0.4,
+    "m1lvl": 0,
     "m2on": 1,
-    "m2type": 2,
+    "m2model": "smic.r10",
     "m2dist": 0.2,
-    "_m2x": 0.3037383177570093,
+    "_m2x": 0.26448598130841117,
     "_m2y": 0.5,
     "m2lvl": -3,
-    "level": -5.8
+    "level": -4.9
    },
    "bypass": false,
    "variant": "mono"
@@ -138,7 +168,8 @@
     "mix": 0.3
    },
    "bypass": true,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b9",
@@ -151,7 +182,8 @@
     "d.mix": 0.25
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b10",
@@ -164,7 +196,8 @@
     "mix": 0.32
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b11",
@@ -176,7 +209,8 @@
     "decay": 0.6
    },
    "bypass": true,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b12",
@@ -185,7 +219,8 @@
    "y": 345,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

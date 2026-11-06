@@ -9,6 +9,16 @@ const fs = require('fs');
 const os = require('os');
 const { makeDI, measure } = require('./loudness');
 const S = process.env.SHOTS || '/tmp';
+// the board only animates blocks in view: centre the view on a block at 100% zoom
+const showBlock = (win, id) => win.evaluate((id) => {
+  const ed = window.__tz.editor, v = ed.views.get(id);
+  if (!v) return;
+  const r = ed.board.getBoundingClientRect();
+  ed.view.z = 1;
+  ed.view.x = r.width / 2 - (v.block.x + (v.w || 200) / 2);
+  ed.view.y = r.height / 2 - (v.block.y + (v.h || 200) / 2);
+  ed.applyView();
+}, id);
 (async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'tz-circuits-'));
   const app = await electron.launch({ executablePath: require('electron'), args: [path.join(__dirname, '..'), '--no-sandbox'], env: { ...process.env, XDG_DATA_HOME: data } });
@@ -569,7 +579,9 @@ const S = process.env.SHOTS || '/tmp';
     st.syncGraph();
     return { a: a.id, v: v.id, f: f.id };
   }, sigId);
-  await win.waitForTimeout(1800);
+  await win.waitForTimeout(300);
+  await showBlock(win, ids.a);
+  await win.waitForTimeout(1500);
   const bv = () => win.evaluate(async (ids) => {
     const st = await import('./js/state.js');
     const s = st.state.status.blocks[ids.a];
@@ -1126,6 +1138,8 @@ const S = process.env.SHOTS || '/tmp';
       return a.id;
     }, sa.d);
     await win.click('#tabs [data-tab="board"]');
+    await win.waitForTimeout(300);
+    await showBlock(win, bd);
     let live = null;
     for (let i = 0; i < 20 && !(live && live.scope && live.scope.jout && live.scope.jout.rms > 0.05); i++) {
       await win.waitForTimeout(500);

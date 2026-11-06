@@ -1,0 +1,17 @@
+/* Dev feedback picker (temporary, development only). See js/devfeedback.js. */
+.dfb-overlay { position: fixed; inset: 0; z-index: 2147483000; cursor: crosshair; background: transparent; user-select: none; }
+.dfb-box { position: fixed; z-index: 2147483001; pointer-events: none; border: 1.5px solid var(--teal); background: rgba(var(--teal-rgb), 0.09); border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); display: none; }
+.dfb-box.area { border-style: dashed; border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
+.dfb-box.picked { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
+.dfb-label { position: fixed; z-index: 2147483002; pointer-events: none; max-width: 520px; padding: 3px 7px; border-radius: 5px; background: var(--bg0); color: var(--teal-text); border: 1px solid rgba(var(--teal-rgb), 0.5); font: 11px/1.35 'Share Tech Mono', ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
+.dfb-hint { position: fixed; z-index: 2147483003; left: 50%; top: 10px; transform: translateX(-50%); pointer-events: none; padding: 7px 14px; border-radius: 9px; background: var(--bg1); color: var(--text); border: 1px solid rgba(var(--teal-rgb), 0.55); box-shadow: var(--shadow); font: 600 12.5px var(--font); width: max-content; max-width: calc(100vw - 24px); text-align: center; }
+.dfb-hint em { font-style: normal; color: var(--muted); font-weight: 500; margin-left: 8px; }
+.dfb-dialog { position: fixed; z-index: 2147483004; width: 340px; padding: 12px; border-radius: 12px; background: var(--bg2); color: var(--text); border: 1px solid var(--line2); box-shadow: var(--shadow); font: 12.5px var(--font); display: flex; flex-direction: column; gap: 8px; }
+.dfb-dialog .dfb-what { font: 11px/1.35 'Share Tech Mono', ui-monospace, monospace; color: var(--teal-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dfb-dialog textarea { min-height: 84px; resize: vertical; padding: 8px 9px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg0); color: var(--text); font: 13px var(--font); outline: none; }
+.dfb-dialog textarea:focus { border-color: rgba(var(--accent-rgb), 0.6); }
+.dfb-dialog .dfb-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.dfb-dialog .dfb-row span { margin-right: auto; color: var(--muted); font-size: 11.5px; }
+.dfb-toast { position: fixed; z-index: 2147483005; right: 18px; bottom: 18px; max-width: 420px; padding: 10px 14px; border-radius: 12px; background: var(--bg2); color: var(--text); border: 1px solid rgba(var(--good-rgb), 0.5); box-shadow: var(--shadow); font: 12.5px var(--font); }
+.dfb-toast.err { border-color: rgba(var(--bad-rgb), 0.6); }
+.dfb-hint.low { top: auto; bottom: 10px; }

@@ -1,5 +1,5 @@
 // Right-hand inspector: exact control values, mono/stereo, DSP cost and block info.
-import { MIC_TYPES, MIC_COLORS, defaultMicXY } from './gfx/cabgeom.js';
+import { micInspector, addMic as addCabMic } from './mic-edit.js';
 import { el, esc, bus, clamp } from './util.js';
 import { getDef, canSwitchVariant } from './catalog/index.js';
 import { state, blockById, uiParams, setParam, setBypass, setVariant, removeBlocks, duplicateBlocks, engineParamsFor, commit, commitNow, sendParamsFor } from './state.js';
@@ -122,42 +122,8 @@ function render() {
     const sec = el('div', { class: 'insp-section' }, body);
     try { d.inspectorSection(b, sec, { params: () => uiParams(b), setParams: (obj) => setParams(b.id, obj), rerender: () => render() }); } catch (e) { console.error(e); }
   }
-  // cab mics: up to 4, on any speaker, mixed and panned
-  if (d.cabMics) {
-    const ms = el('div', { class: 'insp-section' }, body);
-    const hdr = el('h5', { class: 'h5-row' }, ms, 'Microphones');
-    const sel = state.ui[b.id]?.selMic ?? 1;
-    const stereo = (b.variant || 'mono') === 'stereo';
-    let count = 0;
-    for (let i = 1; i <= 4; i++) {
-      if ((ui[`m${i}on`] ?? 0) < 0.5) continue;
-      count++;
-      const card = el('div', { class: 'mic-card' + (sel === i ? ' sel' : '') }, ms);
-      const top = el('div', { class: 'mic-top' }, card, `<span class="mic-dot" style="background:${MIC_COLORS[i - 1]}">${i}</span><b>Mic ${i}</b><small>speaker ${(engineParamsFor(b)[`m${i}spk`] ?? 0) + 1}</small>`);
-      top.onclick = () => { (state.ui[b.id] = state.ui[b.id] || {}).selMic = i; editorRef.views.get(b.id)?.updateControls(); render(); };
-      if (count > 1 || [2, 3, 4].some((k) => (ui[`m${k}on`] ?? 0) > 0.5)) {
-        const rm = el('button', { class: 'icon-btn sm', title: 'Remove mic' }, top, '<i class="ic ic-trash"></i>');
-        rm.onclick = (e) => { e.stopPropagation(); setParam(b.id, `m${i}on`, 0); render(); };
-      }
-      rowFor(card, b, { t: 'sel', p: `m${i}type`, label: 'Model', options: MIC_TYPES, def: 0 }, ui);
-      rowFor(card, b, { t: 'knob', p: `m${i}dist`, label: 'Distance', min: 0, max: 1, def: 0.15, display: (v) => (1 + v * 30).toFixed(0) + ' cm' }, ui);
-      rowFor(card, b, { t: 'knob', p: `m${i}axis`, label: 'Angle', min: 0, max: 1, def: 0, display: (v) => (v < 0.02 ? 'On axis' : Math.round(v * 45) + '° off') }, ui);
-      rowFor(card, b, { t: 'knob', p: `m${i}lvl`, label: 'Level', min: -40, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
-      if (stereo) rowFor(card, b, { t: 'knob', p: `m${i}pan`, label: 'Pan', min: -1, max: 1, def: 0, display: (v) => (Math.abs(v) < 0.02 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100)) }, ui);
-      rowFor(card, b, { t: 'toggle', p: `m${i}phase`, label: 'Polarity', options: ['Normal', 'Inverted'], def: 0 }, ui);
-    }
-    if (count < 4) {
-      const add = el('button', { class: 'btn small', style: { marginTop: '8px' } }, ms, '<i class="ic ic-plus"></i>Add microphone');
-      add.onclick = () => { addMic(b); render(); };
-    }
-    el('p', { class: 'hint' }, ms).textContent = 'Drag mics over the speakers. Scroll on a mic to change its distance, Shift-click to change its model.';
-    void hdr;
-    const cs = el('div', { class: 'insp-section' }, body);
-    el('h5', {}, cs).textContent = 'Cabinet';
-    rowFor(cs, b, { t: 'knob', p: 'lowcut', label: 'Low cut', min: 20, max: 500, def: 30, curve: 'log', unit: 'Hz' }, ui);
-    rowFor(cs, b, { t: 'knob', p: 'highcut', label: 'High cut', min: 2000, max: 20000, def: 14000, curve: 'log', unit: 'Hz' }, ui);
-    rowFor(cs, b, { t: 'knob', p: 'level', label: 'Level', min: -24, max: 12, def: 0, display: (v) => v.toFixed(1) + ' dB' }, ui);
-  }
+  // cab mics: mic blocks on the cab, each with its own output (mic-edit.js)
+  if (d.cabMics) micInspector(body, b, { rowFor, render });
   // inspector section added by a plugin
   const hk = hooksFor(d.id);
   if (hk && hk.inspector) {
@@ -193,7 +159,7 @@ function render() {
   if (reg) {
     const fixed = new Set(Object.keys(d.fixed || {}));
     const derived = d.derive ? new Set(Object.keys(d.derive(ui) || {})) : new Set();
-    const extra = reg.filter((p) => !seen.has(p.name) && !fixed.has(p.name) && !derived.has(p.name) && !(d.algo === 'cab' && (/^m[1-4]/.test(p.name) || ['lowcut', 'highcut', 'level', 'model'].includes(p.name))));
+    const extra = reg.filter((p) => !seen.has(p.name) && !fixed.has(p.name) && !derived.has(p.name) && !(d.algo === 'cab' && (/^m\d/.test(p.name) || ['lowcut', 'highcut', 'level', 'model'].includes(p.name))));
     if (extra.length) {
       const det = el('details', { class: 'insp-section' }, body);
       el('summary', { style: { cursor: 'pointer', color: 'var(--muted)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700 } }, det).textContent = `Advanced (${extra.length})`;
@@ -294,21 +260,9 @@ export function getBlockInfo() {
 }
 void esc;
 
+// right-click > Add microphone (app.js): a Fifty-Seven next to the others
 export function addMic(b) {
-  const ui = uiParams(b);
-  const d = getDef(b.type);
-  for (let i = 1; i <= 4; i++) {
-    if ((ui[`m${i}on`] ?? 0) > 0.5) continue;
-    commitNow();
-    const xy = defaultMicXY(d.cabSize || '4x12', i);
-    Object.assign(b.params, { [`m${i}on`]: 1, [`m${i}type`]: [0, 2, 1, 3][i - 1], [`m${i}dist`]: 0.15, [`_m${i}x`]: xy.x, [`_m${i}y`]: xy.y });
-    if ((b.variant || 'mono') === 'stereo') b.params[`m${i}pan`] = i % 2 ? -0.7 : 0.7;
-    (state.ui[b.id] = state.ui[b.id] || {}).selMic = i;
-    sendParamsFor(b);
-    bus.emit('param', { id: b.id });
-    return i;
-  }
-  return 0;
+  return addCabMic(b);
 }
 
 // ------------------------------------------------------------------ Audio In / Audio Out setup

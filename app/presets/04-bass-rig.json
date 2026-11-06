@@ -7,7 +7,31 @@
    "type": "pb.tiny",
    "x": -1028,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "metal",
+    "frameSub": "steel",
+    "frameFin": "flake",
+    "frameCol": "#5a3fb0",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "gold",
+    "railFin": "polished",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "gold",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 0,
+    "velcro": 0
+   }
   },
   {
    "id": "b36",
@@ -16,7 +40,8 @@
    "y": 51,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b37",
@@ -25,7 +50,8 @@
    "y": 69,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b38",
@@ -37,7 +63,8 @@
     "blend": 0.65
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b39",
@@ -54,7 +81,19 @@
    "x": -649,
    "y": -650,
    "params": {
-    "level": 0.6
+    "level": -1.6,
+    "_m1x": 0.25996153846153847,
+    "_m1y": 0.125,
+    "_m2x": 0.6304615384615384,
+    "_m2y": 0.125,
+    "m1on": 1,
+    "m1model": "smic.re20",
+    "m1dist": 0.08,
+    "m1lvl": 0,
+    "m2on": 1,
+    "m2model": "mics.md421",
+    "m2dist": 0.1,
+    "m2lvl": -5
    },
    "bypass": false,
    "variant": "mono"
@@ -161,5 +200,6 @@
   }
  ],
  "view": null,
- "factory": true
+ "factory": true,
+ "_trim": -2.2
 }

@@ -16,7 +16,31 @@
    "type": "pb.small",
    "x": -1988,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "rubber",
+    "frameSub": "",
+    "frameFin": "grip",
+    "frameCol": "#1f2023",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "aluminium",
+    "railFin": "powder",
+    "railCol": "#f2c230",
+    "railT": "",
+    "railWear": "chip:0.3",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "steel",
+    "screwFin": "bare",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 1,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 51,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -45,7 +70,8 @@
     "gain": 0.25
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -56,7 +82,8 @@
     "gain": 0.3
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -81,18 +108,18 @@
    "x": -1194,
    "y": -432,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.31299999999999994,
     "_m1y": 0.5,
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.06,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.645,
+    "m2model": "smic.re20",
+    "m2dist": 0.12,
+    "_m2x": 0.624,
     "_m2y": 0.5,
-    "m2lvl": -3,
-    "level": -10.5
+    "m2lvl": -4,
+    "level": -9.8
    },
    "bypass": false,
    "variant": "mono"
@@ -107,7 +134,8 @@
     "regen": 0.4
    },
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b7",
@@ -120,7 +148,8 @@
     "dtime": 0.4
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b8",
@@ -132,7 +161,8 @@
     "mix": 0.12
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b9",
@@ -141,7 +171,8 @@
    "y": 45,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

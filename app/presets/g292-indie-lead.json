@@ -16,7 +16,31 @@
    "type": "pb.tiny",
    "x": -1028,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "wood",
+    "frameSub": "plywood",
+    "frameFin": "matte",
+    "frameCol": "",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "steel",
+    "railFin": "powder",
+    "railCol": "#2b7bd6",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "steel",
+    "screwFin": "bare",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 1,
+    "velcro": 1
+   }
   },
   {
    "id": "__in",
@@ -32,7 +56,8 @@
    "y": 80,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -58,12 +83,18 @@
    "x": -935,
    "y": -406,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.6177570093457944,
     "_m1y": 0.5,
-    "level": -7
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.08,
+    "m2on": 1,
+    "m2model": "mics.md441",
+    "m2dist": 0.12,
+    "_m2x": 0.26448598130841117,
+    "_m2y": 0.5,
+    "m2lvl": -3,
+    "level": -9.3
    },
    "bypass": false,
    "variant": "mono"
@@ -79,7 +110,8 @@
     "dtime": 0.45
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b5",
@@ -91,7 +123,8 @@
     "mix": 0.15
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

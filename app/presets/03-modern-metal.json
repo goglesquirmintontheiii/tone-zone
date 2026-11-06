@@ -41,7 +41,18 @@
    "x": -923,
    "y": 94,
    "params": {
-    "level": -3.8
+    "level": -6.3,
+    "_m1x": 0.3098811881188119,
+    "_m1y": 0.25,
+    "_m2x": 0.6302376237623762,
+    "_m2y": 0.25,
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.08,
+    "m2on": 1,
+    "m2model": "mics.md421",
+    "m2dist": 0.1,
+    "m2lvl": -4
    },
    "bypass": false,
    "variant": "stereo"
@@ -136,5 +147,6 @@
   }
  ],
  "view": null,
- "factory": true
+ "factory": true,
+ "_trim": -2.5
 }

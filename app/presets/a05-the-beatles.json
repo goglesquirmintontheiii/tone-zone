@@ -18,7 +18,31 @@
    "type": "pb.large",
    "x": -2228,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "tolex",
+    "frameSub": "tolex",
+    "frameFin": "new",
+    "frameCol": "#18181a",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "gold",
+    "railFin": "brushed",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "gold",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 2,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -34,7 +58,8 @@
    "y": 54,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -47,7 +72,8 @@
     "mode": 0
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -62,7 +88,8 @@
     "cents": 4
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -85,18 +112,19 @@
    "x": -900,
    "y": -432,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.31299999999999994,
     "_m1y": 0.5,
+    "m1on": 1,
+    "m1model": "mics.e906",
+    "m1dist": 0.05,
+    "m1lvl": 0,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.645,
+    "m2model": "mics.c414",
+    "m2dist": 0.4,
+    "_m2x": 0.624,
     "_m2y": 0.5,
-    "m2lvl": -3,
-    "level": -6.8
+    "m2lvl": -5,
+    "level": -7.9
    },
    "bypass": false,
    "variant": "mono"
@@ -113,7 +141,8 @@
     "mode": 0
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b7",
@@ -138,12 +167,18 @@
    "x": -1822,
    "y": -406,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.6177570093457944,
     "_m1y": 0.5,
-    "level": -6.8
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.06,
+    "m2on": 1,
+    "m2model": "smic.tlm103",
+    "m2dist": 0.35,
+    "_m2x": 0.26448598130841117,
+    "_m2y": 0.5,
+    "m2lvl": -5,
+    "level": -7.9
    },
    "bypass": false,
    "variant": "mono"
@@ -170,12 +205,19 @@
    "x": -2802,
    "y": -432,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.31299999999999994,
     "_m1y": 0.5,
-    "level": -6.8
+    "m1on": 1,
+    "m1model": "mics.e906",
+    "m1dist": 0.05,
+    "m1lvl": 0,
+    "m2on": 1,
+    "m2model": "mics.c414",
+    "m2dist": 0.4,
+    "_m2x": 0.624,
+    "_m2y": 0.5,
+    "m2lvl": -5,
+    "level": -7.9
    },
    "bypass": false,
    "variant": "mono"
@@ -194,7 +236,8 @@
     "speed": 0.25
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b12",
@@ -218,18 +261,18 @@
    "x": -3686,
    "y": -500,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.313,
     "_m1y": 0.25,
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.06,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.645,
+    "m2model": "smic.tlm103",
+    "m2dist": 0.35,
+    "_m2x": 0.624,
     "_m2y": 0.25,
-    "m2lvl": -3,
-    "level": -6.8
+    "m2lvl": -5,
+    "level": -7.9
    },
    "bypass": false,
    "variant": "mono"
@@ -241,7 +284,8 @@
    "y": 92,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b15",
@@ -256,7 +300,8 @@
     "age": 0.3
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b16",
@@ -269,7 +314,8 @@
     "mix": 0.16
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b17",
@@ -278,7 +324,8 @@
    "y": 345,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

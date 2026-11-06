@@ -264,6 +264,129 @@ const S = process.argv[2] || '/tmp';
     await win.screenshot({ path: S + '/preset-' + f + '.png' });
   }
 
+  // ---- overlapping boards keep their own pedals, also after one is dragged over the other and dropped
+  const ov = await win.evaluate(async () => {
+    const st = await import('./js/state.js');
+    st.loadPreset(st.newPreset('overlap'), null);
+    const E = window.__tz.editor;
+    E.rebuild();
+    const A = E.addAt('pb.small', 0, 0, false), B = E.addAt('pb.small', 0, 700, false);
+    const av = E.views.get(A.id), bvv = E.views.get(B.id);
+    const pa = ['ib.ts9', 'bx.ds1', 'bx.ch1'].map((t, i) => E.addAt(t, av.block.x + 1700 - i * 240, av.block.y + 180, true).id);
+    const pbb = ['bx.dd8', 'bx.rv6', 'tz.klone'].map((t, i) => E.addAt(t, bvv.block.x + 1700 - i * 240, bvv.block.y + 180, true).id);
+    // one of B's pedals saved by an older version: no remembered board
+    delete window.__tz.state.preset.blocks.find((b) => b.id === pbb[2]).board;
+    E.view = { x: 40, y: 40, z: 0.3 }; E.applyView();
+    return { A: A.id, B: B.id, pa, pbb, aMem: E.boardMembers(A.id).length, bMem: E.boardMembers(B.id).length };
+  });
+  ok(ov.aMem === 3 && ov.bMem === 3, `two boards with 3 pedals each (${ov.aMem}, ${ov.bMem})`);
+  const scr = (id, fx, fy) => win.evaluate(({ id, fx, fy }) => {
+    const E = window.__tz.editor, v = E.views.get(id), br = E.board.getBoundingClientRect();
+    return { x: br.left + E.view.x + (v.block.x + fx) * E.view.z, y: br.top + E.view.y + (v.block.y + fy) * E.view.z };
+  }, { id, fx, fy });
+  const dragBy = async (p, dx, dy) => { await win.mouse.move(p.x, p.y); await win.mouse.down(); await win.mouse.move(p.x + dx, p.y + dy, { steps: 12 }); await win.mouse.up(); await win.waitForTimeout(300); };
+  const pos = () => win.evaluate(() => Object.fromEntries(window.__tz.state.preset.blocks.map((b) => [b.id, [b.x, b.y]])));
+  await win.waitForTimeout(600);
+  // drag board A down by its left frame edge so it covers most of board B, and drop it there
+  let before = await pos();
+  await dragBy(await scr(ov.A, 12, 200), 0, 560 * 0.3);
+  let after = await pos();
+  const movedBy = (id) => [after[id][0] - before[id][0], after[id][1] - before[id][1]];
+  const dA = movedBy(ov.A);
+  ok(dA[1] > 400, `board A dragged over board B (${dA})`);
+  ok(ov.pa.every((i) => movedBy(i)[1] === dA[1]) && ov.pbb.every((i) => movedBy(i)[1] === 0 && movedBy(i)[0] === 0), 'A took only its own pedals');
+  const mem = await win.evaluate(({ A, B }) => ({ a: window.__tz.editor.boardMembers(A).sort(), b: window.__tz.editor.boardMembers(B).sort() }), ov);
+  ok(mem.a.join() === [...ov.pa].sort().join() && mem.b.join() === [...ov.pbb].sort().join(), 'after the drop each board still has its own pedals');
+  await win.screenshot({ path: S + '/boards-overlap.png' });
+  // now drag B (by its bottom frame edge, below A) and then A again
+  before = await pos();
+  const bH = await win.evaluate((id) => window.__tz.editor.views.get(id).h, ov.B);
+  await dragBy(await scr(ov.B, 300, bH - 10), 0, 150 * 0.3);
+  after = await pos();
+  const dB = movedBy(ov.B);
+  ok(dB[1] > 100 && ov.pbb.every((i) => movedBy(i)[1] === dB[1]) && ov.pa.every((i) => movedBy(i)[1] === 0), `dragging B moves B's pedals only (${dB})`);
+  before = await pos();
+  await dragBy(await scr(ov.A, 12, 60), -200 * 0.3, 0);
+  after = await pos();
+  const dA2 = movedBy(ov.A);
+  ok(dA2[0] < -100 && ov.pa.every((i) => movedBy(i)[0] === dA2[0]) && ov.pbb.every((i) => movedBy(i)[0] === 0), `dragging A moves A's pedals only (${dA2})`);
+
+  // ---- duplicate and copy / paste of a board: pedals in their slots, inner cables copied, outside cables not
+  const dupSetup = async () => win.evaluate(async () => {
+    const st = await import('./js/state.js');
+    st.loadPreset(st.newPreset('dup'), null);
+    const E = window.__tz.editor;
+    E.rebuild();
+    const A = E.addAt('pb.small', 0, 0, false), av = E.views.get(A.id);
+    const ps = ['ib.ts9', 'bx.ds1', 'bx.ch1'].map((t, i) => E.addAt(t, av.block.x + 1700 - i * 240, av.block.y + 180, true).id);
+    st.connect({ node: ps[0], port: 0 }, { node: ps[1], port: 0 });
+    st.connect({ node: ps[1], port: 0 }, { node: ps[2], port: 0 });
+    st.connect({ node: '__in', port: 0 }, { node: ps[0], port: 0 });
+    st.connect({ node: ps[2], port: 0 }, { node: '__out', port: 0 });
+    E.select([A.id]);
+    E.board.focus();
+    return { A: A.id, ps };
+  });
+  const dupCheck = (src) => win.evaluate((src) => {
+    const E = window.__tz.editor, P = window.__tz.state.preset;
+    const boards = P.blocks.filter((b) => b.type === 'pb.small');
+    const nb = boards.find((b) => b.id !== src.A);
+    if (!nb) return { boards: boards.length };
+    const mem = E.boardMembers(nb.id);
+    const orig = src.ps.map((id) => P.blocks.find((b) => b.id === id));
+    const ob = P.blocks.find((b) => b.id === src.A);
+    // same pedal types at the same place on the board
+    const rel = (b, bd) => b.type + '@' + (b.x - bd.x) + ',' + (b.y - bd.y);
+    const same = orig.map((b) => rel(b, ob)).sort().join() === mem.map((id) => rel(P.blocks.find((b) => b.id === id), nb)).sort().join();
+    const inner = P.cables.filter((c) => mem.includes(c.from.node) && mem.includes(c.to.node)).length;
+    const outside = P.cables.filter((c) => mem.includes(c.from.node) !== mem.includes(c.to.node)).length;
+    const nv = E.views.get(nb.id);
+    const hits = [...E.views.values()].filter((v) => v !== nv && !mem.includes(v.block.id) && v.block.x < nb.x + nv.w && v.block.x + v.w > nb.x && v.block.y < nb.y + nv.h && v.block.y + v.h > nb.y).length;
+    return { boards: boards.length, members: mem.length, same, inner, outside, hits, sel: [...window.__tz.state.selection].length, blocks: P.blocks.length };
+  }, src);
+  let src = await dupSetup();
+  await win.keyboard.press('Control+d');
+  await win.waitForTimeout(400);
+  let dc = await dupCheck(src);
+  ok(dc.boards === 2 && dc.members === 3 && dc.same, `Ctrl+D copies the board with its 3 pedals in the same slots (${JSON.stringify(dc)})`);
+  ok(dc.inner === 2 && dc.outside === 0, `duplicate keeps the 2 cables between its pedals, none to blocks off the board`);
+  ok(dc.hits === 0 && dc.sel === 4, 'the copy lands somewhere free and is selected');
+  await win.evaluate(() => window.__tz.editor.fit(false));
+  await win.waitForTimeout(800);
+  await win.screenshot({ path: S + '/boards-duplicate.png' });
+  src = await dupSetup();
+  await win.keyboard.press('Control+c');
+  await win.keyboard.press('Control+v');
+  await win.waitForTimeout(400);
+  dc = await dupCheck(src);
+  ok(dc.boards === 2 && dc.members === 3 && dc.same && dc.inner === 2 && dc.outside === 0 && dc.hits === 0, `copy and paste does the same (${JSON.stringify(dc)})`);
+  // a plain pedal still duplicates on its own
+  const plain = await win.evaluate((src) => {
+    const st = window.__tz.state, n = st.preset.blocks.length;
+    window.__tz.editor.select([src.ps[0]]);
+    return import('./js/state.js').then((m) => { const r = m.duplicateBlocks([src.ps[0]]); return { added: st.preset.blocks.length - n, r: r.length }; });
+  }, src);
+  ok(plain.added === 1 && plain.r === 1, 'duplicating a single pedal adds just that pedal');
+
+  // ---- preset thumbnails show the input and output blocks
+  const th = await win.evaluate(async () => {
+    const list = await window.tz.presets.list();
+    const p = list.find((x) => x.file === 'g184-acoustic-lead-pro.json');
+    return { io: p && p.layout.b.filter(([t]) => t === '__in' || t === '__out').length, cablesToIo: p && p.layout.c.filter(([a, b]) => a >= 0 && b >= 0).length, cables: p && p.layout.c.length };
+  });
+  ok(th.io === 2 && th.cablesToIo === th.cables, `thumbnail layout has the input and output blocks (${th.io}) and every cable end (${th.cablesToIo} of ${th.cables})`);
+  await win.click('#tabs [data-tab="presets"]');
+  // the first row of cards gets drawn (boards in their own materials take a moment the first time)
+  await win.waitForFunction(() => [...document.querySelectorAll('#view-presets .pc-thumb')].slice(0, 5).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 60000 }).catch(() => {});
+  const thPix = await win.evaluate(async () => {
+    const im = [...document.querySelectorAll('#view-presets .pc-thumb')].find((i) => i._preset && i._preset.file === '01-welcome.json') || document.querySelector('#view-presets .pc-thumb');
+    return { src: !!(im && im.src && im.complete && im.naturalWidth > 0), n: document.querySelectorAll('#view-presets .pc-thumb').length };
+  });
+  ok(thPix.src, `thumbnails drawn (${thPix.n} cards)`);
+  await win.screenshot({ path: S + '/preset-thumbnails.png' });
+  await win.click('#tabs [data-tab="board"]');
+  await win.waitForTimeout(500);
+
   // all six sizes
   await win.evaluate(async () => {
     const st = await import('./js/state.js');

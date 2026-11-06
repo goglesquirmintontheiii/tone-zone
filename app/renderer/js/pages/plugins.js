@@ -1,5 +1,5 @@
 // Plugins tab: one card per plugin. A card opens details and its blocks; a block opens
-// a small sandbox to play with that isn't connected to anything.
+// a small sandbox to play with, which can be cabled to the audio interface for a listen (sandbox-io.js).
 import { el, esc, bus, toast, svg, clamp } from '../util.js';
 import { pluginInfo, setPluginEnabled, reloadPlugins, hooksFor } from '../plugins.js';
 import { pluginDefIds, getDef, kindOf, defaultVariant } from '../catalog/index.js';
@@ -10,6 +10,7 @@ import { MIC_TYPES } from '../gfx/cabgeom.js';
 import { confirmDlg } from '../menus.js';
 import { thumbImg } from '../gfx/raster.js';
 import { NodeView, knobPos, knobValue } from '../nodeview.js';
+import { sandboxIO } from './sandbox-io.js';
 
 const V = { q: '', filter: 'All', sort: 'name' };
 const KIND_ORDER = ['Pedal', 'Multi-FX', 'Amp', 'Preamp', 'Cab', 'Utility'];
@@ -435,15 +436,14 @@ export function openSandbox(d) {
   let block = fresh();
   attachSandbox(block);
   let nv = new NodeView(block, layer);
-  root._sandbox = { get block() { return block; }, get nv() { return nv; } }; // for tests
-  const fit = () => {
-    const pad = 30, top = d.tubesTop ? 60 : 16;
-    root.setAttribute('viewBox', `${-pad} ${-top - 10} ${nv.w + pad * 2} ${nv.h + top + 40}`);
-  };
+  // hardware I/O beside the pedal; while it is cabled the engine plays this instead of the board
+  const io = sandboxIO({ d, root, stage, block: () => block, nv: () => nv, close: () => close() });
+  root._sandbox = { get block() { return block; }, get nv() { return nv; }, io }; // for tests
+  const fit = () => io.fit(d.tubesTop ? 60 : 16);
   fit();
   const refresh = () => { nv.updateControls(); nv.setBypassVisual(); };
   refresh();
-  el('div', { class: 'sb-hint' }, box).textContent = 'Drag knobs up and down (Shift for fine), scroll over a control, click switches, footswitches and screens.';
+  el('div', { class: 'sb-hint' }, box).textContent = 'Drag knobs up and down (Shift for fine), scroll over a control, click switches, footswitches and screens. Drag from a jack to plug in a cable, drag a plug away (or right-click it) to unplug.';
   const reset = el('button', { class: 'btn small sb-reset' }, box, 'Reset');
   reset.onclick = () => {
     detachSandbox(block);
@@ -453,12 +453,13 @@ export function openSandbox(d) {
     nv = new NodeView(block, layer);
     fit();
     refresh();
+    io.reset();
   };
 
   // param changes from anywhere (our handlers, screens, plugin hooks) redraw the block
   const offParam = bus.on('param', ({ id, p }) => {
     if (id !== block.id) return;
-    if (nv.def.rerenderOn && nv.def.rerenderOn.includes(p)) { nv.render(); fit(); }
+    if (nv.def.rerenderOn && nv.def.rerenderOn.includes(p)) { nv.render(); fit(); io.redraw(); }
     else nv.updateControls();
   });
   const offBypass = bus.on('bypass', ({ id }) => id === block.id && nv.setBypassVisual());
@@ -472,10 +473,12 @@ export function openSandbox(d) {
     const hk = hooksFor(block.type);
     if (hk && hk.status) try { hk.status(nv, now); } catch (e) { if (!nv._hkErr) { nv._hkErr = 1; console.error('status hook', block.type, e); } }
     nv.updateStatus(now);
+    io.tick(now);
   };
   const timer = setInterval(tick, 45);
   tick();
   const close = () => {
+    io.close(); // the board gets its audio back first
     clearInterval(timer);
     offParam();
     offBypass();
@@ -631,6 +634,7 @@ export function openSandbox(d) {
 
   // ---- pointer input
   root.addEventListener('pointerdown', (e) => {
+    if (io.down(e)) return; // jacks and cables
     if (e.button !== 0) return;
     const entry = hit(e);
     if (!entry) return;
@@ -658,6 +662,7 @@ export function openSandbox(d) {
     else if (c.t === 'button') entry.view.press && entry.view.press(true);
   });
   root.addEventListener('pointermove', (e) => {
+    if (io.move(e)) return;
     if (!drag) return;
     const c = drag.c;
     const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
@@ -684,6 +689,7 @@ export function openSandbox(d) {
     }
   });
   const end = (e) => {
+    if (io.up(e)) return;
     const dr = drag;
     drag = null;
     hideTip();

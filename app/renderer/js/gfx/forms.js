@@ -11,7 +11,9 @@ import { installTz5Forms } from './forms-tz5.js';
 import { installTz6Forms } from './forms-tz6.js';
 import { installBoardForms } from './forms-board.js';
 import { installNauticaForms } from './forms-nautica.js';
-import { cabGeom, MIC_SHORT, MIC_COLORS } from './cabgeom.js';
+import { cabGeom } from './cabgeom.js';
+import { drawCabMic, micForm } from './forms-mic.js';
+import { cabMicInfo } from '../catalog/cabmics.js';
 import { drawKnob, drawSelector, drawToggle, drawButton, drawLed, drawFoot, drawSlider, drawTreadle, label, hex, textColorFor } from './controls.js';
 
 function body(g, w, h, color, o = {}) {
@@ -50,7 +52,7 @@ function placeControls(ctx, list, theme) {
       case 'slider': view = drawSlider(ctx.g, c, theme); break;
       case 'treadle': view = drawTreadle(ctx.g, c); break;
       case 'screen': view = drawScreenFrame(ctx.g, c); break;
-      case 'mic': view = drawMic(ctx.g, c); break;
+      case 'mic': view = drawCabMic(ctx.g, c, ctx); break;
       default: continue;
     }
     ctx.views.set(c.cid, { ctl: c, view });
@@ -70,70 +72,6 @@ function drawScreenFrame(g, c) {
   const content = svg('g', { 'clip-path': `url(#${clipId})` }, area);
   svg('rect', { width: c.w, height: c.h, rx: 2, fill: 'url(#g-glass)', 'pointer-events': 'none' }, area);
   return { g: s, content, w: c.w, h: c.h, set() {} };
-}
-
-// draggable microphone in front of the speakers: x / y anywhere over the grille, size shows distance
-function micHead(g, type) {
-  switch (type) {
-    case 1: // 414: large-diaphragm, gold grille
-    case 6: // 87: nickel
-      svg('rect', { x: -7.5, y: -11, width: 15, height: 22, rx: 7.5, fill: type === 1 ? '#b9a26a' : '#c9ccd1', stroke: '#2a2a2a', 'stroke-width': 0.6 }, g);
-      svg('rect', { x: -6, y: -9.5, width: 12, height: 13, rx: 6, fill: type === 1 ? 'url(#p-grille-wheat)' : 'url(#p-grille-silver)' }, g);
-      svg('rect', { x: -7.5, y: 4, width: 15, height: 1.2, fill: '#000', opacity: 0.4 }, g);
-      break;
-    case 2: // 121 ribbon: slotted bar
-    case 7:
-      svg('rect', { x: -5.5, y: -12, width: 11, height: 24, rx: 3, fill: type === 2 ? '#9aa0a8' : '#2b2c30', stroke: '#111', 'stroke-width': 0.6 }, g);
-      for (let i = -9; i <= 9; i += 2.4) svg('rect', { x: -3.6, y: i, width: 7.2, height: 1.1, rx: 0.5, fill: '#0d0d0f', opacity: 0.85 }, g);
-      break;
-    case 3: // 421: dark oblong with slots
-    case 5: // 441: long silver
-      svg('rect', { x: -5.5, y: -12, width: 11, height: 24, rx: 5.5, fill: type === 3 ? '#26272b' : '#b8bcc2', stroke: '#111', 'stroke-width': 0.6 }, g);
-      for (let i = -8; i <= 2; i += 2.5) svg('rect', { x: -4, y: i, width: 8, height: 1.2, rx: 0.6, fill: type === 3 ? '#55575d' : '#5a5e65' }, g);
-      break;
-    case 4: // 906: flat, hangs over the cab
-      svg('rect', { x: -9, y: -5, width: 18, height: 10, rx: 3, fill: '#1d1e21', stroke: '#000', 'stroke-width': 0.6 }, g);
-      svg('rect', { x: -7, y: -3.2, width: 14, height: 6.4, rx: 2, fill: 'url(#p-grille-black)' }, g);
-      break;
-    default: // 57: mesh ball
-      svg('circle', { r: 8, fill: '#2b2e33', stroke: '#c7ccd2', 'stroke-width': 1.6 }, g);
-      svg('circle', { r: 5.6, fill: 'url(#p-grille-silver)' }, g);
-  }
-  svg('ellipse', { cx: -2.5, cy: -4, rx: 2.6, ry: 1.6, fill: '#fff', opacity: 0.22 }, g);
-}
-function drawMic(g, c) {
-  const geo = c.geom;
-  const m = svg('g', { class: 'ctl mic' }, g);
-  m.dataset.ctl = c.cid;
-  const body = svg('g', {}, m);
-  let lastType = -1;
-  const col = MIC_COLORS[(c.idx - 1) % 4];
-  return {
-    g: m,
-    set(v) {
-      m.style.display = v.on ? '' : 'none';
-      if (!v.on) return;
-      const x = geo.gx + (v.x ?? 0.5) * geo.gw, y = geo.gy + (v.y ?? 0.5) * geo.gh;
-      const sc = 1.5 - 0.55 * (v.dist ?? 0.15);
-      m.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
-      const bottom = geo.gy + geo.gh + 16 - y;
-      const key = `${v.type}|${sc.toFixed(2)}|${v.sel ? 1 : 0}|${Math.round(bottom)}`;
-      if (key === lastType) return;
-      lastType = key;
-      body.innerHTML = '';
-      svg('circle', { r: 26, fill: 'transparent' }, body);
-      // cable / stand shadow dropping out of view and the mic shadow on the grille (farther = softer, offset)
-      svg('ellipse', { cx: 3 + 6 * (v.dist ?? 0), cy: 6 + 8 * (v.dist ?? 0), rx: 10 * sc, ry: 12 * sc, fill: '#000', opacity: 0.38 - 0.18 * (v.dist ?? 0) }, body);
-      svg('path', { d: `M0 ${10 * sc} C 0 ${(bottom * 0.55).toFixed(1)} 14 ${(bottom * 0.85).toFixed(1)} 22 ${bottom.toFixed(1)}`, stroke: '#0c0c0d', 'stroke-width': 2.6, fill: 'none', opacity: 0.9, 'stroke-linecap': 'round' }, body);
-      const head = svg('g', { transform: `scale(${sc.toFixed(2)})` }, body);
-      micHead(head, v.type | 0);
-      if (v.sel) svg('circle', { r: 17 * sc, fill: 'none', stroke: col, 'stroke-width': 1.6, 'stroke-dasharray': '3 2' }, body);
-      const tag = svg('g', { transform: `translate(${(13 * sc).toFixed(1)},${(-13 * sc).toFixed(1)})` }, body);
-      svg('circle', { r: 5.2, fill: col, stroke: '#000', 'stroke-width': 0.6 }, tag);
-      label(tag, 0, 0.3, String(c.idx), { size: 6.2, fill: '#111', weight: 800 });
-      label(body, 0, 18 * sc + 7, MIC_SHORT[v.type | 0], { size: 6, fill: '#eee', weight: 800 });
-    },
-  };
 }
 
 function jacksSide(def, w, opts = {}) {
@@ -653,6 +591,9 @@ forms.cab = (ctx, def) => {
   def.controls.forEach((c) => {
     if (c.t === 'mic') Object.assign(c, { geom: geo });
   });
+  // the mics standing in front of it (gfx/forms-mic.js): model, number and angle of each
+  const mb = ctx.block || { params: {} };
+  ctx.micInfo = (i) => cabMicInfo(mb, def, i);
   void centers;
   const cabKnobs = def.controls.filter((c) => (c.t === 'knob' || c.t === 'sel') && c.x === undefined);
   if (cabKnobs.length || def.controls.some((c) => c.t === 'screen')) {
@@ -668,9 +609,22 @@ forms.cab = (ctx, def) => {
   placeControls(ctx, def.controls, theme);
   const jacks = [];
   def.ports.ins.forEach((l, i) => jacks.push({ key: `i${i}`, dir: 'in', port: i, label: l, side: ctx.flip ? 'left' : 'right', x: ctx.flip ? -2 : w + 2, y: h / 2 - 20 + i * 26 }));
-  def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: l, side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: h / 2 - 20 + i * 28 }));
+  // one output per mic (plus the blend): spread them down the side when there are many
+  const no = def.ports.outs.length;
+  const sp = no <= 2 ? 28 : Math.min(28, (h - 44) / (no - 1));
+  const oy = no <= 2 ? h / 2 - 20 : Math.max(22, h / 2 - ((no - 1) * sp) / 2);
+  def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: l, side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: oy + i * sp }));
+  // dark backing so the mic jack labels stay readable over light grille cloth
+  if (no > 1)
+    for (const j of jacks)
+      if (j.dir === 'out') {
+        const lw = 4 + j.label.length * 3.15;
+        svg('rect', { x: ctx.flip ? j.x - 6 - lw : j.x + 3.5, y: j.y - 15.6, width: lw, height: 7, rx: 2, fill: '#0b0c0e', opacity: 0.72, 'pointer-events': 'none' }, g);
+      }
   return { w, h, theme: Object.assign({}, theme, { jackText: '#ddd' }), jacks };
 };
+// a mic model block (library thumbnail)
+forms.mic = micForm;
 
 // 19" rack unit / preamp
 forms.rack = (ctx, def) => {

@@ -51,20 +51,215 @@ const fs = require('fs');
   const known = new Set(require('./preset-specs.js').map((s) => s.file));
   const extra = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !known.has(f.slice(0, -5)) && (!only || f.startsWith(only)))
     .map((f) => ({ file: f.slice(0, -5), preset: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) }));
+  // hand-made presets keep their own levels: their trim is what's been applied (_trim) plus what the measurement
+  // asks for now, never the shared trims file
+  for (const e of extra) {
+    const lv = measured[e.file];
+    let t = e.preset._trim || 0;
+    if (lv !== undefined) {
+      const plr = detail[e.file] ? detail[e.file].tp - detail[e.file].lufs + (detail[e.file].peak > -0.01 ? 2 : 0) : 0;
+      const goal = Math.max(TARGET - 1.5, Math.min(TARGET, -1 - plr));
+      t = Math.max(-30, Math.min(24, Math.round((t + (goal - lv)) * 10) / 10));
+    }
+    e.trimDb = t;
+    delete trims[e.file];
+  }
+  if (lvPath) fs.writeFileSync(path.join(__dirname, 'preset-trims.json'), JSON.stringify(Object.fromEntries(Object.entries(trims).sort()), null, 1));
   const out = await win.evaluate(async ([specs, extra]) => {
     const C = await import('./js/catalog/index.js');
     const { sizeOf } = await import('./js/pages/presets.js');
     const { knobValue } = await import('./js/nodeview.js');
-    const { defaultMicXY } = await import('./js/gfx/cabgeom.js');
+    const CM = await import('./js/catalog/cabmics.js');
     const { renderForm } = await import('./js/gfx/forms.js');
     const { svg } = await import('./js/util.js');
     const PB = await import('./js/catalog/pedalboards.js');
+    const M = await import('./js/gfx/materials.js');
+    // ---- board looks that suit the music: first matching tag wins, a couple of variants per style picked by
+    // file name so neighbouring presets differ. frame / rail / screw are material specs (gfx/materials.js);
+    // rail null = rails match the frame. style: 0 full velcro, 1 strips, 2 screws, 3 messy screws, 4 blank.
+    // velcro: 0 black, 1 white, 2 semi-clear.
+    const metal = (s, f, c, w) => ({ m: 'metal', s, f, c, w });
+    const wood = (s, f, c, w) => ({ m: 'wood', s, f, c, w });
+    const LOOKS = [
+      [['meme'], [
+        { frame: { m: 'acrylic', f: 'candy', c: '#e870aa' }, rail: { m: 'plastic', f: 'gloss', c: '#f1f0ec' }, screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+        { frame: { m: 'glow', f: 'glowing', c: '#7dff6a' }, rail: { m: 'plastic', f: 'gloss', c: '#6b45c4' }, screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+        { frame: { m: 'plastic', f: 'sparkle', c: '#6b45c4', mc: { mode: 'rainbow', angle: 30, stops: [] } }, rail: { m: 'plastic', f: 'gloss', c: '#f5cb2f' }, screw: metal('gold', 'polished'), style: 1, velcro: 2 },
+      ]],
+      [['deathcore'], [
+        { frame: { m: 'carbon', f: 'forged', c: '#3a3d44' }, rail: metal('iron', 'powder', '#1b1c20', { scratch: 0.5, chip: 0.3 }), screw: metal('iron', 'bare'), style: 3, velcro: 0 },
+        { frame: metal('iron', 'bare', '', { rust: 0.45, scratch: 0.6, dent: 0.4 }), rail: metal('steel', 'hammertone', '#1b1c20', { scratch: 0.4 }), screw: metal('iron', 'patina'), style: 3, velcro: 0 },
+      ]],
+      [['djent'], [
+        { frame: { m: 'carbon', f: 'gloss', c: '#3a3d44' }, rail: metal('aluminium', 'anodized', '#3d4249'), screw: metal('titanium', 'bare'), style: 2, velcro: 0 },
+        { frame: { m: 'carbon', f: 'matte', c: '#2a5fb0' }, rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('stainless', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['doom', 'stoner'], [
+        { frame: metal('bronze', 'patina', '', { scratch: 0.3 }), rail: metal('iron', 'bare', '', { rust: 0.5 }), screw: metal('brass', 'patina'), style: 3, velcro: 0 },
+      ]],
+      [['metalcore', 'nu-metal'], [
+        { frame: metal('steel', 'powder', '#1b1c20', { scratch: 0.45 }), rail: metal('aluminium', 'anodized', '#b3202a'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+        { frame: { m: 'carbon', f: 'flake', c: '#b02a2a' }, rail: metal('steel', 'powder', '#1b1c20'), screw: metal('stainless', 'polished'), style: 2, velcro: 0 },
+      ]],
+      [['thrash', 'heavy-metal', 'classic-metal', 'metal', 'high-gain'], [
+        { frame: metal('steel', 'hammertone', '#1b1c20', { scratch: 0.35 }), rail: metal('steel', 'brushed'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+        { frame: metal('stainless', 'polished', '', { scratch: 0.25 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('iron', 'bare'), style: 2, velcro: 0 },
+        { frame: metal('aluminium', 'anodized', '#3d4249', { scratch: 0.3, chip: 0.2 }), rail: null, screw: metal('chrome', 'polished'), style: 3, velcro: 0 },
+      ]],
+      [['grunge'], [
+        { frame: metal('steel', 'bare', '', { scratch: 0.6, rust: 0.25, dent: 0.3 }), rail: metal('steel', 'powder', '#5d6337', { chip: 0.4 }), screw: metal('iron', 'bare'), style: 3, velcro: 0 },
+      ]],
+      [['punk', 'pop-punk'], [
+        { frame: metal('steel', 'powder', '#1b1c20', { chip: 0.5, scratch: 0.5 }), rail: metal('aluminium', 'anodized', '#d0508a'), screw: metal('chrome', 'bare'), style: 3, velcro: 0 },
+        { frame: { m: 'rubber', f: 'grip', c: '#1f2023' }, rail: metal('aluminium', 'powder', '#f2c230', { chip: 0.3 }), screw: metal('steel', 'bare'), style: 1, velcro: 0 },
+      ]],
+      [['worship', 'gospel', 'contemporary-worship'], [
+        { frame: { m: 'pearl', s: 'white', f: 'polished' }, rail: metal('aluminium', 'powder', '#efede7'), screw: metal('chrome', 'polished'), style: 0, velcro: 1 },
+        { frame: { m: 'glass', f: 'frosted', c: '#eef3f7' }, rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 1, velcro: 2 },
+        { frame: metal('aluminium', 'powder', '#efede7'), rail: metal('gold', 'brushed'), screw: metal('gold', 'polished'), style: 1, velcro: 1 },
+      ]],
+      [['acoustic', 'folk'], [
+        { frame: wood('walnut', 'oil'), rail: wood('maple', 'satin'), screw: metal('brass', 'polished'), style: 1, velcro: 0 },
+        { frame: wood('koa', 'nitro'), rail: wood('mahogany', 'satin'), screw: metal('brass', 'polished'), style: 2, velcro: 0 },
+        { frame: wood('maple', 'satin'), rail: wood('rosewood', 'oil'), screw: metal('bronze', 'polished'), style: 1, velcro: 2 },
+      ]],
+      [['jazz', 'jazz-fusion'], [
+        { frame: wood('mahogany', 'nitro'), rail: metal('brass', 'brushed'), screw: metal('gold', 'polished'), style: 0, velcro: 0 },
+        { frame: wood('rosewood', 'poly'), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('gold', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['country', 'country-rock'], [
+        { frame: wood('oak', 'stained', '#e8b25a'), rail: metal('copper', 'brushed'), screw: metal('copper', 'polished'), style: 2, velcro: 0 },
+        { frame: wood('pine', 'satin', '', { scratch: 0.3 }), rail: { m: 'tolex', s: 'leather', f: 'worn', c: '#5a3a24' }, screw: metal('brass', 'patina'), style: 2, velcro: 0 },
+      ]],
+      [['blues'], [
+        { frame: { m: 'tolex', s: 'tweed', f: 'worn' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+        { frame: { m: 'tolex', s: 'tolex', f: 'worn', c: '#5a3a24' }, rail: metal('brass', 'brushed'), screw: metal('brass', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['surf'], [
+        { frame: metal('steel', 'powder', '#1f8a8a'), rail: { m: 'plastic', f: 'gloss', c: '#ece2c6' }, screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+      ]],
+      [['funk'], [
+        { frame: metal('steel', 'flake', '#5a3fb0'), rail: metal('gold', 'polished'), screw: metal('gold', 'polished'), style: 0, velcro: 0 },
+        { frame: metal('steel', 'flake', '#e56b1f'), rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['edm', 'synth'], [
+        { frame: { m: 'acrylic', f: 'clear', c: '#3b78d8' }, rail: { m: 'glow', f: 'glowing', c: '#4ff5e0' }, screw: metal('chrome', 'polished'), style: 1, velcro: 2 },
+        { frame: { m: 'acrylic', f: 'frosted', c: '#8e5bd8' }, rail: metal('aluminium', 'anodized', '#d0508a'), screw: metal('chrome', 'polished'), style: 0, velcro: 2 },
+      ]],
+      [['shoegaze'], [
+        { frame: { m: 'pearl', s: 'abalone', f: 'polished' }, rail: metal('aluminium', 'anodized', '#5b2b9a'), screw: metal('chrome', 'polished'), style: 1, velcro: 0 },
+      ]],
+      [['ambient', 'experimental', 'noise'], [
+        { frame: { m: 'glass', f: 'frosted', c: '#8e5bd8' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 2 },
+        { frame: { m: 'concrete', f: 'terrazzo', c: '#4e4f50' }, rail: metal('copper', 'patina'), screw: metal('iron', 'bare'), style: 2, velcro: 0 },
+      ]],
+      [['classic-rock', 'hard-rock'], [
+        { frame: { m: 'tolex', s: 'tolex', f: 'new', c: '#18181a' }, rail: metal('gold', 'brushed'), screw: metal('gold', 'polished'), style: 2, velcro: 0 },
+        { frame: { m: 'tolex', s: 'tolex', f: 'worn', c: '#5a1a1e' }, rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+      ]],
+      [['prog', 'instrumental'], [
+        { frame: { m: 'carbon', f: 'gloss', c: '#6a3fb0' }, rail: metal('chrome', 'polished'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+      ]],
+      [['indie'], [
+        { frame: wood('plywood', 'matte'), rail: metal('steel', 'powder', '#2b7bd6'), screw: metal('steel', 'bare'), style: 1, velcro: 1 },
+      ]],
+      [['alt-rock'], [
+        { frame: metal('aluminium', 'anodized', '#1f5fbf', { scratch: 0.25 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+        { frame: { m: 'concrete', f: 'smooth', c: '#4e4f50' }, rail: metal('aluminium', 'brushed'), screw: metal('steel', 'bare'), style: 2, velcro: 0 },
+      ]],
+      [['pop'], [
+        { frame: { m: 'plastic', f: 'gloss', c: '#f1f0ec' }, rail: metal('aluminium', 'powder', '#d6487e'), screw: metal('chrome', 'polished'), style: 1, velcro: 1 },
+        { frame: metal('aluminium', 'anodized', '#d0508a'), rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 0, velcro: 1 },
+      ]],
+      [['rock', 'crunch'], [
+        { frame: metal('aluminium', 'anodized', '#b3202a', { scratch: 0.2 }), rail: metal('aluminium', 'anodized', '#1d1e22'), screw: metal('chrome', 'polished'), style: 0, velcro: 0 },
+        { frame: metal('steel', 'hammertone', '#1f2d55'), rail: metal('aluminium', 'brushed'), screw: metal('chrome', 'polished'), style: 2, velcro: 0 },
+      ]],
+    ];
+    // the hand-made presets have no tags
+    const LOOK_TAGS = { '02-clean-ambient': ['ambient'], '04-bass-rig': ['funk'], '06-looper-jam': ['rock'], '08-boutique': ['jazz'], '09-wah-fuzz': ['classic-rock'] };
+    const hashOf = (str) => { let h = 7; for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+    const boardLook = (file, tags) => {
+      const hit = LOOKS.find(([keys]) => keys.some((k) => tags.includes(k)));
+      if (!hit) return {}; // the plain default board
+      const v = hit[1][hashOf(file) % hit[1].length];
+      const out = Object.assign({}, M.toParams(v.frame, 'frame'), v.rail ? M.toParams(v.rail, 'rail') : { railMat: 'frame' }, M.toParams(v.screw, 'screw'));
+      // glass takes no screws
+      out.style = v.frame.m === 'glass' && (v.style === 2 || v.style === 3) ? 0 : v.style;
+      out.velcro = v.velcro;
+      return out;
+    };
+    // ---- v0.11: every cab is re-miked with the new mic models, by style. First matching tag wins; presets that
+    // share a style get one of a few variants (by file name) so they don't all sound alike. A spec can still give
+    // its own `mics` list. Plugin models (smic.*) fall back to the core 57 if the Studio Mics plugin is off.
+    const M57 = (at = 'cap-edge', dist = 0.06, spk = 0) => ({ model: 'mics.dyn57', at, dist, spk });
+    const MIC = (model, at, dist, spk, lvl = 0, axis) => Object.assign({ model, at, dist, spk, lvl }, axis !== undefined ? { axis } : {});
+    const MIC_RECIPES = [
+      [['bass'], [
+        [MIC('smic.re20', 'cap', 0.08, 0), MIC('mics.md421', 'cone', 0.1, 1, -5)],
+        [MIC('smic.d112', 'cap-edge', 0.06, 0), MIC('mics.md421', 'cone', 0.1, 1, -6)],
+      ]],
+      [['deathcore', 'djent'], [
+        [M57('cap-edge', 0.04), MIC('smic.tz-hornet', 'cone', 0.06, 1, -4)],
+        [M57('cap-edge', 0.04), MIC('mics.md421', 'cap-edge', 0.05, 1, -3)],
+      ]],
+      [['metal', 'high-gain', 'thrash', 'doom'], [
+        [M57('cap-edge', 0.05), MIC('mics.md421', 'cone', 0.08, 1, -4)],
+        [M57('cap-edge', 0.05), MIC('mics.r121', 'cone', 0.12, 1, -5)],
+        [MIC('mics.beta57a', 'cap-edge', 0.04, 0), MIC('smic.m88', 'cone', 0.08, 1, -4)],
+        [MIC('mics.e906', 'cap-edge', 0.03, 0), MIC('mics.r121', 'cone', 0.12, 1, -6)],
+      ]],
+      [['meme'], [
+        [MIC('mics.dyn58', 'cap', 0.1, 0)],
+        [MIC('smic.tz-prism', 'cone', 0.3, 0), MIC('smic.tz-orb', 'off', 0.9, 1, -8)],
+        [MIC('smic.e609', 'cap-edge', 0.02, 0)],
+      ]],
+      [['acoustic', 'folk'], [
+        [MIC('mics.c414', 'cone', 0.5, 0)],
+        [MIC('smic.km184', 'cap', 0.45, 0)],
+      ]],
+      [['edm', 'synth', 'synthwave', 'pop'], [
+        [MIC('mics.e906', 'cap-edge', 0.05, 0), MIC('mics.c414', 'cone', 0.4, 1, -5)],
+        [M57('cap-edge', 0.06), MIC('smic.tlm103', 'cone', 0.35, 1, -5)],
+      ]],
+      [['clean', 'ambient', 'worship', 'shoegaze', 'post-rock', 'experimental'], [
+        [MIC('mics.u87', 'cone', 0.35, 0), MIC('mics.r121', 'cone', 0.2, 1, -3)],
+        [MIC('mics.c414', 'cone', 0.3, 0), M57('cap-edge', 0.08, 1)],
+        [MIC('smic.u47', 'cone', 0.4, 0), MIC('smic.r10', 'cone', 0.2, 1, -3)],
+        [MIC('smic.c800g', 'cone', 0.35, 0), MIC('smic.rca44', 'cone', 0.25, 1, -4)],
+      ]],
+      [['blues', 'jazz', 'soul', 'r&b'], [
+        [MIC('mics.r121', 'cone', 0.2, 0), M57('cap-edge', 0.1, 1)],
+        [MIC('smic.c4038', 'cone', 0.3, 0)],
+        [MIC('smic.rca44', 'cone', 0.35, 0), M57('cap-edge', 0.1, 1)],
+        [MIC('mics.m160', 'cap-edge', 0.1, 0), MIC('smic.u47fet', 'cone', 0.4, 1, -4)],
+      ]],
+      [['country', 'funk', 'indie', 'surf'], [
+        [M57('cap-edge', 0.08), MIC('mics.md441', 'cone', 0.12, 1, -3)],
+        [M57('cap-edge', 0.08), MIC('smic.km184', 'cone', 0.35, 1, -4)],
+        [MIC('mics.md441', 'cap-edge', 0.08, 0), MIC('smic.r92', 'cone', 0.2, 1, -4)],
+      ]],
+      [['grunge', 'punk', 'hard-rock', 'classic-rock', 'rock', 'crunch', 'lead', 'rhythm'], [
+        [M57('cap-edge', 0.08), MIC('mics.r121', 'cone', 0.15, 1, -3)],
+        [M57('cap-edge', 0.08), MIC('mics.md421', 'cone', 0.1, 1, -4)],
+        [MIC('mics.m160', 'cone', 0.1, 0), M57('cap-edge', 0.08, 1, -2)],
+        [M57('cap-edge', 0.06), MIC('smic.re20', 'cone', 0.12, 1, -4)],
+      ]],
+    ];
+    const MIC_DEFAULT = [[M57('cap-edge', 0.08), MIC('mics.md421', 'cone', 0.1, 1, -4)], [M57('cap-edge', 0.08), MIC('mics.r121', 'cone', 0.15, 1, -3)]];
+    const micsFor = (file, tags, d, nth) => {
+      const isBass = d.cat === 'Bass Cab';
+      const hit = MIC_RECIPES.find(([keys]) => (isBass && keys[0] === 'bass') || keys.some((k) => tags.includes(k)));
+      const set = hit ? hit[1] : MIC_DEFAULT;
+      // the n-th cab in a preset takes the next variant, so dual-cab rigs get two different pairs
+      return set[(hashOf(file) + nth) % set.length].map((m) => Object.assign({}, m));
+    };
     const problems = [];
     const COLORS = ['#e8473d', '#f39c12', '#f1c40f', '#2ecc71', '#3498db', '#6c5ce7', '#e84393', '#1abc9c', '#ecf0f1'];
     const AUX = /^(EXP|CTL|CTRL|MIDI|USB|SEND|RETURN|TUNER|BYPASS|DI OUT|XLR|THRU|DIRECT|LINE OUT|PHONES|B OUT)/i;
     const audioPorts = (N, dir) => (N.d ? (C.portsFor(N.d, N.b.variant)[dir] || []).filter((l) => !AUX.test(l)).length : 1);
     const build = (spec) => {
-      let n = 0;
+      let n = 0, cabN = 0;
       const nodes = {};
       const order = [];
       const add = (key, item) => {
@@ -73,14 +268,12 @@ const fs = require('fs');
         if (!d || d.missing) problems.push(`${spec.file}: unknown block ${type}`);
         const b = { id: 'b' + ++n, type, x: 0, y: 0, params: {}, bypass: !!o.bypass, variant: 'mono' };
         if (d && d.initParams) Object.assign(b.params, JSON.parse(JSON.stringify(d.initParams)));
-        // cabs: mic1 / mic2 = mic type index (2nd mic placed on the next speaker, blended in mono)
+        // cabs: mics: [{ model, at, spk, dist, axis, lvl, phase, pan }] or the old mic1 / mic2 type numbers
+        // (catalog/cabmics.js applyMicSpec, docs/mic-blocks.md "Presets")
         if (d && d.cabMics) {
-          if (params.mic1 !== undefined) b.params.m1type = params.mic1;
-          if (params.mic2 !== undefined) {
-            const xy = defaultMicXY(d.cabSize || '4x12', 2);
-            Object.assign(b.params, { m2on: 1, m2type: params.mic2, m2dist: 0.2, _m2x: xy.x, _m2y: xy.y, m2lvl: params.mic2lvl ?? -3 });
-          }
-          params = Object.fromEntries(Object.entries(params).filter(([k]) => !/^mic\d/.test(k)));
+          const tags = spec.tags || LOOK_TAGS[spec.file] || [];
+          CM.applyMicSpec(b, d, { mics: params.mics || micsFor(spec.file, tags, d, cabN++) });
+          params = Object.fromEntries(Object.entries(params).filter(([k]) => !/^mic(s|\d)/.test(k)));
         }
         for (const [k0, v] of Object.entries(params)) {
           const raw = k0.startsWith('=');
@@ -255,11 +448,27 @@ const fs = require('fs');
         if (b.type === '__in') { b.x = 90; b.y = by + S.padY + S.h / 2 - 110; }
         if (b.type === '__out') { b.x = bx - 260; b.y = by + S.padY + endRow * S.h + S.h / 2 - 110; }
       }
-      p.blocks.unshift({ id: 'board1', type: 'pb.' + plan.key, x: bx, y: by, params: {} });
+      // the pedals remember their board, so a board moved over this one can't take them
+      for (const it of on) it.b.board = 'board1';
+      p.blocks.unshift({ id: 'board1', type: 'pb.' + plan.key, x: bx, y: by, params: boardLook(file, [...(p.tags || []), ...(LOOK_TAGS[file] || [])]) });
       return p;
     };
     const res = specs.map((s) => ({ file: s.file, preset: boardify(s.file, build(s)) }));
-    for (const e of extra) res.push({ file: e.file, preset: boardify(e.file, e.preset) });
+    // hand-made presets: re-mike their cabs the same way
+    for (const e of extra) {
+      let nth = 0;
+      // their output trim goes on the cab levels too; _trim remembers what's applied so rebuilding doesn't stack it
+      const dt = +((e.trimDb || 0) - (e.preset._trim || 0)).toFixed(1);
+      for (const b of e.preset.blocks) {
+        const d = C.getDef(b.type);
+        if (!d || !d.cabMics) continue;
+        CM.applyMicSpec(b, d, { mics: micsFor(e.file, e.preset.tags && e.preset.tags.length ? e.preset.tags : LOOK_TAGS[e.file] || [], d, nth++) });
+        if (dt) b.params.level = Math.max(-24, Math.min(12, +((b.params.level || 0) + dt).toFixed(1)));
+      }
+      if (e.trimDb) e.preset._trim = e.trimDb;
+      else delete e.preset._trim;
+      res.push({ file: e.file, preset: boardify(e.file, e.preset) });
+    }
     // validate: load each into the engine graph builder
     for (const r of res) {
       try {

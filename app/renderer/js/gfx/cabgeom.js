@@ -1,8 +1,10 @@
 // Speaker-cabinet geometry shared by the cab graphic and the mic → engine-param mapping.
 export const CAB_DIMS = { '1x12': [250, 236, 1, 1], '1x10': [230, 220, 1, 1], '2x12': [400, 262, 2, 1], '4x12': [440, 420, 2, 2], '4x10': [300, 330, 2, 2], '8x10': [270, 480, 2, 4], '1x15': [264, 300, 1, 1], '2x10': [300, 240, 2, 1], '2x15': [300, 520, 1, 2], '6x10': [300, 440, 2, 3], '1x18': [300, 330, 1, 1], '2x12v': [262, 400, 1, 2], '3x10': [380, 230, 3, 1] };
+// v0.10 mic types (param m<i>type), now core mic models (catalog/cabmics.js LEGACY_MODELS)
 export const MIC_TYPES = ['Dynamic 57', 'Condenser 414', 'Ribbon 121', 'Dynamic 421', 'Dynamic 906', 'Dynamic 441', 'Condenser 87', 'Ribbon 160'];
 export const MIC_SHORT = ['57', '414', '121', '421', '906', '441', '87', '160'];
-export const MIC_COLORS = ['#ff7a2f', '#37d6c2', '#a98bff', '#ffd23f'];
+// one colour per mic (by order on the cab): the badge on the cab and the inspector card
+export const MIC_COLORS = ['#ff7a2f', '#37d6c2', '#a98bff', '#ffd23f', '#ff5c8a', '#6fd06b', '#5aa9ff', '#e8e8e8'];
 
 export function cabGeom(size) {
   const [w, h, cols, rows] = CAB_DIMS[size] || CAB_DIMS['4x12'];

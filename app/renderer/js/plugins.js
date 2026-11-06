@@ -10,7 +10,7 @@ import * as jacks from './gfx/jacks.js';
 import * as fx from './gfx/fx.js';
 import * as cabgeom from './gfx/cabgeom.js';
 import { svg, el, esc, shade, clamp, bus, toast, luminance } from './util.js';
-import { state, uiParams, setParam, syncGraph } from './state.js';
+import { state, uiParams, setParam, syncGraph, commitNow } from './state.js';
 
 export const API_VERSION = 1;
 const loaded = new Map(); // id -> { info, cleanup: [] , count, error }
@@ -36,7 +36,8 @@ function makeApi(info) {
     apiVersion: API_VERSION,
     appVersion: state.appVersion,
     helpers,
-    builders,
+    // mic drawing kinds go away with the plugin (gfx/forms-mic.js)
+    builders: Object.assign({}, builders, { micLook: (kind, fn) => cleanup.push(builders.micLook(kind, fn)) }),
     categories: CATEGORIES,
     gfx: Object.assign({ svg, shade, luminance, clamp, formKit, cabgeom }, controls, jacks, fx),
     ui: { el, esc, toast },
@@ -104,6 +105,8 @@ function makeApi(info) {
       pressFoot: (blockId, cid, down) => !!(window.__tz && window.__tz.editor.remoteFoot(blockId, cid, down)),
       setControl: (blockId, cid, pos) => !!(window.__tz && window.__tz.editor.remoteControl(blockId, cid, pos)),
       markDirty: () => import('./state.js').then((m) => m.markDirty(true)),
+      // call right before changing saved block data (like bindings) so undo can restore it
+      commit: () => commitNow(),
     },
     presets: {
       list: () => window.tz.presets.list(),

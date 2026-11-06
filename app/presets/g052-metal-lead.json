@@ -15,7 +15,31 @@
    "type": "pb.small",
    "x": -1988,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "metal",
+    "frameSub": "steel",
+    "frameFin": "hammertone",
+    "frameCol": "#1b1c20",
+    "frameT": "",
+    "frameWear": "scratch:0.35",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "steel",
+    "railFin": "brushed",
+    "railCol": "",
+    "railT": "",
+    "railWear": "",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "chrome",
+    "screwFin": "polished",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 2,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -35,7 +59,8 @@
     "level": 0.8
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -60,12 +85,19 @@
    "x": -1214,
    "y": -590,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.3098811881188119,
     "_m1y": 0.25,
-    "level": -3.5
+    "m1on": 1,
+    "m1model": "mics.beta57a",
+    "m1dist": 0.04,
+    "m1lvl": 0,
+    "m2on": 1,
+    "m2model": "smic.m88",
+    "m2dist": 0.08,
+    "_m2x": 0.6302376237623762,
+    "_m2y": 0.25,
+    "m2lvl": -4,
+    "level": -2.9
    },
    "bypass": false,
    "variant": "mono"
@@ -81,7 +113,8 @@
     "mix": 0.2
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b5",
@@ -93,7 +126,8 @@
     "mix": 0.15
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",

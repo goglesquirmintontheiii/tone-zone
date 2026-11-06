@@ -78,6 +78,7 @@ export function nodePorts(block) {
   const d = getDef(block.type);
   if (!d) return { ins: [], outs: [] };
   if (d.missing && block._ports) return { ins: [...Array(block._ports[0])].map((_, i) => 'IN ' + (i + 1)), outs: [...Array(block._ports[1])].map((_, i) => 'OUT ' + (i + 1)) };
+  if (d.portsOf) return d.portsOf(block, block.variant || defaultVariant(d)); // ports that follow the block (cab mics)
   return portsFor(d, block.variant || defaultVariant(d));
 }
 
@@ -131,7 +132,8 @@ export function buildGraph(preset = state.preset) {
     }
     const m = maps[b.id];
     const nIn = m.ins.reduce((a, x) => a + x.length, 0), nOut = m.outs.reduce((a, x) => a + x.length, 0);
-    nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: b.opts ? Object.assign({}, d.opts, b.opts) : d.opts || {}, params, bypass: !!b.bypass && !d.alwaysOn });
+    const opts = b.opts ? Object.assign({}, d.opts, b.opts) : d.opts || {};
+    nodes.push({ id: b.id, algo: d.algo, nIn, nOut, opts: d.engineOpts ? d.engineOpts(b, opts) : opts, params, bypass: !!b.bypass && !d.alwaysOn });
   }
   const valid = new Set(nodes.map((n) => n.id).concat(['__in', '__out']));
   // where a UI jack lands in the engine: {node, chans}
@@ -297,7 +299,12 @@ export function removeBlocks(ids) {
   bus.emit('preset:changed', { keepView: true });
   syncGraphSoon();
 }
+// pedalboards copy their pedals and inner cables too (board-copy.js sets the hook)
+let duplicateHook = null;
+export function setDuplicateHook(fn) { duplicateHook = fn; }
 export function duplicateBlocks(ids) {
+  const hooked = duplicateHook && duplicateHook(ids);
+  if (hooked) return hooked;
   const out = [];
   commitNow();
   for (const id of ids) {
@@ -340,13 +347,15 @@ export function setVariant(id, variant) {
   const b = blockById(id);
   if (!b || b.variant === variant) return;
   commitNow();
-  b.variant = variant;
   const d = getDef(b.type);
+  const keys = d && d.portKeys ? d.portKeys(b) : null; // jacks before the change (cab mics)
+  b.variant = variant;
   if (d && d.cabMics && variant === 'stereo' && !(b.params.m2on > 0.5)) {
     const g = cabGeom(d.cabSize || '4x12');
     const [cx, cy] = g.centers[Math.min(1, g.centers.length - 1)];
-    Object.assign(b.params, { m2on: 1, m2type: 2, m2dist: 0.15, _m2x: (cx - 0.4 * g.sr - g.gx) / g.gw, _m2y: (cy - g.gy) / g.gh, m1pan: -0.8, m2pan: 0.8 });
+    Object.assign(b.params, { m2on: 1, m2type: 2, m2model: 'mics.r121', m2dist: 0.15, _m2x: (cx - 0.4 * g.sr - g.gx) / g.gw, _m2y: (cy - g.gy) / g.gh, m1pan: -0.8, m2pan: 0.8 });
   }
+  if (keys) state.preset.cables = d.remapPorts(state.preset.cables, b, keys);
   // drop cables to ports that no longer exist
   const ports = nodePorts(b);
   state.preset.cables = state.preset.cables.filter(

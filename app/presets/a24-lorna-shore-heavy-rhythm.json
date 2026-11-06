@@ -19,7 +19,31 @@
    "type": "pb.medium",
    "x": -1508,
    "y": 0,
-   "params": {}
+   "params": {
+    "frameMat": "carbon",
+    "frameSub": "",
+    "frameFin": "forged",
+    "frameCol": "#3a3d44",
+    "frameT": "",
+    "frameWear": "",
+    "frameMulti": "",
+    "railMat": "metal",
+    "railSub": "iron",
+    "railFin": "powder",
+    "railCol": "#1b1c20",
+    "railT": "",
+    "railWear": "scratch:0.5,chip:0.3",
+    "railMulti": "",
+    "screwMat": "metal",
+    "screwSub": "iron",
+    "screwFin": "bare",
+    "screwCol": "",
+    "screwT": "",
+    "screwWear": "",
+    "screwMulti": "",
+    "style": 3,
+    "velcro": 0
+   }
   },
   {
    "id": "__in",
@@ -35,7 +59,8 @@
    "y": 54,
    "params": {},
    "bypass": true,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b2",
@@ -48,7 +73,8 @@
     "range": 0.9
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b3",
@@ -61,7 +87,8 @@
     "level": 0.92
    },
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b4",
@@ -121,7 +148,8 @@
    "y": 122,
    "params": {},
    "bypass": false,
-   "variant": "mono"
+   "variant": "mono",
+   "board": "board1"
   },
   {
    "id": "b6",
@@ -146,18 +174,18 @@
    "x": -1096,
    "y": -590,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.15,
     "_m1x": 0.3098811881188119,
     "_m1y": 0.25,
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.04,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.6501980198019802,
+    "m2model": "smic.tz-hornet",
+    "m2dist": 0.06,
+    "_m2x": 0.6302376237623762,
     "_m2y": 0.25,
-    "m2lvl": -3,
-    "level": -8.5
+    "m2lvl": -4,
+    "level": -10.7
    },
    "bypass": false,
    "variant": "mono"
@@ -186,19 +214,18 @@
    "x": -1688,
    "y": -590,
    "params": {
-    "m1on": 1,
-    "m1type": 0,
-    "m1dist": 0.08,
-    "_m1x": 0.2899207920792079,
+    "_m1x": 0.3098811881188119,
     "_m1y": 0.25,
-    "m1lvl": 0,
+    "m1on": 1,
+    "m1model": "mics.dyn57",
+    "m1dist": 0.04,
     "m2on": 1,
-    "m2type": 2,
-    "m2dist": 0.2,
-    "_m2x": 0.6501980198019802,
+    "m2model": "mics.md421",
+    "m2dist": 0.05,
+    "_m2x": 0.6901188118811881,
     "_m2y": 0.25,
     "m2lvl": -3,
-    "level": -8.5
+    "level": -10.7
    },
    "bypass": false,
    "variant": "mono"
@@ -267,7 +294,8 @@
     "mode": 7
    },
    "bypass": true,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b12",
@@ -283,7 +311,8 @@
     "tone": 0.5
    },
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "b13",
@@ -292,7 +321,8 @@
    "y": 345,
    "params": {},
    "bypass": false,
-   "variant": "stereo"
+   "variant": "stereo",
+   "board": "board1"
   },
   {
    "id": "__out",
