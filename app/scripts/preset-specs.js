@@ -1484,12 +1484,14 @@ artist(22, 'rage-against-the-machine', 'Rage Against The Machine', ['rock', 'alt
 const lsEqPre = (cut) => ['tz.paraeq', { hpon: 1, hpf: 26, hps: 1, b1on: 0, b2on: 1, b2type: 0, b2f: 220, b2g: -cut, b2q: 0.9, b3on: 1, b3type: 0, b3f: 750, b3g: 1.5, b3q: 0.7, b4on: 0, b5on: 0, b6on: 0 }];
 const lsEqPost = (shelf, bite, fizz) => ['tz.paraeq', { hpon: 1, hpf: 30, hps: 1, lpon: 1, lpf: 11500, lps: 1, b1on: 1, b1type: 1, b1f: 100, b1g: shelf, b1q: 0.7, b2on: 1, b2type: 0, b2f: 320, b2g: -3, b2q: 1.1, b3on: 1, b3type: 0, b3f: 1400, b3g: 0.5, b3q: 0.9, b4on: 1, b4type: 0, b4f: 3300, b4g: bite, b4q: 1.3, b5on: 1, b5type: 0, b5f: 6500, b5g: fizz, b5q: 1.2, b6on: 0 }, { variant: 'stereo' }];
 
-artist(23, 'lorna-shore-heavy', 'Lorna Shore Heavy', ['deathcore', 'metal', 'high-gain', 'lead', 'drop-tuning', 'extended-range'],
-  'A heavier, more articulate Lorna Shore rig for 8-string (low D1, upper strings in drop G): a fast gate and a tight TS boost into a 5150III lead channel and a VH4, mud cut before the amps and a tight low shelf plus upper-mid bite after, then a big ping-pong delay and hall. Built for fast picking and leads; the low string stays full and clear.',
+artist(23, 'lorna-shore-heavy', 'Lorna Shore Heavy', ['deathcore', 'metal', 'high-gain', 'lead', 'clean', 'drop-tuning', 'extended-range'],
+  'A heavier, more articulate Lorna Shore rig for 8-string (low D1, upper strings in drop G). An output selector after the gate picks the path. A: a tight TS boost into a 5150III lead channel and a VH4, mud cut before the amps and a tight low shelf plus upper-mid bite after. B: a heavy, dark clean with no distortion at all, a compressor and a slow, dark chorus into a JC-120 and a Twin with the treble down and lots of headroom, so even the D1 string stays clean. Both share the ping-pong delay and the big hall.',
   {
     nodes: {
       tun: tuner(),
       gate: ['tz.hush', { threshold: 0.52, decay: 0.12, range: 0.85 }],
+      sel: ['tz.select2', { fade: 0.25 }, { raw: { sel: 0, mode: 0 } }],
+      // A: the heavy path
       ts: ['ib.ts9', { gain: 0, tone: 0.68, level: 0.92 }],
       pre: lsEqPre(3),
       split: ['box.split2'],
@@ -1497,13 +1499,24 @@ artist(23, 'lorna-shore-heavy', 'Lorna Shore Heavy', ['deathcore', 'metal', 'hig
       a2: ['evh.cab-stripe412', { mic1: 0, mic2: 2 }],
       b1: ['amp.vh4', { gain: 0.76, bass: 0.55, mid: 0.6, treble: 0.6, master: 0.5, presence: 0.58, depth: 0.4 }],
       b2: ['fryette.cab-d412', { mic2: 2 }],
+      // B: the dark clean path (low amp gain so even the D1 string stays clean)
+      cmpB: ['tz.comp', { sustain: 0.4, ratio: 0.45, attack: 0.5, release: 0.5, level: 0.38, blend: 0.7, knee: 0.6, tone: 0.38 }],
+      choB: ['tz.chorus', { rate: 0.16, depth: 0.32, mix: 0.28, tone: 0.32, mode: 2 }],
+      c1: ['amp.jc120', { gain: 0.16, treble: 0.34, mid: 0.48, bass: 0.5, bright: 0 }],
+      c2: ['cab.4x12v30', { mic1: 0, mic2: 2 }, { raw: { level: 12 } }],
+      d1: ['amp.twin', { gain: 0.08, treble: 0.32, mid: 0.48, bass: 0.48, master: 0.72, bright: 0 }],
+      d2: ['cab.2x12twin', { mic1: 0, mic2: 2 }, { raw: { level: 12 } }],
+      mL: ['box.merge2'],
+      mR: ['box.merge2'],
       eq: lsEqPost(4, 3, -1.5),
       dly: ['tz.delay', { '=time': 410, feedback: 0.45, mix: 0.3, tone: 0.42, mode: 7 }, { variant: 'stereo' }],
       rev: ['tz.reverb', { mode: 1, decay: 0.78, mix: 0.3, predelay: 0.4, lowcut: 0.6, tone: 0.5, size: 0.75 }, { variant: 'stereo' }],
       met: meter,
     },
-    edges: [...ser('in', 'tun', 'gate', 'ts', 'pre', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'], ...lr('a2', 'b2', 'eq'), ...tail('eq', 'dly', 'rev', 'met')],
-    rows: [['tun', 'gate', 'ts', 'pre', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@a2', 'eq', 'dly', 'rev', 'met']],
+    edges: [...ser('in', 'tun', 'gate', 'sel'), ['sel', 'ts', 0, 0], ...ser('ts', 'pre', 'split'), ['split', 'a1', 0, 0], ['a1', 'a2'], ['split', 'b1', 1, 0], ['b1', 'b2'],
+      ['sel', 'cmpB', 2, 0], ['cmpB', 'choB'], ['choB', 'c1', 0, 0], ['c1', 'c2'], ['choB', 'd1', 1, 0], ['d1', 'd2'],
+      ['a2', 'mL', 0, 0], ['c2', 'mL', 0, 1], ['b2', 'mR', 0, 0], ['d2', 'mR', 0, 1], ['mL', 'eq', 0, 0], ['mR', 'eq', 0, 1], ...tail('eq', 'dly', 'rev', 'met')],
+    rows: [['tun', 'gate', 'sel', 'ts', 'pre', 'split'], ['@split', 'a1', 'a2'], ['@split', 'b1', 'b2'], ['@sel', 'cmpB', 'choB', 'c1', 'c2'], ['@choB', 'd1', 'd2'], ['@a2', 'mL', 'mR', 'eq', 'dly', 'rev', 'met']],
   });
 
 artist(24, 'lorna-shore-heavy-rhythm', 'Lorna Shore Heavy Rhythm', ['deathcore', 'metal', 'high-gain', 'rhythm', 'drop-tuning', 'extended-range'],
