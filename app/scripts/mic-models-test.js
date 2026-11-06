@@ -52,7 +52,7 @@ const ENGINE = [path.join(ROOT, '../engine/build/tonezone-engine'), path.join(RO
     names.add(d.name);
     if (d.cat !== 'Mic') w('cat ' + d.cat);
     if (!d.desc || d.desc.length < 20) w('no desc');
-    if (/[–—]/.test(d.desc + d.name + d.ref)) w('dash character in text');
+    if (/[\u2013\u2014]/.test(d.desc + d.name + d.ref)) w('dash character in text');
     if (!d.original && (!d.ref || !d.brand)) w('missing ref / brand');
     // product names must not be the real model
     if (!d.original && d.ref) {

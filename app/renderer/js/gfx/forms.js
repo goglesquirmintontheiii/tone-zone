@@ -614,6 +614,13 @@ forms.cab = (ctx, def) => {
   const sp = no <= 2 ? 28 : Math.min(28, (h - 44) / (no - 1));
   const oy = no <= 2 ? h / 2 - 20 : Math.max(22, h / 2 - ((no - 1) * sp) / 2);
   def.ports.outs.forEach((l, i) => jacks.push({ key: `o${i}`, dir: 'out', port: i, label: l, side: ctx.flip ? 'right' : 'left', x: ctx.flip ? w + 2 : -2, y: oy + i * sp }));
+  // dark backing so the mic jack labels stay readable over light grille cloth
+  if (no > 1)
+    for (const j of jacks)
+      if (j.dir === 'out') {
+        const lw = 4 + j.label.length * 3.15;
+        svg('rect', { x: ctx.flip ? j.x - 6 - lw : j.x + 3.5, y: j.y - 15.6, width: lw, height: 7, rx: 2, fill: '#0b0c0e', opacity: 0.72, 'pointer-events': 'none' }, g);
+      }
   return { w, h, theme: Object.assign({}, theme, { jackText: '#ddd' }), jacks };
 };
 // a mic model block (library thumbnail)
