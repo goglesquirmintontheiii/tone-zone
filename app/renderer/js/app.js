@@ -1,4 +1,5 @@
 // Tone Zone renderer bootstrap.
+import './devfeedback.js'; // dev feedback picker, Ctrl+Shift+K (temporary; first so its key/pointer hooks run first)
 import { bus, toast, el, clamp } from './util.js';
 import { Editor } from './editor.js';
 import { initBrowser, isFavorite, toggleFavorite } from './browser.js';

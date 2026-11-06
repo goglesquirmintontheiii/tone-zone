@@ -314,10 +314,17 @@ const KINDS = {
   },
 };
 const FALLBACK = { dynamic: 'stick', condenser: 'ldc', ribbon: 'ribbon' };
+const BUILTIN = new Set(Object.keys(KINDS));
 
 // add a drawing kind: fn(g, look, mic, def) draws in mm (pickup point at 0,0, body down) and returns { top, bottom, w }
 export function registerMicLook(kind, fn) {
   KINDS[kind] = fn;
+  return () => unregisterMicLook(kind, fn);
+}
+// a disabled plugin's kinds go away (models using them fall back to the drawing for their type)
+export function unregisterMicLook(kind, fn) {
+  if (BUILTIN.has(kind) || (fn && KINDS[kind] !== fn)) return;
+  delete KINDS[kind];
 }
 // draw a mic model; returns its extent
 export function drawMicModel(g, d) {
@@ -340,10 +347,25 @@ function rotBox(ext, a, s) {
 }
 
 // ---- the mic block itself (library thumbnails, or a mic dropped where it can't go): lying at an angle
+let clipSeq = 0;
 export function micForm(ctx, def) {
-  const ang = -38, s = 0.9;
   const probe = svg('g', {});
   const ext = drawMicModel(probe, def);
+  // list thumbnails: upright and cropped to the head and upper body, so the mic fills the little square
+  if (ctx.thumb) {
+    const s = 1, pad = 4;
+    const h = Math.min(ext.bottom - ext.top, Math.max(70, ext.w * 1.9));
+    const w = Math.ceil(ext.w * s + pad * 2), hh = Math.ceil(h * s + pad);
+    const id = 'micclip' + ++clipSeq;
+    const cp = svg('clipPath', { id }, ctx.g);
+    svg('rect', { x: 0, y: 0, width: w, height: hh }, cp);
+    const g = svg('g', { 'clip-path': `url(#${id})` }, ctx.g);
+    const inner = svg('g', { transform: `translate(${NS(w / 2)},${NS(pad - ext.top * s)}) scale(${s})` }, g);
+    inner.appendChild(probe);
+    return { w, h: hh, theme: { text: '#ddd' }, jacks: [] };
+  }
+  // on the board (a mic dropped where it can't go): the whole mic lying at an angle
+  const ang = -38, s = 0.9;
   const bx = rotBox(ext, ang, s);
   const pad = 8;
   const w = Math.ceil(bx.x1 - bx.x0 + pad * 2), h = Math.ceil(bx.y1 - bx.y0 + pad * 2);

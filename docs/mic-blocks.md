@@ -14,7 +14,7 @@ Changes to the contract below since it was first written (all backwards compatib
 * New optional `mic.short`: the short name used on the cab's output jack (`MIC 2 421`) and the mic's tag on the
   cab. Default: the first word of the name.
 * `look` has a documented schema for the core drawing (see Looks), and `tz.builders.micLook(kind, fn)` adds a
-  drawing kind of your own.
+  drawing kind of your own (removed again when the plugin is disabled).
 * Core ships ten models (see Core models). Plugins must not reuse their ids.
 
 ## Using mics
@@ -184,8 +184,9 @@ tz.builders.micLook('acme-tube47', (g, look, mic, def) => {
 // then: mic: { ..., look: { kind: 'acme-tube47', body: '#d9d2c0' } }
 ```
 
-The same drawing is used in the library list (lying at an angle), on the cab (smaller when backed off, tilted with
-the angle, with its number tag) and in the inspector. Use gradients and patterns, no SVG filters. A plugin can also
+The same drawing is used in the library list (upright, cropped to the head and upper body), on the cab (smaller when backed off, tilted with
+the angle, with its number tag) and in the inspector. A kind added through `tz.builders.micLook` goes away when its
+plugin is disabled (models using it then draw as their type's default kind). Use gradients and patterns, no SVG filters. A plugin can also
 give the def its own `form` (registered with `tz.addForm`) for the library thumbnail only.
 
 ## Core models

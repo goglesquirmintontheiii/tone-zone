@@ -36,7 +36,8 @@ function makeApi(info) {
     apiVersion: API_VERSION,
     appVersion: state.appVersion,
     helpers,
-    builders,
+    // mic drawing kinds go away with the plugin (gfx/forms-mic.js)
+    builders: Object.assign({}, builders, { micLook: (kind, fn) => cleanup.push(builders.micLook(kind, fn)) }),
     categories: CATEGORIES,
     gfx: Object.assign({ svg, shade, luminance, clamp, formKit, cabgeom }, controls, jacks, fx),
     ui: { el, esc, toast },

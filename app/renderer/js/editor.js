@@ -1605,6 +1605,8 @@ function wouldCycle(from, to) {
 }
 
 export { engineParamsFor };
+// the plugin sandbox draws its cables the same way (pages/sandbox-io.js)
+export { looseCurve, cableBody };
 
 // ---- cable geometry
 const pt = (p) => p.x.toFixed(1) + ',' + p.y.toFixed(1);
